@@ -12,6 +12,34 @@ set -euo pipefail
 shopt -s inherit_errexit nullglob
 
 # ═══════════════════════════════════════════════════════════════
+# Debug Mode Configuration
+# ═══════════════════════════════════════════════════════════════
+DEBUG_MODE=false
+
+# Parse command line arguments
+for arg in "$@"; do
+  case $arg in
+    -d|--debug)
+      DEBUG_MODE=true
+      echo "Debug mode enabled"
+      set -x  # Enable command tracing
+      shift
+      ;;
+    -h|--help)
+      echo "ProxBalance Installer"
+      echo ""
+      echo "Usage: $0 [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  -d, --debug    Enable debug mode with verbose output"
+      echo "  -h, --help     Show this help message"
+      echo ""
+      exit 0
+      ;;
+  esac
+done
+
+# ═══════════════════════════════════════════════════════════════
 # Color Definitions
 # ═══════════════════════════════════════════════════════════════
 RD='\033[0;31m'
@@ -50,6 +78,21 @@ msg_error() {
 
 msg_warn() {
   echo -e "${WARN} ${YW}${1}${CL}"
+}
+
+debug_log() {
+  if [ "$DEBUG_MODE" = true ]; then
+    echo -e "${DIM}[DEBUG]${CL} ${1}"
+  fi
+}
+
+debug_cmd() {
+  if [ "$DEBUG_MODE" = true ]; then
+    echo -e "${DIM}[CMD]${CL} ${1}"
+    eval "$1" 2>&1 | sed 's/^/  /'
+  else
+    eval "$1" >/dev/null 2>&1
+  fi
 }
 
 # Spinner for long-running operations
@@ -548,7 +591,16 @@ show_summary() {
 create_container() {
   msg_info "Creating Container"
 
-  (
+  debug_log "Container ID: $CTID"
+  debug_log "Template: $TEMPLATE"
+  debug_log "Hostname: $HOSTNAME"
+  debug_log "Memory: $MEMORY MB"
+  debug_log "Cores: $CORES"
+  debug_log "Storage: $STORAGE"
+  debug_log "Disk: $DISK GB"
+  debug_log "Network: $NET_CONFIG"
+
+  if [ "$DEBUG_MODE" = true ]; then
     pct create "$CTID" "$TEMPLATE" \
       --hostname "$HOSTNAME" \
       --memory "$MEMORY" \
@@ -558,18 +610,37 @@ create_container() {
       --unprivileged 1 \
       --features nesting=1 \
       --onboot 1 \
-      --start 1 >/dev/null 2>&1
-  ) &
-
-  if spinner $! "Creating container ${CTID}"; then
+      --start 1 2>&1 | sed 's/^/  /'
     msg_ok "Container ${CTID} created"
   else
-    msg_error "Failed to create container"
-    exit 1
+    (
+      pct create "$CTID" "$TEMPLATE" \
+        --hostname "$HOSTNAME" \
+        --memory "$MEMORY" \
+        --cores "$CORES" \
+        --rootfs "${STORAGE}:${DISK}" \
+        --net0 "${NET_CONFIG}" \
+        --unprivileged 1 \
+        --features nesting=1 \
+        --onboot 1 \
+        --start 1 >/dev/null 2>&1
+    ) &
+
+    if spinner $! "Creating container ${CTID}"; then
+      msg_ok "Container ${CTID} created"
+    else
+      msg_error "Failed to create container"
+      exit 1
+    fi
   fi
 
-  sleep 10 &
-  spinner $! "Waiting for container to start"
+  if [ "$DEBUG_MODE" = true ]; then
+    sleep 10
+    debug_log "Container startup complete"
+  else
+    sleep 10 &
+    spinner $! "Waiting for container to start"
+  fi
   msg_ok "Container started"
 }
 
@@ -613,44 +684,76 @@ install_dependencies() {
   msg_info "Installing Dependencies"
   echo ""
 
+  debug_log "Updating package lists in container $CTID"
   # Update package lists
-  (
+  if [ "$DEBUG_MODE" = true ]; then
     pct exec "$CTID" -- bash -c "
       export DEBIAN_FRONTEND=noninteractive
-      apt-get update >/dev/null 2>&1
-    "
-  ) &
-  spinner $! "Updating package lists"
+      apt-get update
+    " 2>&1 | sed 's/^/  /'
+  else
+    (
+      pct exec "$CTID" -- bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update >/dev/null 2>&1
+      "
+    ) &
+    spinner $! "Updating package lists"
+  fi
   echo ""
 
+  debug_log "Installing Python 3, venv, and pip"
   # Install Python and related tools
-  (
+  if [ "$DEBUG_MODE" = true ]; then
     pct exec "$CTID" -- bash -c "
       export DEBIAN_FRONTEND=noninteractive
-      apt-get install -y python3 python3-venv python3-pip >/dev/null 2>&1
-    "
-  ) &
-  spinner $! "Installing Python 3, venv, and pip"
+      apt-get install -y python3 python3-venv python3-pip
+    " 2>&1 | sed 's/^/  /'
+  else
+    (
+      pct exec "$CTID" -- bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y python3 python3-venv python3-pip >/dev/null 2>&1
+      "
+    ) &
+    spinner $! "Installing Python 3, venv, and pip"
+  fi
   echo ""
 
+  debug_log "Installing Nginx web server"
   # Install web server
-  (
+  if [ "$DEBUG_MODE" = true ]; then
     pct exec "$CTID" -- bash -c "
       export DEBIAN_FRONTEND=noninteractive
-      apt-get install -y nginx >/dev/null 2>&1
-    "
-  ) &
-  spinner $! "Installing Nginx web server"
+      apt-get install -y nginx
+    " 2>&1 | sed 's/^/  /'
+  else
+    (
+      pct exec "$CTID" -- bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y nginx >/dev/null 2>&1
+      "
+    ) &
+    spinner $! "Installing Nginx web server"
+  fi
   echo ""
 
+  debug_log "Installing utilities (curl, jq, git)"
   # Install utilities
-  (
+  if [ "$DEBUG_MODE" = true ]; then
     pct exec "$CTID" -- bash -c "
       export DEBIAN_FRONTEND=noninteractive
-      apt-get install -y curl jq git >/dev/null 2>&1
-    "
-  ) &
-  spinner $! "Installing utilities (curl, jq, git)"
+      apt-get install -y curl jq git
+    " 2>&1 | sed 's/^/  /'
+  else
+    (
+      pct exec "$CTID" -- bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y curl jq git >/dev/null 2>&1
+      "
+    ) &
+    spinner $! "Installing utilities (curl, jq, git)"
+  fi
   echo ""
 
   msg_ok "All dependencies installed successfully"
