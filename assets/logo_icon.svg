@@ -23,99 +23,88 @@
     </radialGradient>
   </defs>
 
-  <!-- Dark background -->
   <rect width="400" height="400" fill="transparent"/>
 
-  <!-- Main balance beam - isometric perspective -->
+  <!-- Main balance beam -->
   <g>
-    <!-- Beam shadow -->
     <ellipse cx="200" cy="215" rx="135" ry="5" fill="#000000" opacity="0.4"/>
-    <!-- Beam bottom -->
     <path d="M 65 208 L 335 208 L 335 213 L 65 213 Z" fill="#1e40af"/>
-    <!-- Beam top -->
     <path d="M 65 202 L 335 202 L 335 208 L 65 208 Z" fill="#3b82f6"/>
-    <!-- Beam front edge -->
     <path d="M 65 202 L 65 213 L 70 213 L 70 202 Z" fill="#2563eb"/>
   </g>
 
-  <!-- Center pivot - isometric cube -->
+  <!-- Center pivot -->
   <g transform="translate(200, 202)">
-    <!-- Shadow -->
     <ellipse cx="0" cy="20" rx="18" ry="5" fill="#000000" opacity="0.5"/>
-    <!-- Bottom face -->
     <path d="M -13,10 L 0,15 L 13,10 L 0,5 Z" fill="#ea580c"/>
-    <!-- Left face -->
     <path d="M -13,-8 L -13,10 L 0,15 L 0,-3 Z" fill="url(#iso-pivot)"/>
-    <!-- Right face -->
     <path d="M 13,-8 L 13,10 L 0,15 L 0,-3 Z" fill="#f97316"/>
-    <!-- Top face -->
     <path d="M -13,-8 L 0,-13 L 13,-8 L 0,-3 Z" fill="#fbbf24"/>
-    <!-- Highlight -->
     <circle cx="-4" cy="-9" r="2.5" fill="#fef3c7" opacity="0.7"/>
   </g>
 
-  <!-- Left server node - isometric -->
+  <!-- Left server -->
   <g transform="translate(105, 125)">
-    <!-- Shadow -->
     <ellipse cx="0" cy="85" rx="40" ry="10" fill="#000000" opacity="0.4"/>
-    <!-- Server bottom -->
     <path d="M -33,62 L 0,77 L 33,62 L 0,47 Z" fill="#1e40af"/>
-    <!-- Server left face -->
     <path d="M -33,0 L -33,62 L 0,77 L 0,15 Z" fill="url(#iso-blue-side)"/>
-    <!-- Server right face -->
     <path d="M 33,0 L 33,62 L 0,77 L 0,15 Z" fill="#2563eb"/>
-    <!-- Server top -->
     <path d="M -33,0 L 0,-15 L 33,0 L 0,15 Z" fill="url(#iso-blue-top)"/>
-    <!-- Panel details on left face -->
     <rect x="-30" y="10" width="27" height="4" fill="#93c5fd" opacity="0.7"/>
     <rect x="-30" y="19" width="27" height="4" fill="#93c5fd" opacity="0.5"/>
     <rect x="-30" y="28" width="20" height="4" fill="#93c5fd" opacity="0.7"/>
     <rect x="-30" y="37" width="25" height="4" fill="#93c5fd" opacity="0.5"/>
     <rect x="-30" y="46" width="27" height="4" fill="#93c5fd" opacity="0.7"/>
-    <!-- Status lights -->
     <circle cx="-25" cy="54" r="2.5" fill="#10b981"/>
     <circle cx="-18" cy="54" r="2.5" fill="#10b981"/>
-    <!-- Connection rod -->
     <rect x="-2" y="77" width="4" height="8" fill="#1e40af"/>
   </g>
 
-  <!-- Right server node - isometric -->
+  <!-- Right server -->
   <g transform="translate(295, 140)">
-    <!-- Shadow -->
     <ellipse cx="0" cy="78" rx="40" ry="10" fill="#000000" opacity="0.4"/>
-    <!-- Server bottom -->
     <path d="M -33,56 L 0,71 L 33,56 L 0,41 Z" fill="#047857"/>
-    <!-- Server left face -->
     <path d="M -33,0 L -33,56 L 0,71 L 0,15 Z" fill="url(#iso-green-side)"/>
-    <!-- Server right face -->
     <path d="M 33,0 L 33,56 L 0,71 L 0,15 Z" fill="#059669"/>
-    <!-- Server top -->
     <path d="M -33,0 L 0,-15 L 33,0 L 0,15 Z" fill="url(#iso-green-top)"/>
-    <!-- Panel details on left face -->
     <rect x="-30" y="10" width="27" height="4" fill="#6ee7b7" opacity="0.7"/>
     <rect x="-30" y="19" width="27" height="4" fill="#6ee7b7" opacity="0.5"/>
     <rect x="-30" y="28" width="22" height="4" fill="#6ee7b7" opacity="0.7"/>
     <rect x="-30" y="37" width="27" height="4" fill="#6ee7b7" opacity="0.5"/>
     <rect x="-30" y="46" width="27" height="4" fill="#6ee7b7" opacity="0.7"/>
-    <!-- Status lights -->
     <circle cx="-25" cy="48" r="2.5" fill="#10b981"/>
     <circle cx="-18" cy="48" r="2.5" fill="#10b981"/>
-    <!-- Connection rod -->
     <rect x="-2" y="71" width="4" height="8" fill="#047857"/>
   </g>
 
-  <!-- Data flow arrows with depth -->
-  <g opacity="0.85">
-    <!-- Flow line 1 -->
-    <path d="M 120 230 Q 200 220 280 230" fill="none" stroke="#f97316" stroke-width="4" stroke-dasharray="8,5" stroke-linecap="round">
-      <animate attributeName="stroke-dashoffset" from="0" to="13" dur="1.5s" repeatCount="indefinite"/>
-    </path>
+  <!-- VARIATION 2: Multiple staggered dots like data stream -->
+  <g>
+    <path d="M 120 230 Q 200 220 280 230" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+
+    <!-- Three dots on top path -->
+    <circle r="7" fill="#fbbf24">
+      <animateMotion dur="2.5s" repeatCount="indefinite" path="M 120 230 Q 200 220 280 230"/>
+    </circle>
+    <circle r="7" fill="#fb923c">
+      <animateMotion dur="2.5s" begin="0.8s" repeatCount="indefinite" path="M 120 230 Q 200 220 280 230"/>
+    </circle>
+    <circle r="7" fill="#f97316">
+      <animateMotion dur="2.5s" begin="1.6s" repeatCount="indefinite" path="M 120 230 Q 200 220 280 230"/>
+    </circle>
     <path d="M 272 225 L 283 230 L 272 235 Z" fill="#f97316"/>
 
-    <!-- Flow line 2 -->
-    <path d="M 280 255 Q 200 265 120 255" fill="none" stroke="#f97316" stroke-width="4" stroke-dasharray="8,5" stroke-linecap="round">
-      <animate attributeName="stroke-dashoffset" from="0" to="13" dur="1.5s" repeatCount="indefinite"/>
-    </path>
+    <path d="M 280 255 Q 200 265 120 255" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
+
+    <!-- Three dots on bottom path -->
+    <circle r="7" fill="#fbbf24">
+      <animateMotion dur="2.5s" repeatCount="indefinite" path="M 280 255 Q 200 265 120 255"/>
+    </circle>
+    <circle r="7" fill="#fb923c">
+      <animateMotion dur="2.5s" begin="0.8s" repeatCount="indefinite" path="M 280 255 Q 200 265 120 255"/>
+    </circle>
+    <circle r="7" fill="#f97316">
+      <animateMotion dur="2.5s" begin="1.6s" repeatCount="indefinite" path="M 280 255 Q 200 265 120 255"/>
+    </circle>
     <path d="M 128 250 L 117 255 L 128 260 Z" fill="#f97316"/>
   </g>
 </svg>
