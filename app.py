@@ -1263,11 +1263,24 @@ def update_system():
         # Common update steps for both releases and branches
         update_log.append("Code updated successfully")
 
-        # Copy index.html to web root
+        # Copy index.html and assets to web root
         update_log.append("Updating web interface...")
         try:
             shutil.copy2("/opt/proxmox-balance-manager/index.html", "/var/www/html/index.html")
-            update_log.append("✓ Web interface updated")
+
+            # Copy assets folder
+            assets_src = "/opt/proxmox-balance-manager/assets"
+            assets_dest = "/var/www/html/assets"
+            if os.path.exists(assets_src):
+                os.makedirs(assets_dest, exist_ok=True)
+                for item in os.listdir(assets_src):
+                    src_path = os.path.join(assets_src, item)
+                    dest_path = os.path.join(assets_dest, item)
+                    if os.path.isfile(src_path):
+                        shutil.copy2(src_path, dest_path)
+                update_log.append("✓ Web interface and assets updated")
+            else:
+                update_log.append("✓ Web interface updated")
         except Exception as e:
             update_log.append(f"⚠ Failed to update web interface: {str(e)}")
 

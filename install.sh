@@ -865,10 +865,18 @@ setup_nginx() {
   msg_info "Configuring Web Server"
 
   pct exec "$CTID" -- bash <<'EOF'
-# Copy index.html from repository to web root
+# Copy index.html and assets from repository to web root
 if [ -f /opt/proxmox-balance-manager/index.html ]; then
   echo "Copying index.html to /var/www/html/"
   cp -f /opt/proxmox-balance-manager/index.html /var/www/html/
+
+  # Copy assets folder
+  if [ -d /opt/proxmox-balance-manager/assets ]; then
+    echo "Copying assets folder to /var/www/html/"
+    mkdir -p /var/www/html/assets
+    cp -rf /opt/proxmox-balance-manager/assets/* /var/www/html/assets/
+    echo "✓ Assets copied successfully"
+  fi
 
   # Verify the copy
   SRC_SIZE=$(stat -f%z /opt/proxmox-balance-manager/index.html 2>/dev/null || stat -c%s /opt/proxmox-balance-manager/index.html 2>/dev/null)
