@@ -24,7 +24,7 @@
   </defs>
   
   <!-- Dark background -->
-  <rect width="400" height="400" fill="#0f172a"/>
+  <rect width="400" height="400" fill="transparent"/>
   
   <!-- Subtle background circle -->
   <circle cx="200" cy="200" r="190" fill="#1e293b"/>
@@ -124,5 +124,4 @@
   <!-- Typography with depth - adjusted for dark background -->
   <text x="202" y="282" font-family="'Poppins', 'Inter', sans-serif" font-size="44" font-weight="800" fill="#1e293b" text-anchor="middle">ProxBalance</text>
   <text x="200" y="280" font-family="'Poppins', 'Inter', sans-serif" font-size="44" font-weight="800" fill="#e0e7ff" text-anchor="middle">ProxBalance</text>
-  <text x="200" y="305" font-family="'Poppins', 'Inter', sans-serif" font-size="12" font-weight="600" fill="#94a3b8" text-anchor="middle" letter-spacing="2">CLUSTER OPTIMIZATION</text>
 </svg>
