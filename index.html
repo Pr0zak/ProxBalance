@@ -1,13 +1,16 @@
 <!DOCTYPE html>
+<!-- ProxBalance v1.1.0 - Build 20251020-1605 - JSX Fix Applied -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>ProxBalance - Cluster Optimization</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=2">
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -63,10 +66,12 @@
         const ChevronUp = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="18 15 12 9 6 15"></polyline></svg>);
         const GitHub = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>);
         const GitBranch = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>);
+        const ArrowLeft = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>);
+        const Download = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>);
 
 // Logo component
 const ProxBalanceLogo = ({ size = 32 }) => (
-  <img src="/assets/logo.svg" alt="ProxBalance Logo" width={size} height={size} />
+  <img src="/assets/logo_icon.svg?v=2" alt="ProxBalance Logo" width={size} height={size} />
 );
 
         const API_BASE = `/api`;
@@ -88,6 +93,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const [config, setConfig] = useState(null);
           const [autoRefreshInterval, setAutoRefreshInterval] = useState(60 * 60 * 1000);
           const [showSettings, setShowSettings] = useState(false);
+          const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' or 'settings'
           const [tempBackendInterval, setTempBackendInterval] = useState(60);
           const [tempUiInterval, setTempUiInterval] = useState(60);
           const [savingSettings, setSavingSettings] = useState(false);
@@ -122,6 +128,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const [loadingBranches, setLoadingBranches] = useState(false);
           const [switchingBranch, setSwitchingBranch] = useState(false);
 
+          // Debug & Logging
+          const [logLevel, setLogLevel] = useState('INFO');
+          const [verboseLogging, setVerboseLogging] = useState(false);
+
           // Node grid layout state with localStorage persistence
           const [nodeGridColumns, setNodeGridColumns] = useState(() => {
             const saved = localStorage.getItem('nodeGridColumns');
@@ -140,6 +150,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             };
           });
 
+          // Cluster map view mode: 'usage' or 'allocated'
+          const [clusterMapViewMode, setClusterMapViewMode] = useState(() => {
+            const saved = localStorage.getItem('clusterMapViewMode');
+            return saved || 'usage';
+          });
+
           // Save collapsed state to localStorage whenever it changes
           useEffect(() => {
             localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
@@ -149,6 +165,11 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           useEffect(() => {
             localStorage.setItem('nodeGridColumns', nodeGridColumns.toString());
           }, [nodeGridColumns]);
+
+          // Save cluster map view mode to localStorage whenever it changes
+          useEffect(() => {
+            localStorage.setItem('clusterMapViewMode', clusterMapViewMode);
+          }, [clusterMapViewMode]);
 
           const toggleSection = (section) => {
             setCollapsedSections(prev => ({
@@ -628,12 +649,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               }
 
               // Reduce data points for longer periods to improve performance and readability
-              // Sample rate increases with period: 1h=1 (all), 6h=10, 12h=20, 24h=40
+              // With day RRD: ~1440 points total (1 per minute), ~60 points/hour
               const sampleRate = {
-                '1h': 1,
-                '6h': 10,
-                '12h': 20,
-                '24h': 40
+                '1h': 2,    // ~30 points (every 2 minutes)
+                '6h': 5,    // ~72 points (every 5 minutes)
+                '12h': 10,  // ~72 points (every 10 minutes)
+                '24h': 20   // ~72 points (every 20 minutes)
               }[chartPeriod] || 1;
 
               // Always keep first and last points for accurate range display
@@ -666,6 +687,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       data: sampledData.map(point => point.mem),
                       borderColor: 'rgb(16, 185, 129)',
                       backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                      tension: 0.4,
+                      fill: true
+                    },
+                    {
+                      label: 'IOWait %',
+                      data: sampledData.map(point => point.iowait || 0),
+                      borderColor: 'rgb(245, 158, 11)',
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)',
                       tension: 0.4,
                       fill: true
                     }
@@ -774,7 +803,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             return () => {
               Object.values(newCharts).forEach(chart => chart.destroy());
             };
-          }, [data, chartPeriod, darkMode, collapsedSections.nodeStatus, cpuThreshold, memThreshold]);
+          }, [data, chartPeriod, darkMode, collapsedSections.nodeStatus, cpuThreshold, memThreshold, currentPage]);
 
           if (error) {
             return (
@@ -808,6 +837,476 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const excludeGuests = Object.values(data.guests).filter(g => g.tags.exclude_groups.length > 0);
           const violations = checkAffinityViolations();
 
+          // Settings Page
+          if (currentPage === 'settings') {
+            return (
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+                <div className="max-w-5xl mx-auto p-4">
+                  {/* Settings Header */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setCurrentPage('dashboard')}
+                          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          title="Back to Dashboard"
+                        >
+                          <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
+                        </button>
+                        <div className="flex items-center gap-3">
+                          <Settings size={28} className="text-blue-600 dark:text-blue-400" />
+                          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                      >
+                        {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Settings Content */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-8">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Backend Collection Interval
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="5"
+                          max="240"
+                          step="5"
+                          value={tempBackendInterval}
+                          onChange={(e) => setTempBackendInterval(Number(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-lg font-semibold text-gray-900 dark:text-white w-16 text-right">
+                          {tempBackendInterval}m
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        How often to collect cluster data from Proxmox (5-240 minutes)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        UI Refresh Interval
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="5"
+                          max="120"
+                          step="5"
+                          value={tempUiInterval}
+                          onChange={(e) => setTempUiInterval(Number(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-lg font-semibold text-gray-900 dark:text-white w-16 text-right">
+                          {tempUiInterval}m
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        How often the UI auto-refreshes (5-120 minutes)
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                      <p className="text-sm text-blue-900 dark:text-blue-200">
+                        <strong>Recommendation:</strong> Set UI interval ≤ backend interval for best experience.
+                        Current setup: UI refreshes every {tempUiInterval}m, data collected every {tempBackendInterval}m.
+                      </p>
+                    </div>
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        AI-Powered Recommendations
+                      </label>
+                      <div className="flex items-center mb-4">
+                        <input
+                          type="checkbox"
+                          checked={aiEnabled}
+                          onChange={(e) => setAiEnabled(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Enable AI-Enhanced Migration Recommendations
+                        </label>
+                      </div>
+                    </div>
+
+                    {aiEnabled && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            AI Provider
+                          </label>
+                          <select
+                            value={aiProvider}
+                            onChange={(e) => setAiProvider(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          >
+                            <option value="none">None</option>
+                            <option value="openai">OpenAI (GPT-4)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="local">Local LLM (Ollama)</option>
+                          </select>
+                        </div>
+
+                        {aiProvider === 'openai' && (
+                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <h4 className="font-medium text-gray-900 dark:text-white">OpenAI Configuration</h4>
+                            <div>
+                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                API Key
+                              </label>
+                              <input
+                                type="password"
+                                value={openaiKey}
+                                onChange={(e) => setOpenaiKey(e.target.value)}
+                                placeholder="sk-..."
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                Model
+                              </label>
+                              <input
+                                type="text"
+                                value={openaiModel}
+                                onChange={(e) => setOpenaiModel(e.target.value)}
+                                placeholder="gpt-4o"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {aiProvider === 'anthropic' && (
+                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <h4 className="font-medium text-gray-900 dark:text-white">Anthropic Configuration</h4>
+                            <div>
+                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                API Key
+                              </label>
+                              <input
+                                type="password"
+                                value={anthropicKey}
+                                onChange={(e) => setAnthropicKey(e.target.value)}
+                                placeholder="sk-ant-..."
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                Model
+                              </label>
+                              <input
+                                type="text"
+                                value={anthropicModel}
+                                onChange={(e) => setAnthropicModel(e.target.value)}
+                                placeholder="claude-3-5-sonnet-20241022"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {aiProvider === 'local' && (
+                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <h4 className="font-medium text-gray-900 dark:text-white">Local LLM (Ollama) Configuration</h4>
+                            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                              <p className="text-sm text-blue-900 dark:text-blue-200">
+                                Ollama support coming soon. This will allow you to run AI recommendations locally without external API calls.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    {/* Data Management */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Data Management</h3>
+                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <button
+                          onClick={() => {
+                            const dataStr = JSON.stringify(data, null, 2);
+                            const blob = new Blob([dataStr], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `proxbalance-data-${new Date().toISOString()}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <Download size={16} />
+                          Export Cluster Data (JSON)
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!data || !data.guests) return;
+
+                            // Create CSV header
+                            let csv = 'VMID,Name,Type,Node,Status,CPU Usage (%),Memory Used (GB),Memory Max (GB),CPU Cores\n';
+
+                            // Add data rows
+                            Object.values(data.guests).forEach(guest => {
+                              csv += `${guest.vmid},"${guest.name}",${guest.type},${guest.node},${guest.status},${guest.cpu_current.toFixed(2)},${guest.mem_used_gb.toFixed(2)},${guest.mem_max_gb.toFixed(2)},${guest.cpu_cores || 0}\n`;
+                            });
+
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `proxbalance-guests-${new Date().toISOString()}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded hover:bg-green-700 dark:hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <Download size={16} />
+                          Export Guest List (CSV)
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    {/* Debug & Logging */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Debug & Logging</h3>
+                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Log Level
+                          </label>
+                          <select
+                            value={logLevel}
+                            onChange={(e) => setLogLevel(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          >
+                            <option value="ERROR">ERROR - Only critical errors</option>
+                            <option value="WARN">WARN - Warnings and errors</option>
+                            <option value="INFO">INFO - General information</option>
+                            <option value="DEBUG">DEBUG - Detailed debugging</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={verboseLogging}
+                            onChange={(e) => setVerboseLogging(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            Enable Verbose Logging (includes API calls and data processing)
+                          </label>
+                        </div>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => {
+                              window.open('/api/logs/download?service=proxmox-balance', '_blank');
+                            }}
+                            className="w-full px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-2"
+                          >
+                            <Download size={16} />
+                            Download API Logs
+                          </button>
+                          <button
+                            onClick={() => {
+                              window.open('/api/logs/download?service=proxmox-collector', '_blank');
+                            }}
+                            className="w-full px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-2"
+                          >
+                            <Download size={16} />
+                            Download Collector Logs
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Proxmox API Configuration</h3>
+                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            API Token ID
+                          </label>
+                          <input
+                            type="text"
+                            value={proxmoxTokenId}
+                            onChange={(e) => setProxmoxTokenId(e.target.value)}
+                            placeholder="root@pam!proxbalance"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Format: user@realm!tokenname (e.g., root@pam!proxbalance)
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            API Token Secret
+                          </label>
+                          <input
+                            type="password"
+                            value={proxmoxTokenSecret}
+                            onChange={(e) => setProxmoxTokenSecret(e.target.value)}
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            The UUID token secret from Proxmox
+                          </p>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                          <p className="text-sm text-blue-900 dark:text-blue-200">
+                            <strong>Tip:</strong> Use the installation script to automatically create an API token with proper permissions.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Proxmox Host Configuration</h3>
+                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Proxmox Host IP/Hostname
+                          </label>
+                          <input
+                            type="text"
+                            id="proxmoxHostInput"
+                            placeholder="10.0.0.3 or pve-node1"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            IP address or hostname of the Proxmox node to connect to
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newHost = document.getElementById('proxmoxHostInput').value.trim();
+                            if (!newHost) {
+                              alert('Please enter a valid Proxmox host');
+                              return;
+                            }
+                            if (confirm(`Change Proxmox host to ${newHost}?\n\nThis will update the configuration and restart the collector service.`)) {
+                              fetch(`${API_BASE}/system/change-host`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ host: newHost })
+                              })
+                              .then(response => response.json())
+                              .then(result => {
+                                if (result.success) {
+                                  alert('Proxmox host updated successfully!\n\nThe collector service has been restarted.');
+                                  fetchData();
+                                } else {
+                                  alert('Failed to update host: ' + (result.error || 'Unknown error'));
+                                }
+                              })
+                              .catch(error => alert('Error: ' + error.message));
+                            }
+                          }}
+                          className="w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 font-medium"
+                        >
+                          Update Proxmox Host
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-300 dark:border-gray-600" />
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Service Management</h3>
+                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                        <button
+                          onClick={() => {
+                            if (confirm('Restart ProxBalance API service?\n\nThis will briefly interrupt data collection.')) {
+                              fetch(`${API_BASE}/system/restart-service`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ service: 'proxmox-balance' })
+                              })
+                              .then(response => response.json())
+                              .then(result => {
+                                if (result.success) {
+                                  alert('API service restarted successfully!');
+                                } else {
+                                  alert('Failed to restart service: ' + (result.error || 'Unknown error'));
+                                }
+                              })
+                              .catch(error => alert('Error: ' + error.message));
+                            }
+                          }}
+                          className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded hover:bg-orange-700 dark:hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw size={16} />
+                          Restart API Service
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Restart Data Collector service?\n\nThis will restart the background data collection process.')) {
+                              fetch(`${API_BASE}/system/restart-service`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ service: 'proxmox-collector' })
+                              })
+                              .then(response => response.json())
+                              .then(result => {
+                                if (result.success) {
+                                  alert('Collector service restarted successfully!');
+                                } else {
+                                  alert('Failed to restart service: ' + (result.error || 'Unknown error'));
+                                }
+                              })
+                              .catch(error => alert('Error: ' + error.message));
+                            }
+                          }}
+                          className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded hover:bg-orange-700 dark:hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw size={16} />
+                          Restart Collector Service
+                        </button>
+                      </div>
+                    </div>
+
+
+                    {/* Save Button */}
+                    <div className="mt-6">
+                      <button
+                        onClick={saveSettings}
+                        disabled={savingSettings}
+                        className="w-full px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Save size={18} />
+                        {savingSettings ? 'Saving...' : 'Save Settings'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Dashboard Page
           return (<>
             <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
               <div className="max-w-7xl mx-auto">
@@ -871,7 +1370,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
                       </button>
                       <button
-                        onClick={() => setShowSettings(true)}
+                        onClick={() => setCurrentPage('settings')}
                         className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
                         title="Settings"
                       >
@@ -1094,6 +1593,53 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           )}
                         </button>
                       </div>
+                      {!collapsedSections.clusterMap && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">View by:</span>
+                          <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+                            <button
+                              onClick={() => setClusterMapViewMode('usage')}
+                              className={`px-3 py-1 text-sm rounded transition-colors ${
+                                clusterMapViewMode === 'usage'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                              }`}
+                            >
+                              Usage
+                            </button>
+                            <button
+                              onClick={() => setClusterMapViewMode('allocated')}
+                              className={`px-3 py-1 text-sm rounded transition-colors ${
+                                clusterMapViewMode === 'allocated'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                              }`}
+                            >
+                              Allocated
+                            </button>
+                            <button
+                              onClick={() => setClusterMapViewMode('disk_io')}
+                              className={`px-3 py-1 text-sm rounded transition-colors ${
+                                clusterMapViewMode === 'disk_io'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                              }`}
+                            >
+                              Disk I/O
+                            </button>
+                            <button
+                              onClick={() => setClusterMapViewMode('network')}
+                              className={`px-3 py-1 text-sm rounded transition-colors ${
+                                clusterMapViewMode === 'network'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                              }`}
+                            >
+                              Network
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {!collapsedSections.clusterMap && (
@@ -1102,9 +1648,27 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           {Object.values(data.nodes).map(node => {
                             const nodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name && g.status === 'running');
                             const maxResources = Math.max(...Object.values(data.guests || {}).map(g => {
-                              const cpuUsage = g.cpu_current || 0;
-                              const memPercent = g.mem_max_gb > 0 ? ((g.mem_used_gb || 0) / g.mem_max_gb) * 100 : 0;
-                              return cpuUsage + memPercent;
+                              if (clusterMapViewMode === 'allocated') {
+                                // Use allocated resources (cores + GB)
+                                const cpuCores = g.cpu_cores || 0;
+                                const memGB = g.mem_max_gb || 0;
+                                return cpuCores + memGB;
+                              } else if (clusterMapViewMode === 'disk_io') {
+                                // Use disk I/O (read + write in MB/s)
+                                const diskRead = (g.disk_read_bps || 0) / (1024 * 1024);
+                                const diskWrite = (g.disk_write_bps || 0) / (1024 * 1024);
+                                return diskRead + diskWrite;
+                              } else if (clusterMapViewMode === 'network') {
+                                // Use network I/O (in + out in MB/s)
+                                const netIn = (g.net_in_bps || 0) / (1024 * 1024);
+                                const netOut = (g.net_out_bps || 0) / (1024 * 1024);
+                                return netIn + netOut;
+                              } else {
+                                // Use current usage (CPU% + Memory%)
+                                const cpuUsage = g.cpu_current || 0;
+                                const memPercent = g.mem_max_gb > 0 ? ((g.mem_used_gb || 0) / g.mem_max_gb) * 100 : 0;
+                                return cpuUsage + memPercent;
+                              }
                             }), 1);
 
                             return (
@@ -1166,6 +1730,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     <div><strong>{node.name}</strong></div>
                                     <div>CPU: {(node.cpu_percent || 0).toFixed(1)}%</div>
                                     <div>Memory: {(node.mem_percent || 0).toFixed(1)}%</div>
+                                    <div>IOWait: {(node.metrics?.current_iowait || 0).toFixed(1)}%</div>
                                     <div>Cores: {node.cpu_cores || 0}</div>
                                   </div>
                                 </div>
@@ -1180,8 +1745,29 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   {nodeGuests.map(guest => {
                                     const cpuUsage = guest.cpu_current || 0;
                                     const memPercent = guest.mem_max_gb > 0 ? ((guest.mem_used_gb || 0) / guest.mem_max_gb) * 100 : 0;
-                                    const resourceUsage = cpuUsage + memPercent;
-                                    const sizeRatio = maxResources > 0 ? (resourceUsage / maxResources) : 0.3;
+
+                                    let resourceValue;
+                                    if (clusterMapViewMode === 'allocated') {
+                                      // Use allocated resources (cores + GB)
+                                      const cpuCores = guest.cpu_cores || 0;
+                                      const memGB = guest.mem_max_gb || 0;
+                                      resourceValue = cpuCores + memGB;
+                                    } else if (clusterMapViewMode === 'disk_io') {
+                                      // Use disk I/O (read + write in MB/s)
+                                      const diskRead = (guest.disk_read_bps || 0) / (1024 * 1024);
+                                      const diskWrite = (guest.disk_write_bps || 0) / (1024 * 1024);
+                                      resourceValue = diskRead + diskWrite;
+                                    } else if (clusterMapViewMode === 'network') {
+                                      // Use network I/O (in + out in MB/s)
+                                      const netIn = (guest.net_in_bps || 0) / (1024 * 1024);
+                                      const netOut = (guest.net_out_bps || 0) / (1024 * 1024);
+                                      resourceValue = netIn + netOut;
+                                    } else {
+                                      // Use current usage (CPU% + Memory%)
+                                      resourceValue = cpuUsage + memPercent;
+                                    }
+
+                                    const sizeRatio = maxResources > 0 ? (resourceValue / maxResources) : 0.3;
                                     const size = Math.max(30, Math.min(80, 30 + (sizeRatio * 50)));
 
                                     const getGuestColor = () => {
@@ -1204,9 +1790,24 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                                           <div><strong>{guest.name || `Guest ${guest.vmid}`}</strong></div>
                                           <div>Type: {((guest.type || '').toUpperCase() === 'VM' || (guest.type || '').toUpperCase() === 'QEMU') ? 'VM' : 'Container'}</div>
-                                          <div>CPU: {cpuUsage.toFixed(1)}%</div>
-                                          <div>Memory: {memPercent.toFixed(1)}% ({(guest.mem_used_gb || 0).toFixed(1)} / {(guest.mem_max_gb || 0).toFixed(1)} GB)</div>
+                                          {clusterMapViewMode === 'allocated' ? (
+                                            <>
+                                              <div>CPU Cores: {guest.cpu_cores || 0}</div>
+                                              <div>Memory Allocated: {(guest.mem_max_gb || 0).toFixed(1)} GB</div>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <div>CPU Usage: {cpuUsage.toFixed(1)}%</div>
+                                              <div>Memory Usage: {memPercent.toFixed(1)}% ({(guest.mem_used_gb || 0).toFixed(1)} / {(guest.mem_max_gb || 0).toFixed(1)} GB)</div>
+                                            </>
+                                          )}
                                           <div>Status: {guest.status}</div>
+                                          <div className="border-t border-gray-600 dark:border-gray-500 mt-1 pt-1">
+                                            <div>Disk Read: {((guest.disk_read_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</div>
+                                            <div>Disk Write: {((guest.disk_write_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</div>
+                                            <div>Net In: {((guest.net_in_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</div>
+                                            <div>Net Out: {((guest.net_out_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</div>
+                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -1228,7 +1829,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <span>Container</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span>Circle size = CPU + Memory usage</span>
+                            <span>
+                              {clusterMapViewMode === 'allocated'
+                                ? 'Circle size = CPU cores + Memory allocated (GB)'
+                                : clusterMapViewMode === 'disk_io'
+                                ? 'Circle size = Disk I/O (Read + Write MB/s)'
+                                : clusterMapViewMode === 'network'
+                                ? 'Circle size = Network I/O (In + Out MB/s)'
+                                : 'Circle size = CPU usage (%) + Memory usage (%)'}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1310,6 +1919,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 {(node.mem_percent || 0).toFixed(1)}%
                               </span>
                             </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 dark:text-gray-400">IOWait:</span>
+                              <span className={`font-semibold ${(node.metrics?.current_iowait || 0) > 20 ? 'text-red-600 dark:text-red-400' : (node.metrics?.current_iowait || 0) > 10 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>
+                                {(node.metrics?.current_iowait || 0).toFixed(1)}%
+                              </span>
+                            </div>
                             <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-600">
                               <span className="text-gray-600 dark:text-gray-400">Guests:</span>
                               <span className="font-semibold text-gray-900 dark:text-white">{node.guests?.length || 0}</span>
@@ -1331,9 +1946,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{node.name}</h3>
                           <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm mb-4">
                           <div><span className="text-gray-600 dark:text-gray-400">CPU:</span> <span className={`font-semibold ${(node.cpu_percent || 0) > cpuThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{(node.cpu_percent || 0).toFixed(1)}%</span></div>
                           <div><span className="text-gray-600 dark:text-gray-400">Memory:</span> <span className={`font-semibold ${(node.mem_percent || 0) > memThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{(node.mem_percent || 0).toFixed(1)}%</span></div>
+                          <div><span className="text-gray-600 dark:text-gray-400">IOWait:</span> <span className={`font-semibold ${(node.metrics?.current_iowait || 0) > 20 ? 'text-red-600 dark:text-red-400' : (node.metrics?.current_iowait || 0) > 10 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'}`}>{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
                           <div><span className="text-gray-600 dark:text-gray-400">Cores:</span> <span className="font-semibold text-gray-900 dark:text-white">{node.cpu_cores || 0}</span></div>
                           <div><span className="text-gray-600 dark:text-gray-400">Guests:</span> <span className="font-semibold text-gray-900 dark:text-white">{node.guests?.length || 0}</span></div>
                         </div>
@@ -1939,356 +2555,6 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               </div>
             )}
 
-            {showSettings && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col my-8">
-                  <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      <Settings size={24} className="text-blue-600 dark:text-blue-400" />
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h2>
-                    </div>
-                    <button
-                      onClick={() => setShowSettings(false)}
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                    >
-                      <X size={20} className="text-gray-600 dark:text-gray-400" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-6 p-6 overflow-y-auto flex-1">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Backend Collection Interval
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <input 
-                          type="range" 
-                          min="5" 
-                          max="240" 
-                          step="5"
-                          value={tempBackendInterval}
-                          onChange={(e) => setTempBackendInterval(Number(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="text-lg font-semibold text-gray-900 dark:text-white w-16 text-right">
-                          {tempBackendInterval}m
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        How often to collect cluster data from Proxmox (5-240 minutes)
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        UI Refresh Interval
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <input 
-                          type="range" 
-                          min="5" 
-                          max="120" 
-                          step="5"
-                          value={tempUiInterval}
-                          onChange={(e) => setTempUiInterval(Number(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="text-lg font-semibold text-gray-900 dark:text-white w-16 text-right">
-                          {tempUiInterval}m
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        How often the UI auto-refreshes (5-120 minutes)
-                      </p>
-                    </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
-                      <p className="text-sm text-blue-900 dark:text-blue-200">
-                        <strong>Recommendation:</strong> Set UI interval ≤ backend interval for best experience.
-                        Current setup: UI refreshes every {tempUiInterval}m, data collected every {tempBackendInterval}m.
-                      </p>
-                    </div>
-
-                    <hr className="border-gray-300 dark:border-gray-600" />
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Proxmox API Configuration</h3>
-                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            API Token ID
-                          </label>
-                          <input
-                            type="text"
-                            value={proxmoxTokenId}
-                            onChange={(e) => setProxmoxTokenId(e.target.value)}
-                            placeholder="root@pam!proxbalance"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Format: user@realm!tokenname (e.g., root@pam!proxbalance)
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            API Token Secret
-                          </label>
-                          <input
-                            type="password"
-                            value={proxmoxTokenSecret}
-                            onChange={(e) => setProxmoxTokenSecret(e.target.value)}
-                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            The UUID token secret from Proxmox
-                          </p>
-                        </div>
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
-                          <p className="text-sm text-blue-900 dark:text-blue-200">
-                            <strong>Tip:</strong> Use the installation script to automatically create an API token with proper permissions.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr className="border-gray-300 dark:border-gray-600" />
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        AI-Powered Recommendations
-                      </label>
-                      <div className="flex items-center mb-4">
-                        <input
-                          type="checkbox"
-                          checked={aiEnabled}
-                          onChange={(e) => setAiEnabled(e.target.checked)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Enable AI-Enhanced Migration Recommendations
-                        </label>
-                      </div>
-                    </div>
-
-                    {aiEnabled && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            AI Provider
-                          </label>
-                          <select
-                            value={aiProvider}
-                            onChange={(e) => setAiProvider(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          >
-                            <option value="none">None</option>
-                            <option value="openai">OpenAI (GPT-4)</option>
-                            <option value="anthropic">Anthropic (Claude)</option>
-                            <option value="local">Local LLM (Ollama)</option>
-                          </select>
-                        </div>
-
-                        {aiProvider === 'openai' && (
-                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                            <h4 className="font-medium text-gray-900 dark:text-white">OpenAI Configuration</h4>
-                            <div>
-                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                                API Key
-                              </label>
-                              <input
-                                type="password"
-                                value={openaiKey}
-                                onChange={(e) => setOpenaiKey(e.target.value)}
-                                placeholder="sk-..."
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block text-sm text-gray-700 dark:text-gray-300">
-                                  Model Name
-                                </label>
-                                <button
-                                  onClick={() => fetchAiModels('openai', openaiKey)}
-                                  disabled={!openaiKey || openaiLoadingModels}
-                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-                                >
-                                  {openaiLoadingModels ? 'Loading...' : 'Refresh Models'}
-                                </button>
-                              </div>
-                              {openaiAvailableModels.length > 0 ? (
-                                <>
-                                  <select
-                                    value={openaiModel}
-                                    onChange={(e) => setOpenaiModel(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                  >
-                                    {openaiAvailableModels.map(model => (
-                                      <option key={model} value={model}>{model}</option>
-                                    ))}
-                                  </select>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Select from available models or enter custom name below
-                                  </p>
-                                  <input
-                                    type="text"
-                                    value={openaiModelCustom}
-                                    onChange={(e) => setOpenaiModelCustom(e.target.value)}
-                                    placeholder="Or enter custom model (e.g., gpt-4o-mini, o1-preview)"
-                                    className="w-full px-3 py-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                                  />
-                                </>
-                              ) : (
-                                <>
-                                  <input
-                                    type="text"
-                                    value={openaiModel}
-                                    onChange={(e) => setOpenaiModel(e.target.value)}
-                                    placeholder="gpt-4o"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                                  />
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    <a href="https://platform.openai.com/docs/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                                      View available models
-                                    </a>
-                                    {' '}- Enter model name or click "Refresh Models" to fetch from API
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {aiProvider === 'anthropic' && (
-                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                            <h4 className="font-medium text-gray-900 dark:text-white">Anthropic Configuration</h4>
-                            <div>
-                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                                API Key
-                              </label>
-                              <input
-                                type="password"
-                                value={anthropicKey}
-                                onChange={(e) => setAnthropicKey(e.target.value)}
-                                placeholder="sk-ant-..."
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                                Model Name
-                              </label>
-                              <input
-                                type="text"
-                                value={anthropicModel}
-                                onChange={(e) => setAnthropicModel(e.target.value)}
-                                placeholder="claude-sonnet-4-5-20250929"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                              />
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                <a href="https://docs.claude.com/en/docs/about-claude/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                                  View available models
-                                </a>
-                                {' '}- Current: claude-sonnet-4-5-20250929, claude-haiku-4-5-20251001
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {aiProvider === 'local' && (
-                          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                            <h4 className="font-medium text-gray-900 dark:text-white">Local LLM Configuration (Ollama)</h4>
-                            <div>
-                              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                                Base URL
-                              </label>
-                              <input
-                                type="text"
-                                value={localUrl}
-                                onChange={(e) => setLocalUrl(e.target.value)}
-                                placeholder="http://localhost:11434"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              />
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block text-sm text-gray-700 dark:text-gray-300">
-                                  Model Name
-                                </label>
-                                <button
-                                  onClick={() => fetchAiModels('local', null, localUrl)}
-                                  disabled={localLoadingModels}
-                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-                                >
-                                  {localLoadingModels ? 'Loading...' : 'Refresh Models'}
-                                </button>
-                              </div>
-                              {localAvailableModels.length > 0 ? (
-                                <>
-                                  <select
-                                    value={localModel}
-                                    onChange={(e) => setLocalModel(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                  >
-                                    {localAvailableModels.map(model => (
-                                      <option key={model} value={model}>{model}</option>
-                                    ))}
-                                  </select>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Select from installed models or enter custom name below
-                                  </p>
-                                  <input
-                                    type="text"
-                                    value={localModelCustom}
-                                    onChange={(e) => setLocalModelCustom(e.target.value)}
-                                    placeholder="Or enter custom model (e.g., llama2, mistral, codellama)"
-                                    className="w-full px-3 py-2 mt-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                                  />
-                                </>
-                              ) : (
-                                <>
-                                  <input
-                                    type="text"
-                                    value={localModel}
-                                    onChange={(e) => setLocalModel(e.target.value)}
-                                    placeholder="llama2"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                                  />
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    <a href="https://ollama.com/library" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                                      Browse Ollama models
-                                    </a>
-                                    {' '}- Enter model name or click "Refresh Models" to list installed models
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-3 p-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                    <button
-                      onClick={() => setShowSettings(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveSettings}
-                      disabled={savingSettings}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400"
-                    >
-                      <Save size={18} />
-                      {savingSettings ? 'Saving...' : 'Save Settings'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
         </>);
       };
 

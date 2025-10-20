@@ -165,7 +165,19 @@ class ProxmoxAPICollector:
         except Exception as e:
             print(f"Warning: Failed to fetch config for {guest_type} {vmid} on {node}: {str(e)}", file=sys.stderr)
             return {}
-    
+
+    def get_guest_rrd_data(self, node: str, vmid: int, guest_type: str, timeframe: str = "hour") -> List[Dict]:
+        """Fetch RRD performance data for a guest (VM or CT)"""
+        try:
+            if guest_type == 'qemu':
+                data = self.proxmox.nodes(node).qemu(vmid).rrddata.get(timeframe=timeframe)
+            else:  # lxc
+                data = self.proxmox.nodes(node).lxc(vmid).rrddata.get(timeframe=timeframe)
+            return data
+        except Exception as e:
+            # Silently fail - some guests may not have RRD data
+            return []
+
     def parse_tags(self, tags_str: str) -> Dict:
         """Parse tags and extract ignore/exclude rules"""
         if not tags_str:
@@ -197,17 +209,21 @@ class ProxmoxAPICollector:
             node_name = node["node"]
             print(f"Processing node: {node_name}")
 
-            # Get RRD data for historical metrics (24 hours for trends)
+            # Get RRD data - use 'day' for better granularity
+            # Day provides ~1440 points (1 per minute) over 24 hours
             rrd_data = self.get_node_rrd_data(node_name, "day")
 
             # Calculate metrics from RRD data
             metrics = {
                 "current_cpu": node.get("cpu", 0) * 100,
                 "current_mem": (node.get("mem", 0) / node.get("maxmem", 1)) * 100 if node.get("maxmem") else 0,
+                "current_iowait": 0,
                 "avg_cpu": 0,
                 "max_cpu": 0,
                 "avg_mem": 0,
                 "max_mem": 0,
+                "avg_iowait": 0,
+                "max_iowait": 0,
                 "avg_load": 0,
                 "has_historical": False
             }
@@ -216,6 +232,7 @@ class ProxmoxAPICollector:
                 cpu_values = [d["cpu"] * 100 for d in rrd_data if "cpu" in d and d["cpu"] is not None]
                 mem_values = [(d["memused"] / d["memtotal"] * 100) for d in rrd_data
                              if "memused" in d and "memtotal" in d and d["memtotal"] > 0]
+                iowait_values = [d["iowait"] * 100 for d in rrd_data if "iowait" in d and d["iowait"] is not None]
                 load_values = [d["loadavg"] for d in rrd_data if "loadavg" in d and d["loadavg"] is not None]
 
                 if cpu_values:
@@ -226,6 +243,12 @@ class ProxmoxAPICollector:
                 if mem_values:
                     metrics["avg_mem"] = sum(mem_values) / len(mem_values)
                     metrics["max_mem"] = max(mem_values)
+
+                if iowait_values:
+                    metrics["avg_iowait"] = sum(iowait_values) / len(iowait_values)
+                    metrics["max_iowait"] = max(iowait_values)
+                    # Use most recent iowait as current
+                    metrics["current_iowait"] = iowait_values[-1] if iowait_values else 0
 
                 if load_values:
                     metrics["avg_load"] = sum(load_values) / len(load_values)
@@ -238,7 +261,8 @@ class ProxmoxAPICollector:
                         trend_data.append({
                             "time": point["time"],
                             "cpu": round(point["cpu"] * 100, 2) if point["cpu"] is not None else 0,
-                            "mem": round((point["memused"] / point["memtotal"] * 100), 2) if point["memused"] and point["memtotal"] else 0
+                            "mem": round((point["memused"] / point["memtotal"] * 100), 2) if point["memused"] and point["memtotal"] else 0,
+                            "iowait": round(point["iowait"] * 100, 2) if "iowait" in point and point["iowait"] is not None else 0
                         })
                 print(f"Processed {len(trend_data)} trend data points for {node_name}")
             else:
@@ -267,7 +291,24 @@ class ProxmoxAPICollector:
             # Get config for tags
             config = self.get_guest_config(node_name, vmid, guest_type_raw)
             tags_data = self.parse_tags(config.get("tags", ""))
-            
+
+            # Get RRD data for I/O metrics (last hour for recent averages)
+            rrd_data = self.get_guest_rrd_data(node_name, vmid, guest_type_raw, "hour")
+            disk_read_bps = 0
+            disk_write_bps = 0
+            net_in_bps = 0
+            net_out_bps = 0
+
+            if rrd_data and len(rrd_data) > 0:
+                # Get the most recent data point with valid I/O data
+                for point in reversed(rrd_data):
+                    if "diskread" in point and "diskwrite" in point and "netin" in point and "netout" in point:
+                        disk_read_bps = point.get("diskread", 0) or 0
+                        disk_write_bps = point.get("diskwrite", 0) or 0
+                        net_in_bps = point.get("netin", 0) or 0
+                        net_out_bps = point.get("netout", 0) or 0
+                        break
+
             guest_info = {
                 "vmid": vmid,
                 "name": guest.get("name") or config.get("name") or f"{guest_type}-{vmid}",
@@ -275,9 +316,14 @@ class ProxmoxAPICollector:
                 "node": node_name,
                 "status": guest.get("status", "unknown"),
                 "cpu_current": guest.get("cpu", 0) * 100 if guest.get("cpu") else 0,
+                "cpu_cores": config.get("cores") or config.get("cpus") or config.get("cpulimit") or guest.get("maxcpu", 0),
                 "mem_used_gb": guest.get("mem", 0) / (1024**3),
                 "mem_max_gb": guest.get("maxmem", 0) / (1024**3),
                 "disk_gb": guest.get("disk", 0) / (1024**3),
+                "disk_read_bps": disk_read_bps,
+                "disk_write_bps": disk_write_bps,
+                "net_in_bps": net_in_bps,
+                "net_out_bps": net_out_bps,
                 "tags": tags_data
             }
             
