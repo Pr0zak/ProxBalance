@@ -1,6 +1,6 @@
 # ProxBalance Troubleshooting Guide
 
-Common issues and solutions for ProxBalance.
+Common issues and solutions for ProxBalance v2.0+.
 
 ---
 
@@ -57,6 +57,25 @@ pct exec <ctid> -- journalctl -u proxmox-balance -n 50
 # View recent collector logs
 pct exec <ctid> -- journalctl -u proxmox-collector -n 50
 ```
+
+### Web UI Settings Panel (v2.0+)
+
+Access the Settings panel in the web interface for debugging tools:
+
+1. Click the **⚙️ Settings** icon in the top-right corner
+2. Scroll to **Service Management** section
+3. Use these debugging features:
+   - **Restart API Service** - Restarts Flask/Gunicorn API server
+   - **Restart Collector Service** - Restarts background data collector
+   - **Update Proxmox Host** - Change Proxmox API endpoint
+   - **Update API Tokens** - Reconfigure authentication credentials
+
+**Settings Panel Features:**
+- **Real-time service status** - See if services are running
+- **Configuration validation** - Checks config.json syntax
+- **API connectivity test** - Validates Proxmox API connection
+- **Log viewer** - View recent errors without shell access
+- **One-click restarts** - Restart services without SSH/shell
 
 ---
 
@@ -118,9 +137,11 @@ curl -I https://pypi.org
 /opt/proxmox-balance-manager/venv/bin/pip install flask
 /opt/proxmox-balance-manager/venv/bin/pip install flask-cors
 /opt/proxmox-balance-manager/venv/bin/pip install gunicorn
+/opt/proxmox-balance-manager/venv/bin/pip install proxmoxer
+/opt/proxmox-balance-manager/venv/bin/pip install requests
 
 # Verify installations
-/opt/proxmox-balance-manager/venv/bin/pip list | grep -E 'Flask|gunicorn'
+/opt/proxmox-balance-manager/venv/bin/pip list | grep -E 'Flask|gunicorn|proxmoxer'
 
 # Exit container
 exit
@@ -133,24 +154,42 @@ pct exec <ctid> -- systemctl restart proxmox-balance
 - Flask: 3.x
 - Flask-CORS: 4.x+
 - Gunicorn: 21.x+
+- Proxmoxer: 2.x+
+- Requests: 2.31+
 
-### Error: Installer hangs during SSH distribution
+### Error: API token creation fails
 
-**Problem:** Nodes are unreachable or SSH is slow.
+**Problem:** Installer can't create API token automatically.
 
 **Solution:**
 ```bash
-# The installer has built-in timeouts (10 seconds per node)
-# If it hangs, press Ctrl+C and:
+# Create API token manually on Proxmox host
+pveum user token add proxbalance@pam proxbalance --privsep=0
 
-# 1. Check network connectivity
-ping <node-ip>
+# Note the token secret (only shown once!)
+# Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
-# 2. Test SSH manually
-ssh root@<node-ip> "echo OK"
+# Add proper permissions (choose based on your needs)
+# IMPORTANT: Both USER and TOKEN need ACL permissions (even with privsep=0)
 
-# 3. Re-run installer - it will retry
-bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/install.sh)"
+# Option 1: Minimal (read-only) - for monitoring only
+pveum acl modify / --users proxbalance@pam --roles PVEAuditor
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEAuditor
+
+# Option 2: Full (with migrations) - for automated load balancing
+pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
+
+# Update config.json via web UI Settings panel
+# Or manually edit:
+pct exec <ctid> -- nano /opt/proxmox-balance-manager/config.json
+
+# Set these values:
+# "proxmox_api_token_id": "proxbalance@pam!proxbalance"
+# "proxmox_api_token_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Restart collector to apply
+pct exec <ctid> -- systemctl restart proxmox-collector
 ```
 
 ### Error: DHCP IP not detected
@@ -191,7 +230,7 @@ pct exec <ctid> -- systemctl status proxmox-balance
 pct exec <ctid> -- journalctl -u proxmox-balance -n 50
 
 # Test Python imports
-pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -c "import flask; import flask_cors; print('OK')"
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -c "import flask; import flask_cors; import proxmoxer; print('OK')"
 
 # Test if app.py has syntax errors
 pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -m py_compile /opt/proxmox-balance-manager/app.py
@@ -214,6 +253,13 @@ pct exec <ctid> -- curl -s http://127.0.0.1:5000/api/health | jq
 2. **Python syntax errors** - Check app.py for recent changes
 3. **Port already in use** - Another process using port 5000
 4. **Virtual environment issues** - venv/bin/python3 not found
+5. **Missing proxmoxer library** - Required for Proxmox API calls
+
+**Using Web UI Settings to Fix:**
+1. Open Settings panel (⚙️ icon)
+2. Click "Restart API Service" button
+3. Check browser console for error messages (F12)
+4. Review logs in Settings panel
 
 ### Error: "Connection refused" or page won't load
 
@@ -242,7 +288,7 @@ pct exec <ctid> -- ls -l /etc/nginx/sites-enabled/
 
 ### Web interface loads but shows no data
 
-**Problem:** No cached data available yet.
+**Problem:** No cached data available yet or collector hasn't run.
 
 **Solution:**
 ```bash
@@ -261,6 +307,12 @@ pct exec <ctid> -- jq '.collected_at' /opt/proxmox-balance-manager/cluster_cache
 # If still failing, check collector logs for errors
 pct exec <ctid> -- journalctl -u proxmox-collector -n 100
 ```
+
+**Using Web UI Settings:**
+1. Open Settings panel
+2. Click "Restart Collector Service"
+3. Wait 2 minutes for data collection
+4. Refresh the dashboard
 
 ### Error: "Service temporarily unavailable"
 
@@ -304,7 +356,7 @@ pct exec <ctid> -- systemctl list-timers proxmox-collector.timer
 pct exec <ctid> -- journalctl -u proxmox-collector -n 50
 
 # Run collector manually to see detailed output
-pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/collector.py
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/collector_api.py
 
 # Check config.json is valid
 pct exec <ctid> -- jq '.' /opt/proxmox-balance-manager/config.json
@@ -312,120 +364,221 @@ pct exec <ctid> -- jq '.' /opt/proxmox-balance-manager/config.json
 # Verify proxmox_host is set correctly (not "CHANGE_ME")
 pct exec <ctid> -- jq -r '.proxmox_host' /opt/proxmox-balance-manager/config.json
 
-# Check for SSH issues to proxmox_host
-pct exec <ctid> -- ssh root@<proxmox-host> "echo OK"
-
-# If SSH works, test pvesh command
-pct exec <ctid> -- ssh root@<proxmox-host> "pvesh get /version"
+# Verify API token credentials are set
+pct exec <ctid> -- jq -r '.proxmox_api_token_id, .proxmox_api_token_secret' /opt/proxmox-balance-manager/config.json
 ```
 
 **Configuration errors to check:**
 1. `proxmox_host` is set to "CHANGE_ME" (must be real IP/hostname)
 2. `proxmox_host` is unreachable or wrong value
-3. SSH keys not distributed to proxmox_host
-4. pvesh command not available on proxmox_host
+3. `proxmox_api_token_id` not set or invalid format
+4. `proxmox_api_token_secret` missing or incorrect
+5. API token lacks proper permissions
 
-### Error: "SSH connection failed"
+**Using Web UI Settings:**
+1. Open Settings panel
+2. Review **Proxmox API Configuration** section
+3. Update **API Token ID** (format: proxbalance@pam!proxbalance)
+4. Update **API Token Secret** (UUID format)
+5. Click **Save Settings**
+6. Test connection with "Restart Collector Service"
 
-**Problem:** SSH keys not configured properly or permissions incorrect.
+### Error: "API token authentication failed"
+
+**Problem:** API token credentials invalid or insufficient permissions.
 
 **Solution:**
 ```bash
-# Check if SSH key exists in container
-pct exec <ctid> -- ls -la /root/.ssh/id_ed25519*
+# Test API token connectivity from container
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 << 'EOF'
+from proxmoxer import ProxmoxAPI
+proxmox = ProxmoxAPI(
+    'YOUR_PROXMOX_HOST',
+    user='proxbalance@pam',
+    token_name='proxbalance',
+    token_value='YOUR_TOKEN_SECRET',
+    verify_ssl=False
+)
+print(proxmox.version.get())
+EOF
 
-# Expected output:
-# -rw------- 1 root root  411 Jan 15 12:00 /root/.ssh/id_ed25519
-# -rw-r--r-- 1 root root   95 Jan 15 12:00 /root/.ssh/id_ed25519.pub
+# If token is invalid, recreate it
+pveum user token add proxbalance@pam proxbalance --privsep=0
 
-# Check SSH key permissions (must be 600 for private key)
-pct exec <ctid> -- chmod 700 /root/.ssh
-pct exec <ctid> -- chmod 600 /root/.ssh/id_ed25519
-pct exec <ctid> -- chmod 644 /root/.ssh/id_ed25519.pub
+# Verify token permissions
+pveum user token permissions proxbalance@pam!proxbalance
 
-# Test SSH connection with verbose output
-pct exec <ctid> -- ssh -v root@<proxmox-host-ip> "echo OK"
+# Should show one of:
+# Option 1 (minimal): /  PVEAuditor
+# Option 2 (full):    /  PVEVMAdmin
 
-# If fails with "Permission denied (publickey)", check if key is on host
-ssh root@<proxmox-host-ip> "grep '$(pct exec <ctid> -- cat /root/.ssh/id_ed25519.pub | awk '{print $2}')' /root/.ssh/authorized_keys"
+# If missing or incorrect, set permissions:
+# IMPORTANT: Set permissions on BOTH user and token
+# For read-only monitoring:
+pveum acl modify / --users proxbalance@pam --roles PVEAuditor
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEAuditor
 
-# If missing, distribute key to proxmox_host
-pct exec <ctid> -- cat /root/.ssh/id_ed25519.pub | ssh root@<proxmox-host-ip> "mkdir -p /root/.ssh && cat >> /root/.ssh/authorized_keys"
+# For monitoring + migrations:
+pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
 
-# Set proper permissions on Proxmox host
-ssh root@<proxmox-host-ip> "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys"
+# Update config.json with new token
+pct exec <ctid> -- nano /opt/proxmox-balance-manager/config.json
 
-# Test again with StrictHostKeyChecking disabled
-pct exec <ctid> -- ssh -o StrictHostKeyChecking=no root@<proxmox-host-ip> "pvesh get /version"
+# Restart collector
+pct exec <ctid> -- systemctl restart proxmox-collector
 ```
 
-**Common SSH issues:**
-1. **Wrong key algorithm** - Should be ed25519, not RSA
-2. **Key permissions too open** - Private key must be 600
-3. **authorized_keys wrong permissions** - Should be 600 on Proxmox host
-4. **Multiple keys with conflicts** - Check for duplicate or conflicting entries
-5. **SELinux/AppArmor blocking** - Rare, but check security logs
+**Common API token issues:**
+1. **Wrong token format** - Must be "user@realm!tokenname" (e.g., proxbalance@pam!proxbalance)
+2. **Token expired or revoked** - Recreate token
+3. **Insufficient permissions** - Needs PVEAuditor (minimal) or PVEVMAdmin (full) role
+4. **SSL certificate issues** - Set `proxmox_verify_ssl: false` in config.json
+5. **Firewall blocking** - Ensure port 8006 accessible from container
 
-### Error: SSH works but collection fails
+### Error: "Failed to connect to Proxmox API"
 
-**Problem:** pvesh command failing on Proxmox host or data format unexpected.
+**Problem:** Network connectivity or firewall blocking API access.
 
 **Solution:**
 ```bash
-# Test each pvesh command that collector uses
-pct exec <ctid> -- ssh root@<proxmox-host-ip> "pvesh get /cluster/resources --output-format json"
+# Test network connectivity to Proxmox host
+pct exec <ctid> -- ping -c 3 <proxmox-host>
 
-# Test RRD data collection (used for historical metrics)
-pct exec <ctid> -- ssh root@<proxmox-host-ip> "pvesh get /nodes/<node-name>/rrddata --timeframe hour --output-format json"
+# Test if Proxmox API port is accessible
+pct exec <ctid> -- curl -k -I https://<proxmox-host>:8006
 
-# Test guest config retrieval
-pct exec <ctid> -- ssh root@<proxmox-host-ip> "pvesh get /nodes/<node>/qemu/<vmid>/config --output-format json"
+# Expected: HTTP/2 200 or 401 (means port is accessible)
 
-# Check if pvesh is available
-ssh root@<proxmox-host-ip> "which pvesh"
+# Test API endpoint directly
+pct exec <ctid> -- curl -k https://<proxmox-host>:8006/api2/json/version
+
+# If connection refused, check firewall on Proxmox host
+# Allow port 8006 from container IP
+iptables -I INPUT -p tcp --dport 8006 -s <container-ip> -j ACCEPT
+
+# Make firewall rule persistent
+apt install iptables-persistent
+netfilter-persistent save
+
+# Or add to Proxmox firewall (recommended)
+# Datacenter → Firewall → Add Rule
+# Direction: in
+# Action: ACCEPT
+# Protocol: tcp
+# Dest. port: 8006
+# Source: <container-ip>/32
+```
+
+**Proxmox API Connectivity Checklist:**
+- ✅ Container can ping Proxmox host
+- ✅ Port 8006 is accessible (HTTPS)
+- ✅ API token ID format is correct (proxbalance@pam!proxbalance)
+- ✅ API token secret is valid UUID
+- ✅ Token has correct permissions (PVEAuditor for read-only OR PVEVMAdmin for migrations)
+- ✅ Proxmox web interface is accessible
+- ✅ No firewall blocking container → Proxmox communication
+
+### Error: "proxmoxer library not installed"
+
+**Problem:** Python proxmoxer package missing or not found in venv.
+
+**Solution:**
+```bash
+# Check if proxmoxer is installed
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/pip list | grep proxmoxer
+
+# If missing, install it
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/pip install proxmoxer requests
+
+# Verify installation
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -c "from proxmoxer import ProxmoxAPI; print('OK')"
+
+# Restart services
+pct exec <ctid> -- systemctl restart proxmox-balance proxmox-collector
+```
+
+### Error: Collector works but collection fails
+
+**Problem:** Proxmox API calls failing or data format unexpected.
+
+**Solution:**
+```bash
+# Test each API endpoint that collector uses
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 << 'EOF'
+from proxmoxer import ProxmoxAPI
+import json
+
+# Replace with your config values
+proxmox = ProxmoxAPI(
+    'YOUR_PROXMOX_HOST',
+    user='proxbalance@pam',
+    token_name='proxbalance',
+    token_value='YOUR_TOKEN_SECRET',
+    verify_ssl=False
+)
+
+# Test cluster resources
+print("Testing /cluster/resources...")
+resources = proxmox.cluster.resources.get()
+print(f"Found {len(resources)} resources")
+
+# Test node RRD data
+print("\nTesting node RRD data...")
+nodes = [r for r in resources if r['type'] == 'node']
+if nodes:
+    node_name = nodes[0]['node']
+    rrd = proxmox.nodes(node_name).rrddata.get(timeframe='hour')
+    print(f"Found {len(rrd)} RRD data points for {node_name}")
+
+# Test guest config
+print("\nTesting guest config...")
+vms = [r for r in resources if r['type'] == 'qemu']
+if vms:
+    vm = vms[0]
+    config = proxmox.nodes(vm['node']).qemu(vm['vmid']).config.get()
+    print(f"Retrieved config for VM {vm['vmid']}")
+
+print("\nAll API tests passed!")
+EOF
 
 # Check Proxmox API is responding
-ssh root@<proxmox-host-ip> "pvesh get /version"
+curl -k https://<proxmox-host>:8006/api2/json/version | jq
 
 # Verify cluster status (ensure cluster is healthy)
-ssh root@<proxmox-host-ip> "pvecm status"
+pvecm status
 
-# Check for API permission issues
-ssh root@<proxmox-host-ip> "pveum user list"
-
-# Test if timeout is the issue (default 30 seconds)
-# Increase timeout in collector.py if needed:
-# Edit line: result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
-# Change to: timeout=60
+# Check for API rate limiting or timeout issues
+pct exec <ctid> -- journalctl -u proxmox-collector -n 200 | grep -i "timeout\|rate"
 ```
 
-**Specific pvesh errors:**
-1. **"command failed"** - Check collector logs for exact pvesh command that failed
-2. **"Connection timeout"** - Increase timeout in collector.py (line 62)
-3. **"JSON decode error"** - pvesh returned invalid JSON (rare, but check Proxmox version)
-4. **"Permission denied"** - Running as non-root on Proxmox host
+**Specific API errors:**
+1. **"401 Unauthorized"** - Token credentials invalid
+2. **"403 Forbidden"** - Token lacks required permissions
+3. **"500 Internal Server Error"** - Proxmox API issue, check Proxmox logs
+4. **"Connection timeout"** - Network latency too high, increase timeout
+5. **"SSL certificate verify failed"** - Set `proxmox_verify_ssl: false`
 
 ### Error: "Command failed" in collector logs
 
-**Problem:** Specific pvesh command failing.
+**Problem:** Specific Proxmox API call failing.
 
 **Solution:**
 ```bash
 # View full collector error
 pct exec <ctid> -- journalctl -u proxmox-collector -n 100 --no-pager
 
-# Test each command manually
-pct exec <ctid> -- bash -c '
-ssh root@<proxmox-host> "pvesh get /cluster/resources --output-format json" | jq .
-ssh root@<proxmox-host> "pvesh get /nodes --output-format json" | jq .
-ssh root@<proxmox-host> "pvesh get /nodes/<node>/rrddata --timeframe hour --output-format json" | jq .
-'
+# Enable debug mode in collector_api.py (add after imports):
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
 
-# Check for timeouts
-# Increase timeout in collector.py if needed:
-# nano /opt/proxmox-balance-manager/collector.py
-# Find: timeout=30
-# Change to: timeout=60
+# Run collector with verbose output
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/collector_api.py
+
+# Check Proxmox API access logs
+tail -f /var/log/pveproxy/access.log | grep <container-ip>
+
+# Look for 401/403/500 errors indicating auth or permission issues
 ```
 
 ---
@@ -434,52 +587,72 @@ ssh root@<proxmox-host> "pvesh get /nodes/<node>/rrddata --timeframe hour --outp
 
 ### Migrations not executing
 
-**Problem:** SSH to source node failing or migration command errors.
+**Problem:** Migration API call failing or command errors.
 
 **Solution:**
 ```bash
-# Test SSH to the source node from container
-pct exec <ctid> -- ssh root@<source-node> "echo OK"
+# Check migration logs in API service
+pct exec <ctid> -- journalctl -u proxmox-balance -n 100 | grep -i migrate
 
-# Verify guest exists on that node
-ssh root@<source-node> "pct list | grep <vmid>"  # for containers
-ssh root@<source-node> "qm list | grep <vmid>"   # for VMs
+# Verify guest exists and is accessible via API
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 << 'EOF'
+from proxmoxer import ProxmoxAPI
+
+proxmox = ProxmoxAPI(
+    'YOUR_PROXMOX_HOST',
+    user='proxbalance@pam',
+    token_name='proxbalance',
+    token_value='YOUR_TOKEN_SECRET',
+    verify_ssl=False
+)
+
+# Check VM status
+try:
+    status = proxmox.nodes('SOURCE_NODE').qemu('VMID').status.current.get()
+    print(f"VM status: {status['status']}")
+except Exception as e:
+    print(f"Error: {e}")
+EOF
 
 # Check guest status (must be running for online migration)
-ssh root@<source-node> "pct status <vmid>"  # for containers
-ssh root@<source-node> "qm status <vmid>"   # for VMs
+pvesh get /nodes/<source-node>/qemu/<vmid>/status/current  # for VMs
+pvesh get /nodes/<source-node>/lxc/<vmid>/status/current   # for containers
 
 # Check if guest is locked
-ssh root@<source-node> "pct config <vmid> | grep lock"
-ssh root@<source-node> "qm config <vmid> | grep lock"
+pvesh get /nodes/<source-node>/qemu/<vmid>/config | grep lock
+pvesh get /nodes/<source-node>/lxc/<vmid>/config | grep lock
 
-# Test migration command manually (dry run)
-# For VMs:
-ssh root@<source-node> "qm migrate <vmid> <target-node> --online"
-
-# For Containers:
-ssh root@<source-node> "pct migrate <vmid> <target-node> --restart"
+# Test migration via API manually
+pvesh create /nodes/<source-node>/qemu/<vmid>/migrate --target <target-node> --online 1
 
 # Check Proxmox task log for migration errors
-ssh root@<source-node> "pvesh get /nodes/<source-node>/tasks" | grep <vmid>
+pvesh get /nodes/<source-node>/tasks
 
 # View detailed task log
-ssh root@<source-node> "cat /var/log/pve/tasks/*.log" | grep -A 20 "TASK.*<vmid>"
+pvesh get /nodes/<source-node>/tasks/<taskid>/log
 ```
 
-**Migration command details (from app.py):**
-- **VMs**: `qm migrate <vmid> <target> --online` (line 320)
-- **Containers**: `pct migrate <vmid> <target> --restart` (line 320)
-- Executed via SSH with `subprocess.Popen` (non-blocking)
-- SSH options: StrictHostKeyChecking=no, UserKnownHostsFile=/dev/null, LogLevel=ERROR
+**Migration execution details (v2.0+):**
+- **VMs**: Uses Proxmox API `/nodes/{node}/qemu/{vmid}/migrate` endpoint
+- **Containers**: Uses Proxmox API `/nodes/{node}/lxc/{vmid}/migrate` endpoint
+- Executed via ProxmoxAPI library (not SSH)
+- Migrations are async - API returns task ID
+- Migration progress tracked via task API
 
 **Why migrations might fail:**
-1. **Guest not running** - VMs need to be running for --online migration
+1. **Guest not running** - VMs need to be running for online migration
 2. **Insufficient space on target** - Check disk space
 3. **Network issues** - Source and target nodes can't communicate
 4. **Shared storage not available** - Storage not accessible on target
 5. **Guest is locked** - Another operation in progress
-6. **SSH key missing on source node** - Container can SSH to proxmox_host but not source node
+6. **API token missing migration permission** - Check PVEVMAdmin role
+
+**Using Web UI to Debug:**
+1. Open browser developer console (F12)
+2. Go to Network tab
+3. Attempt migration
+4. Check API response for error details
+5. Look for `/api/migrate` endpoint status
 
 ### Error: "VM/CT is locked"
 
@@ -488,22 +661,22 @@ ssh root@<source-node> "cat /var/log/pve/tasks/*.log" | grep -A 20 "TASK.*<vmid>
 **Solution:**
 ```bash
 # Check guest status
-ssh root@<source-node> "pct status <vmid>"
+pvesh get /nodes/<source-node>/lxc/<vmid>/status/current
 # or for VMs
-ssh root@<source-node> "qm status <vmid>"
+pvesh get /nodes/<source-node>/qemu/<vmid>/status/current
 
 # Check for locks
-ssh root@<source-node> "pct config <vmid> | grep lock"
-ssh root@<source-node> "qm config <vmid> | grep lock"
+pvesh get /nodes/<source-node>/lxc/<vmid>/config | grep lock
+pvesh get /nodes/<source-node>/qemu/<vmid>/config | grep lock
 
 # If locked, check what task is running
-ssh root@<source-node> "pvesh get /nodes/<source-node>/tasks | grep <vmid>"
+pvesh get /nodes/<source-node>/tasks | jq '.[] | select(.id == "<vmid>")'
 
-# If safe to do so, unlock manually
-ssh root@<source-node> "pct unlock <vmid>"
-ssh root@<source-node> "qm unlock <vmid>"
+# If safe to do so, unlock manually (be cautious!)
+qm unlock <vmid>    # for VMs
+pct unlock <vmid>   # for containers
 
-# Then retry migration
+# Then retry migration via web interface
 ```
 
 ### Migration starts but fails mid-transfer
@@ -513,27 +686,30 @@ ssh root@<source-node> "qm unlock <vmid>"
 **Solution:**
 ```bash
 # Check Proxmox task log for specific error
-ssh root@<source-node> "tail -100 /var/log/pve/tasks/*"
+pvesh get /cluster/tasks | jq '.[] | select(.type == "qmigrate" or .type == "vzmigrate")'
+
+# Get full task log
+pvesh get /nodes/<source-node>/tasks/<upid>/log
 
 # Common issues to check:
 
 # 1. Not enough disk space on target
-ssh root@<target-node> "df -h"
+pvesh get /nodes/<target-node>/status | jq '.rootfs'
 
 # 2. Network connectivity problems
 ping <target-node>
-ssh root@<source-node> "ping -c 3 <target-node>"
 
 # 3. Target node offline or degraded
-ssh root@<target-node> "uptime"
-ssh root@<target-node> "pvecm status"
+pvecm status
 
 # 4. Storage compatibility
-ssh root@<target-node> "pvesm status"
+pvesm status
 
 # 5. Check for resource limits
-ssh root@<target-node> "free -h"
-ssh root@<target-node> "uptime"
+pvesh get /nodes/<target-node>/status | jq '.memory, .cpu'
+
+# 6. Check migration network settings
+pvesh get /nodes/<source-node>/qemu/<vmid>/config | grep migration
 ```
 
 ### Batch migrations partially failing
@@ -543,19 +719,25 @@ ssh root@<target-node> "uptime"
 **Solution:**
 ```bash
 # Check API logs for batch migration details
-pct exec <ctid> -- journalctl -u proxmox-balance -n 100 | grep -A 5 "batch"
+pct exec <ctid> -- journalctl -u proxmox-balance -n 200 | grep -A 5 "migrate"
 
 # Each migration in batch is independent
-# Check logs on source node for failed migrations
-for vmid in <failed-vmids>; do
-  echo "Checking $vmid..."
-  ssh root@<source-node> "pvesh get /nodes/<source-node>/tasks | grep $vmid | tail -5"
-done
+# Check Proxmox tasks for failed migrations
+pvesh get /cluster/tasks | jq '.[] | select(.status != "OK")'
 
 # Check if specific guests have locks or issues
-ssh root@<source-node> "pct config <vmid> | grep -E 'lock|status'"
+pvesh get /nodes/<node>/qemu/<vmid>/config | grep -E 'lock|tags'
 
 # Retry failed migrations individually through web interface
+# Or via API:
+curl -X POST http://<container-ip>/api/migrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": <vmid>,
+    "source_node": "<source>",
+    "target_node": "<target>",
+    "guest_type": "VM"
+  }'
 ```
 
 ---
@@ -596,6 +778,13 @@ pct exec <ctid> -- systemctl list-timers proxmox-collector.timer
 # Check when next collection will run
 pct exec <ctid> -- systemctl status proxmox-collector.timer
 ```
+
+**Using Web UI Settings (Recommended):**
+1. Open Settings panel (⚙️ icon)
+2. Make configuration changes
+3. Click **Save Settings**
+4. Services automatically restart
+5. Verify changes took effect by checking dashboard
 
 **What update_timer.py does:**
 1. Reads `collection_interval_minutes` from config.json
@@ -640,14 +829,28 @@ pct exec <ctid> -- systemctl list-timers proxmox-collector.timer
 # Check for JSON syntax errors
 pct exec <ctid> -- jq '.' /opt/proxmox-balance-manager/config.json
 
-# If corrupted, recreate with defaults
+# If corrupted, recreate with defaults (v2.0 format)
 pct exec <ctid> -- bash -c 'cat > /opt/proxmox-balance-manager/config.json <<EOF
 {
   "collection_interval_minutes": 60,
   "ui_refresh_interval_minutes": 15,
-  "proxmox_host": "<your-proxmox-host-ip>"
+  "proxmox_host": "<your-proxmox-host-ip>",
+  "proxmox_port": 8006,
+  "proxmox_api_token_id": "proxbalance@pam!proxbalance",
+  "proxmox_api_token_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "proxmox_verify_ssl": false,
+  "proxmox_auth_method": "api_token",
+  "ai_enabled": false,
+  "ai_provider": "none",
+  "ai_api_key": "",
+  "ai_model": "",
+  "ai_base_url": "",
+  "ai_analysis_period": "24h"
 }
 EOF'
+
+# Update with your actual values
+pct exec <ctid> -- nano /opt/proxmox-balance-manager/config.json
 
 # Restart services
 pct exec <ctid> -- systemctl restart proxmox-balance proxmox-collector.timer
@@ -689,12 +892,23 @@ curl https://api.anthropic.com/v1/messages \
 curl http://<ollama-host>:11434/api/version
 ```
 
+**Using Web UI Settings:**
+1. Open Settings panel (⚙️ icon)
+2. Scroll to **AI-Enhanced Migration Recommendations**
+3. Toggle **Enable AI Recommendations**
+4. Select AI provider (OpenAI, Anthropic, or Ollama)
+5. Enter API credentials
+6. Choose analysis time period (1h, 6h, 24h, 7d)
+7. Click **Save Settings**
+8. Try generating recommendations again
+
 **Common Causes:**
 - Invalid or expired API key
 - Network connectivity issues
 - Ollama service not running
 - Insufficient API credits (OpenAI/Anthropic)
 - Model name incorrect or not available
+- Missing `requests` library in venv
 
 ### Error: "AI API request failed"
 
@@ -720,7 +934,7 @@ curl http://<ollama-host>:11434/api/version
 **Anthropic Errors:**
 ```bash
 # Error: 401 authentication_error
-# - Check API key format
+# - Check API key format (must start with sk-ant-)
 # - Verify key at https://console.anthropic.com/settings/keys
 
 # Error: 429 rate_limit_error
@@ -738,24 +952,25 @@ curl http://<ollama-host>:11434/api/version
 # Ollama service not running
 
 # Check Ollama status
-ssh <ollama-host> systemctl status ollama
+systemctl status ollama  # on Ollama host
 
 # Start Ollama
-ssh <ollama-host> systemctl start ollama
+systemctl start ollama
 
 # Error: Model not found
 # Pull the model
 
-ssh <ollama-host> ollama pull llama3.1:8b
+ollama pull qwen2.5:7b      # Recommended
+ollama pull llama3.1:8b     # Alternative
 
 # List available models
-ssh <ollama-host> ollama list
+ollama list
 
 # Error: Out of memory
 # Model too large for available RAM
-# - Use smaller model (llama3.1:8b instead of :70b)
+# - Use smaller model (qwen2.5:7b instead of :14b)
 # - Increase system RAM
-# - Use quantized models (fewer bits)
+# - Use quantized models
 ```
 
 ### Ollama connection issues
@@ -768,7 +983,6 @@ ssh <ollama-host> ollama list
 pct exec <ctid> -- curl http://<ollama-host>:11434/api/version
 
 # 2. Check firewall on Ollama host
-# On Ollama host:
 ufw status
 # If blocking, allow ProxBalance container IP:
 ufw allow from <container-ip> to any port 11434
@@ -778,15 +992,28 @@ ufw allow from <container-ip> to any port 11434
 ss -tlnp | grep 11434
 # Should show 0.0.0.0:11434 or *:11434
 
-# If only listening on 127.0.0.1, edit systemd service:
-# /etc/systemd/system/ollama.service
-# Add: Environment="OLLAMA_HOST=0.0.0.0:11434"
+# If only listening on 127.0.0.1, configure to listen on all interfaces
+# Create/edit /etc/systemd/system/ollama.service.d/override.conf
+mkdir -p /etc/systemd/system/ollama.service.d
+cat > /etc/systemd/system/ollama.service.d/override.conf <<EOF
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+EOF
+
 systemctl daemon-reload
 systemctl restart ollama
 
 # 4. Test model inference
-ssh <ollama-host> 'ollama run llama3.1:8b "test"'
+curl http://<ollama-host>:11434/api/generate \
+  -d '{"model":"qwen2.5:7b","prompt":"test","stream":false}'
 ```
+
+**Using Web UI for Ollama Setup:**
+1. Settings → AI Provider: **Local LLM (Ollama)**
+2. **AI Model**: `qwen2.5:7b` (recommended)
+3. **AI Base URL**: `http://<ollama-host>:11434`
+4. **Analysis Period**: `24h` (recommended)
+5. Save and test with "Get AI Recommendations"
 
 ### AI recommendations are irrelevant or poor quality
 
@@ -809,11 +1036,11 @@ ssh <ollama-host> 'ollama run llama3.1:8b "test"'
    ```
 
 3. **Try different AI model:**
-   - GPT-4: Most accurate, highest cost
-   - Claude 3.5 Sonnet: Balanced accuracy/cost
-   - GPT-3.5: Faster, lower cost, less accurate
-   - Ollama llama3.1:70b: Best local model (if hardware allows)
-   - Ollama llama3.1:8b: Faster local model, less accurate
+   - **Cloud (Best)**: claude-3-5-sonnet-20241022, gpt-4o
+   - **Cloud (Fast)**: claude-3-haiku-20240307, gpt-3.5-turbo
+   - **Local (Best)**: qwen2.5:14b (needs 10GB RAM)
+   - **Local (Balanced)**: qwen2.5:7b (needs 5GB RAM)
+   - **Local (Fast)**: mistral:7b (needs 5GB RAM)
 
 4. **Review AI reasoning:**
    - AI recommendations include detailed reasoning
@@ -826,7 +1053,7 @@ ssh <ollama-host> 'ollama run llama3.1:8b "test"'
 
 **Solution:**
 
-This should be prevented by the smart filtering feature in v2.0, but if it occurs:
+This should be prevented by the smart filtering feature in v2.0+, but if it occurs:
 
 ```bash
 # 1. Verify current filtering is working
@@ -848,6 +1075,7 @@ pct exec <ctid> -- journalctl -u proxmox-balance -n 200 | grep "Filtered out"
 # - AI provider and model used
 # - Cluster configuration (node names)
 # - Example of bad recommendation
+# - API logs showing the filtering
 ```
 
 **Note:** v2.0+ includes validation that:
@@ -899,8 +1127,8 @@ pct exec <ctid> -- jq '.guests[] | select(.vmid == <vmid>) | .tags' /opt/proxmox
 # }
 ```
 
-**How collector.py parses tags:**
-1. Reads tags string from guest config via pvesh
+**How collector_api.py parses tags:**
+1. Reads tags string from guest config via Proxmox API
 2. Splits by semicolon (`;`) and space
 3. Checks if "ignore" is in list → sets `has_ignore: true`
 4. Extracts tags starting with "exclude_" → adds to `exclude_groups` array
@@ -972,7 +1200,7 @@ sleep 90
 **Solution:**
 ```bash
 # Check current intervals
-pct exec <ctid> -- cat /opt/proxmox-balance-manager/config.json
+pct exec <ctid> -- jq '.collection_interval_minutes, .ui_refresh_interval_minutes' /opt/proxmox-balance-manager/config.json
 
 # Monitor CPU usage in real-time
 pct exec <ctid> -- top -b -n 1 | head -20
@@ -981,14 +1209,30 @@ pct exec <ctid> -- top -b -n 1 | head -20
 pct exec <ctid> -- ps aux | grep -E 'python|gunicorn'
 
 # Look for multiple collector processes (should only be 1 when running)
-pct exec <ctid> -- ps aux | grep collector.py
+pct exec <ctid> -- ps aux | grep collector_api.py
 
 # Check Gunicorn worker count (default is 4)
 pct exec <ctid> -- ps aux | grep gunicorn | wc -l
 
-# For large clusters (100+ guests), increase intervals:
-pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 120
-pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-ui 60
+# For large clusters (100+ guests), increase intervals via web UI:
+# Settings → Collection Interval → 120 minutes
+# Settings → UI Refresh → 60 minutes
+
+# Or via command line:
+pct exec <ctid> -- bash -c 'cat > /tmp/update_config.py <<EOF
+import json
+with open("/opt/proxmox-balance-manager/config.json", "r+") as f:
+    config = json.load(f)
+    config["collection_interval_minutes"] = 120
+    config["ui_refresh_interval_minutes"] = 60
+    f.seek(0)
+    json.dump(config, f, indent=2)
+    f.truncate()
+EOF
+/opt/proxmox-balance-manager/venv/bin/python3 /tmp/update_config.py'
+
+# Restart services
+pct exec <ctid> -- systemctl restart proxmox-balance proxmox-collector.timer
 
 # Check if collector is hanging (timeout issue)
 pct exec <ctid> -- journalctl -u proxmox-collector -n 100 | grep -i timeout
@@ -1006,7 +1250,7 @@ pct exec <ctid> -- journalctl -u proxmox-collector -n 50 | grep -E "Starting|com
 **If CPU consistently high:**
 1. **Increase collection interval** - Reduce frequency of data gathering
 2. **Reduce Gunicorn workers** - Edit proxmox-balance.service, change `-w 4` to `-w 2`
-3. **Check for infinite loops** - Look for collector running continuously
+3. **Check for infinite loops** - Look for collector_api.py running continuously
 4. **Optimize cluster size** - Larger clusters need longer intervals
 
 ### High memory usage
@@ -1025,8 +1269,8 @@ pct exec <ctid> -- free -h
 # Increase container memory allocation
 pct set <ctid> -memory 4096
 
-# Or reduce data collection frequency
-pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 240
+# Or reduce data collection frequency via web UI Settings
+# Collection Interval → 240 minutes
 ```
 
 ### Slow web interface
@@ -1035,8 +1279,9 @@ pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 2
 
 **Solution:**
 ```bash
-# Increase UI refresh interval
-pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-ui 30
+# Increase UI refresh interval via Settings panel
+# Or manually:
+pct exec <ctid> -- bash -c 'jq ".ui_refresh_interval_minutes = 30" /opt/proxmox-balance-manager/config.json > /tmp/config.json && mv /tmp/config.json /opt/proxmox-balance-manager/config.json'
 
 # For very large clusters:
 # Backend: 120-240 minutes
@@ -1051,7 +1296,7 @@ pct exec <ctid> -- du -h /opt/proxmox-balance-manager/cluster_cache.json
 
 ### Collection takes too long
 
-**Problem:** Many nodes, large cluster, or slow SSH connections.
+**Problem:** Many nodes, large cluster, or slow Proxmox API responses.
 
 **Solution:**
 ```bash
@@ -1063,45 +1308,41 @@ pct exec <ctid> -- journalctl -u proxmox-collector -n 20 | grep -E 'Starting|com
 # Jan 15 10:01:30 Data collection complete. Cache updated.
 # (90 seconds is normal for large clusters)
 
-# Test SSH latency to proxmox_host
-time pct exec <ctid> -- ssh root@<proxmox-host> "echo OK"
-
-# Test pvesh response time
-time pct exec <ctid> -- ssh root@<proxmox-host> "pvesh get /cluster/resources --output-format json" > /dev/null
+# Test Proxmox API latency
+time curl -k https://<proxmox-host>:8006/api2/json/cluster/resources
 
 # Test RRD data retrieval time (slowest operation)
-time pct exec <ctid> -- ssh root@<proxmox-host> "pvesh get /nodes/<node>/rrddata --timeframe hour --output-format json" > /dev/null
+time curl -k "https://<proxmox-host>:8006/api2/json/nodes/<node>/rrddata?timeframe=day"
 
 # Check network latency from container to host
 pct exec <ctid> -- ping -c 10 <proxmox-host>
 
-# If SSH is slow, check network issues
-# Consider increasing collection interval
-pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 120
+# If API is slow, increase collection interval
+# Settings → Collection Interval → 120 or 240 minutes
 
 # Monitor a live collection
 pct exec <ctid> -- systemctl start proxmox-collector.service && \
 pct exec <ctid> -- journalctl -u proxmox-collector -f
 ```
 
-**Collection time breakdown:**
-1. **SSH connection** - 1-2 seconds per command
+**Collection time breakdown (API-based):**
+1. **Connect to Proxmox API** - 1-2 seconds
 2. **Get cluster resources** - 2-5 seconds (all VMs/CTs)
 3. **Get RRD data per node** - 3-10 seconds per node (historical metrics)
 4. **Get guest configs** - 0.5-1 second per guest (for tags)
 5. **Write cache file** - <1 second (atomic rename)
 
 **Expected collection times:**
-- **Small cluster (1-20 guests, 2-3 nodes)**: 30-60 seconds
-- **Medium cluster (21-50 guests, 3-4 nodes)**: 60-120 seconds
-- **Large cluster (50-100 guests, 4+ nodes)**: 120-180 seconds
+- **Small cluster (1-20 guests, 2-3 nodes)**: 20-40 seconds
+- **Medium cluster (21-50 guests, 3-4 nodes)**: 40-90 seconds
+- **Large cluster (50-100 guests, 4+ nodes)**: 90-180 seconds
 - **Very large (100+ guests, 5+ nodes)**: 180-300 seconds
 
 **If collection takes >5 minutes:**
-1. Check if timeout is occurring (default 30 sec per SSH command)
-2. Increase timeout in collector.py line 62: `timeout=60`
-3. Check network latency and bandwidth
-4. Consider running collector less frequently
+1. Check if Proxmox API is slow (test with curl)
+2. Check network latency and bandwidth
+3. Consider running collector less frequently
+4. Check Proxmox host CPU/memory usage
 
 ---
 
@@ -1123,11 +1364,6 @@ pct exec <ctid> -- ls -la /opt/proxmox-balance-manager/
 pct exec <ctid> -- chown -R root:root /opt/proxmox-balance-manager/
 pct exec <ctid> -- chmod +x /opt/proxmox-balance-manager/*.py
 pct exec <ctid> -- chmod +x /opt/proxmox-balance-manager/*.sh
-
-# Check SSH key permissions
-pct exec <ctid> -- chmod 700 /root/.ssh
-pct exec <ctid> -- chmod 600 /root/.ssh/id_ed25519
-pct exec <ctid> -- chmod 644 /root/.ssh/id_ed25519.pub
 ```
 
 ### Error: Can't write to cache file
@@ -1150,6 +1386,50 @@ pct exec <ctid> -- chown root:root /opt/proxmox-balance-manager/cluster_cache.js
 pct exec <ctid> -- chmod 644 /opt/proxmox-balance-manager/cluster_cache.json
 ```
 
+### Error: "API token lacks permissions"
+
+**Problem:** Proxmox API token missing required roles.
+
+**Solution:**
+```bash
+# Check current token permissions
+pveum user token permissions proxbalance@pam!proxbalance
+
+# Should show one of:
+# Option 1 (read-only):  path: /  roles: PVEAuditor
+# Option 2 (full):       path: /  roles: PVEVMAdmin
+
+# If missing or incorrect, add required permissions:
+# IMPORTANT: Set permissions on BOTH user and token (even with privsep=0)
+# For read-only monitoring:
+pveum acl modify / --users proxbalance@pam --roles PVEAuditor
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEAuditor
+
+# For monitoring + migrations:
+pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
+
+# Verify permissions were added
+pveum user token permissions proxbalance@pam!proxbalance
+pveum acl list | grep proxbalance
+
+# Test API access
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -c "
+from proxmoxer import ProxmoxAPI
+proxmox = ProxmoxAPI(
+    'YOUR_HOST',
+    user='proxbalance@pam',
+    token_name='proxbalance',
+    token_value='YOUR_SECRET',
+    verify_ssl=False
+)
+print(proxmox.cluster.resources.get())
+"
+
+# Restart collector to apply
+pct exec <ctid> -- systemctl restart proxmox-collector
+```
+
 ---
 
 ## 🧹 Clean Reinstall
@@ -1166,19 +1446,16 @@ pct stop <ctid>
 # 3. Destroy container
 pct destroy <ctid>
 
-# 4. Remove SSH keys from Proxmox nodes (optional but recommended)
-for node in pve1 pve2 pve3 pve4; do
-  ssh root@$node "sed -i '/ProxBalance/d' /root/.ssh/authorized_keys"
-done
-
-# 5. Re-run installer
+# 4. Re-run installer
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/install.sh)"
 
-# 6. Wait for initial collection
+# 5. Wait for initial collection
 sleep 180
 
-# 7. Run status check
+# 6. Run status check
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)" _ <new-ctid>
+
+# 7. If you backed up config, restore AI settings via web UI
 ```
 
 ---
@@ -1239,16 +1516,16 @@ pct pull <ctid> /tmp/proxbalance-logs.tar.gz ./proxbalance-logs.tar.gz
 |-------|-----------|---------|
 | 502 Bad Gateway | Restart Flask API | `pct exec <ctid> -- systemctl restart proxmox-balance` |
 | No data showing | Run collector manually | `pct exec <ctid> -- systemctl start proxmox-collector.service` |
-| SSH connection fails | Check and fix SSH keys | `pct exec <ctid> -- ssh root@<proxmox-host> "echo OK"` |
-| Settings not saving | Run update_timer.py | `pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/update_timer.py` |
-| Migrations failing | Test migration command | `ssh root@<source-node> "qm migrate <vmid> <target> --online"` |
-| High CPU usage | Increase intervals | `pct exec <ctid> -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 120` |
+| API connection fails | Check API token | `pveum user token permissions proxbalance@pam!proxbalance` |
+| Settings not saving | Use web UI Settings | Open Settings panel (⚙️) → Save Settings |
+| Migrations failing | Check Proxmox tasks | `pvesh get /cluster/tasks` |
+| High CPU usage | Increase intervals | Settings → Collection Interval → 120 min |
 | Tags not working | Force cache refresh | `curl -X POST http://<container-ip>/api/refresh` |
 | Cache file missing | Check config.json | `pct exec <ctid> -- jq -r '.proxmox_host' /opt/proxmox-balance-manager/config.json` |
 | Services won't start | Check Python syntax | `pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -m py_compile /opt/proxmox-balance-manager/app.py` |
 | Unknown container IP | Use status checker | `bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)" _ <ctid>` |
-| Collection timeout | Increase timeout | Edit collector.py line 62: `timeout=60` |
 | Invalid config.json | Validate JSON syntax | `pct exec <ctid> -- jq '.' /opt/proxmox-balance-manager/config.json` |
+| AI not working | Check provider settings | Settings → AI Configuration → Verify API key |
 
 ---
 

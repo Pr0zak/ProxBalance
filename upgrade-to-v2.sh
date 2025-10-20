@@ -153,9 +153,28 @@ if [ "$HAS_API_TOKEN" = "no" ]; then
         read custom_host
         PROXMOX_HOST=${custom_host:-$PROXMOX_HOST}
 
-        # Token configuration
-        TOKEN_USER="root@pam"
+        # Clean up old root@pam token references if they exist (from v2.0)
+        if pveum user token list root@pam 2>/dev/null | grep -q "proxbalance"; then
+            msg_info "Cleaning up old root@pam!proxbalance token"
+            # Delete old token
+            pvesh delete /access/users/root@pam/token/proxbalance 2>/dev/null || true
+            # Remove old ACL entries to prevent "ignore invalid acl token" warnings
+            pveum acl delete / --tokens root@pam!proxbalance 2>/dev/null || true
+            msg_ok "Old token cleaned up"
+        fi
+
+        # Create dedicated user if it doesn't exist
+        TOKEN_USER="proxbalance@pam"
         TOKEN_NAME="proxbalance"
+
+        if ! pveum user list | grep -q "^proxbalance@pam"; then
+            msg_info "Creating dedicated 'proxbalance' user"
+            pveum user add proxbalance@pam --comment "ProxBalance service account" --enable 1
+            msg_ok "User 'proxbalance@pam' created"
+        else
+            msg_ok "User 'proxbalance@pam' already exists"
+        fi
+
         API_TOKEN_ID="${TOKEN_USER}!${TOKEN_NAME}"
 
         # Permission selection
@@ -230,10 +249,14 @@ if [ "$HAS_API_TOKEN" = "no" ]; then
                 # Configure permissions
                 msg_info "Configuring API permissions..."
                 if [ "$TOKEN_PERMS" = "minimal" ]; then
-                    pvesh set /access/acl --path / --roles PVEAuditor --tokens "${API_TOKEN_ID}" 2>/dev/null || true
+                    # IMPORTANT: Both USER and TOKEN need permissions (even with privsep=0)
+                    pvesh set /access/acl --path / --roles PVEAuditor --users "${TOKEN_USER}" --propagate 1 2>/dev/null || true
+                    pvesh set /access/acl --path / --roles PVEAuditor --tokens "${API_TOKEN_ID}" --propagate 1 2>/dev/null || true
                     msg_ok "Minimal permissions applied"
                 else
-                    pvesh set /access/acl --path / --roles PVEVMAdmin --tokens "${API_TOKEN_ID}" 2>/dev/null || true
+                    # IMPORTANT: Both USER and TOKEN need permissions (even with privsep=0)
+                    pvesh set /access/acl --path / --roles PVEVMAdmin --users "${TOKEN_USER}" --propagate 1 2>/dev/null || true
+                    pvesh set /access/acl --path / --roles PVEVMAdmin --tokens "${API_TOKEN_ID}" --propagate 1 2>/dev/null || true
                     msg_ok "Full permissions applied (includes VM.Migrate)"
                 fi
 
@@ -306,7 +329,7 @@ if [ "$HAS_API_TOKEN" = "no" ]; then
     echo ""
     echo -e "  2. Or manually edit config.json to add:"
     echo -e "     ${DIM}\"proxmox_host\": \"your-proxmox-ip\",${CL}"
-    echo -e "     ${DIM}\"proxmox_api_token_id\": \"root@pam!proxbalance\",${CL}"
+    echo -e "     ${DIM}\"proxmox_api_token_id\": \"proxbalance@pam!proxbalance\",${CL}"
     echo -e "     ${DIM}\"proxmox_api_token_secret\": \"your-token-secret\"${CL}"
     echo ""
 fi

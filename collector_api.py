@@ -114,7 +114,7 @@ class ProxmoxAPICollector:
                 )
             else:
                 # Username/password authentication
-                username = self.config.get('proxmox_username', 'root@pam')
+                username = self.config.get('proxmox_username', 'proxbalance@pam')
                 password = self.config.get('proxmox_password', '')
                 
                 if not password:

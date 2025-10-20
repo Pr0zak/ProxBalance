@@ -712,18 +712,141 @@ def execute_batch_migration():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/permissions", methods=["GET"])
+def check_permissions():
+    """Check API token permissions - test if migrations are available"""
+    try:
+        config = load_config()
+
+        if config.get('error'):
+            return jsonify({
+                "success": False,
+                "can_migrate": False,
+                "error": config.get('message')
+            }), 200  # Return 200 so UI can handle gracefully
+
+        token_id = config.get('proxmox_api_token_id', '')
+        token_secret = config.get('proxmox_api_token_secret', '')
+
+        if not token_id or not token_secret:
+            return jsonify({
+                "success": True,
+                "can_migrate": False,
+                "reason": "API token not configured"
+            })
+
+        # Try to check permissions by querying Proxmox API
+        # We'll check if the token has VM.Migrate capability
+        try:
+            from proxmoxer import ProxmoxAPI
+
+            proxmox_host = config.get('proxmox_host', 'localhost')
+            proxmox_port = config.get('proxmox_port', 8006)
+            verify_ssl = config.get('proxmox_verify_ssl', False)
+
+            user, token_name = token_id.split('!', 1)
+            proxmox = ProxmoxAPI(
+                proxmox_host,
+                user=user,
+                token_name=token_name,
+                token_value=token_secret,
+                port=proxmox_port,
+                verify_ssl=verify_ssl
+            )
+
+            # Check cluster status to verify connection
+            proxmox.cluster.status.get()
+
+            # Check ACL permissions to determine if we have migration capability
+            # We need to check if the token has PVEVMAdmin or any role with VM.Migrate
+            try:
+                # Get all cluster resources to find a VM we can test permissions on
+                resources = proxmox.cluster.resources.get(type='vm')
+
+                # Try to get permissions endpoint - this will show what we can do
+                # If we can access this and find VMs, we likely have at least audit
+                if resources:
+                    # Try to access the first VM's config - if we get permissions error, we know we're read-only
+                    first_vm = resources[0]
+                    node = first_vm['node']
+                    vmid = first_vm['vmid']
+
+                    # Try to get the VM status with migrate check
+                    # This won't actually migrate, just check if we have the permission
+                    try:
+                        # Attempt to get migration preconditions - this requires VM.Migrate permission
+                        proxmox.nodes(node).qemu(vmid).migrate.get()
+                        # If we got here, we have migration permissions
+                        return jsonify({
+                            "success": True,
+                            "can_migrate": True,
+                            "reason": "Full permissions (PVEVMAdmin) - can perform migrations"
+                        })
+                    except Exception as migrate_error:
+                        # Check if it's a permission error
+                        if '403' in str(migrate_error) or 'permission' in str(migrate_error).lower():
+                            return jsonify({
+                                "success": True,
+                                "can_migrate": False,
+                                "reason": "Read-only permissions (PVEAuditor) - cannot perform migrations"
+                            })
+                        else:
+                            # Some other error, but assume we might have permissions
+                            return jsonify({
+                                "success": True,
+                                "can_migrate": True,
+                                "reason": "Unable to verify migration permissions (assuming full access)"
+                            })
+                else:
+                    # No VMs to test with, assume read-only is safe
+                    return jsonify({
+                        "success": True,
+                        "can_migrate": False,
+                        "reason": "No VMs found to test permissions"
+                    })
+            except Exception as perm_check_error:
+                # Couldn't check permissions, default to read-only for safety
+                return jsonify({
+                    "success": True,
+                    "can_migrate": False,
+                    "reason": f"Permission check failed, assuming read-only: {str(perm_check_error)}"
+                })
+
+        except Exception as e:
+            error_str = str(e).lower()
+            if 'permission' in error_str or 'denied' in error_str:
+                return jsonify({
+                    "success": True,
+                    "can_migrate": False,
+                    "reason": "Read-only permissions (PVEAuditor)"
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "can_migrate": False,
+                    "reason": f"API connection error: {str(e)}"
+                })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "can_migrate": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route("/api/config", methods=["GET"])
 def get_config():
     """Get current configuration"""
     try:
         config = load_config()
-        
+
         if config.get('error'):
             return jsonify({
                 "success": False,
                 "error": config.get('message')
             }), 500
-        
+
         return jsonify({"success": True, "config": config})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

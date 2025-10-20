@@ -1,7 +1,7 @@
 #!/bin/bash
 # Test API token creation to debug the issue
 
-TOKEN_USER="root@pam"
+TOKEN_USER="proxbalance@pam"
 TOKEN_NAME="proxbalance"
 TOKEN_COMMENT="ProxBalance automated monitoring"
 

@@ -165,7 +165,7 @@ The automated installer performs these steps:
 5. ✅ Enables services to start on boot (systemctl enable)
 
 ### Phase 6: API Authentication Setup (1-2 minutes)
-1. ✅ Creates Proxmox API token (root@pam!proxbalance)
+1. ✅ Creates Proxmox API token (proxbalance@pam!proxbalance)
    - Uses pvesh to create token with full privileges
    - Sets privilege separation to 0 for Administrator access
    - Generates unique secret automatically
@@ -426,7 +426,7 @@ systemctl restart nginx
 
 ```bash
 # Create Proxmox API token (run on Proxmox host)
-TOKEN_USER="root@pam"
+TOKEN_USER="proxbalance@pam"
 TOKEN_NAME="proxbalance"
 
 # Create the API token
@@ -436,12 +436,26 @@ pvesh create /access/users/${TOKEN_USER}/token/${TOKEN_NAME} \
 
 # The output will show:
 # {
-#    "full-tokenid" : "root@pam!proxbalance",
+#    "full-tokenid" : "proxbalance@pam!proxbalance",
 #    "value" : "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 # }
 
 # Save the token secret - you'll need it for config.json
 TOKEN_SECRET="<paste-secret-from-output>"
+
+# IMPORTANT: Set ACL permissions on BOTH user and token (even with privsep=0)
+# Choose based on your needs:
+
+# Option 1: Minimal permissions (read-only monitoring)
+pveum acl modify / --users proxbalance@pam --roles PVEAuditor --propagate 1
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEAuditor --propagate 1
+
+# Option 2: Full permissions (monitoring + migrations)
+pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin --propagate 1
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin --propagate 1
+
+# Verify permissions were set
+pveum acl list | grep proxbalance
 
 # Update config.json in container
 pct exec $CTID -- bash -c "cat > /opt/proxmox-balance-manager/config.json <<EOF
@@ -451,7 +465,7 @@ pct exec $CTID -- bash -c "cat > /opt/proxmox-balance-manager/config.json <<EOF
   \"proxmox_host\": \"<your-proxmox-host>\",
   \"proxmox_port\": 8006,
   \"proxmox_auth_method\": \"api_token\",
-  \"proxmox_api_token_id\": \"root@pam!proxbalance\",
+  \"proxmox_api_token_id\": \"proxbalance@pam!proxbalance\",
   \"proxmox_api_token_secret\": \"${TOKEN_SECRET}\",
   \"proxmox_verify_ssl\": false
 }
@@ -462,7 +476,7 @@ pct exec $CTID -- python3 -c "
 from proxmoxer import ProxmoxAPI
 proxmox = ProxmoxAPI(
     '<your-proxmox-host>',
-    user='root@pam',
+    user='proxbalance@pam',
     token_name='proxbalance',
     token_value='${TOKEN_SECRET}',
     port=8006,
@@ -473,11 +487,16 @@ print('API Token Test:', proxmox.version.get())
 ```
 
 **API Token Details:**
-- Token ID: root@pam!proxbalance (user@realm!tokenname format)
+- Token ID: proxbalance@pam!proxbalance (user@realm!tokenname format)
 - Privileges: Administrator access (privsep=0)
 - No expiration: Token remains valid until manually deleted
 - Secure: Token secret is separate from user password
 - Revocable: Can be deleted without affecting user account
+
+**Permission Requirements:**
+- **Both user AND token need ACL permissions** - Even with privsep=0, Proxmox requires ACLs on both the user account and the token
+- **PVEAuditor** - Minimal role for read-only monitoring (VM.Audit, Sys.Audit, Datastore.Audit)
+- **PVEVMAdmin** - Full role for monitoring + migrations (includes VM.Migrate, VM.Allocate, VM.Console)
 
 **Why API Tokens?**
 - More secure than password authentication
@@ -844,11 +863,11 @@ pct start $CTID --debug
 pct exec $CTID -- cat /opt/proxmox-balance-manager/config.json | jq '.proxmox_api_token_id, .proxmox_api_token_secret'
 
 # Check if token exists in Proxmox
-pvesh get /access/users/root@pam/token/proxbalance
+pvesh get /access/users/proxbalance@pam/token/proxbalance
 
 # Recreate token if needed
-pvesh delete /access/users/root@pam/token/proxbalance
-pvesh create /access/users/root@pam/token/proxbalance --comment "ProxBalance" --privsep 0
+pvesh delete /access/users/proxbalance@pam/token/proxbalance
+pvesh create /access/users/proxbalance@pam/token/proxbalance --comment "ProxBalance" --privsep 0
 
 # Update config.json with new token secret
 # (Edit the config file with the new token values)
@@ -858,7 +877,7 @@ pct exec $CTID -- python3 -c "
 from proxmoxer import ProxmoxAPI
 proxmox = ProxmoxAPI(
     '<proxmox-host>',
-    user='root@pam',
+    user='proxbalance@pam',
     token_name='proxbalance',
     token_value='<token-secret>',
     port=8006,

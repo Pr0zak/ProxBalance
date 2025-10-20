@@ -1,0 +1,140 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iso-blue-top" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iso-blue-side" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iso-green-top" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iso-green-side" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#047857;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="iso-pivot">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Dark background -->
+  <rect width="400" height="400" fill="transparent"/>
+  
+  <!-- Main balance beam - isometric perspective -->
+  <g>
+    <!-- Beam shadow -->
+    <ellipse cx="200" cy="200" rx="135" ry="5" fill="#000000" opacity="0.4"/>
+    <!-- Beam bottom -->
+    <path d="M 65 193 L 335 193 L 335 198 L 65 198 Z" fill="#1e40af"/>
+    <!-- Beam top -->
+    <path d="M 65 187 L 335 187 L 335 193 L 65 193 Z" fill="#3b82f6"/>
+    <!-- Beam front edge -->
+    <path d="M 65 187 L 65 198 L 70 198 L 70 187 Z" fill="#2563eb"/>
+  </g>
+  
+  <!-- Center pivot - isometric cube -->
+  <g transform="translate(200, 187)">
+    <!-- Shadow -->
+    <ellipse cx="0" cy="20" rx="18" ry="5" fill="#000000" opacity="0.5"/>
+    <!-- Bottom face -->
+    <path d="M -13,10 L 0,15 L 13,10 L 0,5 Z" fill="#ea580c"/>
+    <!-- Left face -->
+    <path d="M -13,-8 L -13,10 L 0,15 L 0,-3 Z" fill="url(#iso-pivot)"/>
+    <!-- Right face -->
+    <path d="M 13,-8 L 13,10 L 0,15 L 0,-3 Z" fill="#f97316"/>
+    <!-- Top face -->
+    <path d="M -13,-8 L 0,-13 L 13,-8 L 0,-3 Z" fill="#fbbf24"/>
+    <!-- Highlight -->
+    <circle cx="-4" cy="-9" r="2.5" fill="#fef3c7" opacity="0.7"/>
+  </g>
+  
+  <!-- Left server node - isometric -->
+  <g transform="translate(105, 110)">
+    <!-- Shadow -->
+    <ellipse cx="0" cy="85" rx="40" ry="10" fill="#000000" opacity="0.4"/>
+    <!-- Server bottom -->
+    <path d="M -33,62 L 0,77 L 33,62 L 0,47 Z" fill="#1e40af"/>
+    <!-- Server left face -->
+    <path d="M -33,0 L -33,62 L 0,77 L 0,15 Z" fill="url(#iso-blue-side)"/>
+    <!-- Server right face -->
+    <path d="M 33,0 L 33,62 L 0,77 L 0,15 Z" fill="#2563eb"/>
+    <!-- Server top -->
+    <path d="M -33,0 L 0,-15 L 33,0 L 0,15 Z" fill="url(#iso-blue-top)"/>
+    <!-- Panel details on left face -->
+    <rect x="-30" y="10" width="27" height="4" fill="#93c5fd" opacity="0.7"/>
+    <rect x="-30" y="19" width="27" height="4" fill="#93c5fd" opacity="0.5"/>
+    <rect x="-30" y="28" width="20" height="4" fill="#93c5fd" opacity="0.7"/>
+    <rect x="-30" y="37" width="25" height="4" fill="#93c5fd" opacity="0.5"/>
+    <rect x="-30" y="46" width="27" height="4" fill="#93c5fd" opacity="0.7"/>
+    <!-- Status lights -->
+    <circle cx="-25" cy="54" r="2.5" fill="#10b981"/>
+    <circle cx="-18" cy="54" r="2.5" fill="#10b981"/>
+    <!-- Connection rod -->
+    <rect x="-2" y="77" width="4" height="8" fill="#1e40af"/>
+  </g>
+  
+  <!-- Right server node - isometric -->
+  <g transform="translate(295, 125)">
+    <!-- Shadow -->
+    <ellipse cx="0" cy="78" rx="40" ry="10" fill="#000000" opacity="0.4"/>
+    <!-- Server bottom -->
+    <path d="M -33,56 L 0,71 L 33,56 L 0,41 Z" fill="#047857"/>
+    <!-- Server left face -->
+    <path d="M -33,0 L -33,56 L 0,71 L 0,15 Z" fill="url(#iso-green-side)"/>
+    <!-- Server right face -->
+    <path d="M 33,0 L 33,56 L 0,71 L 0,15 Z" fill="#059669"/>
+    <!-- Server top -->
+    <path d="M -33,0 L 0,-15 L 33,0 L 0,15 Z" fill="url(#iso-green-top)"/>
+    <!-- Panel details on left face -->
+    <rect x="-30" y="10" width="27" height="4" fill="#6ee7b7" opacity="0.7"/>
+    <rect x="-30" y="19" width="27" height="4" fill="#6ee7b7" opacity="0.5"/>
+    <rect x="-30" y="28" width="22" height="4" fill="#6ee7b7" opacity="0.7"/>
+    <rect x="-30" y="37" width="27" height="4" fill="#6ee7b7" opacity="0.5"/>
+    <rect x="-30" y="46" width="27" height="4" fill="#6ee7b7" opacity="0.7"/>
+    <!-- Status lights -->
+    <circle cx="-25" cy="48" r="2.5" fill="#10b981"/>
+    <circle cx="-18" cy="48" r="2.5" fill="#10b981"/>
+    <!-- Connection rod -->
+    <rect x="-2" y="71" width="4" height="8" fill="#047857"/>
+  </g>
+  
+  <!-- Data stream dots - no arrow lines -->
+  <g>
+    <!-- Three dots on top path (above balance beam) -->
+    <circle r="7" fill="#fbbf24">
+      <animateMotion dur="2.5s" repeatCount="indefinite" path="M 120 162 Q 200 152 280 162"/>
+    </circle>
+    <circle r="7" fill="#fb923c">
+      <animateMotion dur="2.5s" begin="0.8s" repeatCount="indefinite" path="M 120 162 Q 200 152 280 162"/>
+    </circle>
+    <circle r="7" fill="#f97316">
+      <animateMotion dur="2.5s" begin="1.6s" repeatCount="indefinite" path="M 120 162 Q 200 152 280 162"/>
+    </circle>
+    
+    <!-- Three dots on bottom path (below balance beam) -->
+    <circle r="7" fill="#fbbf24">
+      <animateMotion dur="2.5s" repeatCount="indefinite" path="M 280 215 Q 200 225 120 215"/>
+    </circle>
+    <circle r="7" fill="#fb923c">
+      <animateMotion dur="2.5s" begin="0.8s" repeatCount="indefinite" path="M 280 215 Q 200 225 120 215"/>
+    </circle>
+    <circle r="7" fill="#f97316">
+      <animateMotion dur="2.5s" begin="1.6s" repeatCount="indefinite" path="M 280 215 Q 200 225 120 215"/>
+    </circle>
+  </g>
+  
+  <!-- ProxBalance text with orange gradient -->
+  <defs>
+    <linearGradient id="textOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f97316;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <text x="200" y="305" font-family="'Poppins', 'Inter', sans-serif" font-size="44" font-weight="800" text-anchor="middle" fill="url(#textOrange)">ProxBalance</text>
+</svg>

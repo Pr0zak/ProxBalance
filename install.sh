@@ -347,17 +347,73 @@ select_template() {
 
 select_resources() {
   msg_info "Resource Configuration"
-  
+
   read -p "Memory (MB) [default: 2048]: " memory
   MEMORY=${memory:-2048}
-  
+
   read -p "CPU cores [default: 2]: " cores
   CORES=${cores:-2}
-  
+
   read -p "Disk size (GB) [default: 8]: " disk
   DISK=${disk:-8}
-  
+
   msg_ok "Resources: ${GN}${MEMORY}${CL}MB RAM, ${GN}${CORES}${CL} cores, ${GN}${DISK}${CL}GB disk"
+}
+
+select_password() {
+  echo ""
+  msg_info "Root Password Configuration"
+  echo ""
+  echo -e "  ${BOLD}${CY}1)${CL} ${YW}Set a custom password${CL} ${DIM}(Secure for production)${CL}"
+  echo -e "  ${BOLD}${CY}2)${CL} ${GN}No password (auto-login to console)${CL} ${DIM}(Recommended for homelab)${CL}"
+  echo -e "  ${BOLD}${CY}3)${CL} ${MG}Random password${CL} ${DIM}(Will be displayed after creation)${CL}"
+  echo ""
+
+  echo -ne "${CY}▶${CL} Select option [1-3] (default: 2): "
+  read choice
+  choice=${choice:-2}
+
+  case $choice in
+    1)
+      while true; do
+        echo ""
+        echo -ne "  Enter password for root user: "
+        read -s password1
+        echo ""
+        echo -ne "  Confirm password: "
+        read -s password2
+        echo ""
+
+        if [ "$password1" = "$password2" ]; then
+          if [ -n "$password1" ]; then
+            ROOT_PASSWORD="$password1"
+            PASSWORD_TYPE="custom"
+            msg_ok "Custom password set"
+            break
+          else
+            msg_error "Password cannot be empty"
+          fi
+        else
+          msg_error "Passwords do not match. Please try again."
+        fi
+      done
+      ;;
+    2)
+      ROOT_PASSWORD=""
+      PASSWORD_TYPE="none"
+      msg_ok "No password (auto-login enabled)"
+      ;;
+    3)
+      ROOT_PASSWORD=$(openssl rand -base64 12)
+      PASSWORD_TYPE="random"
+      msg_ok "Random password generated"
+      ;;
+    *)
+      msg_error "Invalid selection"
+      select_password
+      return
+      ;;
+  esac
 }
 
 detect_proxmox_nodes() {
@@ -548,17 +604,37 @@ show_summary() {
 create_container() {
   msg_info "Creating Container"
 
+  # Build password argument
+  local password_arg=""
+  if [ "$PASSWORD_TYPE" = "custom" ] || [ "$PASSWORD_TYPE" = "random" ]; then
+    password_arg="--password $ROOT_PASSWORD"
+  fi
+
   (
-    pct create "$CTID" "$TEMPLATE" \
-      --hostname "$HOSTNAME" \
-      --memory "$MEMORY" \
-      --cores "$CORES" \
-      --rootfs "${STORAGE}:${DISK}" \
-      --net0 "${NET_CONFIG}" \
-      --unprivileged 1 \
-      --features nesting=1 \
-      --onboot 1 \
-      --start 1 >/dev/null 2>&1
+    if [ -n "$password_arg" ]; then
+      pct create "$CTID" "$TEMPLATE" \
+        --hostname "$HOSTNAME" \
+        --memory "$MEMORY" \
+        --cores "$CORES" \
+        --rootfs "${STORAGE}:${DISK}" \
+        --net0 "${NET_CONFIG}" \
+        --unprivileged 1 \
+        --features nesting=1 \
+        --onboot 1 \
+        --start 1 \
+        $password_arg >/dev/null 2>&1
+    else
+      pct create "$CTID" "$TEMPLATE" \
+        --hostname "$HOSTNAME" \
+        --memory "$MEMORY" \
+        --cores "$CORES" \
+        --rootfs "${STORAGE}:${DISK}" \
+        --net0 "${NET_CONFIG}" \
+        --unprivileged 1 \
+        --features nesting=1 \
+        --onboot 1 \
+        --start 1 >/dev/null 2>&1
+    fi
   ) &
 
   if spinner $! "Creating container ${CTID}"; then
@@ -798,7 +874,7 @@ cat > /opt/proxmox-balance-manager/config.json <<CONFIGEOF
   "proxmox_auth_method": "${auth_method}",
   "proxmox_api_token_id": "${api_token_id}",
   "proxmox_api_token_secret": "${api_token_secret}",
-  "proxmox_username": "root@pam",
+  "proxmox_username": "proxbalance@pam",
   "proxmox_password": "",
   "proxmox_verify_ssl": false,
   "ai_provider": "none",
@@ -893,6 +969,25 @@ else
   echo "⚠ Warning: index.html not found in repository"
 fi
 
+# Copy assets folder (logos, images, etc.)
+if [ -d /opt/proxmox-balance-manager/assets ]; then
+  echo "Copying assets folder to /var/www/html/"
+  cp -rf /opt/proxmox-balance-manager/assets /var/www/html/
+
+  # Count files copied
+  ASSET_COUNT=$(find /var/www/html/assets -type f 2>/dev/null | wc -l)
+  echo "✓ Copied ${ASSET_COUNT} asset files"
+
+  # Verify logo files exist
+  if [ -f /var/www/html/assets/logo_icon_v2.svg ]; then
+    echo "✓ Logo files copied successfully"
+  else
+    echo "⚠ Warning: Logo files may be missing"
+  fi
+else
+  echo "⚠ Warning: assets folder not found in repository"
+fi
+
 # Copy Nginx configuration
 if [ -f /opt/proxmox-balance-manager/nginx/proxmox-balance ]; then
   cp /opt/proxmox-balance-manager/nginx/proxmox-balance /etc/nginx/sites-available/
@@ -928,14 +1023,38 @@ setup_api_token_auth() {
   msg_info "Creating Proxmox API Token"
   echo ""
 
+  # Clean up old root@pam token references if they exist (from previous versions)
+  if pveum user token list root@pam 2>/dev/null | grep -q "proxbalance"; then
+    msg_info "Cleaning up old root@pam!proxbalance token"
+    # Delete old token
+    pvesh delete /access/users/root@pam/token/proxbalance 2>/dev/null || true
+    # Remove old ACL entries to prevent "ignore invalid acl token" warnings
+    pveum acl delete / --tokens root@pam!proxbalance 2>/dev/null || true
+    msg_ok "Old token cleaned up"
+    echo ""
+  fi
+
+  # Create dedicated proxbalance user if it doesn't exist
+  local TOKEN_USER="proxbalance@pam"
+  local TOKEN_NAME="proxbalance"
+
+  if ! pveum user list | grep -q "^proxbalance@pam"; then
+    msg_info "Creating dedicated 'proxbalance' user"
+    pveum user add proxbalance@pam --comment "ProxBalance service account" --enable 1
+    msg_ok "User 'proxbalance@pam' created"
+  else
+    msg_ok "User 'proxbalance@pam' already exists"
+  fi
+  echo ""
+
   # Display token information
   echo -e "${BL}═══════════════════════════════════════════════════════════════${CL}"
   echo -e "${BL}Token Configuration${CL}"
   echo -e "${BL}═══════════════════════════════════════════════════════════════${CL}"
   echo ""
-  echo -e "  ${GN}Token User:${CL}  ${YW}root@pam${CL}"
+  echo -e "  ${GN}Token User:${CL}  ${YW}proxbalance@pam${CL}"
   echo -e "  ${GN}Token Name:${CL}  ${YW}proxbalance${CL}"
-  echo -e "  ${GN}Token ID:${CL}    ${YW}root@pam!proxbalance${CL}"
+  echo -e "  ${GN}Token ID:${CL}    ${YW}proxbalance@pam!proxbalance${CL}"
   echo ""
   echo -e "${BL}─────────────────────────────────────────────────────────────${CL}"
   echo -e "${BL}Permission Options${CL}"
@@ -957,24 +1076,21 @@ setup_api_token_auth() {
   permission_choice=${permission_choice:-1}
   echo ""
 
-  local TOKEN_USER="root@pam"
-  local TOKEN_NAME="proxbalance"
-
   case $permission_choice in
     1)
       local TOKEN_COMMENT="ProxBalance monitoring (read-only)"
-      local TOKEN_PERMS="minimal"
+      TOKEN_PERMS="minimal"  # Make this global so set_container_notes can see it
       msg_info "Using minimal (read-only) permissions"
       ;;
     2)
       local TOKEN_COMMENT="ProxBalance monitoring and migration"
-      local TOKEN_PERMS="full"
+      TOKEN_PERMS="full"  # Make this global so set_container_notes can see it
       msg_info "Using full permissions (with migration)"
       ;;
     *)
       msg_warn "Invalid selection, using minimal permissions"
       local TOKEN_COMMENT="ProxBalance monitoring (read-only)"
-      local TOKEN_PERMS="minimal"
+      TOKEN_PERMS="minimal"  # Make this global so set_container_notes can see it
       ;;
   esac
   echo ""
@@ -1000,11 +1116,60 @@ setup_api_token_auth() {
         2)
           msg_info "Keeping existing token"
           echo ""
-          msg_warn "You will need to manually configure the token in config.json"
-          echo "Token ID: ${GN}${TOKEN_USER}!${TOKEN_NAME}${CL}"
+          echo -e "${YW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
+          echo -e "  ${BOLD}${YW}Please enter the existing token secret${CL}"
+          echo -e "${YW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
           echo ""
-          msg_error "Cannot continue without token secret. Exiting."
-          exit 1
+          echo -e "  ${INFO} ${DIM}You can find this in Proxmox:${CL}"
+          echo -e "  ${DIM}  Datacenter → Permissions → API Tokens${CL}"
+          echo -e "  ${DIM}  Or if you saved it previously${CL}"
+          echo ""
+
+          local existing_token_secret=""
+          while true; do
+            echo -ne "  ${CY}▶${CL} Enter token secret: "
+            read -s existing_token_secret
+            echo ""
+
+            if [ -z "$existing_token_secret" ]; then
+              msg_error "Token secret cannot be empty"
+              echo ""
+              echo -e "  ${BL}1)${CL} Try again"
+              echo -e "  ${BL}2)${CL} Delete and create new token"
+              echo -e "  ${BL}3)${CL} Exit installation"
+              echo ""
+              read -p "Select option [1-3]: " retry_choice
+
+              case $retry_choice in
+                1)
+                  continue
+                  ;;
+                2)
+                  msg_info "Deleting existing token..."
+                  pvesh delete /access/users/${TOKEN_USER}/token/${TOKEN_NAME} 2>/dev/null || true
+                  break
+                  ;;
+                3)
+                  msg_error "Installation cancelled"
+                  exit 1
+                  ;;
+                *)
+                  msg_error "Invalid selection. Exiting."
+                  exit 1
+                  ;;
+              esac
+            else
+              # Store the manually entered token
+              api_token_id="${TOKEN_USER}!${TOKEN_NAME}"
+              api_token_secret="$existing_token_secret"
+              msg_ok "Existing token secret accepted"
+              echo ""
+              msg_info "Token will be configured in ProxBalance"
+
+              # Skip token creation since we're using existing
+              return 0
+            fi
+          done
           ;;
         *)
           msg_warn "Invalid selection, deleting existing token"
@@ -1064,14 +1229,20 @@ setup_api_token_auth() {
 
       if [ "$TOKEN_PERMS" = "minimal" ]; then
         # Minimal (read-only) permissions
-        # VM.Audit on all VMs/CTs
-        pvesh set /access/acl --path / --roles PVEAuditor --tokens "${API_TOKEN_ID}" 2>/dev/null || true
+        # IMPORTANT: Both USER and TOKEN need permissions (even with privsep=0)
+        # Add to USER account
+        pvesh set /access/acl --path / --roles PVEAuditor --users "${TOKEN_USER}" --propagate 1 2>/dev/null || true
+        # Add to TOKEN
+        pvesh set /access/acl --path / --roles PVEAuditor --tokens "${API_TOKEN_ID}" --propagate 1 2>/dev/null || true
         msg_ok "Minimal permissions applied (VM.Audit, Sys.Audit, Datastore.Audit)"
         echo -e "     ${YW}Note:${CL} This token can only read data. Migration buttons will not work."
       else
         # Full permissions (read + migrate)
-        # PVEVMAdmin gives VM.* including VM.Migrate
-        pvesh set /access/acl --path / --roles PVEVMAdmin --tokens "${API_TOKEN_ID}" 2>/dev/null || true
+        # IMPORTANT: Both USER and TOKEN need permissions (even with privsep=0)
+        # Add to USER account
+        pvesh set /access/acl --path / --roles PVEVMAdmin --users "${TOKEN_USER}" --propagate 1 2>/dev/null || true
+        # Add to TOKEN
+        pvesh set /access/acl --path / --roles PVEVMAdmin --tokens "${API_TOKEN_ID}" --propagate 1 2>/dev/null || true
         msg_ok "Full permissions applied (includes VM.Migrate for automated migrations)"
         echo -e "     ${GN}✓${CL} This token can perform live migrations"
       fi
@@ -1109,6 +1280,180 @@ setup_api_token_auth() {
   fi
 }
 
+setup_motd() {
+  msg_info "Configuring Console Message"
+
+  # Create MOTD with useful information
+  pct exec "$CTID" -- bash <<EOF
+cat > /etc/motd <<'MOTD'
+
+╔════════════════════════════════════════════════════════════════╗
+║                  ProxBalance v2.0                              ║
+║         Proxmox Cluster Balance Manager                        ║
+╚════════════════════════════════════════════════════════════════╝
+
+📡 Web Interface:  http://${CONTAINER_IP}
+📊 API Endpoint:   http://${CONTAINER_IP}/api
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Common Commands:
+
+  📊 Check service status:
+     systemctl status proxmox-balance proxmox-collector.timer nginx
+
+  📈 Monitor data collection:
+     journalctl -u proxmox-collector -f
+
+  📝 View API logs:
+     journalctl -u proxmox-balance -f
+
+  🔄 Restart services:
+     systemctl restart proxmox-balance
+     systemctl restart proxmox-collector.timer
+
+  ⚙️  Edit configuration:
+     nano /opt/proxmox-balance-manager/config.json
+     # Then restart services to apply changes
+
+  🔍 Run manual collection:
+     systemctl start proxmox-collector.service
+
+  📊 View cluster cache:
+     jq '.' /opt/proxmox-balance-manager/cluster_cache.json | less
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 Documentation: https://github.com/Pr0zak/ProxBalance
+🐛 Report issues:  https://github.com/Pr0zak/ProxBalance/issues
+
+MOTD
+EOF
+
+  msg_ok "Console message configured"
+}
+
+set_container_notes() {
+  msg_info "Setting Container Notes"
+
+  # Determine permission level for notes
+  local perm_description="PVEAuditor (Read-Only)"
+  local perm_note="Read-only monitoring. Migration buttons will not work."
+
+  # Check if we set full permissions (this variable should be available from setup_api_tokens)
+  if [ "${TOKEN_PERMS:-minimal}" = "full" ]; then
+    perm_description="PVEVMAdmin (Read + Migrate)"
+    perm_note="Full permissions including live migrations."
+  fi
+
+  # Create comprehensive notes for Proxmox UI using Markdown
+  local notes="# ProxBalance v2.0
+
+**Cluster Balance Manager**
+
+---
+
+## Access Information
+
+* **Web Interface:** <http://${CONTAINER_IP}>
+* **API Endpoint:** <http://${CONTAINER_IP}/api>
+* **Container ID:** ${CTID}
+* **Hostname:** ${HOSTNAME}
+
+---
+
+## Quick Commands
+
+### Check Status
+
+\`\`\`
+bash -c \"\$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)\" _ ${CTID}
+\`\`\`
+
+### Access Console
+
+\`\`\`
+pct enter ${CTID}
+\`\`\`
+
+### View Logs
+
+\`\`\`
+# API Logs
+pct exec ${CTID} -- journalctl -u proxmox-balance -f
+
+# Collector Logs
+pct exec ${CTID} -- journalctl -u proxmox-collector -f
+\`\`\`
+
+### Restart Services
+
+\`\`\`
+# Restart API
+pct exec ${CTID} -- systemctl restart proxmox-balance
+
+# Restart Collector
+pct exec ${CTID} -- systemctl restart proxmox-collector.timer
+\`\`\`
+
+### Edit Configuration
+
+\`\`\`
+pct exec ${CTID} -- nano /opt/proxmox-balance-manager/config.json
+\`\`\`
+
+---
+
+## Services
+
+| Service | Description | Port |
+|---------|-------------|------|
+| proxmox-balance.service | Flask API Server | 5000 |
+| proxmox-collector.timer | Data Collection Timer | - |
+| nginx.service | Web Server | 80 |
+
+---
+
+## Key Files
+
+| Purpose | Path |
+|---------|------|
+| Config | \`/opt/proxmox-balance-manager/config.json\` |
+| Cache | \`/opt/proxmox-balance-manager/cluster_cache.json\` |
+| API App | \`/opt/proxmox-balance-manager/app.py\` |
+| Collector | \`/opt/proxmox-balance-manager/collector_api.py\` |
+| Web UI | \`/var/www/html/index.html\` |
+
+---
+
+## Authentication
+
+* **Method:** API Token Authentication (v2.0)
+* **Token ID:** \`proxbalance@pam!proxbalance\`
+* **Permissions:** ${perm_description}
+* **Note:** ${perm_note}
+
+---
+
+## Resources
+
+* [Documentation](https://github.com/Pr0zak/ProxBalance)
+* [Installation Guide](https://github.com/Pr0zak/ProxBalance/blob/main/docs/INSTALL.md)
+* [Troubleshooting](https://github.com/Pr0zak/ProxBalance/blob/main/docs/TROUBLESHOOTING.md)
+* [Report Issues](https://github.com/Pr0zak/ProxBalance/issues)
+
+---
+
+*Generated: $(date '+%Y-%m-%d %H:%M:%S %Z')*
+"
+
+  # Set notes using pct set
+  if pct set "$CTID" --description "$notes" 2>/dev/null; then
+    msg_ok "Container notes set (Markdown formatted)"
+  else
+    msg_warn "Could not set container notes (non-critical)"
+  fi
+}
 
 start_services() {
   msg_info "Starting Services"
@@ -1236,27 +1581,59 @@ show_completion() {
     echo -e "  ${BOLD}${CY}🌐 Web Interface:${CL}  ${BOLD}${GN}http://${CONTAINER_IP}${CL}"
     echo -e "  ${BOLD}${CY}⚡ API Endpoint:${CL}   ${BOLD}${GN}http://${CONTAINER_IP}/api${CL}"
     echo -e "  ${BOLD}${CY}📦 Container ID:${CL}   ${BOLD}${GN}${CTID}${CL}"
+    echo -e "  ${BOLD}${CY}🏷️  Hostname:${CL}      ${BOLD}${GN}${HOSTNAME}${CL}"
+    echo ""
+  fi
+
+  # Display password information if random password was generated
+  if [ "$PASSWORD_TYPE" = "random" ]; then
+    echo -e "${YW}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${CL}"
+    echo -e "${YW}┃${CL} ${BOLD}${BFR}🔐 Container Root Password (Save This!)${CL}                     ${YW}┃${CL}"
+    echo -e "${YW}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${CL}"
+    echo ""
+    echo -e "  ${BOLD}${YW}Password:${CL} ${BOLD}${GN}${ROOT_PASSWORD}${CL}"
+    echo ""
+    echo -e "  ${WARN} ${YW}Save this password - it won't be shown again!${CL}"
+    echo -e "  ${INFO} ${DIM}Access container console: ${BL}pct enter ${CTID}${CL}"
+    echo ""
+  elif [ "$PASSWORD_TYPE" = "none" ]; then
+    echo -e "${GN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${CL}"
+    echo -e "${GN}┃${CL} ${BOLD}${BFR}🔐 Container Access${CL}                                         ${GN}┃${CL}"
+    echo -e "${GN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${CL}"
+    echo ""
+    echo -e "  ${CM} ${GN}Auto-login enabled${CL} ${DIM}(No password required)${CL}"
+    echo -e "  ${INFO} ${DIM}Access container console: ${BL}pct enter ${CTID}${CL}"
     echo ""
   fi
 
   echo -e "${MG}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${CL}"
-  echo -e "${MG}┃${CL} ${BOLD}${BFR}🛠️  Useful Commands${CL}                                          ${MG}┃${CL}"
+  echo -e "${MG}┃${CL} ${BOLD}${BFR}🛠️  Quick Commands${CL}                                            ${MG}┃${CL}"
   echo -e "${MG}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${CL}"
   echo ""
   echo -e "  ${BOLD}${YW}📊 Check detailed status:${CL}"
-  echo -e "     ${DIM}bash -c \"\$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)\" _ ${CTID}${CL}"
+  echo -e "     ${BL}bash -c \"\$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)\" _ ${CTID}${CL}"
+  echo ""
+  echo -e "  ${BOLD}${YW}🖥️  Access container console:${CL}"
+  echo -e "     ${BL}pct enter ${CTID}${CL}"
   echo ""
   echo -e "  ${BOLD}${YW}📈 Monitor data collection:${CL}"
-  echo -e "     ${DIM}pct exec ${CTID} -- journalctl -u proxmox-collector -f${CL}"
+  echo -e "     ${BL}pct exec ${CTID} -- journalctl -u proxmox-collector -f${CL}"
   echo ""
   echo -e "  ${BOLD}${YW}📝 View API logs:${CL}"
-  echo -e "     ${DIM}pct exec ${CTID} -- journalctl -u proxmox-balance -f${CL}"
+  echo -e "     ${BL}pct exec ${CTID} -- journalctl -u proxmox-balance -f${CL}"
+  echo ""
+  echo -e "  ${BOLD}${YW}🔄 Restart services:${CL}"
+  echo -e "     ${BL}pct exec ${CTID} -- systemctl restart proxmox-balance${CL}"
+  echo ""
+  echo -e "  ${BOLD}${YW}⚙️  Edit configuration:${CL}"
+  echo -e "     ${BL}pct exec ${CTID} -- nano /opt/proxmox-balance-manager/config.json${CL}"
   echo ""
   echo -e "${GN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
   echo ""
   echo -e "  ${BOLD}${GN}🎉 ProxBalance is ready!${CL} ${BOLD}${CY}→${CL} ${BOLD}${GN}http://${CONTAINER_IP}${CL}"
   echo ""
-  echo -e "${DIM}  Need help? Visit: https://github.com/Pr0zak/ProxBalance${CL}"
+  echo -e "${DIM}  📚 Documentation: https://github.com/Pr0zak/ProxBalance${CL}"
+  echo -e "${DIM}  🐛 Report issues:  https://github.com/Pr0zak/ProxBalance/issues${CL}"
   echo ""
 }
 
@@ -1276,6 +1653,7 @@ main() {
   select_storage
   select_template
   select_resources
+  select_password
   detect_proxmox_nodes
   show_summary
 
@@ -1288,6 +1666,8 @@ main() {
   configure_application
   setup_services
   setup_nginx
+  setup_motd
+  set_container_notes
 
   section_header "Finalization" "3" "3"
   start_services

@@ -38,7 +38,7 @@ AI-enhanced recommendations provide:
   "ui_refresh_interval_minutes": 15,
   "proxmox_host": "10.0.0.3",
   "proxmox_port": 8006,
-  "proxmox_api_token_id": "root@pam!proxbalance",
+  "proxmox_api_token_id": "proxbalance@pam!proxbalance",
   "proxmox_api_token_secret": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "ai_enabled": true,
   "ai_provider": "anthropic",
@@ -66,10 +66,35 @@ AI-enhanced recommendations provide:
 | `ai_base_url` | string | API base URL (provider-specific or Ollama URL) |
 | `ai_analysis_period` | `1h`, `6h`, `24h`, `7d` | Historical data timeframe for analysis |
 
-**Recommended Models:**
-- **OpenAI**: `gpt-4` (best), `gpt-4-turbo`, `gpt-3.5-turbo` (faster/cheaper)
-- **Anthropic**: `claude-3-5-sonnet-20241022` (recommended), `claude-3-haiku-20240307` (faster)
-- **Ollama**: `llama3.1:8b` (fast), `llama3.1:70b` (accurate), `mistral:7b` (lightweight)
+### Recommended Models
+
+#### Cloud-Based Models
+
+| Provider | Model | Quality | Speed | Cost/Request | Best For |
+|----------|-------|---------|-------|--------------|----------|
+| **OpenAI** | gpt-4o | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ~$0.02 | Best overall accuracy |
+| **OpenAI** | gpt-4-turbo | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ~$0.01 | Balanced performance |
+| **OpenAI** | gpt-3.5-turbo | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~$0.002 | Fast and affordable |
+| **Anthropic** | claude-3-5-sonnet-20241022 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ~$0.015 | Excellent reasoning |
+| **Anthropic** | claude-3-haiku-20240307 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~$0.0003 | Fast and cheap |
+
+#### Local Models (Ollama)
+
+  | Model | Quality | Speed | RAM Required | JSON Accuracy | Reasoning Quality |
+  |-------|---------|-------|--------------|---------------|-------------------|
+  | **Qwen2.5:14b** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ~10GB | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+  | **Qwen2.5:7b** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ~5GB | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+  | **Llama3.1:8b** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ~6GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+  | **Llama3.1:70b** | ⭐⭐⭐⭐⭐ | ⭐ | ~45GB | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+  | **Mistral:7b** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ~5GB | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+  | **DeepSeek-Coder:6.7b** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ~5GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+
+**Recommendations:**
+- **Best Overall (Local)**: Qwen2.5:14b - Excellent JSON accuracy and reasoning
+- **Best Budget (Local)**: Qwen2.5:7b - Great balance of performance and resources
+- **Best Speed (Local)**: Mistral:7b - Very fast, lightweight
+- **Best Accuracy (Local)**: Llama3.1:70b - Requires significant hardware
+- **Best for ProxBalance**: Qwen2.5:7b or Llama3.1:8b - Reliable JSON output
 
 ## API Usage
 
@@ -192,25 +217,39 @@ curl -X POST http://<container-ip>/api/config \
 # 1. Install Ollama on a server (can be same as ProxBalance or separate)
 curl -fsSL https://ollama.com/install.sh | sh
 
-# 2. Pull a model
-ollama pull llama3.1:8b      # Fast, 8GB RAM
-ollama pull llama3.1:70b     # Accurate, 48GB+ RAM
-ollama pull mistral:7b       # Lightweight alternative
+# 2. Pull a recommended model
+ollama pull qwen2.5:7b       # Best overall - reliable JSON, great reasoning
+ollama pull qwen2.5:14b      # Better quality, needs 10GB RAM
+ollama pull llama3.1:8b      # Good alternative, 6GB RAM
+ollama pull mistral:7b       # Fastest, lowest RAM (5GB)
 
 # 3. Verify Ollama is accessible
 curl http://<ollama-host>:11434/api/version
 
-# 4. Configure ProxBalance via web UI or API
+# 4. Test the model
+ollama run qwen2.5:7b "Analyze this cluster: 3 nodes, node1 at 80% CPU"
+
+# 5. Configure ProxBalance via web UI or API
 curl -X POST http://<container-ip>/api/config \
   -H "Content-Type: application/json" \
   -d '{
     "ai_enabled": true,
     "ai_provider": "ollama",
     "ai_base_url": "http://<ollama-host>:11434",
-    "ai_model": "llama3.1:8b",
+    "ai_model": "qwen2.5:7b",
     "ai_analysis_period": "24h"
   }'
 ```
+
+**Hardware Requirements by Model:**
+- **5-6GB RAM**: qwen2.5:7b, llama3.1:8b, mistral:7b, deepseek-coder:6.7b
+- **10GB RAM**: qwen2.5:14b
+- **45GB+ RAM**: llama3.1:70b (for production clusters with high accuracy needs)
+
+**GPU Acceleration (Optional but Recommended):**
+- NVIDIA GPU with CUDA significantly speeds up inference
+- Without GPU: ~5-15 seconds per recommendation
+- With GPU: ~1-3 seconds per recommendation
 
 ## AI Analysis Process
 
@@ -253,9 +292,23 @@ Each recommendation includes:
 
 ### Model Selection
 
-- **OpenAI GPT-4**: Best overall accuracy, higher cost
-- **Claude 3.5 Sonnet**: Excellent reasoning, good cost/performance
-- **Local LLMs**: No API costs, requires local resources
+**Cloud-Based (Best for production):**
+- **OpenAI gpt-4o**: Best overall accuracy, ~$0.02/request
+- **Anthropic claude-3-5-sonnet**: Excellent reasoning, ~$0.015/request
+- **OpenAI gpt-3.5-turbo**: Fast and cheap, ~$0.002/request
+
+**Local (Best for homelab/cost-sensitive):**
+- **Qwen2.5:7b**: Best balance - excellent JSON accuracy, good reasoning, only 5GB RAM
+- **Qwen2.5:14b**: Higher quality, needs 10GB RAM
+- **Llama3.1:8b**: Solid alternative with good performance
+- **Mistral:7b**: Fastest, lowest resource usage
+
+**Selection Criteria:**
+- **Need 100% uptime?** → Use cloud (OpenAI/Anthropic)
+- **Want zero cost?** → Use local (Qwen2.5 recommended)
+- **Have GPU?** → Local models run 3-5x faster
+- **Small clusters (<20 guests)?** → Mistral:7b or gpt-3.5-turbo
+- **Large clusters (50+ guests)?** → Qwen2.5:14b or claude-3-5-sonnet
 
 ### API Key Security
 

@@ -17,9 +17,19 @@ if ! command -v pvesh &> /dev/null; then
 fi
 
 # Default values
-TOKEN_USER="root@pam"
+TOKEN_USER="proxbalance@pam"
 TOKEN_NAME="proxbalance"
 TOKEN_COMMENT="ProxBalance automated monitoring and balancing"
+
+# Create dedicated user if it doesn't exist
+if ! pveum user list | grep -q "^proxbalance@pam"; then
+    echo "Creating dedicated 'proxbalance' user..."
+    pveum user add proxbalance@pam --comment "ProxBalance service account" --enable 1
+    echo "✓ User 'proxbalance@pam' created"
+else
+    echo "✓ User 'proxbalance@pam' already exists"
+fi
+echo ""
 
 echo "This script will create an API token with the following details:"
 echo "  User: $TOKEN_USER"
