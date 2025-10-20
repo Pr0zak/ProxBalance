@@ -111,6 +111,67 @@ Once installed, open `http://<container-ip>` in your browser.
 
 ---
 
+## 📁 Project Structure
+
+```
+ProxBalance/
+├── Core Application
+│   ├── app.py                    # Flask API backend (main server)
+│   ├── collector_api.py          # Proxmox data collection service
+│   ├── ai_provider.py            # AI recommendation engine (OpenAI/Anthropic/Ollama)
+│   ├── index.html                # React-based web UI (single-page app)
+│   └── update_timer.py           # Background update scheduler
+│
+├── Configuration
+│   ├── config.example.json       # Configuration template with defaults
+│   └── cluster_cache.json        # Cached cluster data (auto-generated)
+│
+├── Installation & Setup
+│   ├── install.sh                # Main installation script (LXC + services)
+│   ├── upgrade-to-v2.sh          # Upgrade script from v1.x to v2.0
+│   ├── create_api_token.sh       # Proxmox API token creation helper
+│   ├── test_api_token.sh         # API token validation tool
+│   └── post_update.sh            # Post-upgrade hook script
+│
+├── Maintenance
+│   ├── update.sh                 # Update to latest version from GitHub
+│   ├── check-status.sh           # System health check tool
+│   ├── debug-services.sh         # Service debugging utility
+│   └── manage_settings.sh        # Configuration management tool
+│
+├── System Services
+│   ├── systemd/                  # Systemd service files
+│   │   ├── proxmox-balance.service      # Main API service
+│   │   └── proxmox-collector.timer      # Data collection timer
+│   └── nginx/                    # Nginx configuration
+│       └── proxmox-balance       # Reverse proxy config
+│
+├── Assets
+│   └── assets/                   # Logo and favicon files
+│       ├── logo_v2.svg           # Full logo
+│       ├── logo_icon_v2.svg      # Icon-only logo
+│       └── favicon.svg           # Browser favicon
+│
+└── Documentation
+    └── docs/
+        ├── INSTALL.md            # Complete installation guide
+        ├── TROUBLESHOOTING.md    # Problem solving and FAQ
+        ├── AI_FEATURES.md        # AI recommendations setup
+        ├── AI_INSTALL.md         # AI provider configuration
+        ├── CONTRIBUTING.md       # Development guidelines
+        ├── DOCKER_DEV.md         # Docker development environment
+        └── README.md             # Documentation index
+```
+
+**Key Files:**
+- `app.py` - Main Flask API handling UI requests, migrations, and AI recommendations
+- `collector_api.py` - Connects to Proxmox API to gather cluster metrics and RRD data
+- `index.html` - Complete React UI with cluster map, node status, and migration controls
+- `install.sh` - Automated installer creating LXC container and configuring all services
+- `upgrade-to-v2.sh` - Migration script handling v1.x → v2.0 authentication changes
+
+---
+
 ## 🔧 Basic Usage
 
 ### Tagging Guests
