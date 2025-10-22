@@ -32,5 +32,61 @@
     "skip_stopped_guest_rrd": true,
     "node_rrd_timeframe": "day",
     "guest_rrd_timeframe": "hour"
+  },
+  "recommendation_thresholds": {
+    "cpu_threshold": 60,
+    "mem_threshold": 70,
+    "iowait_threshold": 30,
+    "_comment_thresholds": "IOWait guidelines: <10% good, 10-20% acceptable, 20-30% high, >30% critical. Adjust based on workload and storage performance."
+  },
+  "automated_migrations": {
+    "enabled": false,
+    "dry_run": true,
+    "check_interval_minutes": 5,
+    "schedule": {
+      "migration_windows": [
+        {
+          "name": "Nightly Window",
+          "enabled": true,
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          "start_time": "22:00",
+          "end_time": "06:00",
+          "timezone": "America/New_York"
+        }
+      ],
+      "blackout_windows": [
+        {
+          "name": "Business Hours",
+          "enabled": true,
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+          "start_time": "08:00",
+          "end_time": "18:00"
+        }
+      ]
+    },
+    "rules": {
+      "min_confidence_score": 75,
+      "max_migrations_per_run": 3,
+      "max_concurrent_migrations": 1,
+      "cooldown_minutes": 30,
+      "respect_ignore_tags": true,
+      "respect_exclude_tags": true,
+      "respect_exclude_affinity": true,
+      "require_auto_migrate_ok_tag": false
+    },
+    "safety_checks": {
+      "check_cluster_health": true,
+      "require_quorum": true,
+      "max_node_memory_percent": 90,
+      "max_node_cpu_percent": 85,
+      "abort_on_failure": true
+    },
+    "notifications": {
+      "enabled": false,
+      "webhook_url": "",
+      "on_start": true,
+      "on_complete": true,
+      "on_failure": true
+    }
   }
 }

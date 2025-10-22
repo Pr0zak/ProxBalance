@@ -802,7 +802,7 @@ pip install -q --upgrade pip
 if [ -f requirements.txt ]; then
   pip install -q -r requirements.txt
 else
-  pip install -q flask flask-cors gunicorn requests proxmoxer
+  pip install -q flask flask-cors flask-compress gunicorn requests proxmoxer
 fi
 deactivate
 

@@ -6,6 +6,7 @@ Reads from cache file for fast responses
 
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from flask_compress import Compress
 import subprocess
 import json
 import os
@@ -20,6 +21,7 @@ from ai_provider import AIProviderFactory
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
+Compress(app)  # Enable gzip compression for all responses
 
 # Determine paths based on environment
 if os.path.exists('/opt/proxmox-balance-manager'):
@@ -64,6 +66,48 @@ def _write_session(session_id, session_data):
     except Exception as e:
         print(f"Error writing session {session_id}: {e}", file=sys.stderr)
 
+# In-Memory Cache Manager
+class CacheManager:
+    """In-memory cache with TTL for cluster data"""
+    def __init__(self, ttl_seconds=60):
+        self.ttl_seconds = ttl_seconds
+        self._cache = None
+        self._cached_at = None
+        self._lock = threading.Lock()
+
+    def get(self) -> Dict:
+        """Get cached data or read from disk if expired"""
+        with self._lock:
+            now = time.time()
+
+            # Return cached data if still valid
+            if self._cache is not None and self._cached_at is not None:
+                age = now - self._cached_at
+                if age < self.ttl_seconds:
+                    return self._cache
+
+            # Cache expired or doesn't exist - read from disk
+            try:
+                if not os.path.exists(CACHE_FILE):
+                    return None
+
+                with open(CACHE_FILE, 'r') as f:
+                    self._cache = json.load(f)
+                    self._cached_at = now
+                    return self._cache
+            except Exception as e:
+                print(f"Error reading cache: {str(e)}", file=sys.stderr)
+                return None
+
+    def invalidate(self):
+        """Force cache refresh on next request"""
+        with self._lock:
+            self._cache = None
+            self._cached_at = None
+
+# Global cache manager instance (60 second TTL)
+cache_manager = CacheManager(ttl_seconds=60)
+
 @app.route('/')
 def index():
     """Serve the main index.html page"""
@@ -106,16 +150,8 @@ def load_config():
     return config
 
 def read_cache() -> Dict:
-    """Read cluster data from cache file"""
-    try:
-        if not os.path.exists(CACHE_FILE):
-            return None
-        
-        with open(CACHE_FILE, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error reading cache: {str(e)}")
-        return None
+    """Read cluster data from cache (uses in-memory cache with TTL)"""
+    return cache_manager.get()
 
 def get_version_info():
     """Get current version and branch information"""
@@ -378,6 +414,7 @@ def get_recommendations():
         data = request.json or {}
         cpu_threshold = float(data.get("cpu_threshold", 60.0))
         mem_threshold = float(data.get("mem_threshold", 70.0))
+        iowait_threshold = float(data.get("iowait_threshold", 30.0))
         maintenance_nodes = set(data.get("maintenance_nodes", []))
 
         cache_data = read_cache()
@@ -390,6 +427,7 @@ def get_recommendations():
                 cache_data.get('guests', {}),
                 cpu_threshold,
                 mem_threshold,
+                iowait_threshold,
                 maintenance_nodes
             )
         except Exception as e:
@@ -397,11 +435,60 @@ def get_recommendations():
             import traceback
             traceback.print_exc()
             return jsonify({"success": False, "error": f"Recommendation error: {str(e)}"}), 500
-        
+
+        # Calculate intelligent threshold suggestions
+        threshold_suggestions = calculate_intelligent_thresholds(cache_data.get('nodes', {}))
+
+        # AI Enhancement: If enabled, enhance recommendations with AI insights
+        ai_enhanced = False
+        config = load_config()
+        if config.get('ai_recommendations_enabled', False):
+            try:
+                from ai_provider import get_ai_provider
+                ai_provider = get_ai_provider()
+                if ai_provider:
+                    print(f"Enhancing {len(recommendations)} recommendations with AI insights...", file=sys.stderr)
+
+                    # Call AI enhancement
+                    enhancement_result = ai_provider.enhance_recommendations(
+                        recommendations,
+                        cache_data
+                    )
+
+                    if enhancement_result.get('success') and enhancement_result.get('insights'):
+                        # Merge AI insights into recommendations
+                        insights_by_vmid = {
+                            insight['vmid']: insight
+                            for insight in enhancement_result['insights']
+                        }
+
+                        for rec in recommendations:
+                            vmid = rec['vmid']
+                            if vmid in insights_by_vmid:
+                                insight = insights_by_vmid[vmid]
+                                rec['ai_insight'] = insight.get('insight', '')
+                                rec['ai_confidence_adjustment'] = insight.get('confidence_adjustment', 0)
+
+                                # Adjust confidence score based on AI feedback
+                                if 'confidence_score' in rec:
+                                    rec['confidence_score'] = max(0, min(100,
+                                        rec['confidence_score'] + insight.get('confidence_adjustment', 0)
+                                    ))
+
+                        ai_enhanced = True
+                        print(f"✓ AI enhancement complete: {len(enhancement_result['insights'])} insights added", file=sys.stderr)
+                    else:
+                        print(f"AI enhancement returned no insights", file=sys.stderr)
+            except Exception as e:
+                print(f"Warning: AI enhancement failed (continuing with algorithm-only): {str(e)}", file=sys.stderr)
+                # Continue without AI enhancement - graceful degradation
+
         return jsonify({
             "success": True,
             "recommendations": recommendations,
-            "count": len(recommendations)
+            "count": len(recommendations),
+            "threshold_suggestions": threshold_suggestions,
+            "ai_enhanced": ai_enhanced
         })
     except Exception as e:
         print(f"Error in get_recommendations: {str(e)}", file=sys.stderr)
@@ -410,129 +497,655 @@ def get_recommendations():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float, mem_threshold: float, maintenance_nodes: set = None) -> List[Dict]:
-    """Generate migration recommendations"""
+@app.route("/api/recommendations/threshold-suggestions", methods=["GET"])
+def get_threshold_suggestions():
+    """Get intelligent threshold suggestions based on cluster analysis"""
+    try:
+        cache_data = read_cache()
+        if not cache_data:
+            return jsonify({"success": False, "error": "No data available"}), 503
+
+        suggestions = calculate_intelligent_thresholds(cache_data.get('nodes', {}))
+
+        return jsonify({
+            "success": True,
+            **suggestions
+        })
+    except Exception as e:
+        print(f"Error in get_threshold_suggestions: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def calculate_intelligent_thresholds(nodes: Dict) -> Dict:
+    """
+    Analyze cluster health and suggest optimal thresholds
+    Returns suggested CPU and Memory thresholds based on cluster characteristics
+    """
+    if not nodes:
+        return {
+            "suggested_cpu_threshold": 60.0,
+            "suggested_mem_threshold": 70.0,
+            "confidence": "low",
+            "reasoning": "Insufficient data for analysis"
+        }
+
+    # Collect metrics from all online nodes using 7-day averages for more stable analysis
+    cpu_values = []
+    mem_values = []
+    iowait_values = []
+
+    for node_name, node in nodes.items():
+        if node.get("status") != "online":
+            continue
+
+        metrics = node.get("metrics", {})
+        if metrics.get("has_historical"):
+            # Prefer 7-day averages for more stable threshold suggestions
+            cpu_values.append(metrics.get("avg_cpu_week") or metrics.get("avg_cpu", 0))
+            mem_values.append(metrics.get("avg_mem_week") or metrics.get("avg_mem", 0))
+            iowait_values.append(metrics.get("avg_iowait_week") or metrics.get("avg_iowait", 0))
+
+    if not cpu_values or not mem_values:
+        return {
+            "suggested_cpu_threshold": 60.0,
+            "suggested_mem_threshold": 70.0,
+            "confidence": "low",
+            "reasoning": "Insufficient historical data"
+        }
+
+    # Calculate cluster statistics
+    avg_cpu = sum(cpu_values) / len(cpu_values)
+    max_cpu = max(cpu_values)
+    avg_mem = sum(mem_values) / len(mem_values)
+    max_mem = max(mem_values)
+    avg_iowait = sum(iowait_values) / len(iowait_values) if iowait_values else 0
+
+    # Calculate standard deviation for load variance
+    cpu_variance = sum((x - avg_cpu) ** 2 for x in cpu_values) / len(cpu_values)
+    mem_variance = sum((x - avg_mem) ** 2 for x in mem_values) / len(mem_values)
+
+    # Determine cluster characteristics
+    node_count = len(cpu_values)
+
+    # Better cluster size categories
+    if node_count <= 2:
+        cluster_size = "minimal"
+        size_adjustment = -10  # Very conservative
+    elif node_count <= 4:
+        cluster_size = "small"
+        size_adjustment = -5  # Conservative
+    elif node_count <= 8:
+        cluster_size = "medium"
+        size_adjustment = 0  # Neutral
+    elif node_count <= 16:
+        cluster_size = "large"
+        size_adjustment = 5  # More tolerant
+    else:
+        cluster_size = "xlarge"
+        size_adjustment = 8  # Most tolerant
+
+    # Calculate variance percentage (coefficient of variation)
+    cpu_cv = (cpu_variance ** 0.5) / avg_cpu * 100 if avg_cpu > 0 else 0
+    mem_cv = (mem_variance ** 0.5) / avg_mem * 100 if avg_mem > 0 else 0
+
+    # Better balance detection
+    is_balanced = cpu_cv < 30 and mem_cv < 30  # Coefficient of variation < 30%
+    balance_status = "balanced" if is_balanced else "imbalanced"
+
+    # More granular load detection
+    if avg_cpu > 70 or avg_mem > 80:
+        load_level = "very high"
+        load_adjustment = 15  # Much more tolerant to avoid migration storms
+    elif avg_cpu > 50 or avg_mem > 60:
+        load_level = "high"
+        load_adjustment = 10  # More tolerant
+    elif avg_cpu > 30 or avg_mem > 40:
+        load_level = "moderate"
+        load_adjustment = 0  # Neutral
+    else:
+        load_level = "low"
+        load_adjustment = -5  # Can be more aggressive
+
+    # IOWait level detection
+    if avg_iowait > 30:
+        iowait_level = "critical"
+        iowait_adjustment = -15
+    elif avg_iowait > 20:
+        iowait_level = "high"
+        iowait_adjustment = -10
+    elif avg_iowait > 10:
+        iowait_level = "elevated"
+        iowait_adjustment = -5
+    else:
+        iowait_level = "normal"
+        iowait_adjustment = 0
+
+    # Calculate intelligent thresholds
+    # Base thresholds
+    cpu_threshold = 60.0
+    mem_threshold = 70.0
+    iowait_threshold = 30.0
+
+    # Build adjustments with detailed tracking
+    adjustments = []
+
+    # 1. Adjust for cluster size
+    cpu_threshold += size_adjustment
+    mem_threshold += size_adjustment
+    iowait_threshold += size_adjustment
+    adjustments.append({
+        "factor": "Cluster Size",
+        "value": f"{node_count} nodes ({cluster_size})",
+        "adjustment": f"{size_adjustment:+.0f}%",
+        "direction": "more tolerant" if size_adjustment > 0 else "more conservative" if size_adjustment < 0 else "neutral"
+    })
+
+    # 2. Adjust for load distribution balance
+    balance_adjustment = 10 if is_balanced else -5
+    cpu_threshold += balance_adjustment
+    mem_threshold += balance_adjustment
+    iowait_threshold += balance_adjustment // 2
+    adjustments.append({
+        "factor": "Load Balance",
+        "value": f"{balance_status} (CPU variance: {cpu_cv:.1f}%, Mem variance: {mem_cv:.1f}%)",
+        "adjustment": f"{balance_adjustment:+.0f}%",
+        "direction": "less aggressive" if is_balanced else "more aggressive"
+    })
+
+    # 3. Adjust for overall cluster load
+    cpu_threshold += load_adjustment
+    mem_threshold += load_adjustment
+    iowait_threshold += load_adjustment // 2
+    adjustments.append({
+        "factor": "Overall Load",
+        "value": f"{load_level} (avg CPU: {avg_cpu:.1f}%, avg Memory: {avg_mem:.1f}%)",
+        "adjustment": f"{load_adjustment:+.0f}%",
+        "direction": "reduce churn" if load_adjustment > 0 else "can rebalance" if load_adjustment < 0 else "neutral"
+    })
+
+    # 4. Adjust for IOWait pressure
+    cpu_threshold += iowait_adjustment // 3
+    iowait_threshold += iowait_adjustment
+    adjustments.append({
+        "factor": "I/O Pressure",
+        "value": f"{iowait_level} (avg IOWait: {avg_iowait:.1f}%)",
+        "adjustment": f"{iowait_adjustment:+.0f}%",
+        "direction": "address I/O contention" if iowait_adjustment < 0 else "I/O healthy"
+    })
+
+    # Clamp thresholds to reasonable ranges
+    cpu_threshold = max(40, min(85, cpu_threshold))
+    mem_threshold = max(50, min(90, mem_threshold))
+    iowait_threshold = max(15, min(40, iowait_threshold))
+
+    # Determine confidence based on data quality
+    confidence = "high" if len(cpu_values) >= 3 and all(m.get("has_historical") for m in [n.get("metrics", {}) for n in nodes.values()]) else "medium"
+
+    # Build summary reasoning
+    summary = f"{cluster_size.capitalize()} cluster ({node_count} nodes), {balance_status} load, {load_level} utilization, {iowait_level} I/O"
+
+    # Determine analysis period based on available data
+    has_week_data = any(n.get("metrics", {}).get("avg_cpu_week") for n in nodes.values())
+    analysis_period = "7 days" if has_week_data else "24 hours"
+
+    return {
+        "suggested_cpu_threshold": round(cpu_threshold, 1),
+        "suggested_mem_threshold": round(mem_threshold, 1),
+        "suggested_iowait_threshold": round(iowait_threshold, 1),
+        "confidence": confidence,
+        "summary": summary,
+        "analysis_period": analysis_period,
+        "adjustments": adjustments,
+        "cluster_stats": {
+            "node_count": node_count,
+            "cluster_size": cluster_size,
+            "avg_cpu": round(avg_cpu, 1),
+            "max_cpu": round(max_cpu, 1),
+            "avg_mem": round(avg_mem, 1),
+            "max_mem": round(max_mem, 1),
+            "avg_iowait": round(avg_iowait, 1),
+            "cpu_variance": round(cpu_cv, 1),
+            "mem_variance": round(mem_cv, 1),
+            "balance_status": balance_status,
+            "load_level": load_level,
+            "iowait_level": iowait_level
+        }
+    }
+
+
+def calculate_node_health_score(node: Dict, metrics: Dict) -> float:
+    """
+    Calculate comprehensive health score for a node (0-100, lower is better/healthier)
+    Considers CPU, Memory, IOWait, Load Average, and Storage pressure
+    """
+    # Get current/average metrics
+    cpu = metrics.get("avg_cpu", 0) if metrics.get("has_historical") else metrics.get("current_cpu", 0)
+    mem = metrics.get("avg_mem", 0) if metrics.get("has_historical") else metrics.get("current_mem", 0)
+    iowait = metrics.get("avg_iowait", 0) if metrics.get("has_historical") else metrics.get("current_iowait", 0)
+    load = metrics.get("avg_load", 0)
+    cores = node.get("cpu_cores", 1)
+
+    # Normalize load average by core count (load per core)
+    load_per_core = (load / cores) * 100 if cores > 0 else 0
+
+    # Storage pressure score (average usage across all storage)
+    storage_pressure = 0
+    storage_list = node.get("storage", [])
+    if storage_list:
+        storage_usages = [s.get("usage_pct", 0) for s in storage_list if s.get("active", False)]
+        storage_pressure = sum(storage_usages) / len(storage_usages) if storage_usages else 0
+
+    # Weighted health score
+    # CPU: 30%, Memory: 30%, IOWait: 20%, Load: 10%, Storage: 10%
+    health_score = (
+        cpu * 0.30 +
+        mem * 0.30 +
+        iowait * 0.20 +
+        load_per_core * 0.10 +
+        storage_pressure * 0.10
+    )
+
+    return health_score
+
+
+def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True) -> Dict:
+    """
+    Predict node load after adding or removing a guest
+    Returns predicted CPU%, Memory%, and IOWait%
+    """
+    metrics = node.get("metrics", {})
+
+    # Current state
+    current_cpu = metrics.get("avg_cpu", 0) if metrics.get("has_historical") else metrics.get("current_cpu", 0)
+    current_mem = metrics.get("avg_mem", 0) if metrics.get("has_historical") else metrics.get("current_mem", 0)
+    current_iowait = metrics.get("avg_iowait", 0) if metrics.get("has_historical") else metrics.get("current_iowait", 0)
+
+    # Guest resource usage
+    guest_cpu = guest.get("cpu_current", 0)  # Percentage of guest's allocated CPUs
+    guest_mem_gb = guest.get("mem_used_gb", 0)
+    guest_disk_io = (guest.get("disk_read_bps", 0) + guest.get("disk_write_bps", 0)) / (1024**2)  # MB/s
+
+    # Node capacity
+    node_total_mem_gb = node.get("total_mem_gb", 1)
+    node_cores = node.get("cpu_cores", 1)
+
+    # Estimate guest's contribution to node CPU (guest uses X% of its cores)
+    guest_cpu_cores = guest.get("cpu_cores", 1)
+    guest_cpu_impact = (guest_cpu * guest_cpu_cores / node_cores) if node_cores > 0 else 0
+
+    # Estimate guest's memory impact
+    guest_mem_impact = (guest_mem_gb / node_total_mem_gb * 100) if node_total_mem_gb > 0 else 0
+
+    # Estimate IOWait impact (rough heuristic: high disk I/O contributes to IOWait)
+    # Assume 100 MB/s disk I/O = ~5% IOWait contribution
+    guest_iowait_impact = min(guest_disk_io / 100 * 5, 20)  # Cap at 20%
+
+    # Calculate predicted load
+    if adding:
+        predicted_cpu = current_cpu + guest_cpu_impact
+        predicted_mem = current_mem + guest_mem_impact
+        predicted_iowait = current_iowait + guest_iowait_impact
+    else:
+        predicted_cpu = max(0, current_cpu - guest_cpu_impact)
+        predicted_mem = max(0, current_mem - guest_mem_impact)
+        predicted_iowait = max(0, current_iowait - guest_iowait_impact)
+
+    return {
+        "cpu": min(predicted_cpu, 100),
+        "mem": min(predicted_mem, 100),
+        "iowait": min(predicted_iowait, 100)
+    }
+
+
+def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_guests: Dict, cpu_threshold: float, mem_threshold: float) -> float:
+    """
+    Calculate weighted score for target node suitability (lower is better)
+    Considers current load, predicted post-migration load, storage availability, and headroom
+    """
+    target_name = target_node.get("name")
+    metrics = target_node.get("metrics", {})
+
+    # Use 7-day averages for more stable decisions - prefer nodes with consistent low load
+    current_cpu = metrics.get("avg_cpu_week", 0) or metrics.get("avg_cpu", 0) if metrics.get("has_historical") else metrics.get("current_cpu", 0)
+    current_mem = metrics.get("avg_mem_week", 0) or metrics.get("avg_mem", 0) if metrics.get("has_historical") else metrics.get("current_mem", 0)
+    current_iowait = metrics.get("avg_iowait_week", 0) or metrics.get("avg_iowait", 0) if metrics.get("has_historical") else metrics.get("current_iowait", 0)
+
+    # Get max values over the week to avoid migrating to nodes that spike
+    max_cpu_week = metrics.get("max_cpu_week", metrics.get("max_cpu", 0))
+    max_mem_week = metrics.get("max_mem_week", metrics.get("max_mem", 0))
+
+    # Consider trends - penalize nodes with rising load
+    cpu_trend = metrics.get("cpu_trend", "stable")
+    mem_trend = metrics.get("mem_trend", "stable")
+
+    # Trend penalty (add to score, making it less desirable)
+    trend_penalty = 0
+    if cpu_trend == "rising":
+        trend_penalty += 15  # Significantly penalize rising CPU
+    if mem_trend == "rising":
+        trend_penalty += 15  # Significantly penalize rising memory
+
+    # Max load penalty - avoid nodes that have spiked high even if average is low
+    # More aggressive penalties to avoid nodes with prolonged high load
+    max_load_penalty = 0
+    if max_cpu_week > 80:
+        max_load_penalty += 30  # Heavily penalize nodes that have hit very high CPU
+    elif max_cpu_week > 70:
+        max_load_penalty += 20  # Significant penalty for high CPU spikes
+    elif max_cpu_week > 60:
+        max_load_penalty += 15  # Penalize nodes with CPU above threshold
+    elif max_cpu_week > 50:
+        max_load_penalty += 5   # Light penalty for moderately high CPU
+
+    if max_mem_week > 85:
+        max_load_penalty += 30
+    elif max_mem_week > 75:
+        max_load_penalty += 20
+    elif max_mem_week > 65:
+        max_load_penalty += 10
+
+    # Disqualify nodes with concerning historical patterns
+    # Don't migrate to nodes that have shown problematic behavior
+    if max_cpu_week > 70:  # Node has had severe CPU spikes (>70% for extended periods)
+        return 999999  # Completely disqualify
+    if max_mem_week > 80:  # Node has had severe memory pressure
+        return 999999  # Completely disqualify
+
+    # Predict post-migration load
+    predicted = predict_post_migration_load(target_node, guest, adding=True)
+
+    # Account for pending migrations to this target
+    if target_name in pending_target_guests:
+        for pending_guest in pending_target_guests[target_name]:
+            predicted = predict_post_migration_load(
+                {"metrics": {"current_cpu": predicted["cpu"], "current_mem": predicted["mem"], "current_iowait": predicted["iowait"]},
+                 "total_mem_gb": target_node.get("total_mem_gb", 1),
+                 "cpu_cores": target_node.get("cpu_cores", 1)},
+                pending_guest,
+                adding=True
+            )
+
+    # Disqualify if predicted load exceeds thresholds
+    if predicted["cpu"] > cpu_threshold or predicted["mem"] > mem_threshold:
+        return 999999  # Disqualify
+
+    # Health score (current state)
+    health_score = calculate_node_health_score(target_node, metrics)
+
+    # Predicted health after migration
+    predicted_health = (
+        predicted["cpu"] * 0.30 +
+        predicted["mem"] * 0.30 +
+        predicted["iowait"] * 0.20 +
+        current_cpu * 0.10 +  # Factor in current state
+        current_mem * 0.10
+    )
+
+    # Headroom score (how much capacity remains) - prefer nodes with more headroom
+    cpu_headroom = 100 - predicted["cpu"]
+    mem_headroom = 100 - predicted["mem"]
+    headroom_score = 100 - (cpu_headroom * 0.5 + mem_headroom * 0.5)  # Lower = more headroom
+
+    # Storage availability score
+    storage_score = 0
+    storage_list = target_node.get("storage", [])
+    if storage_list:
+        # Prefer nodes with more available storage
+        avg_storage_usage = sum(s.get("usage_pct", 0) for s in storage_list if s.get("active", False)) / len(storage_list) if storage_list else 0
+        storage_score = avg_storage_usage  # Lower = more available
+
+    # Combined weighted score (lower is better)
+    # Current health: 25%, Predicted health: 40%, Headroom: 20%, Storage: 15%
+    # Plus penalties for trends and historical spikes
+    total_score = (
+        health_score * 0.25 +
+        predicted_health * 0.40 +
+        headroom_score * 0.20 +
+        storage_score * 0.15 +
+        trend_penalty +      # Penalty for rising load trends
+        max_load_penalty     # Penalty for historical high loads
+    )
+
+    return total_score
+
+
+def select_guests_to_migrate(node: Dict, guests: Dict, cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
+    """
+    Intelligently select which guests to migrate from an overloaded node
+    Uses knapsack-style algorithm to minimize migrations while resolving overload
+    """
+    node_name = node.get("name")
+    metrics = node.get("metrics", {})
+
+    # Calculate how much we need to reduce
+    current_cpu = metrics.get("avg_cpu", 0) if metrics.get("has_historical") else metrics.get("current_cpu", 0)
+    current_mem = metrics.get("avg_mem", 0) if metrics.get("has_historical") else metrics.get("current_mem", 0)
+    current_iowait = metrics.get("avg_iowait", 0) if metrics.get("has_historical") else metrics.get("current_iowait", 0)
+
+    # Special handling for maintenance: evacuate all guests
+    if overload_reason == "maintenance":
+        # For maintenance mode, set very high reduction targets to evacuate everything
+        cpu_reduction_needed = 999999
+        mem_reduction_needed = 999999
+    else:
+        # Target reduction (get back below threshold with 10% buffer)
+        cpu_reduction_needed = max(0, current_cpu - (cpu_threshold - 10))
+        mem_reduction_needed = max(0, current_mem - (mem_threshold - 10))
+
+    # Build candidate list with impact scores
+    candidates = []
+    for vmid in node.get("guests", []):
+        vmid_key = str(vmid) if str(vmid) in guests else vmid
+        if vmid_key not in guests:
+            continue
+
+        guest = guests[vmid_key]
+
+        # Skip stopped guests
+        if guest.get("status") != "running":
+            continue
+
+        # For maintenance mode, ignore tags and HA status (evacuation is priority)
+        if overload_reason != "maintenance":
+            # Skip ignored guests and HA-managed guests (only when NOT in maintenance)
+            if guest.get("tags", {}).get("has_ignore", False):
+                continue
+            if guest.get("ha_managed", False):
+                continue  # Don't recommend migrating HA-managed guests
+
+        # Calculate guest's impact on node resources
+        guest_cpu_cores = guest.get("cpu_cores", 1)
+        guest_cpu_usage = guest.get("cpu_current", 0)
+        node_cores = node.get("cpu_cores", 1)
+        cpu_impact = (guest_cpu_usage * guest_cpu_cores / node_cores) if node_cores > 0 else 0
+
+        guest_mem_gb = guest.get("mem_used_gb", 0)
+        node_mem_gb = node.get("total_mem_gb", 1)
+        mem_impact = (guest_mem_gb / node_mem_gb * 100) if node_mem_gb > 0 else 0
+
+        # Calculate migration cost (prefer smaller, less active guests)
+        disk_io_mbps = (guest.get("disk_read_bps", 0) + guest.get("disk_write_bps", 0)) / (1024**2)
+        migration_cost = guest.get("mem_max_gb", 0) + (disk_io_mbps / 10)  # Factor in I/O activity
+
+        # Efficiency score: impact per migration cost (higher is better)
+        if overload_reason == "cpu":
+            efficiency = cpu_impact / migration_cost if migration_cost > 0 else 0
+        elif overload_reason == "mem":
+            efficiency = mem_impact / migration_cost if migration_cost > 0 else 0
+        else:
+            efficiency = (cpu_impact + mem_impact) / (2 * migration_cost) if migration_cost > 0 else 0
+
+        candidates.append({
+            "vmid_key": vmid_key,
+            "guest": guest,
+            "cpu_impact": cpu_impact,
+            "mem_impact": mem_impact,
+            "migration_cost": migration_cost,
+            "efficiency": efficiency
+        })
+
+    # Sort by efficiency (highest efficiency first)
+    candidates.sort(key=lambda x: x["efficiency"], reverse=True)
+
+    # Greedy selection: pick guests until we've reduced load enough
+    selected = []
+    cpu_reduction = 0
+    mem_reduction = 0
+
+    for candidate in candidates:
+        # For maintenance mode, don't stop early - evacuate ALL guests
+        if overload_reason != "maintenance":
+            if overload_reason == "cpu" and cpu_reduction >= cpu_reduction_needed:
+                break
+            if overload_reason == "mem" and mem_reduction >= mem_reduction_needed:
+                break
+            if overload_reason not in ["cpu", "mem"] and (cpu_reduction >= cpu_reduction_needed and mem_reduction >= mem_reduction_needed):
+                break
+
+        selected.append(candidate["vmid_key"])
+        cpu_reduction += candidate["cpu_impact"]
+        mem_reduction += candidate["mem_impact"]
+
+        # Limit to 5 migrations per node (skip limit for maintenance mode)
+        if overload_reason != "maintenance" and len(selected) >= 5:
+            break
+
+    return selected
+
+
+def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float, mem_threshold: float, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> List[Dict]:
+    """
+    Generate intelligent migration recommendations using comprehensive cluster analysis
+
+    Enhanced algorithm considers:
+    - CPU, Memory, IOWait, Load Average, Storage pressure
+    - Predictive load calculation (post-migration state)
+    - Historical trend analysis
+    - HA status (avoids migrating HA-managed guests)
+    - Smart guest selection (knapsack algorithm)
+    - Weighted target scoring with headroom analysis
+    """
     if maintenance_nodes is None:
         maintenance_nodes = set()
 
     recommendations = []
-    # Track guests that will be on each node after pending migrations
     pending_target_guests = {}
 
+    # Step 1: Identify overloaded nodes and maintenance nodes
     overloaded = []
+
+    # First, add maintenance nodes (highest priority for evacuation)
+    for node_name in maintenance_nodes:
+        if node_name in nodes:
+            node = nodes[node_name]
+            metrics = node.get("metrics", {})
+            overloaded.append({
+                "node": node_name,
+                "node_obj": node,
+                "cpu": metrics.get("current_cpu", 0),
+                "mem": metrics.get("current_mem", 0),
+                "iowait": metrics.get("current_iowait", 0),
+                "reason": "maintenance",
+                "health_score": 200  # Highest priority for evacuation
+            })
+
+    # Then check for overloaded nodes (skip maintenance nodes as they're already added)
     for node_name, node in nodes.items():
-        # Skip nodes in maintenance mode as sources for overload detection
         if node_name in maintenance_nodes:
             continue
+
         try:
-            # Support both old format (with metrics object) and new format (direct fields)
             metrics = node.get("metrics", {})
 
-            # Get CPU - try multiple formats
-            if metrics and metrics.get("has_historical"):
-                cpu_check = metrics.get("avg_cpu", 0)
-            elif metrics and "current_cpu" in metrics:
-                cpu_check = metrics.get("current_cpu", 0)
-            else:
-                # New format: direct cpu_percent field
-                cpu_check = node.get("cpu_percent", 0)
+            # Use 7-day averages for more stable, trend-aware decisions
+            # Fall back to 24-hour if week data unavailable, then current
+            cpu_check = metrics.get("avg_cpu_week", 0) or metrics.get("avg_cpu", 0) if metrics.get("has_historical") else metrics.get("current_cpu", 0)
+            mem_check = metrics.get("avg_mem_week", 0) or metrics.get("avg_mem", 0) if metrics.get("has_historical") else metrics.get("current_mem", 0)
+            iowait_check = metrics.get("avg_iowait_week", 0) or metrics.get("avg_iowait", 0) if metrics.get("has_historical") else metrics.get("current_iowait", 0)
 
-            # Get Memory - try multiple formats
-            if metrics and metrics.get("has_historical"):
-                mem_check = metrics.get("avg_mem", 0)
-            elif metrics and "current_mem" in metrics:
-                mem_check = metrics.get("current_mem", 0)
-            else:
-                # New format: direct mem_percent field
-                mem_check = node.get("mem_percent", 0)
+            # Consider trends: if load is falling, be less aggressive about migrations
+            cpu_trend = metrics.get("cpu_trend", "stable")
+            mem_trend = metrics.get("mem_trend", "stable")
 
-            if cpu_check > cpu_threshold or mem_check > mem_threshold:
+            # Adjust thresholds based on trends
+            cpu_threshold_adjusted = cpu_threshold
+            mem_threshold_adjusted = mem_threshold
+
+            # If trending down, increase threshold (less likely to trigger migration)
+            if cpu_trend == "falling":
+                cpu_threshold_adjusted += 10  # More tolerant if load is decreasing
+            elif cpu_trend == "rising":
+                cpu_threshold_adjusted -= 5   # More aggressive if load is increasing
+
+            if mem_trend == "falling":
+                mem_threshold_adjusted += 10
+            elif mem_trend == "rising":
+                mem_threshold_adjusted -= 5
+
+            # Check if overloaded (CPU, Memory, or high IOWait) using trend-adjusted thresholds
+            is_overloaded = False
+            reason = None
+
+            if cpu_check > cpu_threshold_adjusted:
+                is_overloaded = True
+                reason = "cpu"
+            elif mem_check > mem_threshold_adjusted:
+                is_overloaded = True
+                reason = "mem"
+            elif iowait_check > iowait_threshold:
+                is_overloaded = True
+                reason = "iowait"
+
+            if is_overloaded:
                 overloaded.append({
                     "node": node_name,
+                    "node_obj": node,
                     "cpu": cpu_check,
                     "mem": mem_check,
-                    "reason": "cpu" if cpu_check > cpu_threshold else "mem"
+                    "iowait": iowait_check,
+                    "reason": reason,
+                    "health_score": calculate_node_health_score(node, metrics)
                 })
         except Exception as e:
-            print(f"Error processing node {node_name}: {str(e)}", file=sys.stderr)
+            print(f"Error analyzing node {node_name}: {str(e)}", file=sys.stderr)
             import traceback
             traceback.print_exc()
             continue
-    
+
+    # Sort overloaded nodes by health score (worst first)
+    overloaded.sort(key=lambda x: x["health_score"], reverse=True)
+
+    # Step 2: For each overloaded node, find best migrations
     for overload in overloaded:
-        src_node = overload["node"]
-        
-        best_target = None
-        best_score = 999999
-        
-        for tgt_name, tgt_node in nodes.items():
-            try:
-                # Skip same node, offline nodes, and nodes in maintenance mode
-                if tgt_name == src_node or tgt_node.get("status") != "online" or tgt_name in maintenance_nodes:
-                    continue
+        src_node_name = overload["node"]
+        src_node = overload["node_obj"]
 
-                # Support both old format (with metrics object) and new format (direct fields)
-                tgt_metrics = tgt_node.get("metrics", {})
+        # Select guests to migrate using intelligent selection
+        selected_vmids = select_guests_to_migrate(src_node, guests, cpu_threshold, mem_threshold, overload["reason"])
 
-                # Get CPU - try multiple formats
-                if tgt_metrics and tgt_metrics.get("has_historical"):
-                    tgt_cpu = tgt_metrics.get("avg_cpu", 0)
-                elif tgt_metrics and "current_cpu" in tgt_metrics:
-                    tgt_cpu = tgt_metrics.get("current_cpu", 0)
-                else:
-                    # New format: direct cpu_percent field
-                    tgt_cpu = tgt_node.get("cpu_percent", 0)
+        if not selected_vmids:
+            continue
 
-                # Get Memory - try multiple formats
-                if tgt_metrics and tgt_metrics.get("has_historical"):
-                    tgt_mem = tgt_metrics.get("avg_mem", 0)
-                elif tgt_metrics and "current_mem" in tgt_metrics:
-                    tgt_mem = tgt_metrics.get("current_mem", 0)
-                else:
-                    # New format: direct mem_percent field
-                    tgt_mem = tgt_node.get("mem_percent", 0)
+        # Step 3: For each selected guest, find best target
+        for vmid_key in selected_vmids:
+            guest = guests[vmid_key]
 
-                score = tgt_cpu + tgt_mem
+            # Find best target node
+            best_target = None
+            best_score = 999999
 
-                if score < best_score and tgt_cpu < 50 and tgt_mem < 60:
-                    best_score = score
-                    best_target = tgt_name
-            except Exception as e:
-                print(f"Error evaluating target node {tgt_name}: {str(e)}", file=sys.stderr)
-                import traceback
-                traceback.print_exc()
-                continue
-        
-        if best_target:
-            candidates = []
-            for vmid in nodes[src_node].get("guests", []):
+            for tgt_name, tgt_node in nodes.items():
                 try:
-                    vmid_key = str(vmid) if str(vmid) in guests else vmid
-                    
-                    if vmid_key not in guests:
-                        print(f"Warning: Guest {vmid} not found in guests dict", file=sys.stderr)
+                    # Skip same node, offline nodes, and maintenance nodes
+                    if tgt_name == src_node_name or tgt_node.get("status") != "online" or tgt_name in maintenance_nodes:
                         continue
-                    
-                    guest = guests[vmid_key]
-                    # Skip ignored guests only
-                    if guest.get("status") == "running" and not guest.get("tags", {}).get("has_ignore", False):
-                        candidates.append((vmid_key, guest.get("mem_max_gb", 0)))
-                except Exception as e:
-                    print(f"Error processing guest {vmid}: {str(e)}", file=sys.stderr)
-                    import traceback
-                    traceback.print_exc()
-                    continue
-            
-            candidates.sort(key=lambda x: x[1])
-            
-            for vmid_key, _ in candidates[:3]:
-                try:
-                    guest = guests[vmid_key]
 
+                    # Check for anti-affinity conflicts
                     conflict = False
                     if guest.get("tags", {}).get("exclude_groups", []):
-                        # Check for conflicts with existing guests on target node
-                        for other_vmid in nodes[best_target].get("guests", []):
+                        for other_vmid in tgt_node.get("guests", []):
                             other_key = str(other_vmid) if str(other_vmid) in guests else other_vmid
                             if other_key not in guests:
                                 continue
@@ -544,9 +1157,9 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float, me
                             if conflict:
                                 break
 
-                        # Check for conflicts with pending migrations to the same target
-                        if not conflict and best_target in pending_target_guests:
-                            for pending_guest in pending_target_guests[best_target]:
+                        # Check conflicts with pending migrations
+                        if not conflict and tgt_name in pending_target_guests:
+                            for pending_guest in pending_target_guests[tgt_name]:
                                 for excl_group in guest["tags"]["exclude_groups"]:
                                     if excl_group in pending_guest.get("tags", {}).get("all_tags", []):
                                         conflict = True
@@ -554,31 +1167,64 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float, me
                                 if conflict:
                                     break
 
-                    if not conflict:
-                        cmd_type = "qm" if guest.get("type") == "VM" else "pct"
-                        cmd_flag = "--online" if guest.get("type") == "VM" else "--restart"
-                        vmid_int = int(vmid_key) if isinstance(vmid_key, str) else vmid_key
-                        recommendations.append({
-                            "vmid": vmid_int,
-                            "name": guest.get("name", "unknown"),
-                            "type": guest.get("type", "unknown"),
-                            "source_node": src_node,
-                            "target_node": best_target,
-                            "reason": "Balance {} load".format(overload["reason"].upper()),
-                            "mem_gb": guest.get("mem_max_gb", 0),
-                            "command": "{} migrate {} {} {}".format(cmd_type, vmid_int, best_target, cmd_flag)
-                        })
+                    if conflict:
+                        continue
 
-                        # Track this guest as pending migration to target node
-                        if best_target not in pending_target_guests:
-                            pending_target_guests[best_target] = []
-                        pending_target_guests[best_target].append(guest)
+                    # Calculate target suitability score
+                    score = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold)
+
+                    if score < best_score:
+                        best_score = score
+                        best_target = tgt_name
+
                 except Exception as e:
-                    print(f"Error creating recommendation for guest {vmid_key}: {str(e)}", file=sys.stderr)
+                    print(f"Error evaluating target {tgt_name} for guest {vmid_key}: {str(e)}", file=sys.stderr)
                     import traceback
                     traceback.print_exc()
                     continue
-    
+
+            # Create recommendation if target found
+            if best_target and best_score < 999999:
+                try:
+                    cmd_type = "qm" if guest.get("type") == "VM" else "pct"
+                    cmd_flag = "--online" if guest.get("type") == "VM" else "--restart"
+                    vmid_int = int(vmid_key) if isinstance(vmid_key, str) else vmid_key
+
+                    # Enhanced reason with more context
+                    if overload["reason"] == "maintenance":
+                        reason = f"Node maintenance - evacuating {src_node_name}"
+                    elif overload["reason"] == "cpu":
+                        reason = f"Balance CPU load (src: {overload['cpu']:.1f}%, target: {nodes[best_target].get('metrics', {}).get('avg_cpu', 0):.1f}%)"
+                    elif overload["reason"] == "mem":
+                        reason = f"Balance Memory load (src: {overload['mem']:.1f}%, target: {nodes[best_target].get('metrics', {}).get('avg_mem', 0):.1f}%)"
+                    elif overload["reason"] == "iowait":
+                        reason = f"Reduce IOWait pressure (src: {overload['iowait']:.1f}%)"
+                    else:
+                        reason = "Balance cluster load"
+
+                    recommendations.append({
+                        "vmid": vmid_int,
+                        "name": guest.get("name", "unknown"),
+                        "type": guest.get("type", "unknown"),
+                        "source_node": src_node_name,
+                        "target_node": best_target,
+                        "reason": reason,
+                        "mem_gb": guest.get("mem_max_gb", 0),
+                        "command": "{} migrate {} {} {}".format(cmd_type, vmid_int, best_target, cmd_flag),
+                        "confidence_score": round(100 - best_score, 1)  # Higher score = more confident
+                    })
+
+                    # Track pending migration
+                    if best_target not in pending_target_guests:
+                        pending_target_guests[best_target] = []
+                    pending_target_guests[best_target].append(guest)
+
+                except Exception as e:
+                    print(f"Error creating recommendation for {vmid_key}: {str(e)}", file=sys.stderr)
+                    import traceback
+                    traceback.print_exc()
+                    continue
+
     return recommendations
 
 
@@ -3872,6 +4518,193 @@ def remove_guest_tag(vmid, tag):
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/automigrate/status", methods=["GET"])
+def get_automigrate_status():
+    """Get automation status and next run time"""
+    try:
+        config = load_config()
+        if config.get('error'):
+            return jsonify({"success": False, "error": config.get('message')}), 500
+
+        auto_config = config.get('automated_migrations', {})
+
+        # Check timer status
+        try:
+            timer_result = subprocess.run(
+                ['systemctl', 'is-active', 'proxmox-balance-automigrate.timer'],
+                capture_output=True, text=True, timeout=5
+            )
+            timer_active = timer_result.stdout.strip() == 'active'
+        except:
+            timer_active = False
+
+        # Load history
+        history_file = os.path.join(BASE_PATH, 'migration_history.json')
+        history = {"migrations": [], "state": {}}
+        if os.path.exists(history_file):
+            try:
+                with open(history_file, 'r') as f:
+                    history = json.load(f)
+            except:
+                pass
+
+        # Get recent migrations (last 10)
+        recent = history.get('migrations', [])[-10:]
+
+        return jsonify({
+            "success": True,
+            "enabled": auto_config.get('enabled', False),
+            "dry_run": auto_config.get('dry_run', True),
+            "timer_active": timer_active,
+            "check_interval_minutes": auto_config.get('check_interval_minutes', 5),
+            "recent_migrations": recent,
+            "state": history.get('state', {})
+        })
+
+    except Exception as e:
+        print(f"Error getting automigrate status: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/automigrate/history", methods=["GET"])
+def get_automigrate_history():
+    """Get full migration history with optional filtering"""
+    try:
+        history_file = os.path.join(BASE_PATH, 'migration_history.json')
+
+        if not os.path.exists(history_file):
+            return jsonify({"success": True, "migrations": [], "total": 0})
+
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+
+        # Get query parameters
+        limit = request.args.get('limit', 100, type=int)
+        status_filter = request.args.get('status', None, type=str)
+
+        migrations = history.get('migrations', [])
+
+        # Apply status filter if provided
+        if status_filter:
+            migrations = [m for m in migrations if m.get('status') == status_filter]
+
+        # Get total before limiting
+        total = len(migrations)
+
+        # Limit results (get most recent)
+        migrations = migrations[-limit:]
+
+        return jsonify({
+            "success": True,
+            "migrations": migrations,
+            "total": total
+        })
+
+    except Exception as e:
+        print(f"Error getting automigrate history: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/automigrate/test", methods=["POST"])
+def test_automigrate():
+    """Test automation logic without executing migrations"""
+    try:
+        # Run automigrate.py
+        script_path = os.path.join(BASE_PATH, 'automigrate.py')
+        venv_python = os.path.join(BASE_PATH, 'venv', 'bin', 'python3')
+
+        if not os.path.exists(script_path):
+            return jsonify({
+                "success": False,
+                "error": f"automigrate.py not found at {script_path}"
+            }), 404
+
+        result = subprocess.run(
+            [venv_python, script_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=BASE_PATH
+        )
+
+        return jsonify({
+            "success": result.returncode == 0,
+            "return_code": result.returncode,
+            "output": result.stdout,
+            "error": result.stderr if result.returncode != 0 else None
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": "Test timed out after 60 seconds"
+        }), 500
+    except Exception as e:
+        print(f"Error testing automigrate: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/automigrate/config", methods=["GET", "POST"])
+def automigrate_config():
+    """Get or update automated migration configuration"""
+    if request.method == "GET":
+        try:
+            config = load_config()
+            if config.get('error'):
+                return jsonify({"success": False, "error": config.get('message')}), 500
+
+            auto_config = config.get('automated_migrations', {})
+            return jsonify({
+                "success": True,
+                "config": auto_config
+            })
+
+        except Exception as e:
+            print(f"Error getting automigrate config: {str(e)}", file=sys.stderr)
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    elif request.method == "POST":
+        try:
+            config = load_config()
+            if config.get('error'):
+                return jsonify({"success": False, "error": config.get('message')}), 500
+
+            # Get updates from request
+            updates = request.json
+
+            if 'automated_migrations' not in config:
+                config['automated_migrations'] = {}
+
+            # Update configuration (deep merge)
+            for key, value in updates.items():
+                if isinstance(value, dict) and key in config['automated_migrations']:
+                    config['automated_migrations'][key].update(value)
+                else:
+                    config['automated_migrations'][key] = value
+
+            # Save configuration
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            return jsonify({
+                "success": True,
+                "message": "Configuration updated successfully",
+                "config": config['automated_migrations']
+            })
+
+        except Exception as e:
+            print(f"Error updating automigrate config: {str(e)}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":

@@ -1,0 +1,19 @@
+[Unit]
+Description=ProxBalance Automated Migration Service
+After=network.target proxmox-balance.service
+Requires=proxmox-balance.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/automigrate.py
+WorkingDirectory=/opt/proxmox-balance-manager
+User=root
+StandardOutput=journal
+StandardError=journal
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

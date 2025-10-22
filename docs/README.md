@@ -81,6 +81,8 @@ Complete documentation for ProxBalance - Automated cluster load balancing for Pr
 
 ### Usage
 - [Node Maintenance Mode](../README.md#node-maintenance-mode)
+- [VM/CT Details & Migration](../README.md#vmct-details--migration)
+- [Interactive Cluster Map](../README.md#-features)
 - [API Endpoints](../README.md#api-endpoints)
 - [Tagging Guests](../README.md#tagging-guests)
 - [Migration Execution](../README.md#usage)
@@ -215,6 +217,9 @@ This documentation is for **ProxBalance v2.0+** which includes:
 - Performance monitoring and metrics
 - Enhanced installer with visual progress
 - Improved web UI with collapsible sections
+- Interactive Cluster Map with clickable nodes and VMs/CTs
+- VM/CT detail modals with live sparkline graphs
+- Node maintenance management directly from Cluster Map
 - API-only authentication (no SSH)
 - Configurable analysis time periods
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=ProxBalance Automated Migration Timer
+Requires=proxmox-balance.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

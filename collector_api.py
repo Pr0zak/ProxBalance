@@ -156,6 +156,64 @@ class ProxmoxAPICollector:
             return self.proxmox.cluster.resources.get()
         except Exception as e:
             raise Exception(f"Failed to fetch cluster resources: {str(e)}")
+
+    def get_ha_resources(self) -> List[Dict]:
+        """Fetch HA managed resources"""
+        try:
+            return self.proxmox.cluster.ha.resources.get()
+        except Exception as e:
+            print(f"Warning: Failed to fetch HA resources: {str(e)}", file=sys.stderr)
+            return []
+
+    def get_ha_status(self) -> Dict:
+        """Fetch HA manager status"""
+        try:
+            return self.proxmox.cluster.ha.status.manager_status.get()
+        except Exception as e:
+            print(f"Warning: Failed to fetch HA status: {str(e)}", file=sys.stderr)
+            return {}
+
+    def get_cluster_status(self) -> List[Dict]:
+        """Fetch cluster/corosync status"""
+        try:
+            return self.proxmox.cluster.status.get()
+        except Exception as e:
+            print(f"Warning: Failed to fetch cluster status: {str(e)}", file=sys.stderr)
+            return []
+
+    def get_storage_status(self, node: str) -> List[Dict]:
+        """Fetch storage status for a node"""
+        try:
+            return self.proxmox.nodes(node).storage.get()
+        except Exception as e:
+            print(f"Warning: Failed to fetch storage for {node}: {str(e)}", file=sys.stderr)
+            return []
+
+    def get_backup_info(self) -> List[Dict]:
+        """Fetch backup information"""
+        try:
+            # Get guests not backed up
+            not_backed_up = self.proxmox.cluster('backup-info')('not-backed-up').get()
+            return not_backed_up
+        except Exception as e:
+            print(f"Warning: Failed to fetch backup info: {str(e)}", file=sys.stderr)
+            return []
+
+    def get_resource_pools(self) -> List[Dict]:
+        """Fetch resource pools"""
+        try:
+            return self.proxmox.pools.get()
+        except Exception as e:
+            print(f"Warning: Failed to fetch resource pools: {str(e)}", file=sys.stderr)
+            return []
+
+    def get_guest_agent_info(self, node: str, vmid: int) -> Dict:
+        """Fetch guest agent information (VMs only)"""
+        try:
+            return self.proxmox.nodes(node).qemu(vmid).agent.info.get()
+        except Exception as e:
+            # Guest agent not available or not installed - this is normal
+            return {}
     
     def get_node_rrd_data(self, node: str, timeframe: str = "day") -> List[Dict]:
         """Fetch RRD performance data for a node"""
@@ -220,14 +278,12 @@ class ProxmoxAPICollector:
             'year': self.get_node_rrd_data(node_name, 'year')     # ~2000 points, 6-hour intervals
         }
 
-        # Use day timeframe for current metrics calculation (most common/detailed)
-        rrd_data = timeframes['day']
-
-        # Calculate metrics from RRD data
+        # Calculate metrics from multiple timeframes for better trend analysis
         metrics = {
             "current_cpu": node.get("cpu", 0) * 100,
             "current_mem": (node.get("mem", 0) / node.get("maxmem", 1)) * 100 if node.get("maxmem") else 0,
             "current_iowait": 0,
+            # 24-hour averages (detailed, short-term)
             "avg_cpu": 0,
             "max_cpu": 0,
             "avg_mem": 0,
@@ -235,32 +291,82 @@ class ProxmoxAPICollector:
             "avg_iowait": 0,
             "max_iowait": 0,
             "avg_load": 0,
+            # 7-day averages (longer-term trends)
+            "avg_cpu_week": 0,
+            "max_cpu_week": 0,
+            "avg_mem_week": 0,
+            "max_mem_week": 0,
+            "avg_iowait_week": 0,
+            # Trend indicators
+            "cpu_trend": "stable",  # "rising", "falling", "stable"
+            "mem_trend": "stable",
             "has_historical": False
         }
 
-        if rrd_data:
-            cpu_values = [d["cpu"] * 100 for d in rrd_data if "cpu" in d and d["cpu"] is not None]
-            mem_values = [(d["memused"] / d["memtotal"] * 100) for d in rrd_data
+        # Calculate 24-hour metrics (detailed)
+        rrd_day = timeframes['day']
+        if rrd_day:
+            cpu_values_day = [d["cpu"] * 100 for d in rrd_day if "cpu" in d and d["cpu"] is not None]
+            mem_values_day = [(d["memused"] / d["memtotal"] * 100) for d in rrd_day
                          if "memused" in d and "memtotal" in d and d["memtotal"] > 0]
-            iowait_values = [d["iowait"] * 100 for d in rrd_data if "iowait" in d and d["iowait"] is not None]
-            load_values = [d["loadavg"] for d in rrd_data if "loadavg" in d and d["loadavg"] is not None]
+            iowait_values_day = [d["iowait"] * 100 for d in rrd_day if "iowait" in d and d["iowait"] is not None]
+            load_values_day = [d["loadavg"] for d in rrd_day if "loadavg" in d and d["loadavg"] is not None]
 
-            if cpu_values:
-                metrics["avg_cpu"] = sum(cpu_values) / len(cpu_values)
-                metrics["max_cpu"] = max(cpu_values)
+            if cpu_values_day:
+                metrics["avg_cpu"] = sum(cpu_values_day) / len(cpu_values_day)
+                metrics["max_cpu"] = max(cpu_values_day)
                 metrics["has_historical"] = True
 
-            if mem_values:
-                metrics["avg_mem"] = sum(mem_values) / len(mem_values)
-                metrics["max_mem"] = max(mem_values)
+            if mem_values_day:
+                metrics["avg_mem"] = sum(mem_values_day) / len(mem_values_day)
+                metrics["max_mem"] = max(mem_values_day)
 
-            if iowait_values:
-                metrics["avg_iowait"] = sum(iowait_values) / len(iowait_values)
-                metrics["max_iowait"] = max(iowait_values)
-                metrics["current_iowait"] = iowait_values[-1] if iowait_values else 0
+            if iowait_values_day:
+                metrics["avg_iowait"] = sum(iowait_values_day) / len(iowait_values_day)
+                metrics["max_iowait"] = max(iowait_values_day)
+                metrics["current_iowait"] = iowait_values_day[-1] if iowait_values_day else 0
 
-            if load_values:
-                metrics["avg_load"] = sum(load_values) / len(load_values)
+            if load_values_day:
+                metrics["avg_load"] = sum(load_values_day) / len(load_values_day)
+
+        # Calculate 7-day metrics (longer-term patterns)
+        rrd_week = timeframes['week']
+        if rrd_week:
+            cpu_values_week = [d["cpu"] * 100 for d in rrd_week if "cpu" in d and d["cpu"] is not None]
+            mem_values_week = [(d["memused"] / d["memtotal"] * 100) for d in rrd_week
+                          if "memused" in d and "memtotal" in d and d["memtotal"] > 0]
+            iowait_values_week = [d["iowait"] * 100 for d in rrd_week if "iowait" in d and d["iowait"] is not None]
+
+            if cpu_values_week:
+                metrics["avg_cpu_week"] = sum(cpu_values_week) / len(cpu_values_week)
+                metrics["max_cpu_week"] = max(cpu_values_week)
+
+                # Detect CPU trend: compare recent 20% vs older 20%
+                recent_size = max(1, len(cpu_values_week) // 5)
+                recent_avg = sum(cpu_values_week[-recent_size:]) / recent_size
+                older_avg = sum(cpu_values_week[:recent_size]) / recent_size
+                diff = recent_avg - older_avg
+                if diff > 10:  # Rising more than 10%
+                    metrics["cpu_trend"] = "rising"
+                elif diff < -10:  # Falling more than 10%
+                    metrics["cpu_trend"] = "falling"
+
+            if mem_values_week:
+                metrics["avg_mem_week"] = sum(mem_values_week) / len(mem_values_week)
+                metrics["max_mem_week"] = max(mem_values_week)
+
+                # Detect memory trend
+                recent_size = max(1, len(mem_values_week) // 5)
+                recent_avg = sum(mem_values_week[-recent_size:]) / recent_size
+                older_avg = sum(mem_values_week[:recent_size]) / recent_size
+                diff = recent_avg - older_avg
+                if diff > 10:
+                    metrics["mem_trend"] = "rising"
+                elif diff < -10:
+                    metrics["mem_trend"] = "falling"
+
+            if iowait_values_week:
+                metrics["avg_iowait_week"] = sum(iowait_values_week) / len(iowait_values_week)
 
         # Process RRD data for all timeframes (for charting at different time ranges)
         trend_data = {}
@@ -281,6 +387,27 @@ class ProxmoxAPICollector:
 
         print(f"Processed {total_points} trend data points across {len(timeframes)} timeframes for {node_name}")
 
+        # Get storage status
+        storage_info = []
+        storage_status = self.get_storage_status(node_name)
+        for storage in storage_status:
+            if storage.get("enabled", 1) == 1:  # Only enabled storage
+                total_gb = storage.get("total", 0) / (1024**3)
+                used_gb = storage.get("used", 0) / (1024**3)
+                avail_gb = storage.get("avail", 0) / (1024**3)
+                usage_pct = (used_gb / total_gb * 100) if total_gb > 0 else 0
+
+                storage_info.append({
+                    "storage": storage.get("storage", "unknown"),
+                    "type": storage.get("type", "unknown"),
+                    "content": storage.get("content", ""),
+                    "active": storage.get("active", 0) == 1,
+                    "total_gb": round(total_gb, 2),
+                    "used_gb": round(used_gb, 2),
+                    "avail_gb": round(avail_gb, 2),
+                    "usage_pct": round(usage_pct, 2)
+                })
+
         return {
             "name": node_name,
             "status": node.get("status", "unknown"),
@@ -291,6 +418,7 @@ class ProxmoxAPICollector:
             "mem_percent": metrics["current_mem"],
             "metrics": metrics,
             "trend_data": trend_data,
+            "storage": storage_info,
             "guests": []
         }
     
@@ -306,12 +434,64 @@ class ProxmoxAPICollector:
 
         print(f"Found {len(nodes_raw)} nodes, {len(vms_raw)} VMs, {len(cts_raw)} containers")
 
+        # Fetch cluster-level information
+        print("Fetching cluster-level data (HA, status, backup info, pools)...")
+        ha_resources = self.get_ha_resources()
+        ha_status = self.get_ha_status()
+        cluster_status = self.get_cluster_status()
+        backup_info = self.get_backup_info()
+        resource_pools = self.get_resource_pools()
+
+        # Create HA lookup for quick access
+        ha_managed = {}
+        for ha_res in ha_resources:
+            sid = ha_res.get("sid", "")  # Format: vm:123 or ct:123
+            ha_managed[sid] = {
+                "state": ha_res.get("state", "unknown"),
+                "group": ha_res.get("group", ""),
+                "max_relocate": ha_res.get("max_relocate", 1),
+                "max_restart": ha_res.get("max_restart", 1)
+            }
+
+        # Create backup lookup
+        not_backed_up_ids = set()
+        for guest in backup_info:
+            vmid = guest.get("vmid")
+            if vmid:
+                not_backed_up_ids.add(str(vmid))
+
+        # Create pool membership lookup
+        pool_membership = {}  # vmid -> pool_name
+        for pool in resource_pools:
+            pool_name = pool.get("poolid", "")
+            members = pool.get("members", [])
+            for member in members:
+                vmid = member.get("vmid")
+                if vmid:
+                    pool_membership[str(vmid)] = pool_name
+
+        # Parse cluster health
+        cluster_health = {
+            "quorate": False,
+            "nodes": 0,
+            "online_nodes": 0
+        }
+        for item in cluster_status:
+            if item.get("type") == "cluster":
+                cluster_health["quorate"] = item.get("quorate", 0) == 1
+                cluster_health["nodes"] = item.get("nodes", 0)
+            elif item.get("type") == "node":
+                if item.get("online", 0) == 1:
+                    cluster_health["online_nodes"] += 1
+
         # Store performance metrics
         self.perf_metrics = {
             "node_count": len(nodes_raw),
             "guest_count": len(vms_raw) + len(cts_raw),
             "parallel_enabled": self.parallel_enabled,
-            "max_workers": self.max_workers if self.parallel_enabled else 1
+            "max_workers": self.max_workers if self.parallel_enabled else 1,
+            "ha_enabled": len(ha_resources) > 0,
+            "cluster_quorate": cluster_health["quorate"]
         }
 
         # Process nodes - parallel or sequential based on config
@@ -388,6 +568,26 @@ class ProxmoxAPICollector:
                             net_out_bps = point.get("netout", 0) or 0
                             break
 
+            # Check HA status
+            ha_sid = f"{'vm' if guest_type == 'VM' else 'ct'}:{vmid}"
+            ha_info = ha_managed.get(ha_sid, None)
+
+            # Check backup status
+            has_backup = str(vmid) not in not_backed_up_ids
+
+            # Check pool membership
+            pool_name = pool_membership.get(str(vmid), None)
+
+            # Get guest agent info (VMs only, and only if running)
+            agent_info = {}
+            if guest_type == "VM" and guest_status == "running":
+                agent_data = self.get_guest_agent_info(node_name, vmid)
+                if agent_data:
+                    agent_info = {
+                        "version": agent_data.get("version", "unknown"),
+                        "supported_commands": len(agent_data.get("supported_commands", []))
+                    }
+
             guest_info = {
                 "vmid": vmid,
                 "name": guest.get("name") or config.get("name") or f"{guest_type}-{vmid}",
@@ -403,7 +603,14 @@ class ProxmoxAPICollector:
                 "disk_write_bps": disk_write_bps,
                 "net_in_bps": net_in_bps,
                 "net_out_bps": net_out_bps,
-                "tags": tags_data
+                "tags": tags_data,
+                "ha_managed": ha_info is not None,
+                "ha_state": ha_info.get("state") if ha_info else None,
+                "ha_group": ha_info.get("group") if ha_info else None,
+                "has_backup": has_backup,
+                "pool": pool_name,
+                "agent_running": len(agent_info) > 0,
+                "agent_info": agent_info if agent_info else None
             }
             
             self.guests[str(vmid)] = guest_info
@@ -419,6 +626,10 @@ class ProxmoxAPICollector:
         print(f"Guest processing completed in {guest_duration:.2f}s")
         print(f"Total collection time: {total_duration:.2f}s")
 
+        # Store cluster-level data for summary
+        self.cluster_health = cluster_health
+        self.ha_status = ha_status
+
         return self.generate_summary()
     
     def generate_summary(self) -> Dict:
@@ -426,6 +637,8 @@ class ProxmoxAPICollector:
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])
+        ha_managed_count = sum(1 for g in self.guests.values() if g.get("ha_managed", False))
+        backed_up_count = sum(1 for g in self.guests.values() if g.get("has_backup", False))
 
         return {
             "collected_at": datetime.utcnow().isoformat() + 'Z',
@@ -437,8 +650,12 @@ class ProxmoxAPICollector:
                 "vms": sum(1 for g in self.guests.values() if g["type"] == "VM"),
                 "containers": sum(1 for g in self.guests.values() if g["type"] == "CT"),
                 "ignored_guests": ignored,
-                "excluded_guests": excluded
+                "excluded_guests": excluded,
+                "ha_managed_guests": ha_managed_count,
+                "backed_up_guests": backed_up_count
             },
+            "cluster_health": getattr(self, 'cluster_health', {}),
+            "ha_status": getattr(self, 'ha_status', {}),
             "performance": getattr(self, 'perf_metrics', {})
         }
 

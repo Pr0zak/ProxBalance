@@ -15,6 +15,11 @@ class AIProvider(ABC):
         """Generate migration recommendations based on cluster metrics"""
         pass
 
+    @abstractmethod
+    def enhance_recommendations(self, recommendations: List[Dict], cluster_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhance algorithm-generated recommendations with AI insights"""
+        pass
+
     def _summarize_metrics(self, metrics: Dict[str, Any]) -> Dict[str, Any]:
         """Summarize metrics to reduce token count for AI analysis"""
         nodes = metrics.get("nodes", {})
@@ -253,6 +258,78 @@ class OpenAIProvider(AIProvider):
                 "recommendations": []
             }
 
+    def enhance_recommendations(self, recommendations: List[Dict], cluster_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhance algorithm-generated recommendations with AI insights"""
+        if not recommendations:
+            return {"success": True, "enhanced_recommendations": []}
+
+        # Build enhancement prompt
+        nodes_summary = {}
+        for node_name, node in cluster_metrics.get("nodes", {}).items():
+            metrics = node.get("metrics", {})
+            nodes_summary[node_name] = {
+                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
+                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
+                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
+                "cpu_trend": metrics.get("cpu_trend", "unknown"),
+                "mem_trend": metrics.get("mem_trend", "unknown")
+            }
+
+        prompt = f"""Review these algorithm-generated migration recommendations and provide brief insights for each.
+
+CLUSTER NODE STATUS (7-day averages):
+{json.dumps(nodes_summary, indent=2)}
+
+ALGORITHM RECOMMENDATIONS:
+{json.dumps(recommendations[:5], indent=2)}
+
+For each recommendation, provide a 1-2 sentence insight explaining:
+- Why this target node is suitable (or potential concerns)
+- Any historical patterns that support or question this choice
+- Brief risk assessment based on 7-day trends
+
+Return JSON format:
+{{
+  "success": true,
+  "insights": [
+    {{
+      "vmid": 999,
+      "insight": "pve4 is a good choice because...",
+      "confidence_adjustment": 0  // -10 to +10 to adjust algorithm confidence
+    }}
+  ]
+}}"""
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": "You are a Proxmox cluster expert providing brief, actionable insights."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "response_format": {"type": "json_object"}
+        }
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=15  # Shorter timeout for enhancement
+            )
+            response.raise_for_status()
+            result = response.json()
+            content = result['choices'][0]['message']['content']
+            return json.loads(content)
+        except Exception as e:
+            # Fail gracefully - return recommendations without enhancement
+            return {"success": False, "error": str(e), "insights": []}
+
 
 class AnthropicProvider(AIProvider):
     """Anthropic Claude provider"""
@@ -341,6 +418,84 @@ class AnthropicProvider(AIProvider):
                 "recommendations": []
             }
 
+    def enhance_recommendations(self, recommendations: List[Dict], cluster_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhance algorithm-generated recommendations with AI insights"""
+        if not recommendations:
+            return {"success": True, "insights": []}
+
+        # Reuse OpenAI's enhancement logic with Anthropic API
+        nodes_summary = {}
+        for node_name, node in cluster_metrics.get("nodes", {}).items():
+            metrics = node.get("metrics", {})
+            nodes_summary[node_name] = {
+                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
+                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
+                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
+                "cpu_trend": metrics.get("cpu_trend", "unknown"),
+                "mem_trend": metrics.get("mem_trend", "unknown")
+            }
+
+        prompt = f"""Review these algorithm-generated migration recommendations and provide brief insights for each.
+
+CLUSTER NODE STATUS (7-day averages):
+{json.dumps(nodes_summary, indent=2)}
+
+ALGORITHM RECOMMENDATIONS:
+{json.dumps(recommendations[:5], indent=2)}
+
+For each recommendation, provide a 1-2 sentence insight explaining:
+- Why this target node is suitable (or potential concerns)
+- Any historical patterns that support or question this choice
+- Brief risk assessment based on 7-day trends
+
+Return JSON format:
+{{
+  "success": true,
+  "insights": [
+    {{
+      "vmid": 999,
+      "insight": "pve4 is a good choice because...",
+      "confidence_adjustment": 0
+    }}
+  ]
+}}"""
+
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "max_tokens": 2000,
+            "temperature": 0.3,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/messages",
+                headers=headers,
+                json=payload,
+                timeout=15
+            )
+            response.raise_for_status()
+            result = response.json()
+            content = result['content'][0]['text']
+
+            # Extract JSON from response
+            if '```json' in content:
+                content = content.split('```json')[1].split('```')[0].strip()
+            elif '```' in content:
+                content = content.split('```')[1].split('```')[0].strip()
+
+            return json.loads(content)
+        except Exception as e:
+            return {"success": False, "error": str(e), "insights": []}
+
 
 class LocalLLMProvider(AIProvider):
     """Local LLM provider (Ollama)"""
@@ -379,6 +534,54 @@ class LocalLLMProvider(AIProvider):
                 "error": str(e),
                 "recommendations": []
             }
+
+    def enhance_recommendations(self, recommendations: List[Dict], cluster_metrics: Dict[str, Any]) -> Dict[str, Any]:
+        """Enhance algorithm-generated recommendations with AI insights"""
+        if not recommendations:
+            return {"success": True, "insights": []}
+
+        # Similar logic for local LLM
+        nodes_summary = {}
+        for node_name, node in cluster_metrics.get("nodes", {}).items():
+            metrics = node.get("metrics", {})
+            nodes_summary[node_name] = {
+                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
+                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
+                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
+                "cpu_trend": metrics.get("cpu_trend", "unknown"),
+                "mem_trend": metrics.get("mem_trend", "unknown")
+            }
+
+        prompt = f"""Review these migration recommendations and provide brief insights.
+
+NODES (7-day averages):
+{json.dumps(nodes_summary, indent=2)}
+
+RECOMMENDATIONS:
+{json.dumps(recommendations[:5], indent=2)}
+
+For each, explain why the target is suitable and any concerns. Return JSON:
+{{"success": true, "insights": [{{"vmid": 999, "insight": "...", "confidence_adjustment": 0}}]}}"""
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json"
+        }
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json=payload,
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
+            content = result.get('response', '{}')
+            return json.loads(content)
+        except Exception as e:
+            return {"success": False, "error": str(e), "insights": []}
 
 
 class AIProviderFactory:
@@ -426,3 +629,15 @@ class AIProviderFactory:
 
         else:
             raise ValueError(f"Unknown AI provider: {provider_type}")
+
+
+def get_ai_provider() -> Optional[AIProvider]:
+    """
+    Get configured AI provider instance.
+
+    Returns:
+        AIProvider instance if configured, None otherwise
+    """
+    from app import load_config
+    config = load_config()
+    return AIProviderFactory.create_provider(config)
