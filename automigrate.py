@@ -269,6 +269,16 @@ def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool
         if 'auto-migrate-ok' not in tags:
             return False, "Missing 'auto-migrate-ok' tag (whitelist mode)"
 
+    # Check for bind mounts on containers (LXC only)
+    # Only block if container has UNSHARED bind mounts
+    # Shared bind mounts (shared=1) can be migrated automatically
+    if guest.get('type') == 'CT':
+        mount_info = guest.get('mount_points', {})
+        if mount_info.get('has_unshared_bind_mount', False):
+            mount_count = len([mp for mp in mount_info.get('mount_points', [])
+                              if mp.get('is_bind_mount', False) and not mp.get('is_shared', False)])
+            return False, f"Container has {mount_count} unshared bind mount(s) - migration requires manual intervention"
+
     return True, "OK"
 
 

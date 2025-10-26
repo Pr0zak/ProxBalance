@@ -61,6 +61,16 @@ Visual representation with 5 view modes:
 - Plan evacuation and execute migrations from the map
 - Real-time updates without page refresh
 
+**Visual Indicators:**
+- **Mount Point Indicators** (Containers only)
+  - Cyan dot (top-right): Shared mount points (safe to migrate)
+  - Orange dot (top-right): Unshared bind mounts (requires manual migration)
+  - Shows mount point count in tooltip
+- **Passthrough Disk Indicators** (VMs only)
+  - Red dot (top-left): Hardware passthrough disks (cannot migrate)
+  - Shows disk count and reason in tooltip
+  - Automatically excluded from migration recommendations
+
 ### Dark Mode
 - Modern interface with automatic theme detection
 - Manual light/dark theme toggle

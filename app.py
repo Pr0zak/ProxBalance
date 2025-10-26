@@ -1745,6 +1745,39 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             if guest.get("status") != "running" and src_node_name not in maintenance_nodes:
                 continue
 
+            # Skip guests with passthrough disks (hardware-bound, cannot migrate)
+            local_disk_info = guest.get("local_disks", {})
+            if local_disk_info.get("is_pinned", False):
+                # Passthrough disks cannot be migrated even for maintenance
+                continue
+
+            # Check for bind mounts on containers
+            has_bind_mount = False
+            bind_mount_warning = None
+            if guest.get("type") == "CT":
+                mount_info = guest.get("mount_points", {})
+
+                # Only skip if container has UNSHARED bind mounts
+                # Shared bind mounts (shared=1) can be migrated if path exists on target
+                if mount_info.get("has_unshared_bind_mount", False):
+                    has_bind_mount = True
+                    mount_points = mount_info.get("mount_points", [])
+                    unshared_bind_mounts = [mp for mp in mount_points if mp.get("is_bind_mount", False) and not mp.get("is_shared", False)]
+                    bind_paths = [mp.get("source", "") for mp in unshared_bind_mounts]
+                    bind_mount_warning = f"Container has {len(unshared_bind_mounts)} unshared bind mount(s): {', '.join(bind_paths[:2])}{'...' if len(bind_paths) > 2 else ''}. Migration requires --restart --force and manual path verification on target node."
+
+                    # Skip CTs with unshared bind mounts (unless on maintenance node where evacuation is priority)
+                    if src_node_name not in maintenance_nodes:
+                        continue
+
+                # For shared bind mounts, add informational note but allow migration
+                elif mount_info.get("has_shared_mount", False):
+                    mount_points = mount_info.get("mount_points", [])
+                    shared_mounts = [mp for mp in mount_points if mp.get("is_bind_mount", False) and mp.get("is_shared", False)]
+                    if shared_mounts:
+                        shared_paths = [mp.get("source", "") for mp in shared_mounts]
+                        bind_mount_warning = f"Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure paths exist on target node."
+
             # Calculate current score (how well current node suits this guest)
             current_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold)
 
@@ -1889,7 +1922,37 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             # Cap at 100 for the conversion formula
             suitability_rating = round(max(0, 100 - min(best_score, 100)), 1)
 
-            recommendations.append({
+            # Check for mount points and prepare warnings/metadata
+            bind_mount_warning = None
+            mount_point_info = {}
+            if guest.get("type") == "CT":
+                mount_info = guest.get("mount_points", {})
+                if mount_info.get("has_mount_points", False):
+                    mount_points = mount_info.get("mount_points", [])
+
+                    # Add mount point metadata for UI
+                    mount_point_info = {
+                        "has_mount_points": True,
+                        "mount_count": mount_info.get("mount_count", 0),
+                        "has_shared_mount": mount_info.get("has_shared_mount", False),
+                        "has_unshared_bind_mount": mount_info.get("has_unshared_bind_mount", False),
+                        "mount_paths": [mp.get("source", "") for mp in mount_points]
+                    }
+
+                    # Generate appropriate warnings
+                    if mount_info.get("has_unshared_bind_mount", False):
+                        # Unshared bind mounts (only appears for maintenance evacuations)
+                        unshared_mounts = [mp for mp in mount_points if mp.get("is_bind_mount", False) and not mp.get("is_shared", False)]
+                        bind_paths = [mp.get("source", "") for mp in unshared_mounts]
+                        bind_mount_warning = f"⚠️ Container has {len(unshared_mounts)} unshared bind mount(s): {', '.join(bind_paths[:2])}{'...' if len(bind_paths) > 2 else ''}. Migration requires --restart --force and manual path verification on target node."
+                    elif mount_info.get("has_shared_mount", False):
+                        # Shared bind mounts (informational)
+                        shared_mounts = [mp for mp in mount_points if mp.get("is_bind_mount", False) and mp.get("is_shared", False)]
+                        if shared_mounts:
+                            shared_paths = [mp.get("source", "") for mp in shared_mounts]
+                            bind_mount_warning = f"ℹ️ Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure these paths exist on {best_target}."
+
+            recommendation = {
                 "vmid": vmid_int,
                 "name": guest.get("name", "unknown"),
                 "type": guest.get("type", "unknown"),
@@ -1902,7 +1965,15 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                 "mem_gb": guest.get("mem_max_gb", 0),
                 "command": "{} migrate {} {} {}".format(cmd_type, vmid_int, best_target, cmd_flag),
                 "confidence_score": round(min(100, score_improvement * 2), 1)  # Convert improvement to confidence
-            })
+            }
+
+            # Add mount point metadata and warnings if present
+            if mount_point_info:
+                recommendation["mount_point_info"] = mount_point_info
+            if bind_mount_warning:
+                recommendation["bind_mount_warning"] = bind_mount_warning
+
+            recommendations.append(recommendation)
 
             # Note: pending_target_guests was already updated when the candidate was added (line 1563)
 

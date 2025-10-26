@@ -50,14 +50,37 @@ The Cluster Map provides a visual representation of your cluster with interactiv
 
 ### Interacting with Guests
 
-**Click any VM/CT** on the map to view:
+**Visual Indicators on Cluster Map:**
+
+Guests display visual indicators showing important information at a glance:
+
+**Mount Point Indicators (Containers only):**
+- **Cyan dot (top-right)**: Container has shared mount points (safe to migrate)
+  - Shared storage mounts can be accessed from any node
+  - Fully supported by automated migrations
+  - Hover to see mount point count
+- **Orange dot (top-right)**: Container has unshared bind mounts (requires manual migration)
+  - Bind mounts reference specific directories on the current node
+  - May require manual configuration before migration
+  - Hover to see mount point details
+
+**Passthrough Disk Indicators (VMs only):**
+- **Red dot (top-left)**: VM has hardware passthrough disks (cannot migrate)
+  - Direct device access (/dev/disk/by-id/*, /dev/sd*)
+  - Physically bound to the current node's hardware
+  - Automatically excluded from migration recommendations
+  - Hover to see disk count and reason
+
+**Click any VM/CT** on the map to view detailed information:
 - Detailed metrics with live sparkline visualizations
 - CPU usage with historical trend graph (blue)
 - Memory usage with historical trend graph (purple)
-- Disk I/O (read/write) with activity graphs (green/orange)
-- Network I/O (in/out) with traffic graphs (cyan/pink)
+- Disk I/O (read/write) stacked display
+- Network I/O (in/out) stacked display
 - Current node location and status
 - Applied tags and configuration
+- Mount point details (if present) - collapsible section
+- Passthrough disk details (if present) - collapsible section
 - Migration button
 
 ---
@@ -149,6 +172,56 @@ The Cluster Map provides a visual representation of your cluster with interactiv
 - Progress tracked in Recent Auto-Migrations
 - Auto-refreshes every 10 seconds
 - Shows completion or errors
+
+### Migrating Containers with Mount Points
+
+**Understanding Mount Point Types:**
+
+Containers may have mount points that affect migration capability:
+
+**Shared Storage Mounts (Cyan indicator):**
+- Storage volumes accessible from multiple nodes (e.g., NFS, Ceph, ZFS over network)
+- **Safe to migrate** - ProxBalance will migrate these containers automatically
+- Target node will reconnect to the same shared storage
+- No manual intervention required
+
+**Unshared Bind Mounts (Orange indicator):**
+- Bind mounts pointing to specific directories on the host node
+- Example: `mp0: /mnt/storage/appdata,mp=/data`
+- **Requires manual migration** - Data must be copied or storage reconfigured
+- ProxBalance may flag these containers depending on configuration
+- Consider creating equivalent mount points on target node before migration
+
+**Best Practice:**
+- Use shared storage for portable containers
+- Document bind mount dependencies
+- Plan manual migrations during maintenance windows
+- Verify mount point availability on target nodes
+
+### Migrating VMs with Passthrough Disks
+
+**Hardware Passthrough Detection:**
+
+VMs with passthrough disks (red indicator) cannot be migrated because they directly access host hardware:
+
+**Passthrough Disk Types:**
+- `/dev/disk/by-id/wwn-*` - Direct SATA/SAS disk access
+- `/dev/sd*` - Block device passthrough
+- Used for maximum I/O performance or specific hardware requirements
+
+**Automatic Exclusion:**
+- ProxBalance automatically detects passthrough disks
+- These VMs are excluded from migration recommendations
+- Red indicator (top-left) shows on Cluster Map
+- Click VM to see passthrough disk details
+
+**Manual Migration Workaround:**
+1. Shutdown VM on source node
+2. Physically move disk to target node (or reconfigure storage)
+3. Update VM configuration to point to new device path
+4. Start VM on target node
+
+**Recommendation:** Use shared storage (local-lvm with replication, Ceph, NFS) instead of passthrough when possible to maintain migration flexibility.
 
 ### Batch Migrations
 

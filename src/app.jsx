@@ -37,6 +37,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const Package = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>);
         const Bell = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>);
         const MinusCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>);
+        const Folder = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>);
 
 // Logo component
 const ProxBalanceLogo = ({ size = 32 }) => (
@@ -196,6 +197,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const [selectedNode, setSelectedNode] = useState(null); // Selected node from Cluster Map for details/maintenance modal
           const [selectedGuestDetails, setSelectedGuestDetails] = useState(null); // Selected guest from Cluster Map for details modal
 
+          // Guest modal collapse state (always starts collapsed, not persisted)
+          const [guestModalCollapsed, setGuestModalCollapsed] = useState({
+            mountPoints: true,
+            passthroughDisks: true
+          });
+
           // Tag management
           const [showTagModal, setShowTagModal] = useState(false);
           const [tagModalGuest, setTagModalGuest] = useState(null);
@@ -244,6 +251,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               safetyRules: false,
               additionalRules: false,
               automatedMigrations: true,  // Collapsed by default
+              mountPoints: true,  // Collapsed by default in guest details modal
+              passthroughDisks: true,  // Collapsed by default in guest details modal
               notificationSettings: true  // Collapsed by default (coming soon)
             };
           });
@@ -461,6 +470,16 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             }, 10000); // 10 seconds
             return () => clearInterval(interval);
           }, []);
+
+          // Reset guest modal collapse state when a new guest is selected
+          useEffect(() => {
+            if (selectedGuestDetails) {
+              setGuestModalCollapsed({
+                mountPoints: true,
+                passthroughDisks: true
+              });
+            }
+          }, [selectedGuestDetails?.vmid]); // Only reset when vmid changes
 
           const checkPermissions = async () => {
             try {
@@ -7237,6 +7256,26 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           </div>
                                         )}
 
+                                        {/* Mount Point Indicator - Border Dot (Top Right) */}
+                                        {guest.mount_points?.has_mount_points && !isMigrating && !isCompleted && (
+                                          <div
+                                            className={`absolute -top-0.5 -right-0.5 ${
+                                              guest.mount_points.has_unshared_bind_mount
+                                                ? 'bg-orange-500'
+                                                : 'bg-cyan-400'
+                                            } rounded-full w-3 h-3 shadow-lg ring-2 ring-white dark:ring-gray-800`}
+                                            title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
+                                          />
+                                        )}
+
+                                        {/* Pinned Disk Indicator - Border Dot (Top Left) */}
+                                        {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
+                                          <div
+                                            className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3 h-3 shadow-lg ring-2 ring-white dark:ring-gray-800"
+                                            title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
+                                          />
+                                        )}
+
                                         {/* Guest tooltip */}
                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 dark:border-gray-600 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
                                           <div className="font-bold text-sm mb-2 text-blue-400 border-b border-gray-700 pb-2">
@@ -7310,6 +7349,22 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                                 <span className="font-semibold text-purple-400">{((guest.net_out_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
                                               </div>
                                             </div>
+
+                                            {/* Mount Point Info */}
+                                            {guest.mount_points?.has_mount_points && (
+                                              <div className={`border-t border-gray-700 pt-1.5 mt-1.5 flex items-center gap-2 ${
+                                                guest.mount_points.has_unshared_bind_mount ? 'text-orange-400' : 'text-green-400'
+                                              } bg-gray-800/50 px-2 py-1 rounded`}>
+                                                <Folder size={14} />
+                                                <div className="flex flex-col">
+                                                  <span className="text-xs font-semibold">
+                                                    {guest.mount_points.mount_count} mount point{guest.mount_points.mount_count > 1 ? 's' : ''}
+                                                    {guest.mount_points.has_shared_mount && ' (shared)'}
+                                                    {guest.mount_points.has_unshared_bind_mount && ' (manual migration required)'}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
                                       </div>
@@ -7734,18 +7789,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                 {/* Guest Details Modal (from Cluster Map click) */}
                 {selectedGuestDetails && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedGuestDetails(null)}>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                       {/* Modal Header */}
-                      <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
-                            {selectedGuestDetails.type === 'qemu' ? <HardDrive size={24} className="text-white" /> : <Package size={24} className="text-white" />}
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
+                            {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-white" /> : <Package size={20} className="text-white" />}
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                               {selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`}
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
                               {selectedGuestDetails.type === 'qemu' ? 'Virtual Machine' : 'Container'} #{selectedGuestDetails.vmid}
                             </p>
                           </div>
@@ -7754,158 +7809,108 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           onClick={() => setSelectedGuestDetails(null)}
                           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                         >
-                          <X size={24} />
+                          <X size={20} />
                         </button>
                       </div>
 
                       {/* Modal Body */}
-                      <div className="p-6 space-y-4">
-                        {/* Status and Location */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Status</div>
-                            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                      <div className="p-4">
+                        {/* Status Bar */}
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-2">
+                            <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
                               selectedGuestDetails.status === 'running' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
                               'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                             }`}>
-                              {selectedGuestDetails.status === 'running' ? <Activity size={14} /> : <AlertCircle size={14} />}
+                              {selectedGuestDetails.status === 'running' ? <Activity size={12} /> : <AlertCircle size={12} />}
                               {selectedGuestDetails.status}
                             </div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Node</div>
-                            <div className="font-medium text-gray-900 dark:text-white">{selectedGuestDetails.currentNode}</div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">on</span>
+                            <span className="text-xs font-medium text-gray-900 dark:text-white">{selectedGuestDetails.currentNode}</span>
                           </div>
                         </div>
 
-                        {/* Resource Usage */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Resource Usage</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-blue-600 dark:text-blue-400"
-                                  points={generateSparkline(selectedGuestDetails.cpu_current || 0, 100, 40, 0.3)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">CPU</div>
-                                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  {(selectedGuestDetails.cpu_current || 0).toFixed(1)}%
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores allocated</div>
-                              </div>
+                        {/* Resource Usage - Compact 2-Column Grid with Sparklines */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {/* CPU */}
+                          <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded p-2 border border-blue-200 dark:border-blue-800">
+                            {/* Sparkline background */}
+                            <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
+                              <polyline
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="text-blue-600 dark:text-blue-400"
+                                points={generateSparkline(selectedGuestDetails.cpu_current || 0, 100, 30, 0.3)}
+                              />
+                            </svg>
+                            <div className="relative z-10">
+                              <div className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-0.5">CPU</div>
+                              <div className="text-xl font-bold text-gray-900 dark:text-white">{(selectedGuestDetails.cpu_current || 0).toFixed(1)}%</div>
+                              <div className="text-[10px] text-gray-500 dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores</div>
                             </div>
-                            <div className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-purple-600 dark:text-purple-400"
-                                  points={generateSparkline(selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100) : 0, 100, 40, 0.25)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Memory</div>
-                                <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                                  {selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100).toFixed(1) : 0}%
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                  {(selectedGuestDetails.mem_used_gb || 0).toFixed(1)} / {(selectedGuestDetails.mem_max_gb || 0).toFixed(1)} GB
-                                </div>
+                          </div>
+
+                          {/* Memory */}
+                          <div className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded p-2 border border-purple-200 dark:border-purple-800">
+                            {/* Sparkline background */}
+                            <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
+                              <polyline
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                className="text-purple-600 dark:text-purple-400"
+                                points={generateSparkline(selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100) : 0, 100, 30, 0.25)}
+                              />
+                            </svg>
+                            <div className="relative z-10">
+                              <div className="text-[10px] uppercase tracking-wide text-purple-600 dark:text-purple-400 font-medium mb-0.5">Memory</div>
+                              <div className="text-xl font-bold text-gray-900 dark:text-white">
+                                {selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100).toFixed(1) : 0}%
+                              </div>
+                              <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                {(selectedGuestDetails.mem_used_gb || 0).toFixed(1)} / {(selectedGuestDetails.mem_max_gb || 0).toFixed(1)} GB
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Disk I/O */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Disk I/O</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-green-600 dark:text-green-400"
-                                  points={generateSparkline((selectedGuestDetails.disk_read_bps || 0) / (1024 * 1024), Math.max(((selectedGuestDetails.disk_read_bps || 0) / (1024 * 1024)) * 1.5, 10), 40, 0.35)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Read</div>
-                                <div className="text-xl font-bold text-gray-900 dark:text-white">
-                                  {((selectedGuestDetails.disk_read_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s
-                                </div>
+                        {/* I/O Metrics - Compact 2-Column */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {/* Disk I/O (Read/Write Stacked) */}
+                          <div className="bg-green-50 dark:bg-green-900/20 rounded p-2 border border-green-200 dark:border-green-800">
+                            <div className="text-[10px] uppercase tracking-wide text-green-600 dark:text-green-400 font-medium mb-1">Disk I/O</div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-600 dark:text-gray-400">Read</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {((selectedGuestDetails.disk_read_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
+                                </span>
                               </div>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-orange-600 dark:text-orange-400"
-                                  points={generateSparkline((selectedGuestDetails.disk_write_bps || 0) / (1024 * 1024), Math.max(((selectedGuestDetails.disk_write_bps || 0) / (1024 * 1024)) * 1.5, 10), 40, 0.4)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Write</div>
-                                <div className="text-xl font-bold text-gray-900 dark:text-white">
-                                  {((selectedGuestDetails.disk_write_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s
-                                </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-600 dark:text-gray-400">Write</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {((selectedGuestDetails.disk_write_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
+                                </span>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Network I/O */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Network I/O</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="relative overflow-hidden bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-cyan-600 dark:text-cyan-400"
-                                  points={generateSparkline((selectedGuestDetails.net_in_bps || 0) / (1024 * 1024), Math.max(((selectedGuestDetails.net_in_bps || 0) / (1024 * 1024)) * 1.5, 10), 40, 0.45)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">In</div>
-                                <div className="text-xl font-bold text-gray-900 dark:text-white">
-                                  {((selectedGuestDetails.net_in_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s
-                                </div>
+                          {/* Network I/O (In/Out Stacked) */}
+                          <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded p-2 border border-cyan-200 dark:border-cyan-800">
+                            <div className="text-[10px] uppercase tracking-wide text-cyan-600 dark:text-cyan-400 font-medium mb-1">Network I/O</div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-600 dark:text-gray-400">In</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {((selectedGuestDetails.net_in_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
+                                </span>
                               </div>
-                            </div>
-                            <div className="relative overflow-hidden bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-lg p-4">
-                              {/* Sparkline background */}
-                              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                                <polyline
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  className="text-pink-600 dark:text-pink-400"
-                                  points={generateSparkline((selectedGuestDetails.net_out_bps || 0) / (1024 * 1024), Math.max(((selectedGuestDetails.net_out_bps || 0) / (1024 * 1024)) * 1.5, 10), 40, 0.5)}
-                                />
-                              </svg>
-                              <div className="relative z-10">
-                                <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Out</div>
-                                <div className="text-xl font-bold text-gray-900 dark:text-white">
-                                  {((selectedGuestDetails.net_out_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s
-                                </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-gray-600 dark:text-gray-400">Out</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {((selectedGuestDetails.net_out_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -7913,15 +7918,191 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                         {/* Tags */}
                         {selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags && selectedGuestDetails.tags.all_tags.length > 0 && (
-                          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Tags</h4>
-                            <div className="flex flex-wrap gap-2">
+                          <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                            <div className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-1.5">Tags</div>
+                            <div className="flex flex-wrap gap-1.5">
                               {selectedGuestDetails.tags.all_tags.map((tag, idx) => (
                                 <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded text-xs">
                                   {tag}
                                 </span>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Mount Points (Containers only) */}
+                        {selectedGuestDetails.type === 'CT' && selectedGuestDetails.mount_points && selectedGuestDetails.mount_points.has_mount_points && (
+                          <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <button
+                              onClick={() => setGuestModalCollapsed(prev => ({
+                                ...prev,
+                                mountPoints: !prev.mountPoints
+                              }))}
+                              className="flex items-center justify-between w-full mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Folder size={16} className={`${
+                                  selectedGuestDetails.mount_points.has_unshared_bind_mount
+                                    ? 'text-orange-600 dark:text-orange-400'
+                                    : 'text-green-600 dark:text-green-400'
+                                }`} />
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  Mount Points ({selectedGuestDetails.mount_points.mount_count})
+                                </h4>
+                              </div>
+                              {guestModalCollapsed.mountPoints ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
+                            </button>
+
+                            {!guestModalCollapsed.mountPoints && (
+                            <>
+                            {/* Mount Points List */}
+                            <div className="space-y-2">
+                              {selectedGuestDetails.mount_points.mount_points && selectedGuestDetails.mount_points.mount_points.map((mp, idx) => (
+                                <div key={idx} className={`p-3 rounded-lg border ${
+                                  mp.is_bind_mount && !mp.is_shared
+                                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700'
+                                    : mp.is_bind_mount && mp.is_shared
+                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                                }`}>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                          {mp.mount_path}
+                                        </span>
+                                        {mp.is_bind_mount && mp.is_shared && (
+                                          <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded">
+                                            SHARED
+                                          </span>
+                                        )}
+                                        {mp.is_bind_mount && !mp.is_shared && (
+                                          <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded">
+                                            UNSHARED
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                                        <span className="font-medium">Source:</span> <span className="font-mono">{mp.source}</span>
+                                      </div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                        <span className="font-medium">Type:</span> {mp.is_bind_mount ? 'Bind Mount' : 'Storage Mount'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {mp.is_bind_mount && !mp.is_shared && (
+                                    <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
+                                      <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                                        ⚠️ Migration requires --restart --force and manual path verification on target node
+                                      </p>
+                                    </div>
+                                  )}
+                                  {mp.is_bind_mount && mp.is_shared && (
+                                    <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800">
+                                      <p className="text-xs text-green-700 dark:text-green-300 font-medium">
+                                        ✓ Can be migrated (ensure path exists on target node)
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Migration Warning/Info */}
+                            {selectedGuestDetails.mount_points.has_unshared_bind_mount ? (
+                              <div className="mt-3 p-3 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                                  <div className="text-xs text-orange-800 dark:text-orange-200">
+                                    <p className="font-semibold mb-1">Manual Migration Required</p>
+                                    <p>This container has unshared bind mounts that require manual intervention. Use <span className="font-mono bg-orange-200 dark:bg-orange-800 px-1">pct migrate {selectedGuestDetails.vmid} &lt;target&gt; --restart --force</span> and verify paths exist on target node.</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : selectedGuestDetails.mount_points.has_shared_mount ? (
+                              <div className="mt-3 p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <CheckCircle size={16} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                                  <div className="text-xs text-green-800 dark:text-green-200">
+                                    <p className="font-semibold mb-1">Safe to Migrate</p>
+                                    <p>All bind mounts are marked as shared. Ensure these paths exist on the target node before migration.</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                            </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Local/Pinned Disks (VMs and CTs) */}
+                        {selectedGuestDetails.local_disks && selectedGuestDetails.local_disks.is_pinned && (
+                          <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <button
+                              onClick={() => setGuestModalCollapsed(prev => ({
+                                ...prev,
+                                passthroughDisks: !prev.passthroughDisks
+                              }))}
+                              className="flex items-center justify-between w-full mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  Cannot Migrate - {selectedGuestDetails.local_disks.pinned_reason}
+                                </h4>
+                              </div>
+                              {guestModalCollapsed.passthroughDisks ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
+                            </button>
+
+                            {!guestModalCollapsed.passthroughDisks && (
+                            <>
+                            {/* Passthrough Disks */}
+                            {selectedGuestDetails.local_disks.passthrough_disks && selectedGuestDetails.local_disks.passthrough_disks.length > 0 && (
+                              <div className="mb-3">
+                                <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Passthrough Disks ({selectedGuestDetails.local_disks.passthrough_count})
+                                </h5>
+                                <div className="space-y-2">
+                                  {selectedGuestDetails.local_disks.passthrough_disks.map((disk, idx) => (
+                                    <div key={idx} className="p-3 rounded-lg border bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                              {disk.key}
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">
+                                              HARDWARE PASSTHROUGH
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                                            <span className="font-medium">Device:</span> <span className="font-mono text-[11px]">{disk.device}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800">
+                                        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                                          ⚠️ This disk is physically attached to the current node's hardware. Cannot be migrated.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Summary Warning */}
+                            <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="text-xs text-red-800 dark:text-red-200">
+                                  <p className="font-semibold mb-1">Migration Blocked</p>
+                                  <p>This {selectedGuestDetails.type} has {selectedGuestDetails.local_disks.total_pinned_disks} disk(s) that prevent automatic migration. Manual intervention required.</p>
+                                </div>
+                              </div>
+                            </div>
+                            </>
+                            )}
                           </div>
                         )}
                       </div>
@@ -8558,6 +8739,17 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-white'}`}>
                                     [{rec.type} {rec.vmid}] {rec.name}
                                   </span>
+                                  {rec.mount_point_info?.has_mount_points && (
+                                    <span className={`flex items-center gap-1 px-2 py-0.5 ${
+                                      rec.mount_point_info.has_unshared_bind_mount
+                                        ? 'bg-orange-500'
+                                        : 'bg-green-500'
+                                    } text-white text-[10px] font-bold rounded`}
+                                    title={`${rec.mount_point_info.mount_count} mount point(s)${rec.mount_point_info.has_shared_mount ? ' (shared - can migrate)' : ' (requires manual migration)'}`}>
+                                      <Folder size={10} />
+                                      {rec.mount_point_info.mount_count} MP
+                                    </span>
+                                  )}
                                   {isMaintenance && !isCompleted && (
                                     <span className="px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded">
                                       MAINTENANCE
@@ -8614,6 +8806,22 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     <div className="flex items-start gap-2">
                                       <span className="text-purple-600 dark:text-purple-400 font-semibold shrink-0">AI:</span>
                                       <span className="text-gray-700 dark:text-gray-300">{rec.ai_insight}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {rec.bind_mount_warning && (
+                                  <div className={`mt-2 p-2 ${
+                                    rec.mount_point_info?.has_unshared_bind_mount
+                                      ? 'bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-300 dark:border-orange-700'
+                                      : 'bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-300 dark:border-green-700'
+                                  } rounded text-xs`}>
+                                    <div className="flex items-start gap-2">
+                                      <Folder size={14} className={`shrink-0 ${
+                                        rec.mount_point_info?.has_unshared_bind_mount
+                                          ? 'text-orange-600 dark:text-orange-400'
+                                          : 'text-green-600 dark:text-green-400'
+                                      }`} />
+                                      <span className="text-gray-700 dark:text-gray-300">{rec.bind_mount_warning}</span>
                                     </div>
                                   </div>
                                 )}

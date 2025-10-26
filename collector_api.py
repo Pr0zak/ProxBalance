@@ -256,11 +256,127 @@ class ProxmoxAPICollector:
         tags = [t.strip() for t in tags_str.replace(";", " ").split()]
         has_ignore = "ignore" in tags
         exclude_groups = [t for t in tags if t.startswith("exclude_")]
+        has_bindmount_tag = "has-bindmount" in tags
 
         return {
             "has_ignore": has_ignore,
             "exclude_groups": exclude_groups,
+            "has_bindmount": has_bindmount_tag,
             "all_tags": tags
+        }
+
+    def detect_mount_points(self, config: Dict) -> Dict:
+        """
+        Detect mount points in LXC container configuration.
+        Returns info about bind mounts and storage-backed mount points.
+
+        Mount point types:
+        - Bind mounts: /host/path,mp=/container/path
+        - Storage-backed: volume:storage-volume,mp=/container/path
+        - Shared bind mounts: /host/path,mp=/container/path,shared=1 (can be migrated if path exists on target)
+
+        The 'shared=1' flag indicates the mount point is available on all nodes,
+        allowing migration with 'pct migrate --force' or automatic migration.
+        """
+        mount_points = []
+        has_bind_mount = False
+        has_storage_mount = False
+        has_shared_mount = False
+        has_unshared_bind_mount = False
+
+        # Check for mount point keys (mp0, mp1, mp2, etc.)
+        for key in config.keys():
+            if key.startswith('mp') and key[2:].isdigit():
+                mp_config = config[key]
+
+                # Bind mounts start with / (absolute paths on host)
+                # Storage-backed mounts start with storage:volume format
+                if isinstance(mp_config, str):
+                    # Parse mount point: "source,mp=target,options" format
+                    parts = mp_config.split(',')
+                    source = parts[0] if parts else ""
+
+                    # Check for shared=1 flag in options
+                    is_shared = any('shared=1' in part for part in parts)
+
+                    # Extract mount target path
+                    mp_path = ""
+                    for part in parts:
+                        if part.startswith('mp='):
+                            mp_path = part[3:]
+                            break
+
+                    is_bind = source.startswith('/')
+                    mount_info = {
+                        "key": key,
+                        "config": mp_config,
+                        "is_bind_mount": is_bind,
+                        "source": source,
+                        "mount_path": mp_path,
+                        "is_shared": is_shared
+                    }
+
+                    mount_points.append(mount_info)
+
+                    if is_bind:
+                        has_bind_mount = True
+                        if is_shared:
+                            has_shared_mount = True
+                        else:
+                            has_unshared_bind_mount = True
+                    else:
+                        has_storage_mount = True
+
+        return {
+            "mount_points": mount_points,
+            "has_mount_points": len(mount_points) > 0,
+            "has_bind_mount": has_bind_mount,
+            "has_storage_mount": has_storage_mount,
+            "has_shared_mount": has_shared_mount,
+            "has_unshared_bind_mount": has_unshared_bind_mount,
+            "mount_count": len(mount_points)
+        }
+
+    def detect_local_disks(self, config: Dict) -> Dict:
+        """
+        Detect passthrough disks in VM/CT configuration that prevent migration.
+
+        Disk types that prevent migration:
+        - Passthrough disks: /dev/disk/by-id/*, /dev/sd* (direct hardware access)
+
+        Note: local-lvm, local-zfs, and other storage types CAN be migrated
+        as Proxmox handles storage replication during migration.
+        """
+        passthrough_disks = []
+        has_passthrough = False
+
+        # Check for disk keys (scsi0-N, ide0-N, virtio0-N, sata0-N, rootfs, mp*)
+        for key in config.keys():
+            # Check if key is a disk/storage key
+            if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'rootfs', 'mp']):
+                disk_config = config[key]
+
+                if isinstance(disk_config, str):
+                    # Parse disk config
+                    parts = disk_config.split(',')
+                    source = parts[0] if parts else ""
+
+                    # Check for passthrough disks (direct device paths)
+                    if source.startswith('/dev/'):
+                        has_passthrough = True
+                        passthrough_disks.append({
+                            "key": key,
+                            "device": source,
+                            "type": "passthrough"
+                        })
+
+        return {
+            "passthrough_disks": passthrough_disks,
+            "has_passthrough": has_passthrough,
+            "is_pinned": has_passthrough,
+            "pinned_reason": "Hardware passthrough disks" if has_passthrough else None,
+            "passthrough_count": len(passthrough_disks),
+            "total_pinned_disks": len(passthrough_disks)
         }
 
     def _process_single_node(self, node: Dict) -> Dict:
@@ -541,9 +657,17 @@ class ProxmoxAPICollector:
             guest_type = "VM" if guest_type_raw == "qemu" else "CT"
             guest_status = guest.get("status", "unknown")
 
-            # Get config for tags
+            # Get config for tags and mount points
             config = self.get_guest_config(node_name, vmid, guest_type_raw)
             tags_data = self.parse_tags(config.get("tags", ""))
+
+            # Detect mount points for containers only
+            mount_point_info = {}
+            if guest_type == "CT":
+                mount_point_info = self.detect_mount_points(config)
+
+            # Detect local/passthrough disks for both VMs and CTs
+            local_disk_info = self.detect_local_disks(config)
 
             # Get RRD data for I/O metrics - skip if guest is stopped and optimization enabled
             disk_read_bps = 0
@@ -610,7 +734,9 @@ class ProxmoxAPICollector:
                 "has_backup": has_backup,
                 "pool": pool_name,
                 "agent_running": len(agent_info) > 0,
-                "agent_info": agent_info if agent_info else None
+                "agent_info": agent_info if agent_info else None,
+                "mount_points": mount_point_info,
+                "local_disks": local_disk_info
             }
             
             self.guests[str(vmid)] = guest_info
