@@ -203,6 +203,12 @@ Multiple safeguards for automated operations:
   - Range: 1-100 points for different sensitivity levels
   - Conservative (20-30), Balanced (10-15), Aggressive (5-10)
   - Works alongside confidence score for dual-layer filtering
+- **Rollback Detection** - Prevents migration loops
+  - Detects when a VM would be migrated back to a node it was recently migrated from
+  - Configurable rollback window (default: 24 hours, range: 1-168 hours)
+  - Enabled by default with toggle in Automated Migrations UI
+  - Prevents oscillating migrations and improves cluster stability
+  - Bypassed for maintenance mode evacuations
 - **Max Migrations Per Run** - Rate limiting (default: 3)
 - **Cluster Health Checks** - Verify quorum and node status
 - **Cooldown Periods** - Time between migrations per guest

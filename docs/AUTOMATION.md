@@ -332,6 +332,81 @@ If min_score_improvement = 15:
 
 ---
 
+#### Rollback Detection
+
+Prevents migration loops by detecting when a VM would be migrated back to a node it was recently migrated from.
+
+**Location**: Configuration → Automated Migrations → Rollback Detection
+
+```
+Default: Enabled
+Rollback Window: 24 hours
+Range: 1-168 hours
+```
+
+**What it does**:
+- Checks migration history before executing a migration
+- Detects if VM was recently migrated FROM the target node TO the source node
+- Prevents migration loops and unnecessary back-and-forth moves
+- Improves cluster stability
+
+**How it works**:
+```
+Example scenario:
+1. VM 100 migrated from pve3 → pve5 (1 hour ago)
+2. Automation suggests migrating VM 100 from pve5 → pve3
+3. Rollback detection: BLOCKS migration (within 24-hour window)
+4. VM stays on pve5, preventing migration loop
+```
+
+**Configuration**:
+```json
+{
+  "automated_migrations": {
+    "rules": {
+      "rollback_detection_enabled": true,
+      "rollback_window_hours": 24
+    }
+  }
+}
+```
+
+**When to Enable**:
+- **Always recommended** for production environments
+- Prevents oscillating migrations between nodes
+- Protects against unstable cluster conditions
+- Reduces unnecessary migration overhead
+
+**When to Disable**:
+- Testing migration behavior
+- Deliberately moving VMs back to original nodes
+- Troubleshooting cluster issues
+- **Not recommended** for production
+
+**Rollback Window Tuning**:
+```
+Short window (1-12 hours):
+- Faster recovery from intentional migrations
+- May not catch all oscillation patterns
+- Use in stable, well-tuned clusters
+
+Default window (24 hours):
+- Good balance for most environments
+- Catches daily oscillation patterns
+- Recommended for production
+
+Long window (48-168 hours):
+- Very conservative approach
+- Catches weekly oscillation patterns
+- Use for critical production workloads
+```
+
+**Bypassed for**:
+- Maintenance mode evacuations (priority override)
+- Emergency node evacuations
+
+---
+
 #### Maintenance Mode Evacuation
 
 When a node is placed in maintenance mode:
