@@ -3947,159 +3947,264 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   </div>
 
                   {/* Decision Tree - Collapsible */}
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg mb-6">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
                     <button
                       onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
-                      className="w-full flex items-center justify-between p-5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                      className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <Info size={24} className="text-green-600 dark:text-green-400 shrink-0" />
-                        <div className="font-bold text-green-900 dark:text-green-200 text-left">Migration Decision Tree</div>
+                        <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div className="font-bold text-blue-900 dark:text-blue-200 text-left">Migration Decision Flowchart</div>
                       </div>
                       {collapsedSections.decisionTree ? (
-                        <ChevronDown size={20} className="text-green-600 dark:text-green-400" />
+                        <ChevronDown size={20} className="text-blue-600 dark:text-blue-400" />
                       ) : (
-                        <ChevronUp size={20} className="text-green-600 dark:text-green-400" />
+                        <ChevronUp size={20} className="text-blue-600 dark:text-blue-400" />
                       )}
                     </button>
 
                     {!collapsedSections.decisionTree && (
                       <div className="px-5 pb-5">
-                        <div className="text-sm text-green-800 dark:text-green-300 space-y-3">
-                          <p className="font-semibold">
-                            This flowchart shows how ProxBalance decides whether to execute automated migrations:
+                        <div className="text-sm text-blue-800 dark:text-blue-300 space-y-4">
+                          <p className="font-semibold text-blue-900 dark:text-blue-200">
+                            This flowchart shows the step-by-step decision process for automated migrations:
                           </p>
 
                           {/* Decision Tree Diagram */}
-                          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-green-300 dark:border-green-600">
-                            <div className="space-y-3 font-mono text-xs">
-                              {/* Start */}
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full bg-green-600 dark:bg-green-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">▶</div>
-                                <div className="font-bold text-green-900 dark:text-green-200">Automation Run Triggered</div>
-                              </div>
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 rounded-lg p-6 border-2 border-blue-300 dark:border-blue-600 shadow-sm">
+                            <div className="space-y-4">
 
-                              {/* Check 1: Enabled */}
-                              <div className="ml-6 border-l-2 border-green-300 dark:border-green-600 pl-4 space-y-2">
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">1.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Is automation enabled?</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ❌ NO → <span className="text-red-600 dark:text-red-400 font-semibold">STOP</span> - Enable in Automation Settings<br/>
-                                      ✅ YES → Continue to next check
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 2: Cooldown */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">2.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Is cooldown period elapsed?</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ❌ NO → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Wait for cooldown (default: 30 min)<br/>
-                                      ✅ YES → Continue to next check
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 3: Time Windows */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">3.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Are we in an allowed time window?</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ❌ BLACKOUT → <span className="text-red-600 dark:text-red-400 font-semibold">BLOCKED</span> - In blackout window<br/>
-                                      ❌ OUTSIDE MIGRATION WINDOW → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Not in migration window<br/>
-                                      ✅ YES (or no windows configured) → Continue to next check
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 4: Cluster Health */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">4.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Is cluster healthy? (if enabled)</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ❌ NO QUORUM → <span className="text-red-600 dark:text-red-400 font-semibold">ABORT</span> - Cluster has no quorum<br/>
-                                      ❌ HIGH CPU/MEMORY → <span className="text-red-600 dark:text-red-400 font-semibold">ABORT</span> - Nodes over threshold<br/>
-                                      ✅ YES → Continue to next check
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 5: Get Recommendations */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">5.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Generate migration recommendations</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      • Calculate penalty scores for all nodes<br/>
-                                      • Find VMs on high-penalty nodes<br/>
-                                      • Match with low-penalty target nodes<br/>
-                                      • Apply filters (tags, storage, rollback detection)<br/>
-                                      • Calculate confidence scores
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 6: Filter by Confidence */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">6.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Filter by minimum confidence score</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ❌ NO RECOMMENDATIONS → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Cluster is balanced<br/>
-                                      ✅ FOUND RECOMMENDATIONS → Continue to execution
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 7: Dry Run */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">7.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Is dry run mode enabled?</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      ✅ DRY RUN → <span className="text-blue-600 dark:text-blue-400 font-semibold">LOG ONLY</span> - Record what would happen<br/>
-                                      ❌ LIVE MODE → Continue to execution
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Check 8: Execute */}
-                                <div className="flex items-start gap-2">
-                                  <div className="text-green-700 dark:text-green-400 font-bold">8.</div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900 dark:text-white">Execute migrations</div>
-                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
-                                      • Limit to max migrations per run (default: 3)<br/>
-                                      • Execute migrations sequentially<br/>
-                                      • If migration fails + abort_on_failure: STOP remaining<br/>
-                                      • If migration fails + pause_on_failure: DISABLE automation<br/>
-                                      • Track migration status and update history
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* End */}
-                                <div className="flex items-center gap-2 mt-4">
-                                  <div className="w-4 h-4 rounded-full bg-green-600 dark:bg-green-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">✓</div>
-                                  <div className="font-bold text-green-900 dark:text-green-200">Run Complete</div>
+                              {/* Start Box */}
+                              <div className="flex justify-center">
+                                <div className="bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
+                                  🚀 Automation Run Triggered
                                 </div>
                               </div>
+
+                              {/* Flow connector */}
+                              <div className="flex justify-center">
+                                <div className="w-0.5 h-4 bg-blue-400 dark:bg-blue-500"></div>
+                              </div>
+
+                              {/* Decision boxes */}
+                              <div className="space-y-3">
+
+                                {/* Step 1 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is automation enabled?</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-red-600 dark:text-red-400 font-bold">✗ NO</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">STOP</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 2 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is cooldown period elapsed?</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-orange-600 dark:text-orange-400 font-bold">✗ NO</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
+                                          <span className="text-gray-500 dark:text-gray-400">(wait for cooldown)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 3 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">3</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">In allowed time window?</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-red-600 dark:text-red-400 font-bold">✗ BLACKOUT</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">BLOCKED</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-orange-600 dark:text-orange-400 font-bold">✗ OUTSIDE</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 4 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">4</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is cluster healthy? <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(if enabled)</span></div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-red-600 dark:text-red-400 font-bold">✗ NO</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">ABORT</span>
+                                          <span className="text-gray-500 dark:text-gray-400">(no quorum / high load)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 5 */}
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border-2 border-indigo-300 dark:border-indigo-600 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-indigo-600 dark:bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">5</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Generate Recommendations</div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                        <div>• Calculate penalty scores for all nodes</div>
+                                        <div>• Find VMs on high-penalty nodes</div>
+                                        <div>• Match with low-penalty target nodes</div>
+                                        <div>• Apply filters (tags, storage, rollback detection)</div>
+                                        <div>• Calculate confidence scores</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 6 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">6</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Any recommendations above min confidence?</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-orange-600 dark:text-orange-400 font-bold">✗ NO</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
+                                          <span className="text-gray-500 dark:text-gray-400">(cluster is balanced)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 7 */}
+                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">7</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is dry run mode enabled?</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-blue-600 dark:text-blue-400 font-bold">✓ YES</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→</span>
+                                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold">LOG ONLY</span>
+                                          <span className="text-gray-500 dark:text-gray-400">(record what would happen)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-green-600 dark:text-green-400 font-bold">✗ NO</span>
+                                          <span className="text-gray-600 dark:text-gray-400">→ Execute ↓</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Step 8 */}
+                                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border-2 border-emerald-300 dark:border-emerald-600 p-4 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="bg-emerald-600 dark:bg-emerald-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">8</div>
+                                    <div className="flex-1">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Execute Migrations</div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                        <div>• Limit to max migrations per run (default: 3)</div>
+                                        <div>• Execute migrations sequentially</div>
+                                        <div>• If migration fails + abort_on_failure: STOP batch</div>
+                                        <div>• If migration fails + pause_on_failure: DISABLE automation</div>
+                                        <div>• Track migration status and update history</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                              </div>
+
+                              {/* Flow connector */}
+                              <div className="flex justify-center">
+                                <div className="w-0.5 h-4 bg-blue-400 dark:bg-blue-500"></div>
+                              </div>
+
+                              {/* End Box */}
+                              <div className="flex justify-center">
+                                <div className="bg-gradient-to-r from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
+                                  <span>✓</span> Run Complete
+                                </div>
+                              </div>
+
                             </div>
                           </div>
 
-                          <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-600">
-                            <div className="font-semibold text-green-900 dark:text-green-100 mb-2 text-xs">💡 Configuration Tips:</div>
-                            <ul className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-disc">
-                              <li><strong>Conservative:</strong> High confidence (80+), low max migrations (1-2), long cooldown (60+ min)</li>
-                              <li><strong>Balanced:</strong> Medium confidence (70+), moderate max (3-5), standard cooldown (30-60 min)</li>
-                              <li><strong>Aggressive:</strong> Lower confidence (60+), high max (5-10), short cooldown (15-30 min)</li>
-                            </ul>
+                          <div className="mt-4 p-4 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-300 dark:border-blue-600">
+                            <div className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                              <span>💡</span> Configuration Profiles
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
+                                <div className="font-bold text-gray-900 dark:text-white mb-1">🛡️ Conservative</div>
+                                <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
+                                  <div>• Min confidence: 80+</div>
+                                  <div>• Max migrations: 1-2</div>
+                                  <div>• Cooldown: 60+ min</div>
+                                </div>
+                              </div>
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
+                                <div className="font-bold text-gray-900 dark:text-white mb-1">⚖️ Balanced</div>
+                                <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
+                                  <div>• Min confidence: 70+</div>
+                                  <div>• Max migrations: 3-5</div>
+                                  <div>• Cooldown: 30-60 min</div>
+                                </div>
+                              </div>
+                              <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
+                                <div className="font-bold text-gray-900 dark:text-white mb-1">⚡ Aggressive</div>
+                                <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
+                                  <div>• Min confidence: 60+</div>
+                                  <div>• Max migrations: 5-10</div>
+                                  <div>• Cooldown: 15-30 min</div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
