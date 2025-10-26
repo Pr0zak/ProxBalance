@@ -4014,6 +4014,48 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           Wait time between migrations for cluster to settle (0 = no wait)
                         </p>
                       </div>
+
+                      {/* Rollback Detection */}
+                      <div className="col-span-2 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Rollback Detection
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Prevent migration loops by detecting when a VM would be migrated back to a node it was recently migrated from
+                            </p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.rollback_detection_enabled !== false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_detection_enabled: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
+                        {automationConfig.rules?.rollback_detection_enabled !== false && (
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                              Rollback Detection Window (hours)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="168"
+                              value={automationConfig.rules?.rollback_window_hours || 24}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_window_hours: parseInt(e.target.value) } })}
+                              className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              How far back to check for previous migrations (default: 24 hours)
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Max Node CPU %

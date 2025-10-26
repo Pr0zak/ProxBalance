@@ -693,6 +693,56 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
     return False
 
 
+def is_rollback_migration(vmid: int, source_node: str, target_node: str, rollback_window_hours: int = 24) -> bool:
+    """
+    Check if this migration would be a rollback (migrating VM back to a node it was recently migrated from).
+
+    Args:
+        vmid: VM ID to check
+        source_node: Current source node
+        target_node: Proposed target node
+        rollback_window_hours: Time window in hours to check for rollbacks (default: 24)
+
+    Returns:
+        True if this would be a rollback migration, False otherwise
+    """
+    if rollback_window_hours <= 0:
+        return False
+
+    history = load_history()
+    migrations = history.get('migrations', [])
+
+    # Check if this VM was recently migrated FROM the target TO the source
+    now = datetime.utcnow()
+    rollback_threshold = now - timedelta(hours=rollback_window_hours)
+
+    for migration in reversed(migrations):  # Check most recent first
+        if migration.get('vmid') == vmid and migration.get('status') == 'success':
+            try:
+                migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+
+                # Only check migrations within the rollback window
+                if migration_time < rollback_threshold:
+                    # Past the rollback window, no need to check older entries
+                    return False
+
+                # Check if this would be a rollback:
+                # Previous migration went FROM target_node TO source_node
+                # Now we want to go FROM source_node TO target_node (rollback!)
+                if (migration.get('source_node') == target_node and
+                    migration.get('target_node') == source_node):
+                    logger.info(
+                        f"VM {vmid} rollback detected: would migrate back to {target_node} "
+                        f"(was migrated from {target_node} to {source_node} at {migration_time.isoformat()})"
+                    )
+                    return True
+
+            except (ValueError, TypeError):
+                continue
+
+    return False
+
+
 def record_migration(migration_record: Dict[str, Any]):
     """
     Record a migration to the history file.
@@ -931,6 +981,15 @@ def main():
                 # Check cooldown
                 if not is_maintenance_evac and is_vm_in_cooldown(vmid, cooldown_minutes):
                     reason = "In cooldown period"
+                    filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                    last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                    continue
+
+                # Check rollback detection (if enabled)
+                rollback_enabled = rules.get('rollback_detection_enabled', True)
+                rollback_window_hours = rules.get('rollback_window_hours', 24)
+                if not is_maintenance_evac and rollback_enabled and is_rollback_migration(vmid, source_node, target_node, rollback_window_hours):
+                    reason = f"Rollback detected (would migrate back within {rollback_window_hours}h)"
                     filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
