@@ -3969,7 +3969,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       <div className="px-5 pb-5">
                         <div className="text-sm text-blue-800 dark:text-blue-300 space-y-4">
                           <p className="font-semibold text-blue-900 dark:text-blue-200">
-                            This flowchart shows the step-by-step decision process for automated migrations:
+                            This decision tree shows all possible paths through the automated migration process:
                           </p>
 
                           {/* Decision Tree Diagram */}
