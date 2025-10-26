@@ -1031,10 +1031,14 @@ BABEL_CONFIG
   if [ -f src/app.jsx ]; then
     # Use node_modules/.bin/babel directly with preset flag if npx is not available
     if command -v npx >/dev/null 2>&1; then
-      npx babel src/app.jsx --out-file /var/www/html/assets/js/app.js 2>&1 | grep -v "deoptimised" || true
+      npx babel src/app.jsx --out-file /tmp/app.js 2>&1 | grep -v "deoptimised" || true
     else
-      node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /var/www/html/assets/js/app.js 2>&1 | grep -v "deoptimised" || true
+      node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /tmp/app.js 2>&1 | grep -v "deoptimised" || true
     fi
+
+    # Copy compiled app.js to BOTH locations (source and nginx serving)
+    cp /tmp/app.js /opt/proxmox-balance-manager/assets/js/app.js
+    cp /tmp/app.js /var/www/html/assets/js/app.js
     COMPILED_SIZE=$(stat -c%s /var/www/html/assets/js/app.js 2>/dev/null)
     echo "  ✓ Compiled to app.js (${COMPILED_SIZE} bytes)"
   fi

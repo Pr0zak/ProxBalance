@@ -139,13 +139,18 @@ BABEL_CONFIG
   # Compile JSX to JavaScript
   echo "  → Compiling JSX to JavaScript..."
   mkdir -p /var/www/html/assets/js
+  mkdir -p assets/js
 
   # Use node_modules/.bin/babel directly with preset flag if npx is not available
   if command -v npx >/dev/null 2>&1; then
-    npx babel src/app.jsx --out-file /var/www/html/assets/js/app.js 2>/dev/null
+    npx babel src/app.jsx --out-file /tmp/app.js 2>/dev/null
   else
-    node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /var/www/html/assets/js/app.js 2>/dev/null
+    node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /tmp/app.js 2>/dev/null
   fi
+
+  # Copy compiled app.js to BOTH locations (source and nginx serving)
+  cp /tmp/app.js /opt/proxmox-balance-manager/assets/js/app.js
+  cp /tmp/app.js /var/www/html/assets/js/app.js
 
   # Download React libraries if not present
   if [ ! -f /var/www/html/assets/js/react.production.min.js ]; then
