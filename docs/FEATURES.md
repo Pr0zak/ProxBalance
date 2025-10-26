@@ -197,6 +197,12 @@ Multiple safeguards for automated operations:
   - Prevents lock conflicts across automation runs
   - Logs clear messages when migrations are skipped
 - **Min Confidence Score** - Only execute high-confidence migrations
+- **Minimum Score Improvement Threshold** - Filters migrations by expected benefit
+  - Configurable threshold (default: 15 points) via web UI
+  - Prevents unnecessary migrations with minimal benefit
+  - Range: 1-100 points for different sensitivity levels
+  - Conservative (20-30), Balanced (10-15), Aggressive (5-10)
+  - Works alongside confidence score for dual-layer filtering
 - **Max Migrations Per Run** - Rate limiting (default: 3)
 - **Cluster Health Checks** - Verify quorum and node status
 - **Cooldown Periods** - Time between migrations per guest

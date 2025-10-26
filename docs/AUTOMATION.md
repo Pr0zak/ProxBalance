@@ -287,6 +287,51 @@ Use: HA configurations, redundancy requirements
 
 See [Guest Tag Management](../README.md#tagging-guests) for details.
 
+#### Minimum Score Improvement Threshold
+
+Controls the minimum score improvement (in points) required for a migration to be recommended.
+
+**Location**: Configuration → Penalty Scoring → Minimum Score Improvement
+
+```
+Default: 15 points
+Range: 1-100 points
+```
+
+**What it does**:
+- Filters out migrations that provide only marginal benefit
+- Higher values = more conservative (fewer migrations)
+- Lower values = more aggressive (more migrations)
+
+**Recommended Values**:
+```
+Conservative (20-30): Only migrate when there's significant benefit
+Balanced (10-15): Default setting, good balance between optimization and stability
+Aggressive (5-10): More sensitive to small imbalances
+Very Aggressive (1-5): Consider even minor improvements (testing only)
+```
+
+**Impact on Automation**:
+- Affects which recommendations appear in the automation queue
+- Works alongside confidence score threshold
+- Both thresholds must be met for a migration to execute
+
+**Example**:
+```
+If min_score_improvement = 15:
+- VM with 14-point improvement: Skipped (below threshold)
+- VM with 18-point improvement: Considered for migration
+- VM with 25-point improvement: Higher priority candidate
+```
+
+**When to Adjust**:
+- **Too many migrations**: Increase to 20-30
+- **Cluster imbalanced**: Decrease to 5-10
+- **Small VMs not migrating**: Decrease to 5-10 (or use Distribution Balancing)
+- **Production stability focus**: Keep at 15-20
+
+---
+
 #### Maintenance Mode Evacuation
 
 When a node is placed in maintenance mode:
