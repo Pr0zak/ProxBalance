@@ -4015,47 +4015,6 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </p>
                       </div>
 
-                      {/* Rollback Detection */}
-                      <div className="col-span-2 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              Rollback Detection
-                            </label>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Prevent migration loops by detecting when a VM would be migrated back to a node it was recently migrated from
-                            </p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={automationConfig.rules?.rollback_detection_enabled !== false}
-                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_detection_enabled: e.target.checked } })}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                          </label>
-                        </div>
-                        {automationConfig.rules?.rollback_detection_enabled !== false && (
-                          <div className="mt-3">
-                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                              Rollback Detection Window (hours)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="168"
-                              value={automationConfig.rules?.rollback_window_hours || 24}
-                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_window_hours: parseInt(e.target.value) } })}
-                              className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              How far back to check for previous migrations (default: 24 hours)
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Max Node CPU %
@@ -4084,68 +4043,90 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
                     </div>
 
-                    <div className="mt-4 space-y-3">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={automationConfig.rules?.respect_ignore_tags !== false}
-                          onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Respect 'ignore' tags
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
-                          onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Require 'auto_migrate_ok' tag (only migrate VMs with this tag)
-                        </label>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={automationConfig.rules?.respect_exclude_affinity !== false}
-                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                            Respect anti-affinity (exclude_* tags)
+                    <div className="mt-4 space-y-4">
+                      {/* Respect 'ignore' Tags */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Respect 'ignore' Tags</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations. Use for critical VMs that require manual migration planning.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.respect_ignore_tags !== false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
                           </label>
                         </div>
-                        <p className="ml-6 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Prevents VMs with the same exclude tag from clustering on one node.<br/>
-                          Example: Two VMs with 'exclude_database' will spread across different nodes for fault tolerance.
-                        </p>
                       </div>
-                      <div>
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={automationConfig.rules?.allow_container_restarts === true}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                // Show warning for enabling container restarts
-                                setConfirmAllowContainerRestarts(true);
-                              } else {
-                                // Disabling is safe, no confirmation needed
-                                saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
-                              }
-                            }}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                            Allow container restarts for migration (may cause brief downtime)
+
+                      {/* Require 'auto_migrate_ok' Tag */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Require 'auto_migrate_ok' Tag</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode). All other VMs will be excluded from automated migrations.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Respect Anti-Affinity */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Respect Anti-Affinity (exclude_* tags)</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Prevents VMs with the same exclude tag from clustering on one node. Example: Two VMs with 'exclude_database' will spread across different nodes for fault tolerance.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.respect_exclude_affinity !== false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                      {/* Allow Container Restarts */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Allow Container Restarts for Migration</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime during migration.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.allow_container_restarts === true}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  // Show warning for enabling container restarts
+                                  setConfirmAllowContainerRestarts(true);
+                                } else {
+                                  // Disabling is safe, no confirmation needed
+                                  saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
+                                }
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
                           </label>
                         </div>
                         {confirmAllowContainerRestarts && (
-                          <div className="mt-2 ml-6">
+                          <div className="mt-3">
                             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
                               <div className="flex items-start gap-2">
                                 <AlertTriangle size={18} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
@@ -4179,50 +4160,97 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           </div>
                         )}
                       </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={automationConfig.safety_checks?.check_cluster_health !== false}
-                            onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                            Check cluster health before migrating
+
+                      {/* Rollback Detection */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Rollback Detection</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Prevent migration loops by detecting when a VM would be migrated back to a node it was recently migrated from.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.rollback_detection_enabled !== false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_detection_enabled: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
                           </label>
                         </div>
-                        <p className="ml-6 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Verifies cluster is healthy before migrating: cluster has quorum, all nodes CPU {'<'} 85%, all nodes memory {'<'} 90%.<br/>
-                          Prevents migrations during cluster stress that could worsen the situation. Recommended for production.
-                        </p>
+                        {automationConfig.rules?.rollback_detection_enabled !== false && (
+                          <div className="px-4 pb-4">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                              Rollback Detection Window (hours)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="168"
+                              value={automationConfig.rules?.rollback_window_hours || 24}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_window_hours: parseInt(e.target.value) } })}
+                              className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                            />
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              How far back to check for previous migrations (default: 24 hours)
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={automationConfig.safety_checks?.abort_on_failure !== false}
-                          onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Abort batch if a migration fails
-                        </label>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={automationConfig.safety_checks?.pause_on_failure === true}
-                            onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                            Pause automation after migration failure
+
+                      {/* Check Cluster Health */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Check Cluster Health Before Migrating</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Verifies cluster is healthy before migrating: cluster has quorum, all nodes CPU &lt; 85%, all nodes memory &lt; 90%. Prevents migrations during cluster stress that could worsen the situation. Recommended for production.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.safety_checks?.check_cluster_health !== false}
+                              onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
                           </label>
                         </div>
-                        <p className="ml-6 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Automatically disables automated migrations if any migration fails.<br/>
-                          Prevents cascading failures and requires manual review before resuming automation.
-                        </p>
+                      </div>
+                      {/* Abort Batch on Failure */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Abort Batch if a Migration Fails</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Stops executing remaining migrations in the current batch if any single migration fails. Prevents cascading issues when a migration error might indicate a cluster problem.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.safety_checks?.abort_on_failure !== false}
+                              onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
+                      </div>
+                      {/* Pause Automation After Failure */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Pause Automation After Migration Failure</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Automatically disables automated migrations if any migration fails. Prevents cascading failures and requires manual review before resuming automation. Highly recommended for production environments.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.safety_checks?.pause_on_failure === true}
+                              onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
                       </div>
                     </div>
                     </>
