@@ -255,6 +255,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               automatedMigrations: true,  // Collapsed by default
               howItWorks: true,  // Collapsed by default - penalty scoring explanation
               decisionTree: true,  // Collapsed by default - migration decision tree flowchart
+              distributionBalancing: true,  // Collapsed by default - distribution balancing section
+              distributionBalancingHelp: true,  // Collapsed by default - distribution balancing help text
               lastRunSummary: true,  // Collapsed by default - last automation run details
               mountPoints: true,  // Collapsed by default in guest details modal
               passthroughDisks: true,  // Collapsed by default in guest details modal
