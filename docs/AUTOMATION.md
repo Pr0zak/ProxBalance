@@ -407,6 +407,131 @@ Long window (48-168 hours):
 
 ---
 
+#### Distribution Balancing
+
+Automatically balances small VMs/CTs across nodes to distribute guest counts evenly.
+
+**Location**: Configuration → Automated Migrations → Distribution Balancing
+
+```
+Default: Disabled
+Guest Count Threshold: 2
+Max CPU Cores: 2 (0 = no limit)
+Max Memory GB: 4 (0 = no limit)
+```
+
+**What it does**:
+- Identifies nodes with uneven guest distribution
+- Recommends migrating small VMs/CTs from overloaded to underloaded nodes
+- Complements performance-based recommendations
+- Only migrates guests meeting size criteria
+
+**How it works**:
+```
+Example scenario:
+1. pve4 has 19 running guests, pve6 has 4 running guests (diff = 15)
+2. Guest count difference >= threshold (2): ELIGIBLE for distribution balancing
+3. Find small guests on pve4 (≤ 2 CPU cores, ≤ 4 GB memory)
+4. Generate recommendations to migrate eligible guests: pve4 → pve6
+5. Recommendations have moderate confidence (60) and "distribution_balancing" flag
+```
+
+**Configuration**:
+```json
+{
+  "distribution_balancing": {
+    "enabled": false,
+    "guest_count_threshold": 2,
+    "max_cpu_cores": 2,
+    "max_memory_gb": 4
+  }
+}
+```
+
+**Settings**:
+
+**Guest Count Threshold** (Range: 1-10)
+- Minimum difference in guest counts to trigger balancing
+- Higher values = less sensitive (only balance major imbalances)
+- Lower values = more sensitive (balance minor imbalances)
+- Example: threshold=2 means pve4(10 guests) vs pve6(7 guests) won't trigger
+
+**Max CPU Cores** (Range: 0-32, 0 = no limit)
+- Only migrate guests with ≤ this many CPU cores
+- Prevents migrating large, resource-intensive VMs
+- Default: 2 cores (targets small utility VMs)
+- Example: max_cpu_cores=2 means 4-core VMs stay put
+- Set to 0 to disable CPU filtering
+
+**Max Memory GB** (Range: 0-256, 0 = no limit)
+- Only migrate guests with ≤ this amount of memory
+- Prevents migrating memory-intensive workloads
+- Default: 4 GB (targets small utility VMs)
+- Example: max_memory_gb=4 means 8GB VMs stay put
+- Set to 0 to disable memory filtering
+
+**Recommended Values**:
+```
+Conservative (threshold=3, cpu=1, mem=2):
+- Only balance significant imbalances
+- Only migrate very small guests (DNS, proxies)
+- Minimal distribution activity
+
+Balanced (threshold=2, cpu=2, mem=4):
+- Default settings
+- Targets small utility VMs (monitoring, services)
+- Good balance between distribution and stability
+- Suitable for most clusters
+
+Aggressive (threshold=1, cpu=4, mem=8):
+- Balance even minor imbalances
+- Migrate small to medium guests
+- More distribution activity
+```
+
+**When to Enable**:
+- Clusters with uneven guest distribution
+- Nodes with significantly different guest counts
+- Small utility VMs (DNS, monitoring, etc.)
+- When performance-based recommendations don't address imbalance
+
+**When to Disable**:
+- Clusters already evenly distributed
+- All guests are large (>16GB, >4 cores)
+- Specific placement requirements
+- Testing performance-based migrations only
+
+**Integration with Other Features**:
+- **Works alongside** performance-based recommendations
+- **Respects** tag-based exclusions (ignore, affinity)
+- **Respects** storage compatibility checks
+- **Bypassed for** maintenance mode evacuations
+- **Subject to** confidence score threshold (60)
+- **Subject to** minimum score improvement threshold
+- **Subject to** rollback detection
+
+**Recommendations**:
+```
+- Flag: "distribution_balancing": true
+- Confidence Score: 60 (moderate)
+- Score Improvement: 10 points
+- Reason: "Distribution balancing: pve4 (19 guests) → pve6 (4 guests)"
+```
+
+**Impact**:
+- Helps achieve even guest distribution
+- Reduces node overload from guest count alone
+- Improves cluster resource utilization
+- May not improve performance metrics directly
+
+**Tuning Tips**:
+- **Too many distribution migrations**: Increase guest_count_threshold to 3-4
+- **Large VMs being migrated**: Decrease max_cpu_cores/max_memory_gb
+- **Not enough balancing**: Decrease guest_count_threshold to 1
+- **Want to balance specific guests**: Adjust max_cpu_cores/max_memory_gb to match
+
+---
+
 #### Maintenance Mode Evacuation
 
 When a node is placed in maintenance mode:

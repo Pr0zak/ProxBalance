@@ -88,5 +88,15 @@
       "on_complete": true,
       "on_failure": true
     }
+  },
+  "distribution_balancing": {
+    "enabled": false,
+    "guest_count_threshold": 2,
+    "max_cpu_cores": 2,
+    "max_memory_gb": 4,
+    "_comment": "Distribution balancing migrates small VMs/CTs to balance guest counts across nodes",
+    "_comment_threshold": "Only consider distribution when node guest count differs by this amount or more",
+    "_comment_cpu": "Only migrate guests with CPU cores <= this value (0 = no limit)",
+    "_comment_memory": "Only migrate guests with memory <= this value in GB (0 = no limit)"
   }
 }

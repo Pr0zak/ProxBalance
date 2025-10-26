@@ -160,6 +160,14 @@ Scheduled automation with comprehensive safety features.
 - **Maintenance Mode Integration** - Automatically evacuates maintenance nodes
 
 ### Real-Time Tracking & Monitoring
+- **Decisions Made (Pre-Migration Visibility)** - See automation decisions BEFORE migrations execute
+  - Displays ALL recommendations immediately when automation starts
+  - Shows selected migration with 🔄 pending status (blue pulsing border)
+  - Lists all candidate VMs/CTs with priority rankings (#1, #2, #3, etc.)
+  - Clear reasoning for each decision (executed, skipped, filtered)
+  - ⚖️ Balance badge for Distribution Balancing recommendations
+  - Auto-sorted: executed/pending first, then skipped by priority, filtered last
+  - Updates in real-time as migration progresses
 - **In-Progress Migration Tracking** - Live display of currently running migrations
   - Shows VM/CT name, ID, and source node
   - Displays start time and elapsed time (e.g., "2m 34s")
@@ -224,6 +232,84 @@ Fine-grained control over automation:
 - **Tags Bypassed for Maintenance** - Priority evacuation override
 
 See [Automation Guide](AUTOMATION.md) for detailed configuration.
+
+#### Distribution Balancing
+
+Automatically balances small VMs/CTs across nodes to achieve even guest distribution.
+
+**What It Does:**
+While traditional balancing focuses on CPU, memory, and I/O performance metrics, Distribution Balancing addresses a different problem: **uneven guest counts across nodes**. A node with 19 small VMs may show low resource usage but still suffers from:
+- Management overhead
+- Slower VM operations (start/stop/backup)
+- Uneven workload distribution
+- Harder cluster management
+
+**Key Features:**
+- Counts running guests on each node
+- Identifies nodes with imbalanced guest distribution
+- Recommends migrating small VMs/CTs from overloaded to underloaded nodes
+- Only migrates guests meeting size criteria (≤ 2 CPU cores, ≤ 4 GB memory)
+- Works alongside performance-based recommendations
+- Respects all safety checks and tag exclusions
+
+**Configuration:**
+```
+Enable: Dashboard → Automated Migrations → Distribution Balancing
+Default: Disabled
+
+Settings:
+- Guest Count Threshold: 2 (min difference to trigger balancing)
+- Max CPU Cores: 2 (only migrate guests with ≤ 2 cores, 0 = no limit)
+- Max Memory GB: 4 (only migrate guests with ≤ 4 GB, 0 = no limit)
+```
+
+**How It Works:**
+1. **Detect Imbalance**: Counts running guests (e.g., pve4: 19, pve6: 4)
+2. **Check Threshold**: If difference ≥ 2, proceed with balancing
+3. **Find Small Guests**: On overloaded node, find guests ≤ 2 cores and ≤ 4 GB
+4. **Generate Recommendations**: Suggest migrating to underloaded nodes
+5. **Flag Recommendations**: Marked with `"distribution_balancing": true`
+
+**Example Scenario:**
+```
+Before:
+pve4: 19 small VMs (sonarr, prowlarr, DNS, monitoring, etc.)
+pve6: 4 large VMs (databases, app servers)
+
+Distribution Balancing Action:
+- Finds eligible small VMs on pve4 (≤ 2 cores, ≤ 4 GB)
+- Recommends migrating 5-7 small VMs: pve4 → pve6
+- Confidence score: 60 (moderate)
+- Score improvement: 10 points
+
+After:
+pve4: 12-14 VMs (more manageable)
+pve6: 9-11 VMs (better distributed)
+Result: More even distribution, easier management
+```
+
+**Ideal For:**
+- Clusters with many small utility VMs (DNS, monitoring, proxies, etc.)
+- Nodes with significantly different guest counts
+- Situations where performance metrics don't show the imbalance
+- Improving cluster management simplicity
+
+**Integration:**
+- ✓ Works alongside performance-based recommendations
+- ✓ Respects tag exclusions (`pb-ignore`, `pb-exclude-group`)
+- ✓ Checks storage compatibility
+- ✓ Subject to confidence score threshold (60)
+- ✓ Subject to minimum score improvement threshold
+- ✓ Subject to rollback detection
+- ⚠️ Bypassed for maintenance mode evacuations (priority override)
+
+**Tuning Tips:**
+- **Too many migrations**: Increase guest_count_threshold to 3-4
+- **Large VMs being migrated**: Decrease max_cpu_cores/max_memory_gb to 1/2
+- **Not enough balancing**: Decrease guest_count_threshold to 1
+- **Target specific VM sizes**: Adjust max_cpu_cores/max_memory_gb to match
+
+See [Automation Guide - Distribution Balancing](AUTOMATION.md#distribution-balancing) for complete documentation.
 
 ---
 

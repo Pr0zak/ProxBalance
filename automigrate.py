@@ -438,6 +438,8 @@ def validates_resource_improvement(recommendation: Dict[str, Any]) -> Tuple[bool
     import re
 
     reason = recommendation.get('reason', '')
+    is_dist_bal = recommendation.get('distribution_balancing', False)
+    prefix = "⚖️ Distribution Balancing: " if is_dist_bal else ""
 
     # Look for pattern like "Balance X load (src: Y%, target: Z%)"
     pattern = r'Balance\s+(\w+)\s+load\s+\(src:\s+([\d.]+)%,\s+target:\s+([\d.]+)%\)'
@@ -453,9 +455,9 @@ def validates_resource_improvement(recommendation: Dict[str, Any]) -> Tuple[bool
 
     # Target should have LOWER load than source for balance migrations
     if target_pct >= src_pct:
-        return False, f"Invalid balance: {resource_type} target load ({target_pct:.1f}%) >= source load ({src_pct:.1f}%)"
+        return False, f"{prefix}Would not improve load: {resource_type} target ({target_pct:.1f}%) >= source ({src_pct:.1f}%)"
 
-    return True, f"Valid balance: {resource_type} source ({src_pct:.1f}%) > target ({target_pct:.1f}%)"
+    return True, f"{prefix}Would improve load: {resource_type} source ({src_pct:.1f}%) > target ({target_pct:.1f}%)"
 
 
 def get_recommendations(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -985,19 +987,20 @@ def main():
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
 
-                # Check rollback detection (if enabled)
+                # Check rollback detection (if enabled) - bypass for distribution balancing and maintenance evacuations
+                is_distribution_balancing = r.get('distribution_balancing', False)
                 rollback_enabled = rules.get('rollback_detection_enabled', True)
                 rollback_window_hours = rules.get('rollback_window_hours', 24)
-                if not is_maintenance_evac and rollback_enabled and is_rollback_migration(vmid, source_node, target_node, rollback_window_hours):
+                if not is_maintenance_evac and not is_distribution_balancing and rollback_enabled and is_rollback_migration(vmid, source_node, target_node, rollback_window_hours):
                     reason = f"Rollback detected (would migrate back within {rollback_window_hours}h)"
                     filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
 
-                # Check confidence threshold
+                # Check confidence threshold (bypass for distribution balancing and maintenance evacuations)
                 confidence = r.get('confidence_score', 0)
                 min_confidence = rules.get('min_confidence_score', 75)
-                if not is_maintenance_evac and confidence < min_confidence:
+                if not is_maintenance_evac and not is_distribution_balancing and confidence < min_confidence:
                     reason = f"Confidence {confidence}% below minimum {min_confidence}%"
                     filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
@@ -1040,13 +1043,38 @@ def main():
                     save_history(history)
                 except Exception as e:
                     logger.error(f"Failed to save filter reasons: {e}")
+
+                # Log all original recommendations as "skipped" or "filtered" for visibility
+                for r in recommendations:
+                    guest = cache_data.get('guests', {}).get(str(r.get('vmid')), {})
+                    # Check if this was already logged as filtered
+                    already_logged = any(d.get('vmid') == r.get('vmid') for d in last_run_summary['decisions'])
+                    if not already_logged:
+                        last_run_summary['decisions'].append(create_decision(
+                            r['vmid'],
+                            guest,
+                            r.get('source_node', r.get('current_node')),
+                            r['target_node'],
+                            'skipped',
+                            "Not selected (all recommendations filtered)",
+                            r
+                        ))
+
+                # Save decisions immediately so UI can see them
+                try:
+                    history = load_history()
+                    history.setdefault('state', {})['last_run'] = last_run_summary
+                    save_history(history)
+                except Exception as e:
+                    logger.error(f"Failed to save decisions: {e}")
+
                 break
 
             # Pick the best recommendation
             rec = filtered[0]
             vmid = rec['vmid']
             target = rec['target_node']
-            source = rec['source_node']
+            source = rec.get('source_node', rec.get('current_node'))  # Support both field names
             guest_type = rec.get('type', 'VM')  # Default to VM if type not specified
 
             # Check if target node is safe (allows evacuation from overloaded source nodes)
@@ -1101,6 +1129,59 @@ def main():
             target_score = rec.get('target_node_score', 'N/A')
             logger.info(f"Migrating {guest_type} {vmid} ({rec['name']}) from {source} to {target} (score: {target_score}) - {rec['reason']}")
 
+            # Populate ALL decisions BEFORE migration starts so UI can see them immediately
+            # 1. Add the decision for the migration we're about to execute (with 'pending' status)
+            guest_info = cache_data.get('guests', {}).get(str(vmid), {})
+            pending_decision = {
+                'vmid': vmid,
+                'name': rec['name'],
+                'type': guest_info.get('type', 'Unknown'),
+                'source_node': rec.get('source_node') or rec.get('current_node'),
+                'target_node': target,
+                'target_node_score': rec.get('target_node_score'),
+                'action': 'pending',  # Will be updated to executed/failed after migration
+                'reason': rec['reason'],
+                'confidence_score': rec['confidence_score'],
+                'status': 'pending',
+                'priority_rank': 1,  # This is the highest priority recommendation
+                'total_candidates': len(filtered),
+                'selected_reason': f'✅ SELECTED - Highest priority recommendation (ranked #1 of {len(filtered)})',
+                'tags': guest_info.get('tags', {}).get('all_tags', []),
+                'ha_managed': guest_info.get('ha_managed', False),
+                'has_bind_mount': guest_info.get('mount_points', {}).get('has_bind_mount', False),
+                'has_unshared_bind_mount': guest_info.get('mount_points', {}).get('has_unshared_bind_mount', False),
+                'has_passthrough': guest_info.get('local_disks', {}).get('has_passthrough', False),
+                'distribution_balancing': rec.get('distribution_balancing', False)
+            }
+            last_run_summary['decisions'].append(pending_decision)
+
+            # 2. Add all remaining recommendations as "skipped" (lower priority)
+            for idx, r in enumerate(filtered, start=1):
+                if r['vmid'] != vmid:  # Skip the one we're executing
+                    guest = cache_data.get('guests', {}).get(str(r['vmid']), {})
+                    decision = create_decision(
+                        r['vmid'],
+                        guest,
+                        r.get('source_node', r.get('current_node')),
+                        r['target_node'],
+                        'skipped',
+                        f"Lower priority - Ranked #{idx} of {len(filtered)}",
+                        r
+                    )
+                    decision['priority_rank'] = idx
+                    decision['total_candidates'] = len(filtered)
+                    decision['distribution_balancing'] = r.get('distribution_balancing', False)
+                    last_run_summary['decisions'].append(decision)
+
+            # 3. Save decisions BEFORE migration starts so UI can see them immediately
+            try:
+                history = load_history()
+                history.setdefault('state', {})['last_run'] = last_run_summary
+                save_history(history)
+                logger.info(f"Saved {len(last_run_summary['decisions'])} decisions before migration starts")
+            except Exception as e:
+                logger.error(f"Failed to save decisions before migration: {e}")
+
             result = execute_migration(vmid, target, source, guest_type, config, dry_run=dry_run)
 
             # Track decision outcome
@@ -1119,7 +1200,7 @@ def main():
                 'timestamp': datetime.utcnow().isoformat(),
                 'vmid': vmid,
                 'name': rec['name'],
-                'source_node': rec['source_node'],
+                'source_node': rec.get('source_node') or rec.get('current_node'),
                 'target_node': target,
                 'target_node_score': rec.get('target_node_score'),  # Include node score
                 'reason': rec['reason'],
@@ -1141,28 +1222,17 @@ def main():
 
             record_migration(migration_record)
 
-            # Add to last_run decisions with full metadata
-            guest_info = cache_data.get('guests', {}).get(str(vmid), {})
-            decision_entry = {
-                'vmid': vmid,
-                'name': rec['name'],
-                'type': guest_info.get('type', 'Unknown'),
-                'source_node': rec['source_node'],
-                'target_node': target,
-                'target_node_score': rec.get('target_node_score'),
-                'action': 'executed' if result.get('success') else 'failed',
-                'reason': rec['reason'],
-                'confidence_score': rec['confidence_score'],
-                'status': status,
-                'tags': guest_info.get('tags', {}).get('all_tags', []),
-                'ha_managed': guest_info.get('ha_managed', False),
-                'has_bind_mount': guest_info.get('mount_points', {}).get('has_bind_mount', False),
-                'has_unshared_bind_mount': guest_info.get('mount_points', {}).get('has_unshared_bind_mount', False),
-                'has_passthrough': guest_info.get('local_disks', {}).get('has_passthrough', False)
-            }
-            if result.get('error'):
-                decision_entry['error'] = result['error']
-            last_run_summary['decisions'].append(decision_entry)
+            # UPDATE the pending decision with execution results
+            # Find the pending decision we added before migration started
+            for decision in last_run_summary['decisions']:
+                if decision['vmid'] == vmid and decision.get('action') == 'pending':
+                    # Update the pending decision with results
+                    decision['action'] = 'executed' if result.get('success') else 'failed'
+                    decision['status'] = status
+                    if result.get('error'):
+                        decision['error'] = result['error']
+                    logger.info(f"Updated decision for VM {vmid} from 'pending' to '{decision['action']}'")
+                    break
 
             if result.get('success'):
                 success_count += 1
@@ -1220,6 +1290,14 @@ def main():
         try:
             history = load_history()
             history.setdefault('state', {})['last_run'] = last_run_summary
+
+            # Archive completed run to run_history (keep last 50 runs)
+            if last_run_summary.get('status') in ['success', 'partial', 'failed', 'no_action']:
+                history.setdefault('run_history', []).insert(0, last_run_summary.copy())
+                # Keep only last 50 runs
+                history['run_history'] = history['run_history'][:50]
+                logger.info(f"Archived run to history (total: {len(history['run_history'])} runs)")
+
             save_history(history)
         except Exception as e:
             logger.error(f"Failed to update last_run summary: {e}")

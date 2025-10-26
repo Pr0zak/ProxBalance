@@ -39,6 +39,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const Bell = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>);
         const MinusCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>);
         const Folder = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>);
+        const Minus = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="5" y1="12" x2="19" y2="12"></line></svg>);
 
 // Logo component
 const ProxBalanceLogo = ({ size = 32 }) => (
@@ -282,6 +283,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             state: {}
           });
           const [loadingAutomationStatus, setLoadingAutomationStatus] = useState(false);
+          const [runHistory, setRunHistory] = useState([]);
+          const [loadingRunHistory, setLoadingRunHistory] = useState(false);
+          const [expandedRun, setExpandedRun] = useState(null); // Track which run is expanded
           const [automationConfig, setAutomationConfig] = useState({
             enabled: false,
             dry_run: false,
@@ -416,6 +420,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             fetchSystemInfo();
             fetchAutomationStatus();
             fetchAutomationConfig();
+            fetchRunHistory();
             checkPermissions();
             fetchPenaltyConfig();
           }, []);
@@ -473,6 +478,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           useEffect(() => {
             const interval = setInterval(() => {
               fetchAutomationStatus();
+              fetchRunHistory();
             }, 10000); // 10 seconds
             return () => clearInterval(interval);
           }, []);
@@ -956,6 +962,21 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               console.error('Failed to fetch automation status:', err);
             } finally {
               setLoadingAutomationStatus(false);
+            }
+          };
+
+          const fetchRunHistory = async (limit = 10) => {
+            setLoadingRunHistory(true);
+            try {
+              const response = await fetch(`${API_BASE}/automigrate/history?type=runs&limit=${limit}`);
+              const result = await response.json();
+              if (result.success) {
+                setRunHistory(result.runs || []);
+              }
+            } catch (err) {
+              console.error('Failed to fetch run history:', err);
+            } finally {
+              setLoadingRunHistory(false);
             }
           };
 
@@ -4257,6 +4278,185 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                     )}
                   </div>
 
+                  {/* Distribution Balancing */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <button
+                      onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancing: !prev.distributionBalancing }))}
+                      className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity"
+                    >
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
+                      <ChevronDown
+                        size={24}
+                        className={`text-gray-600 dark:text-gray-400 transition-transform ${collapsedSections.distributionBalancing ? '-rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {!collapsedSections.distributionBalancing && (
+                    <>
+                    {/* Collapsible detailed description */}
+                    <div className="mb-4">
+                      <button
+                        onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancingHelp: !prev.distributionBalancingHelp }))}
+                        className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                      >
+                        {collapsedSections.distributionBalancingHelp ? (
+                          <>
+                            <ChevronDown size={16} className="-rotate-90" />
+                            Show detailed explanation
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={16} />
+                            Hide detailed explanation
+                          </>
+                        )}
+                      </button>
+
+                      {!collapsedSections.distributionBalancingHelp && (
+                        <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3">
+                          <div>
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">What is Distribution Balancing?</h3>
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>, rather than just CPU, memory, or I/O metrics.
+                            </p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">The Problem It Solves</h3>
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.
+                            </p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How It Works</h3>
+                            <ol className="text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1">
+                              <li>Counts running guests on each node (e.g., pve4: 19, pve6: 4)</li>
+                              <li>If difference ≥ threshold (default: 2), finds small guests on overloaded node</li>
+                              <li>Only considers guests ≤ max CPU cores (default: 2) and ≤ max memory (default: 4 GB)</li>
+                              <li>Recommends migrating eligible small guests to underloaded nodes</li>
+                              <li>Works alongside performance-based recommendations, respects tags and storage compatibility</li>
+                            </ol>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">When to Enable</h3>
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              ✓ Many small utility VMs (DNS, monitoring, etc.)<br />
+                              ✓ Nodes with very different guest counts (e.g., 19 vs 4)<br />
+                              ✓ Performance metrics don't show the imbalance<br />
+                              ✓ Want more even workload distribution for management simplicity
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Enable Distribution Balancing */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Enable Distribution Balancing</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Automatically balance small workloads across nodes to prevent guest count imbalance</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={config.distribution_balancing?.enabled || false}
+                              onChange={(e) => {
+                                const newConfig = { ...config };
+                                if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                                newConfig.distribution_balancing.enabled = e.target.checked;
+                                setConfig(newConfig);
+                                saveConfig(newConfig);
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {config.distribution_balancing?.enabled && (
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        {/* Guest Count Threshold */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Guest Count Threshold
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={config.distribution_balancing?.guest_count_threshold || 2}
+                            onChange={(e) => {
+                              const newConfig = { ...config };
+                              if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                              newConfig.distribution_balancing.guest_count_threshold = parseInt(e.target.value);
+                              setConfig(newConfig);
+                              saveConfig(newConfig);
+                            }}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Minimum difference in guest counts to trigger balancing
+                          </p>
+                        </div>
+
+                        {/* Max CPU Cores */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Max CPU Cores
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="32"
+                            value={config.distribution_balancing?.max_cpu_cores || 2}
+                            onChange={(e) => {
+                              const newConfig = { ...config };
+                              if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                              newConfig.distribution_balancing.max_cpu_cores = parseInt(e.target.value);
+                              setConfig(newConfig);
+                              saveConfig(newConfig);
+                            }}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Only migrate guests with ≤ this many CPU cores (0 = no limit)
+                          </p>
+                        </div>
+
+                        {/* Max Memory GB */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Max Memory (GB)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="256"
+                            value={config.distribution_balancing?.max_memory_gb || 4}
+                            onChange={(e) => {
+                              const newConfig = { ...config };
+                              if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                              newConfig.distribution_balancing.max_memory_gb = parseInt(e.target.value);
+                              setConfig(newConfig);
+                              saveConfig(newConfig);
+                            }}
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Only migrate guests with ≤ this much memory (0 = no limit)
+                          </p>
+                        </div>
+                      </div>
+                      )}
+                    </div>
+                    </>
+                    )}
+                  </div>
 
                   {/* Notifications - DISABLED FOR NOW - Awaiting additional development
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
@@ -6414,81 +6614,101 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3 mb-3 max-h-64 overflow-y-auto">
                                 <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Decisions Made:</div>
                                 <div className="space-y-2">
-                                  {automationStatus.state.last_run.decisions.map((decision, idx) => (
-                                    <div key={idx} className="text-xs bg-gray-50 dark:bg-gray-700 rounded p-2 border-l-2 border-blue-500">
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                          <div className="flex items-center gap-1 flex-wrap">
-                                            <span className="font-semibold text-gray-900 dark:text-white">
-                                              {decision.action === 'filtered' ? '⊗' :
-                                               decision.action === 'skipped' ? '⊘' :
-                                               decision.action === 'executed' ? '✓' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
-                                            </span>
-                                            {decision.type && (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                                {decision.type}
-                                              </span>
-                                            )}
-                                            {decision.ha_managed && (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" title="HA Managed">
-                                                HA
-                                              </span>
-                                            )}
-                                            {decision.has_passthrough && (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" title="Has passthrough disks">
-                                                ⚠ Passthrough
-                                              </span>
-                                            )}
-                                            {decision.has_unshared_bind_mount && (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" title="Has unshared bind mounts">
-                                                ⚠ Bind Mount
-                                              </span>
-                                            )}
-                                            {decision.has_bind_mount && !decision.has_unshared_bind_mount && (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" title="Has shared bind mounts">
-                                                📁 Shared
-                                              </span>
-                                            )}
-                                          </div>
-                                          <span className="text-gray-600 dark:text-gray-400">
-                                            {decision.source_node} → {decision.target_node}
-                                            {decision.target_node_score && ` (score: ${decision.target_node_score})`}
-                                          </span>
-                                          {decision.tags && decision.tags.length > 0 && (
-                                            <div className="mt-1 flex items-center gap-1 flex-wrap">
-                                              <span className="text-gray-500 dark:text-gray-400 text-[9px]">Tags:</span>
-                                              {decision.tags.map((tag, tagIdx) => (
-                                                <span key={tagIdx} className="px-1.5 py-0.5 rounded text-[9px] bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300">
-                                                  {tag}
+                                  {[...automationStatus.state.last_run.decisions].sort((a, b) => {
+                                    // Sort by priority: executed/pending first, then skipped by rank, then filtered last
+                                    const getOrder = (d) => {
+                                      if (d.action === 'executed' || d.action === 'pending' || d.action === 'failed') return 0;
+                                      if (d.action === 'skipped') return 1;
+                                      return 2; // filtered
+                                    };
+                                    const orderA = getOrder(a);
+                                    const orderB = getOrder(b);
+                                    if (orderA !== orderB) return orderA - orderB;
+                                    // Within same group, sort by priority rank
+                                    return (a.priority_rank || 999) - (b.priority_rank || 999);
+                                  }).map((decision, idx) => {
+                                    const isExecuted = decision.action === 'executed' || decision.action === 'failed';
+                                    const isPending = decision.action === 'pending';
+                                    const borderColor = isExecuted ? 'border-green-500' :
+                                                       isPending ? 'border-blue-500' :
+                                                       decision.action === 'skipped' ? 'border-yellow-500' :
+                                                       'border-gray-400';
+                                    const bgColor = isExecuted ? 'bg-green-50 dark:bg-green-900/20' :
+                                                   isPending ? 'bg-blue-50 dark:bg-blue-900/20' :
+                                                   'bg-gray-50 dark:bg-gray-700';
+
+                                    return (
+                                      <div key={idx} className={`text-xs ${bgColor} rounded p-2 border-l-4 ${borderColor} ${isPending ? 'animate-pulse' : ''}`}>
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              {/* Priority Rank Badge */}
+                                              {decision.priority_rank && (
+                                                <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                                                  decision.priority_rank === 1
+                                                    ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200'
+                                                    : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300'
+                                                }`}>
+                                                  #{decision.priority_rank}
                                                 </span>
-                                              ))}
+                                              )}
+
+                                              <span className="font-semibold text-gray-900 dark:text-white">
+                                                {decision.action === 'filtered' ? '⊗' :
+                                                 decision.action === 'skipped' ? '⏭' :
+                                                 decision.action === 'pending' ? '🔄' :
+                                                 decision.action === 'executed' ? '✅' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
+                                              </span>
+
+                                              {decision.type && (
+                                                <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                  {decision.type}
+                                                </span>
+                                              )}
+
+                                              {decision.distribution_balancing && (
+                                                <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" title="Distribution Balancing">
+                                                  ⚖️ Balance
+                                                </span>
+                                              )}
                                             </div>
-                                          )}
+
+                                            <span className="text-gray-600 dark:text-gray-400">
+                                              {decision.source_node} → {decision.target_node}
+                                              {decision.target_node_score && ` (score: ${decision.target_node_score})`}
+                                            </span>
+                                          </div>
+
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                            decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                            decision.action === 'pending' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                            decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                            decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                          }`}>
+                                            {decision.action}
+                                          </span>
                                         </div>
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                          decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                          decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                          decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
-                                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                        }`}>
-                                          {decision.action}
-                                        </span>
+
+                                        {/* Show selected_reason for executed, regular reason for others */}
+                                        <div className="mt-1 text-gray-600 dark:text-gray-400">
+                                          {decision.selected_reason || decision.reason}
+                                        </div>
+
+                                        {decision.confidence_score && (
+                                          <div className="mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]">
+                                            Confidence: {decision.confidence_score}%
+                                          </div>
+                                        )}
+
+                                        {decision.error && (
+                                          <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">
+                                            Error: {decision.error}
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="mt-1 text-gray-600 dark:text-gray-400">
-                                        {decision.reason}
-                                      </div>
-                                      {decision.confidence_score && (
-                                        <div className="mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]">
-                                          Confidence: {decision.confidence_score}%
-                                        </div>
-                                      )}
-                                      {decision.error && (
-                                        <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">
-                                          Error: {decision.error}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -6745,24 +6965,38 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               )}
                               {/* Rollback Detection */}
                               {(() => {
-                                // Check if this VM was migrated back to its source within 24 hours
-                                const rollbackWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
+                                // Only show rollback warning if rollback detection is enabled in settings
+                                if (!automationConfig?.rules?.rollback_detection_enabled) {
+                                  return null;
+                                }
+
+                                // Use configured rollback window (default 24 hours if not set)
+                                const rollbackWindowHours = automationConfig?.rules?.rollback_window_hours || 24;
+                                const rollbackWindow = rollbackWindowHours * 60 * 60 * 1000; // Convert to ms
                                 const currentTime = new Date(migration.timestamp.endsWith('Z') ? migration.timestamp : migration.timestamp + 'Z');
 
-                                const rollback = automationStatus.recent_migrations.find(m =>
-                                  m.vmid === migration.vmid &&
-                                  m.id !== migration.id &&
-                                  m.source_node === migration.target_node && // Went from current target back to...
-                                  m.target_node === migration.source_node && // ...current source (rollback)
-                                  Math.abs(new Date(m.timestamp.endsWith('Z') ? m.timestamp : m.timestamp + 'Z') - currentTime) < rollbackWindow
-                                );
+                                // Find potential rollback - look for migration where this VM went back
+                                const rollback = automationStatus.recent_migrations.find(m => {
+                                  if (m.vmid !== migration.vmid) return false;
+                                  if (m.id === migration.id) return false;
+
+                                  // Check if it's a rollback (went from target back to source)
+                                  const isRollback = m.source_node === migration.target_node && m.target_node === migration.source_node;
+
+                                  // Check time window
+                                  const mTime = new Date(m.timestamp.endsWith('Z') ? m.timestamp : m.timestamp + 'Z');
+                                  const timeDiff = Math.abs(mTime - currentTime);
+                                  const withinWindow = timeDiff < rollbackWindow;
+
+                                  return isRollback && withinWindow;
+                                });
 
                                 if (rollback) {
                                   return (
                                     <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded flex items-start gap-2">
                                       <AlertTriangle size={14} className="text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
                                       <div className="text-xs text-orange-800 dark:text-orange-300">
-                                        <span className="font-semibold">Rollback Detected:</span> This VM was migrated back to its original node within 24 hours. This may indicate a problem with the target node or migration configuration.
+                                        <span className="font-semibold">Rollback Detected:</span> This VM was migrated back to its original node within {rollbackWindowHours} hour{rollbackWindowHours !== 1 ? 's' : ''}. This may indicate a problem with the target node or migration configuration.
                                       </div>
                                     </div>
                                   );
@@ -6770,6 +7004,121 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 return null;
                               })()}
                             </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Past Automation Runs */}
+                    {runHistory.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                          <Clock size={14} />
+                          Past Automation Runs
+                        </h4>
+                        <div className="space-y-2">
+                          {runHistory.slice(0, 5).map((run, idx) => {
+                            const isExpanded = expandedRun === run.timestamp;
+
+                            // Format timestamp
+                            let timeDisplay = '';
+                            try {
+                              const timestamp = run.timestamp.endsWith('Z') ? run.timestamp : run.timestamp + 'Z';
+                              const runDate = new Date(timestamp);
+                              const now = new Date();
+                              const diffMs = now - runDate;
+                              const diffMins = Math.floor(diffMs / 60000);
+                              const diffHours = Math.floor(diffMs / 3600000);
+                              const diffDays = Math.floor(diffMs / 86400000);
+
+                              if (diffMins < 1) {
+                                timeDisplay = 'Just now';
+                              } else if (diffMins < 60) {
+                                timeDisplay = `${diffMins}m ago`;
+                              } else if (diffHours < 24) {
+                                timeDisplay = `${diffHours}h ago`;
+                              } else if (diffDays < 7) {
+                                timeDisplay = `${diffDays}d ago`;
+                              } else {
+                                timeDisplay = runDate.toLocaleDateString();
+                              }
+                            } catch (e) {
+                              timeDisplay = '';
+                            }
+
+                            return (
+                              <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 rounded p-3 border border-gray-200 dark:border-gray-700">
+                                <div
+                                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded p-1 transition-colors"
+                                  onClick={() => setExpandedRun(isExpanded ? null : run.timestamp)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isExpanded ? <ChevronDown size={14} className="text-gray-600 dark:text-gray-400" /> : <ChevronRight size={14} className="text-gray-600 dark:text-gray-400" />}
+                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                      {timeDisplay}
+                                    </span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                      run.status === 'success'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                        : run.status === 'partial'
+                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                                        : run.status === 'no_action'
+                                        ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                    }`}>
+                                      {run.status}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+                                    <span>{run.migrations_executed || 0} migration{run.migrations_executed !== 1 ? 's' : ''}</span>
+                                    <span>{run.duration_seconds || 0}s</span>
+                                  </div>
+                                </div>
+
+                                {isExpanded && run.decisions && run.decisions.length > 0 && (
+                                  <div className="mt-2 pl-5 space-y-1">
+                                    <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
+                                      Decisions ({run.decisions.length})
+                                    </div>
+                                    {run.decisions.map((decision, didx) => (
+                                      <div key={didx} className={`text-xs p-1.5 rounded ${
+                                        decision.action === 'executed'
+                                          ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
+                                          : decision.action === 'pending'
+                                          ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+                                          : decision.action === 'skipped'
+                                          ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700'
+                                          : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600'
+                                      }`}>
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-1">
+                                            {decision.action === 'executed' && <CheckCircle size={10} className="text-green-600 dark:text-green-400" />}
+                                            {decision.action === 'pending' && <RefreshCw size={10} className="text-blue-600 dark:text-blue-400" />}
+                                            {decision.action === 'skipped' && <Minus size={10} className="text-yellow-600 dark:text-yellow-400" />}
+                                            {decision.action === 'filtered' && <XCircle size={10} className="text-gray-600 dark:text-gray-400" />}
+                                            <span className="font-medium text-gray-900 dark:text-gray-100">{decision.name}</span>
+                                            <span className="text-gray-500 dark:text-gray-400">({decision.vmid})</span>
+                                            {decision.distribution_balancing && (
+                                              <span className="ml-1" title="Distribution Balancing">⚖️</span>
+                                            )}
+                                          </div>
+                                          {decision.priority_rank && (
+                                            <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                                              #{decision.priority_rank}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {decision.reason && (
+                                          <div className="text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">
+                                            {decision.reason}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
