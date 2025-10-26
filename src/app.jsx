@@ -3904,7 +3904,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               </button> to see detailed scoring, confidence levels, and suggested migrations.
                             </p>
                             <p className="mt-2 text-xs text-blue-700 dark:text-blue-300 italic">
-                              💡 The system finds optimal migration pairs by comparing source node penalties with target node suitability scores. Only migrations with significant score improvements (15+ points by default) are recommended.
+                              💡 The system finds optimal migration pairs by comparing source node penalties with target node suitability scores. Only migrations with significant score improvements ({penaltyConfig?.min_score_improvement || 15}+ points by default) are recommended.
                             </p>
                             <p className="mt-3 text-sm">
                               <button
@@ -8913,7 +8913,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <div className="px-4 pb-4">
                             <div className="text-sm text-blue-900 dark:text-blue-100">
                               <p className="text-blue-800 dark:text-blue-200 mb-2">
-                                ProxBalance uses a penalty-based scoring system to evaluate every guest on every node. Migrations are recommended when moving a guest would improve its suitability rating by <span className="font-bold">15+ points</span>.
+                                ProxBalance uses a penalty-based scoring system to evaluate every guest on every node. Migrations are recommended when moving a guest would improve its suitability rating by <span className="font-bold">{penaltyConfig?.min_score_improvement || 15}+ points</span>.
                               </p>
                               <ul className="ml-4 space-y-1 text-blue-700 dark:text-blue-300 text-xs list-disc">
                                 <li><span className="font-semibold">Suitability Rating:</span> 0-100% (lower penalties = higher rating). Penalties accumulate for unfavorable conditions.</li>
@@ -9017,7 +9017,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
                                           rec.score_improvement >= 50 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                                           rec.score_improvement >= 30 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
-                                          rec.score_improvement >= 15 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                                          rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
                                           'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                                         }`} title="How much better the target node is (penalty point reduction)">
                                           <span className="text-xs">Improvement:</span>

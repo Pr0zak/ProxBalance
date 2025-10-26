@@ -1656,7 +1656,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
     Pure score-based approach:
     - Calculates suitability score for each guest on its current node
     - Calculates suitability score for each guest on all potential target nodes
-    - Recommends migration if score improvement is significant (>15 points)
+    - Recommends migration if score improvement is significant (>min_score_improvement points, default 15)
     - No arbitrary thresholds - uses penalty-based scoring system
 
     Scoring factors (lower score = better):
