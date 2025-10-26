@@ -254,6 +254,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               additionalRules: false,
               automatedMigrations: true,  // Collapsed by default
               howItWorks: true,  // Collapsed by default - penalty scoring explanation
+              decisionTree: true,  // Collapsed by default - migration decision tree flowchart
               lastRunSummary: true,  // Collapsed by default - last automation run details
               mountPoints: true,  // Collapsed by default in guest details modal
               passthroughDisks: true,  // Collapsed by default in guest details modal
@@ -3939,6 +3940,166 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 ⚙️ Configure Penalty Weights →
                               </button>
                             </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Decision Tree - Collapsible */}
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg mb-6">
+                    <button
+                      onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
+                      className="w-full flex items-center justify-between p-5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Info size={24} className="text-green-600 dark:text-green-400 shrink-0" />
+                        <div className="font-bold text-green-900 dark:text-green-200 text-left">Migration Decision Tree</div>
+                      </div>
+                      {collapsedSections.decisionTree ? (
+                        <ChevronDown size={20} className="text-green-600 dark:text-green-400" />
+                      ) : (
+                        <ChevronUp size={20} className="text-green-600 dark:text-green-400" />
+                      )}
+                    </button>
+
+                    {!collapsedSections.decisionTree && (
+                      <div className="px-5 pb-5">
+                        <div className="text-sm text-green-800 dark:text-green-300 space-y-3">
+                          <p className="font-semibold">
+                            This flowchart shows how ProxBalance decides whether to execute automated migrations:
+                          </p>
+
+                          {/* Decision Tree Diagram */}
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-green-300 dark:border-green-600">
+                            <div className="space-y-3 font-mono text-xs">
+                              {/* Start */}
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-green-600 dark:bg-green-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">▶</div>
+                                <div className="font-bold text-green-900 dark:text-green-200">Automation Run Triggered</div>
+                              </div>
+
+                              {/* Check 1: Enabled */}
+                              <div className="ml-6 border-l-2 border-green-300 dark:border-green-600 pl-4 space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">1.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Is automation enabled?</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ❌ NO → <span className="text-red-600 dark:text-red-400 font-semibold">STOP</span> - Enable in Automation Settings<br/>
+                                      ✅ YES → Continue to next check
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 2: Cooldown */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">2.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Is cooldown period elapsed?</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ❌ NO → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Wait for cooldown (default: 30 min)<br/>
+                                      ✅ YES → Continue to next check
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 3: Time Windows */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">3.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Are we in an allowed time window?</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ❌ BLACKOUT → <span className="text-red-600 dark:text-red-400 font-semibold">BLOCKED</span> - In blackout window<br/>
+                                      ❌ OUTSIDE MIGRATION WINDOW → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Not in migration window<br/>
+                                      ✅ YES (or no windows configured) → Continue to next check
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 4: Cluster Health */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">4.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Is cluster healthy? (if enabled)</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ❌ NO QUORUM → <span className="text-red-600 dark:text-red-400 font-semibold">ABORT</span> - Cluster has no quorum<br/>
+                                      ❌ HIGH CPU/MEMORY → <span className="text-red-600 dark:text-red-400 font-semibold">ABORT</span> - Nodes over threshold<br/>
+                                      ✅ YES → Continue to next check
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 5: Get Recommendations */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">5.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Generate migration recommendations</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      • Calculate penalty scores for all nodes<br/>
+                                      • Find VMs on high-penalty nodes<br/>
+                                      • Match with low-penalty target nodes<br/>
+                                      • Apply filters (tags, storage, rollback detection)<br/>
+                                      • Calculate confidence scores
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 6: Filter by Confidence */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">6.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Filter by minimum confidence score</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ❌ NO RECOMMENDATIONS → <span className="text-yellow-600 dark:text-yellow-400 font-semibold">SKIP</span> - Cluster is balanced<br/>
+                                      ✅ FOUND RECOMMENDATIONS → Continue to execution
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 7: Dry Run */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">7.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Is dry run mode enabled?</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      ✅ DRY RUN → <span className="text-blue-600 dark:text-blue-400 font-semibold">LOG ONLY</span> - Record what would happen<br/>
+                                      ❌ LIVE MODE → Continue to execution
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Check 8: Execute */}
+                                <div className="flex items-start gap-2">
+                                  <div className="text-green-700 dark:text-green-400 font-bold">8.</div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900 dark:text-white">Execute migrations</div>
+                                    <div className="text-gray-600 dark:text-gray-400 text-[10px] mt-1">
+                                      • Limit to max migrations per run (default: 3)<br/>
+                                      • Execute migrations sequentially<br/>
+                                      • If migration fails + abort_on_failure: STOP remaining<br/>
+                                      • If migration fails + pause_on_failure: DISABLE automation<br/>
+                                      • Track migration status and update history
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* End */}
+                                <div className="flex items-center gap-2 mt-4">
+                                  <div className="w-4 h-4 rounded-full bg-green-600 dark:bg-green-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">✓</div>
+                                  <div className="font-bold text-green-900 dark:text-green-200">Run Complete</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-600">
+                            <div className="font-semibold text-green-900 dark:text-green-100 mb-2 text-xs">💡 Configuration Tips:</div>
+                            <ul className="text-xs text-green-800 dark:text-green-200 space-y-1 ml-4 list-disc">
+                              <li><strong>Conservative:</strong> High confidence (80+), low max migrations (1-2), long cooldown (60+ min)</li>
+                              <li><strong>Balanced:</strong> Medium confidence (70+), moderate max (3-5), standard cooldown (30-60 min)</li>
+                              <li><strong>Aggressive:</strong> Lower confidence (60+), high max (5-10), short cooldown (15-30 min)</li>
+                            </ul>
                           </div>
                         </div>
                       </div>
