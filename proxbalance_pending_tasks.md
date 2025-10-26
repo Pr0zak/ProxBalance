@@ -5,7 +5,7 @@
 
 ---
 
-## ✅ Completed Tasks
+## ✅ Completed Tasks (Session 2025-10-26)
 
 ### 1. Fixed "Partial" Status Bug
 - **Issue:** UI showed "1 / 2" and "Partial" status when only 1 migration was attempted and succeeded
@@ -33,12 +33,13 @@
 
 ## 📋 Pending Tasks
 
-### Priority 1: Min Score Improvement Configuration
+### Priority 1: Min Score Improvement Configuration ✅ COMPLETED
 
-#### Task 1: Add min_score_improvement to Penalty Configuration UI
+#### Task 1: Add min_score_improvement to Penalty Configuration UI ✅
+**Status:** COMPLETED
 **Description:** Make the 15-point minimum score improvement threshold user-editable in the UI
 
-**Location:** `src/app.jsx` - Penalty Configuration section
+**Location:** `src/app.jsx` - Penalty Configuration section (lines 2928-2952)
 
 **Implementation:**
 ```javascript
@@ -69,10 +70,17 @@
 
 ---
 
-#### Task 2: Update hardcoded min_score_improvement in app.py
+#### Task 2: Update hardcoded min_score_improvement in app.py ✅
+**Status:** ALREADY IMPLEMENTED - No changes needed
 **Description:** Replace hardcoded `15` value with config-driven value
 
-**Location:** `app.py` - `generate_recommendations()` function
+**Location:** `app.py` - `generate_recommendations()` function (line 1714)
+
+**Finding:** The code already correctly reads from config:
+```python
+MIN_SCORE_IMPROVEMENT = penalty_cfg.get("min_score_improvement", 15)
+```
+This was already properly implemented.
 
 **Current Code (search for):**
 ```python
@@ -732,6 +740,86 @@ Automatically balance small workload VMs/CTs by guest count across cluster nodes
 - Check `/opt/proxmox-balance-manager/migration_history.json` for results
 - Verify guest counts rebalance over time
 - Ensure no unintended migrations (HA VMs, large VMs, etc.)
+
+---
+
+### Priority 1.5: Rollback Detection Toggle
+
+#### Task: Add Rollback Detection Enable/Disable Toggle
+
+**Description:** Add a user-configurable toggle in the Automated Migrations UI to enable/disable the rollback detection feature.
+
+**Background:** Rollback detection prevents migration loops by detecting when a VM/CT is being migrated back to a node it was recently migrated from. This is a safety feature but users may want to disable it in certain scenarios.
+
+**Location:** `src/app.jsx` - Automated Migrations configuration panel
+
+**Config Schema:**
+```json
+{
+  "automated_migrations": {
+    "rules": {
+      "rollback_detection_enabled": true,  // Default: true
+      "rollback_window_hours": 24         // Optional: How far back to check for rollbacks
+    }
+  }
+}
+```
+
+**UI Implementation:**
+```javascript
+{/* Add after existing Automated Migrations rules */}
+<div className="flex items-center justify-between">
+  <div>
+    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      Rollback Detection
+    </label>
+    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+      Prevent migration loops by detecting rollbacks (migrating VM back to previous node)
+    </p>
+  </div>
+  <label className="relative inline-flex items-center cursor-pointer">
+    <input
+      type="checkbox"
+      checked={config.automated_migrations?.rules?.rollback_detection_enabled !== false}
+      onChange={(e) => handleConfigChange('automated_migrations.rules.rollback_detection_enabled', e.target.checked)}
+      className="sr-only peer"
+    />
+    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+  </label>
+</div>
+
+{/* Optional: Rollback window configuration (only if enabled) */}
+{config.automated_migrations?.rules?.rollback_detection_enabled !== false && (
+  <div className="ml-6 mt-2">
+    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+      Rollback Detection Window (hours)
+    </label>
+    <input
+      type="number"
+      min="1"
+      max="168"
+      value={config.automated_migrations?.rules?.rollback_window_hours || 24}
+      onChange={(e) => handleConfigChange('automated_migrations.rules.rollback_window_hours', parseInt(e.target.value))}
+      className="w-32 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+    />
+    <p className="text-xs text-gray-500 mt-1">
+      How far back to check for previous migrations (default: 24 hours)
+    </p>
+  </div>
+)}
+```
+
+**Backend Changes Needed:**
+- Check if rollback detection is currently hardcoded in `automigrate.py`
+- If yes, update to read from config: `config.get('automated_migrations', {}).get('rules', {}).get('rollback_detection_enabled', True)`
+- Implement `rollback_window_hours` if not already present
+
+**Testing:**
+1. Enable rollback detection, migrate a VM
+2. Try to migrate it back immediately - should be prevented
+3. Disable rollback detection
+4. Try to migrate back - should be allowed
+5. Test rollback window: set to 1 hour, wait 1 hour, verify migration is allowed
 
 ---
 
