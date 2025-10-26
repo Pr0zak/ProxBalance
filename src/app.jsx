@@ -7,6 +7,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const Play = ({ size }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>);
         const CheckCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
         const XCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>);
+        const ClipboardList = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>);
         const Tag = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>);
         const AlertTriangle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>);
         const Info = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>);
@@ -251,6 +252,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               safetyRules: false,
               additionalRules: false,
               automatedMigrations: true,  // Collapsed by default
+              howItWorks: true,  // Collapsed by default - penalty scoring explanation
+              lastRunSummary: true,  // Collapsed by default - last automation run details
               mountPoints: true,  // Collapsed by default in guest details modal
               passthroughDisks: true,  // Collapsed by default in guest details modal
               notificationSettings: true  // Collapsed by default (coming soon)
@@ -448,11 +451,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                 setShowPenaltyConfig(true);
                 // Scroll to the penalty config section after expansion
                 setTimeout(() => {
-                  const penaltySection = Array.from(document.querySelectorAll('button, h3, span')).find(el =>
-                    el.textContent && el.textContent.includes('Penalty Scoring Configuration')
-                  );
+                  const penaltySection = document.getElementById('penalty-config-section');
                   if (penaltySection) {
                     penaltySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Flash the section briefly
+                    penaltySection.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.5)';
+                    setTimeout(() => {
+                      penaltySection.style.boxShadow = '';
+                    }, 2000);
                   }
                 }, 200);
                 // Reset flag after all state updates
@@ -2707,7 +2713,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                     <hr className="border-gray-300 dark:border-gray-600" />
 
                     {/* Penalty Scoring Configuration - Standalone Section */}
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div id="penalty-config-section" className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
                       <button
                         onClick={() => setShowPenaltyConfig(!showPenaltyConfig)}
                         className="w-full flex items-center justify-between text-left group"
@@ -3830,23 +3836,38 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                     </div>)}
                   </div>
 
-                  {/* Penalty-Based Scoring Info */}
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-5 mb-6">
-                    <div className="flex items-start gap-3">
-                      <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-bold text-blue-900 dark:text-blue-200 mb-2">How Automated Migrations Work</div>
+                  {/* Penalty-Based Scoring Info - Collapsible */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
+                    <button
+                      onClick={() => setCollapsedSections(prev => ({...prev, howItWorks: !prev.howItWorks}))}
+                      className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div className="font-bold text-blue-900 dark:text-blue-200 text-left">How Automated Migrations Work</div>
+                      </div>
+                      {collapsedSections.howItWorks ? (
+                        <ChevronDown size={20} className="text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <ChevronUp size={20} className="text-blue-600 dark:text-blue-400" />
+                      )}
+                    </button>
+
+                    {!collapsedSections.howItWorks && (
+                      <div className="px-5 pb-5">
                         <div className="text-sm text-blue-800 dark:text-blue-300 space-y-2">
                           <p>
                             Automated migrations use a <strong>penalty-based scoring system</strong> to intelligently balance your cluster.
-                            Each node accumulates penalties based on resource usage, trends, and spikes - lower scores indicate healthier nodes.
+                            Each node accumulates penalties based on multiple factors - lower scores indicate better migration targets.
                           </p>
                           <div className="mt-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded border border-blue-300 dark:border-blue-600">
                             <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Penalty Factors:</div>
                             <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-sm">
-                              <li><strong>High CPU/Memory/IOWait:</strong> Immediate resource pressure (0-80 penalty points)</li>
-                              <li><strong>Rising Trends:</strong> Resources trending upward over time (0-30 penalty points)</li>
-                              <li><strong>Recent Spikes:</strong> Sudden resource spikes detected (0-20 penalty points)</li>
+                              <li><strong>Current Load:</strong> Immediate resource pressure from CPU, Memory, and IOWait (20-100 points each)</li>
+                              <li><strong>Sustained Load:</strong> Long-term resource usage patterns over 7 days (15-150 points)</li>
+                              <li><strong>Rising Trends:</strong> Resources trending upward over time (15 points per metric)</li>
+                              <li><strong>Load Spikes:</strong> Maximum resource peaks detected in recent history (5-30 points)</li>
+                              <li><strong>Predicted Load:</strong> Post-migration resource levels to prevent overloading targets</li>
                             </ul>
                             <p className="mt-3 text-sm">
                               <button
@@ -3854,15 +3875,27 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
                               >
                                 View Migration Recommendations →
-                              </button> to see detailed scoring and suggested migrations.
+                              </button> to see detailed scoring, confidence levels, and suggested migrations.
                             </p>
                             <p className="mt-2 text-xs text-blue-700 dark:text-blue-300 italic">
-                              💡 The system automatically finds the best migration pairs by comparing source node penalties with target node suitability.
+                              💡 The system finds optimal migration pairs by comparing source node penalties with target node suitability scores. Only migrations with significant score improvements (15+ points by default) are recommended.
+                            </p>
+                            <p className="mt-3 text-sm">
+                              <button
+                                onClick={() => {
+                                  // Navigate to Settings page and open penalty config
+                                  setCurrentPage('settings');
+                                  setOpenPenaltyConfigOnSettings(true);
+                                }}
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
+                              >
+                                ⚙️ Configure Penalty Weights →
+                              </button>
                             </p>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Safety & Rules */}
@@ -6078,12 +6111,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <span className="text-gray-600 dark:text-gray-400">Last Run:</span>
                             <span className="font-medium text-gray-900 dark:text-white">
                               {(() => {
-                                // Handle timestamps with or without 'Z' suffix
+                                // Handle both old string format and new object format
                                 let timestamp = automationStatus.state.last_run;
-                                if (!timestamp.endsWith('Z') && !timestamp.includes('+')) {
-                                  timestamp += 'Z'; // Assume UTC if no timezone specified
+                                if (typeof timestamp === 'object' && timestamp !== null) {
+                                  timestamp = timestamp.timestamp;
                                 }
-                                return new Date(timestamp).toLocaleString();
+                                if (timestamp && typeof timestamp === 'string') {
+                                  if (!timestamp.endsWith('Z') && !timestamp.includes('+')) {
+                                    timestamp += 'Z'; // Assume UTC if no timezone specified
+                                  }
+                                  return new Date(timestamp).toLocaleString();
+                                }
+                                return 'Never';
                               })()}
                             </span>
                           </div>
@@ -6211,6 +6250,180 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Last Run Summary - Collapsible */}
+                    {automationStatus.state?.last_run && typeof automationStatus.state.last_run === 'object' && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <button
+                          onClick={() => setCollapsedSections(prev => ({...prev, lastRunSummary: !prev.lastRunSummary}))}
+                          className="w-full flex items-center justify-between mb-3 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <ClipboardList size={16} className="text-blue-600 dark:text-blue-400" />
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Last Run Summary</h4>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(automationStatus.state.last_run.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          {collapsedSections.lastRunSummary ? (
+                            <ChevronDown size={18} className="text-gray-500" />
+                          ) : (
+                            <ChevronUp size={18} className="text-gray-500" />
+                          )}
+                        </button>
+
+                        {!collapsedSections.lastRunSummary && (
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                            {/* Run Overview */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
+                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Status</div>
+                                <div className={`text-sm font-bold ${
+                                  automationStatus.state.last_run.status === 'success' ? 'text-green-600 dark:text-green-400' :
+                                  automationStatus.state.last_run.status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
+                                  automationStatus.state.last_run.status === 'failed' ? 'text-red-600 dark:text-red-400' :
+                                  'text-gray-600 dark:text-gray-400'
+                                }`}>
+                                  {automationStatus.state.last_run.status === 'success' ? '✓ Success' :
+                                   automationStatus.state.last_run.status === 'partial' ? '◐ Partial' :
+                                   automationStatus.state.last_run.status === 'failed' ? '✗ Failed' :
+                                   automationStatus.state.last_run.status === 'no_action' ? '○ No Action' :
+                                   automationStatus.state.last_run.status}
+                                </div>
+                              </div>
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
+                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Migrations</div>
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {automationStatus.state.last_run.migrations_successful || 0} / {automationStatus.state.last_run.migrations_executed || 0}
+                                </div>
+                              </div>
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
+                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Duration</div>
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {automationStatus.state.last_run.duration_seconds ? `${Math.floor(automationStatus.state.last_run.duration_seconds / 60)}m ${automationStatus.state.last_run.duration_seconds % 60}s` : 'N/A'}
+                                </div>
+                              </div>
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
+                                <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Mode</div>
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {automationStatus.state.last_run.mode === 'dry_run' ? '🧪 Dry Run' : '🚀 Live'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Decision Details */}
+                            {automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && (
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3 mb-3 max-h-64 overflow-y-auto">
+                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Decisions Made:</div>
+                                <div className="space-y-2">
+                                  {automationStatus.state.last_run.decisions.map((decision, idx) => (
+                                    <div key={idx} className="text-xs bg-gray-50 dark:bg-gray-700 rounded p-2 border-l-2 border-blue-500">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-1 flex-wrap">
+                                            <span className="font-semibold text-gray-900 dark:text-white">
+                                              {decision.action === 'filtered' ? '⊗' :
+                                               decision.action === 'skipped' ? '⊘' :
+                                               decision.action === 'executed' ? '✓' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
+                                            </span>
+                                            {decision.type && (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                {decision.type}
+                                              </span>
+                                            )}
+                                            {decision.ha_managed && (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" title="HA Managed">
+                                                HA
+                                              </span>
+                                            )}
+                                            {decision.has_passthrough && (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" title="Has passthrough disks">
+                                                ⚠ Passthrough
+                                              </span>
+                                            )}
+                                            {decision.has_unshared_bind_mount && (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" title="Has unshared bind mounts">
+                                                ⚠ Bind Mount
+                                              </span>
+                                            )}
+                                            {decision.has_bind_mount && !decision.has_unshared_bind_mount && (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" title="Has shared bind mounts">
+                                                📁 Shared
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="text-gray-600 dark:text-gray-400">
+                                            {decision.source_node} → {decision.target_node}
+                                            {decision.target_node_score && ` (score: ${decision.target_node_score})`}
+                                          </span>
+                                          {decision.tags && decision.tags.length > 0 && (
+                                            <div className="mt-1 flex items-center gap-1 flex-wrap">
+                                              <span className="text-gray-500 dark:text-gray-400 text-[9px]">Tags:</span>
+                                              {decision.tags.map((tag, tagIdx) => (
+                                                <span key={tagIdx} className="px-1.5 py-0.5 rounded text-[9px] bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300">
+                                                  {tag}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                          decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                          decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                          decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                        }`}>
+                                          {decision.action}
+                                        </span>
+                                      </div>
+                                      <div className="mt-1 text-gray-600 dark:text-gray-400">
+                                        {decision.reason}
+                                      </div>
+                                      {decision.confidence_score && (
+                                        <div className="mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]">
+                                          Confidence: {decision.confidence_score}%
+                                        </div>
+                                      )}
+                                      {decision.error && (
+                                        <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">
+                                          Error: {decision.error}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Safety Checks */}
+                            {automationStatus.state.last_run.safety_checks && (
+                              <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
+                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Safety Checks:</div>
+                                <div className="grid grid-cols-1 gap-2 text-xs">
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle size={14} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                                    <div className="flex-1">
+                                      <div className="font-semibold text-gray-900 dark:text-white">Migration Window</div>
+                                      <div className="text-gray-600 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.migration_window}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-2">
+                                    <CheckCircle size={14} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                                    <div className="flex-1">
+                                      <div className="font-semibold text-gray-900 dark:text-white">Cluster Health</div>
+                                      <div className="text-gray-600 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.cluster_health}</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    <span className="font-semibold text-gray-900 dark:text-white">Running migrations:</span> {automationStatus.state.last_run.safety_checks.running_migrations || 0}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
