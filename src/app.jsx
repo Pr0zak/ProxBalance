@@ -3978,34 +3978,38 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                               {/* Start Box */}
                               <div className="flex justify-center">
-                                <div className="bg-blue-600 dark:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
+                                <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow">
                                   🚀 Automation Run Triggered
                                 </div>
                               </div>
 
-                              {/* Flow connector */}
-                              <div className="flex justify-center">
-                                <div className="w-0.5 h-4 bg-blue-400 dark:bg-blue-500"></div>
+                              {/* Flow connector with arrow */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-0.5 h-6 bg-gradient-to-b from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600"></div>
+                                <div className="text-blue-500 dark:text-blue-400">▼</div>
                               </div>
 
                               {/* Decision boxes */}
                               <div className="space-y-3">
 
                                 {/* Step 1 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">1</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is automation enabled?</div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>⚙️</span> Is automation enabled?
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg">
                                           <span className="text-red-600 dark:text-red-400 font-bold">✗ NO</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">STOP</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">STOP</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
                                         </div>
                                       </div>
                                     </div>
@@ -4013,21 +4017,23 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 </div>
 
                                 {/* Step 2 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">2</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is cooldown period elapsed?</div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>⏱️</span> Is cooldown period elapsed?
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
                                           <span className="text-orange-600 dark:text-orange-400 font-bold">✗ NO</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
-                                          <span className="text-gray-500 dark:text-gray-400">(wait for cooldown)</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">SKIP</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
                                         </div>
                                       </div>
                                     </div>
@@ -4035,25 +4041,28 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 </div>
 
                                 {/* Step 3 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">3</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">3</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">In allowed time window?</div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>🕐</span> In allowed time window?
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg">
                                           <span className="text-red-600 dark:text-red-400 font-bold">✗ BLACKOUT</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">BLOCKED</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">BLOCKED</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
                                           <span className="text-orange-600 dark:text-orange-400 font-bold">✗ OUTSIDE</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">SKIP</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
                                         </div>
                                       </div>
                                     </div>
@@ -4061,60 +4070,66 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 </div>
 
                                 {/* Step 4 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">4</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">4</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is cluster healthy? <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(if enabled)</span></div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>🏥</span> Is cluster healthy? <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(if enabled)</span>
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg">
                                           <span className="text-red-600 dark:text-red-400 font-bold">✗ NO</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded font-semibold">ABORT</span>
-                                          <span className="text-gray-500 dark:text-gray-400">(no quorum / high load)</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">ABORT</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* Step 5 */}
-                                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border-2 border-indigo-300 dark:border-indigo-600 p-4 shadow-sm">
+                                {/* Step 5 - Process Box */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-300 dark:border-indigo-600 p-5 shadow-md">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-indigo-600 dark:bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">5</div>
+                                    <div className="bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">5</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Generate Recommendations</div>
-                                      <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
-                                        <div>• Calculate penalty scores for all nodes</div>
-                                        <div>• Find VMs on high-penalty nodes</div>
-                                        <div>• Match with low-penalty target nodes</div>
-                                        <div>• Apply filters (tags, storage, rollback detection)</div>
-                                        <div>• Calculate confidence scores</div>
+                                      <div className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <span>🎯</span> Generate Recommendations
+                                      </div>
+                                      <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate penalty scores for all nodes</div>
+                                        <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Find VMs on high-penalty nodes</div>
+                                        <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Match with low-penalty target nodes</div>
+                                        <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Apply filters (tags, storage, rollback detection)</div>
+                                        <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate confidence scores</div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Step 6 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">6</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">6</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Any recommendations above min confidence?</div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>📊</span> Any recommendations above min confidence?
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg">
                                           <span className="text-orange-600 dark:text-orange-400 font-bold">✗ NO</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-semibold">SKIP</span>
-                                          <span className="text-gray-500 dark:text-gray-400">(cluster is balanced)</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">SKIP</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Continue ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
                                         </div>
                                       </div>
                                     </div>
@@ -4122,39 +4137,43 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 </div>
 
                                 {/* Step 7 */}
-                                <div className="bg-white dark:bg-gray-700 rounded-lg border-2 border-blue-200 dark:border-blue-700 p-4 shadow-sm">
+                                <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">7</div>
+                                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">7</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Is dry run mode enabled?</div>
-                                      <div className="space-y-1 text-xs">
-                                        <div className="flex items-center gap-2">
+                                      <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                                        <span>🧪</span> Is dry run mode enabled?
+                                      </div>
+                                      <div className="space-y-2 text-xs">
+                                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
                                           <span className="text-blue-600 dark:text-blue-400 font-bold">✓ YES</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→</span>
-                                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold">LOG ONLY</span>
-                                          <span className="text-gray-500 dark:text-gray-400">(record what would happen)</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="bg-blue-500 dark:bg-blue-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">LOG ONLY</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
                                           <span className="text-green-600 dark:text-green-400 font-bold">✗ NO</span>
-                                          <span className="text-gray-600 dark:text-gray-400">→ Execute ↓</span>
+                                          <span className="text-gray-500 dark:text-gray-400">→</span>
+                                          <span className="text-gray-700 dark:text-gray-300 font-medium">Execute ↓</span>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* Step 8 */}
-                                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border-2 border-emerald-300 dark:border-emerald-600 p-4 shadow-sm">
+                                {/* Step 8 - Action Box */}
+                                <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border-2 border-emerald-300 dark:border-emerald-600 p-5 shadow-md">
                                   <div className="flex items-start gap-3">
-                                    <div className="bg-emerald-600 dark:bg-emerald-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shrink-0">8</div>
+                                    <div className="bg-gradient-to-br from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">8</div>
                                     <div className="flex-1">
-                                      <div className="font-bold text-gray-900 dark:text-white mb-2">Execute Migrations</div>
-                                      <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
-                                        <div>• Limit to max migrations per run (default: 3)</div>
-                                        <div>• Execute migrations sequentially</div>
-                                        <div>• If migration fails + abort_on_failure: STOP batch</div>
-                                        <div>• If migration fails + pause_on_failure: DISABLE automation</div>
-                                        <div>• Track migration status and update history</div>
+                                      <div className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <span>⚡</span> Execute Migrations
+                                      </div>
+                                      <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg">
+                                        <div className="flex items-start gap-2"><span className="text-emerald-600 dark:text-emerald-400">▸</span> Limit to max migrations per run (default: 3)</div>
+                                        <div className="flex items-start gap-2"><span className="text-emerald-600 dark:text-emerald-400">▸</span> Execute migrations sequentially</div>
+                                        <div className="flex items-start gap-2"><span className="text-emerald-600 dark:text-emerald-400">▸</span> If migration fails + abort_on_failure: STOP batch</div>
+                                        <div className="flex items-start gap-2"><span className="text-emerald-600 dark:text-emerald-400">▸</span> If migration fails + pause_on_failure: DISABLE automation</div>
+                                        <div className="flex items-start gap-2"><span className="text-emerald-600 dark:text-emerald-400">▸</span> Track migration status and update history</div>
                                       </div>
                                     </div>
                                   </div>
@@ -4162,15 +4181,16 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                               </div>
 
-                              {/* Flow connector */}
-                              <div className="flex justify-center">
-                                <div className="w-0.5 h-4 bg-blue-400 dark:bg-blue-500"></div>
+                              {/* Flow connector with arrow */}
+                              <div className="flex flex-col items-center">
+                                <div className="w-0.5 h-6 bg-gradient-to-b from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600"></div>
+                                <div className="text-emerald-500 dark:text-emerald-400">▼</div>
                               </div>
 
                               {/* End Box */}
                               <div className="flex justify-center">
-                                <div className="bg-gradient-to-r from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md flex items-center gap-2">
-                                  <span>✓</span> Run Complete
+                                <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 dark:from-emerald-500 dark:via-green-500 dark:to-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3">
+                                  <span className="text-2xl">✓</span> <span>Run Complete</span>
                                 </div>
                               </div>
 
