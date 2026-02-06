@@ -72,6 +72,7 @@
       "respect_ignore_tags": true,
       "respect_exclude_tags": true,
       "respect_exclude_affinity": true,
+      "respect_affinity_rules": true,
       "require_auto_migrate_ok_tag": false
     },
     "safety_checks": {

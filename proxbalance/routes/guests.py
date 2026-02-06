@@ -393,6 +393,7 @@ def refresh_guest_tags(vmid):
         # Parse tags like collector does
         has_ignore = "ignore" in tags
         exclude_groups = [t for t in tags if t.startswith("exclude_")]
+        affinity_groups = [t for t in tags if t.startswith("affinity_")]
 
         return jsonify({
             "success": True,
@@ -400,6 +401,7 @@ def refresh_guest_tags(vmid):
             "tags": {
                 "has_ignore": has_ignore,
                 "exclude_groups": exclude_groups,
+                "affinity_groups": affinity_groups,
                 "all_tags": tags
             }
         })
@@ -611,4 +613,62 @@ def remove_guest_tag(vmid, tag):
         print(f"Error removing tag from guest {vmid}: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@guests_bp.route("/api/affinity-groups", methods=["GET"])
+def get_affinity_groups():
+    """Get all affinity groups and their member VMs/CTs"""
+    try:
+        cache_data = read_cache()
+        if not cache_data:
+            return jsonify({"success": False, "error": "No cluster data available"}), 500
+
+        guests = cache_data.get("guests", {})
+        affinity_groups = {}  # {group_name: [{vmid, name, type, node}, ...]}
+
+        for vmid_key, guest in guests.items():
+            tags = guest.get("tags", {})
+            guest_affinity = tags.get("affinity_groups", [])
+            # Also handle raw string tags for backwards compatibility
+            if not guest_affinity and isinstance(tags, dict):
+                all_tags = tags.get("all_tags", [])
+                guest_affinity = [t for t in all_tags if t.startswith("affinity_")]
+
+            for ag in guest_affinity:
+                if ag not in affinity_groups:
+                    affinity_groups[ag] = []
+                vmid_int = int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key
+                affinity_groups[ag].append({
+                    "vmid": vmid_int,
+                    "name": guest.get("name", "unknown"),
+                    "type": guest.get("type", "unknown"),
+                    "node": guest.get("node", "unknown"),
+                    "status": guest.get("status", "unknown"),
+                    "mem_gb": guest.get("mem_max_gb", 0),
+                    "cpu": guest.get("cpu", 0)
+                })
+
+        # Add violation detection - groups split across multiple nodes
+        groups_with_status = []
+        for group_name, members in affinity_groups.items():
+            nodes_used = list(set(m["node"] for m in members))
+            is_split = len(nodes_used) > 1
+            groups_with_status.append({
+                "name": group_name,
+                "members": members,
+                "member_count": len(members),
+                "nodes": nodes_used,
+                "is_split": is_split,
+                "status": "split" if is_split else "together"
+            })
+
+        return jsonify({
+            "success": True,
+            "affinity_groups": groups_with_status,
+            "total_groups": len(groups_with_status),
+            "split_groups": sum(1 for g in groups_with_status if g["is_split"])
+        })
+
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

@@ -770,4 +770,166 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
         print(f"Error in distribution balancing: {str(e)}", file=sys.stderr)
         traceback.print_exc()
 
+    # Affinity Rules: Generate companion migrations for affinity_* groups
+    # When a VM with an affinity_* tag is recommended to move, all other VMs
+    # sharing the same affinity_* tag should move to the same target node.
+    try:
+        config = load_config()
+        auto_config = config.get('automated_migrations', {})
+        rules = auto_config.get('rules', {})
+        respect_affinity = rules.get('respect_affinity_rules', True)
+
+        if respect_affinity:
+            # Build a map of affinity_group -> list of recommended vmids with their target
+            affinity_moves = {}  # {affinity_group: [(vmid, target_node, rec), ...]}
+            for rec in recommendations:
+                rec_vmid = str(rec.get('vmid'))
+                guest = guests.get(rec_vmid)
+                if not guest:
+                    continue
+                affinity_groups = guest.get('tags', {}).get('affinity_groups', [])
+                for ag in affinity_groups:
+                    if ag not in affinity_moves:
+                        affinity_moves[ag] = []
+                    affinity_moves[ag].append((rec_vmid, rec.get('target_node'), rec))
+
+            if affinity_moves:
+                print(f"Checking affinity groups: {list(affinity_moves.keys())}", file=sys.stderr)
+
+            # For each affinity group with a recommended move, find group members not yet recommended
+            already_recommended = {str(r.get('vmid')) for r in recommendations}
+            companion_recs = []
+
+            for ag, moves in affinity_moves.items():
+                # Determine the target node for this group (use the target of the highest-improvement move)
+                best_move = max(moves, key=lambda m: m[2].get('score_improvement', 0))
+                group_target = best_move[1]
+
+                # Find all guests with this affinity group
+                for vmid_key, guest in guests.items():
+                    if vmid_key in already_recommended:
+                        continue
+                    guest_affinity = guest.get('tags', {}).get('affinity_groups', [])
+                    if ag not in guest_affinity:
+                        continue
+                    # Guest is in this affinity group but not yet recommended
+                    src_node = guest.get('node')
+                    if src_node == group_target:
+                        continue  # Already on the target node
+
+                    # Skip guests that can't be migrated (same filters as main loop)
+                    if guest.get('tags', {}).get('has_ignore', False) and src_node not in maintenance_nodes:
+                        continue
+                    if guest.get('ha_managed', False) and src_node not in maintenance_nodes:
+                        continue
+                    if guest.get('status') != 'running' and src_node not in maintenance_nodes:
+                        continue
+                    if guest.get('local_disks', {}).get('is_pinned', False):
+                        continue
+                    if guest.get('type') == 'CT':
+                        mount_info = guest.get('mount_points', {})
+                        if mount_info.get('has_unshared_bind_mount', False) and src_node not in maintenance_nodes:
+                            continue
+
+                    # Check storage compatibility
+                    if proxmox and storage_cache:
+                        if not check_storage_compatibility(guest, src_node, group_target, proxmox, storage_cache):
+                            print(f"Affinity companion {vmid_key}: storage incompatible with {group_target}", file=sys.stderr)
+                            continue
+
+                    # Check anti-affinity conflicts on target
+                    conflict = False
+                    if guest.get('tags', {}).get('exclude_groups', []):
+                        for other_vmid in nodes.get(group_target, {}).get('guests', []):
+                            other_key = str(other_vmid) if str(other_vmid) in guests else other_vmid
+                            if other_key not in guests or other_key == vmid_key:
+                                continue
+                            other = guests[other_key]
+                            for excl_group in guest['tags']['exclude_groups']:
+                                if excl_group in other.get('tags', {}).get('all_tags', []):
+                                    conflict = True
+                                    break
+                            if conflict:
+                                break
+                    if conflict:
+                        print(f"Affinity companion {vmid_key}: anti-affinity conflict on {group_target}", file=sys.stderr)
+                        continue
+
+                    # Generate companion recommendation
+                    vmid_int = int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key
+                    cmd_type = "qm" if guest.get("type") == "VM" else "pct"
+                    cmd_flag = "--online" if guest.get("type") == "VM" else "--restart"
+
+                    # Calculate a basic target score for the companion
+                    tgt_node = nodes.get(group_target)
+                    companion_target_score = 50  # Default neutral score
+                    if tgt_node:
+                        companion_target_score = calculate_target_node_score(
+                            tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold
+                        )
+
+                    suitability_rating = round(max(0, 100 - min(companion_target_score, 100)), 1)
+
+                    companion_rec = {
+                        "vmid": vmid_int,
+                        "name": guest.get("name", "unknown"),
+                        "type": guest.get("type", "unknown"),
+                        "source_node": src_node,
+                        "target_node": group_target,
+                        "target_node_score": round(companion_target_score, 2),
+                        "suitability_rating": suitability_rating,
+                        "score_improvement": best_move[2].get('score_improvement', 15),
+                        "reason": f"Affinity group '{ag}' - follows {best_move[2].get('name', 'unknown')} (VM {best_move[0]})",
+                        "mem_gb": guest.get("mem_max_gb", 0),
+                        "command": f"{cmd_type} migrate {vmid_int} {group_target} {cmd_flag}",
+                        "confidence_score": best_move[2].get('confidence_score', 50),
+                        "affinity_group": ag,
+                        "affinity_leader_vmid": int(best_move[0]) if isinstance(best_move[0], str) and best_move[0].isdigit() else best_move[0],
+                    }
+
+                    # Add mount point metadata if CT
+                    if guest.get("type") == "CT":
+                        mount_info = guest.get("mount_points", {})
+                        if mount_info.get("has_mount_points", False):
+                            companion_rec["mount_point_info"] = {
+                                "has_mount_points": True,
+                                "mount_count": mount_info.get("mount_count", 0),
+                                "has_shared_mount": mount_info.get("has_shared_mount", False),
+                                "has_unshared_bind_mount": mount_info.get("has_unshared_bind_mount", False),
+                                "mount_paths": [mp.get("source", "") for mp in mount_info.get("mount_points", [])]
+                            }
+
+                    companion_recs.append(companion_rec)
+                    already_recommended.add(vmid_key)
+
+                    # Track pending migration
+                    if group_target not in pending_target_guests:
+                        pending_target_guests[group_target] = []
+                    pending_target_guests[group_target].append(guest)
+
+                    print(f"Added affinity companion: {guest.get('name')} ({vmid_key}) -> {group_target} (group: {ag})", file=sys.stderr)
+
+            # Also tag the original recommendations that triggered affinity companions
+            if companion_recs:
+                companion_vmids = {str(r['vmid']) for r in companion_recs}
+                for rec in recommendations:
+                    rec_vmid = str(rec.get('vmid'))
+                    guest = guests.get(rec_vmid)
+                    if not guest:
+                        continue
+                    affinity_groups = guest.get('tags', {}).get('affinity_groups', [])
+                    for ag in affinity_groups:
+                        companions_for_group = [r for r in companion_recs if r.get('affinity_group') == ag]
+                        if companions_for_group:
+                            rec['affinity_group'] = ag
+                            rec['affinity_companions'] = [r['vmid'] for r in companions_for_group]
+                            break
+
+                recommendations.extend(companion_recs)
+                print(f"Added {len(companion_recs)} affinity companion migration(s)", file=sys.stderr)
+
+    except Exception as e:
+        print(f"Error in affinity rules processing: {str(e)}", file=sys.stderr)
+        traceback.print_exc()
+
     return recommendations

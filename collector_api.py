@@ -249,18 +249,20 @@ class ProxmoxAPICollector:
             return []
 
     def parse_tags(self, tags_str: str) -> Dict:
-        """Parse tags and extract ignore/exclude rules"""
+        """Parse tags and extract ignore/exclude/affinity rules"""
         if not tags_str:
-            return {"has_ignore": False, "exclude_groups": [], "all_tags": []}
+            return {"has_ignore": False, "exclude_groups": [], "affinity_groups": [], "all_tags": []}
 
         tags = [t.strip() for t in tags_str.replace(";", " ").split()]
         has_ignore = "ignore" in tags
         exclude_groups = [t for t in tags if t.startswith("exclude_")]
+        affinity_groups = [t for t in tags if t.startswith("affinity_")]
         has_bindmount_tag = "has-bindmount" in tags
 
         return {
             "has_ignore": has_ignore,
             "exclude_groups": exclude_groups,
+            "affinity_groups": affinity_groups,
             "has_bindmount": has_bindmount_tag,
             "all_tags": tags
         }
