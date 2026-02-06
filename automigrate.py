@@ -767,35 +767,21 @@ def record_migration(migration_record: Dict[str, Any]):
 
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
     """
-    Send notification webhook.
+    Send notification via configured providers.
+
+    Delegates to the notifications module which supports Pushover, Email,
+    Telegram, Discord, Slack, and generic webhooks. Also maintains backward
+    compatibility with the legacy webhook_url-only config.
 
     Args:
-        config: Configuration dictionary
+        config: Full application configuration dictionary
         event_type: Type of event (start, complete, failure)
         data: Event data
     """
-    notifications = config.get('automated_migrations', {}).get('notifications', {})
-
-    if not notifications.get('enabled', False):
-        return
-
-    if not notifications.get(f'on_{event_type}', False):
-        return
-
-    webhook_url = notifications.get('webhook_url')
-    if not webhook_url:
-        return
-
     try:
-        payload = {
-            'event': event_type,
-            'timestamp': datetime.utcnow().isoformat(),
-            'data': data
-        }
-
-        requests.post(webhook_url, json=payload, timeout=10)
-        logger.info(f"Sent {event_type} notification")
-
+        from notifications import NotificationManager
+        manager = NotificationManager(config)
+        manager.notify(event_type, data)
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")
 
