@@ -12,15 +12,15 @@
 
 **Intelligent cluster monitoring and VM/CT migration for Proxmox VE**
 
-[Quick Start](#-quick-start) • [Features](#-features) • [Documentation](docs/README.md)
+[Quick Start](#quick-start) | [Features](#features) | [Documentation](docs/README.md)
 
 </div>
 
 ---
 
-## 🎯 What is ProxBalance?
+## What is ProxBalance?
 
-ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE. Monitor your cluster in real-time, get intelligent migration recommendations, and optimize resource distribution across your nodes.
+ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE. It monitors your cluster in real time, generates intelligent migration recommendations using a penalty-based scoring algorithm, and can automate load balancing across your nodes.
 
 <div align="center">
 <img src="docs/images/pb_showcase.gif" alt="ProxBalance in Action" width="800"/>
@@ -28,99 +28,59 @@ ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE
 
 ---
 
-## 🆕 Recent Updates
+## Features
 
-### UI Update Enhancement
-The UI-triggered update now includes **automatic frontend optimization** with clear progress indicators and full build process integration. One-time Node.js installation and Babel compilation ensure 93% faster page loads for all users.
+**Monitoring**
+- Live CPU, memory, IOWait, and load metrics with sparkline visualizations
+- Interactive cluster map with 5 view modes (CPU, Memory, Allocated, Disk I/O, Network)
+- Multi-timeframe historical charts (1 hour to 1 year)
+- Dark mode support
 
-### Intelligent Penalty-Based Scoring System
-ProxBalance features a sophisticated **penalty-based scoring algorithm** with **Suitability Ratings (0-100%)** for intuitive migration decisions. The system evaluates CPU, memory, IOWait, load distribution, storage compatibility, and anti-affinity rules to find optimal migration targets without hard disqualifications.
+**Migration**
+- One-click migrations with real-time progress tracking and transfer speed
+- Penalty-based scoring with suitability ratings (0-100%)
+- Node maintenance mode with automatic evacuation
+- Anti-affinity rules via VM/CT tags
+- Storage compatibility validation
 
-**Key benefits:**
-- 100% = Perfect target, 0% = Poor target (easy to understand)
-- IOWait penalties prioritize I/O performance for better VM responsiveness
-- Flexible scoring allows evacuating overloaded nodes without restrictions
-- **NEW: Fully configurable via Web UI** - Customize penalty weights and time periods
-- **NEW: Configuration export/import** - Backup and restore scoring configurations
-- Seamlessly integrates with automated migrations
+**Automation**
+- Scheduled migrations with configurable time windows and blackout periods
+- Safety checks: cluster health, quorum, resource limits, rollback detection
+- Distribution balancing for even guest counts
+- Dry-run mode for testing
 
-➡️ **[Read the complete Scoring Algorithm Guide](docs/SCORING_ALGORITHM.md)** for detailed explanation, examples, and configuration options.
+**AI Analysis** (optional)
+- OpenAI, Anthropic, or Ollama (local LLM) integration
+- Predictive workload analysis and trend detection
+- Natural language reasoning for each recommendation
 
-### Migration & Monitoring Enhancements
-- **Real-Time Transfer Speed** - Live MB/s transfer rates during migrations
-- **Multi-Disk Progress Tracking** - Accurate progress for VMs with multiple disks
-- **NEW: CT Migration Progress** - Container migrations now show percentage, transfer rate, and progress bar
-- **Migration History Pagination** - Configurable page size (5-100 entries) with 7-day accurate timeline
-- **Per-Guest Target Selection** - Choose specific target nodes during node evacuation
+**Notifications**
+- Pushover, Email (SMTP), Telegram, Discord, Slack, and custom webhooks
+- Configurable triggers for migration start, completion, and failure
 
-### Automation Improvements
-- **Automated Recommendations** - Dynamic cluster-aware recommendation generation via systemd timer
-- **Infinite Polling with Resource Validation** - Enhanced monitoring prevents conflicts and validates resources
-- **Enhanced Concurrency** - Improved tracking of concurrent automated migrations
-- **NEW: Timezone Support** - Configure migration windows with timezone-aware scheduling
-
-### UI/UX & Performance
-- **Lightning-Fast Page Load** - Pre-compiled JSX architecture reduces LCP from 6.5s to 0.48s (93% faster)
-- **Optimized Frontend Build** - Babel CLI pre-compilation eliminates browser transpilation overhead
-- **Local React Libraries** - Self-hosted React/React-DOM eliminates CDN latency
-- **Enhanced Status Displays** - Better real-time feedback for migrations and automation
-- **Optimized Section Layout** - Improved workflow with better UI organization
-- **VM Clumping Prevention** - Enhanced load distribution logic
-- **Migration Conflict Prevention** - Better detection and prevention of concurrent operations
-- **NEW: Modern Modal Dialogs** - Replaced all browser popups with sleek, accessible modals
-- **NEW: Enhanced Cluster Map** - Split CPU/Memory views with improved tooltips showing all guests
-- **NEW: Unified Settings** - Reorganized data collection and configuration settings for better UX
+See the [complete feature list](docs/FEATURES.md) for details.
 
 ---
 
-## ✨ Features
+## Quick Start
 
-### Core Capabilities
-- **Real-Time Monitoring** - Live CPU, memory, IOWait, and load metrics with sparkline visualizations
-- **Interactive Cluster Map** - Visual representation with 5 view modes (CPU Usage, Memory Usage, Allocated Resources, Disk I/O, Network)
-- **Smart Recommendations** - Intelligent migration suggestions with Suitability Rating (0-100%)
-- **One-Click Migrations** - Execute migrations with real-time progress tracking and transfer speed
-- **Node Maintenance Mode** - Mark nodes for maintenance with automatic evacuation
-- **Dark Mode** - Modern interface with light/dark theme support
-- **Migration History** - 7-day migration timeline with pagination and export capabilities
+### Installation
 
-### Advanced Features
-- **AI-Powered Analysis** - Optional AI recommendations using OpenAI, Anthropic, or Ollama
-- **Automated Migrations** - Scheduled load balancing with infinite polling and resource validation
-- **Automated Recommendations** - Dynamic cluster-aware recommendation generation
-- **Anti-Affinity Rules** - Tag-based system to enforce workload separation
-- **Storage Compatibility** - Pre-migration validation prevents compatibility errors
-- **Multi-Disk Progress Tracking** - Accurate migration progress for VMs with multiple disks
-- **IOWait-Aware Scoring** - Node scoring algorithm includes I/O wait penalties
-
-See [Complete Feature List](docs/FEATURES.md) for detailed capabilities.
-
----
-
-## 🚀 Quick Start
-
-### Installation (5 minutes)
-
-Run this command on your Proxmox host:
+Run on your Proxmox host:
 
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/install.sh)"
 ```
 
-The installer will:
-1. Auto-detect your cluster nodes
-2. Create an unprivileged LXC container
-3. Install and configure ProxBalance
-4. Create API tokens with proper permissions
-5. Start all services
+The installer creates an unprivileged LXC container, installs all dependencies, configures services, and sets up API token authentication automatically.
 
 ### Access
 
-Once installed, open `http://<container-ip>` in your browser.
+Open `http://<container-ip>` in your browser.
 
 ---
 
-## 📊 Screenshots
+## Screenshots
 
 <div align="center">
   <table>
@@ -153,63 +113,52 @@ Once installed, open `http://<container-ip>` in your browser.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
-| **[Installation Guide](docs/INSTALL.md)** | Detailed installation and configuration |
-| **[Scoring Algorithm](docs/SCORING_ALGORITHM.md)** | How the penalty-based scoring system works |
-| **[AI Features](docs/AI_FEATURES.md)** | AI-powered recommendations setup |
-| **[Troubleshooting](docs/TROUBLESHOOTING.md)** | Common issues and solutions |
-| **[Contributing](docs/CONTRIBUTING.md)** | How to contribute |
+| [Installation Guide](docs/INSTALL.md) | Setup and configuration |
+| [Usage Guide](docs/USAGE.md) | Workflows and UI guide |
+| [Configuration Reference](docs/CONFIGURATION.md) | All config.json options |
+| [Scoring Algorithm](docs/SCORING_ALGORITHM.md) | Penalty-based scoring system |
+| [Automated Migrations](docs/AUTOMATION.md) | Scheduling and safety |
+| [AI Features](docs/AI_FEATURES.md) | AI provider setup |
+| [Notifications](docs/NOTIFICATIONS.md) | Alert providers and setup |
+| [API Reference](docs/API.md) | REST API endpoints |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [Contributing](docs/CONTRIBUTING.md) | Development guidelines |
 
-➡️ **[Complete Documentation](docs/README.md)**
+[Full documentation index](docs/README.md)
 
 ---
 
-## 🔧 Basic Usage
+## System Requirements
 
-See [Usage Guide](docs/USAGE.md) for detailed workflows.
-
----
-
-## 🛠️ System Requirements
-
-- **Proxmox VE**: 7.0 or higher
-- **Resources**: 2GB RAM, 2 CPU cores, 8GB disk (minimum)
-- **Network**: Connectivity to all cluster nodes
+- **Proxmox VE** 7.0 or higher
+- **Resources**: 2 GB RAM, 2 CPU cores, 8 GB disk (minimum)
+- **Network**: Connectivity to all cluster nodes on port 8006
 - **Access**: Root access to Proxmox host
 
 ---
 
-## 🔒 Security
+## Security
 
 - API token authentication (no passwords stored)
-- Unprivileged LXC container
-- Local network design
+- Runs in an unprivileged LXC container
+- Designed for local network operation
 - Optional SSL/TLS support
 
 ---
 
-## 💬 Support
+## Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Pr0zak/ProxBalance/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/discussions)
-- 📖 **Documentation**: [docs/README.md](docs/README.md)
-- 🔍 **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
-
----
-
-## ⭐ Show Your Support
-
-If ProxBalance helps manage your cluster:
-- ⭐ Star this repository
-- 📢 Share with the homelab community
-- 🐛 Report bugs and suggest features
+- **Bug Reports**: [GitHub Issues](https://github.com/Pr0zak/ProxBalance/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/discussions)
+- **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 ---
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
@@ -217,8 +166,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Made with ❤️ for the Proxmox community**
-
-[Documentation](docs/README.md) • [Installation](docs/INSTALL.md) • [GitHub](https://github.com/Pr0zak/ProxBalance)
+[Documentation](docs/README.md) | [Installation](docs/INSTALL.md) | [GitHub](https://github.com/Pr0zak/ProxBalance)
 
 </div>

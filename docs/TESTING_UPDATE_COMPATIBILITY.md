@@ -31,7 +31,7 @@ ssh root@<proxmox-host> "pct exec <ctid> -- bash -c 'cd /opt/proxmox-balance-man
 ssh root@<proxmox-host> "pct exec <ctid> -- systemctl is-active proxmox-balance nginx"
 
 # 5. Verify the web interface loads properly
-curl -s http://<proxbalance-ip>/ | grep -q "ProxBalance" && echo "✓ Web UI working"
+curl -s http://<proxbalance-ip>/ | grep -q "ProxBalance" && echo "Web UI working"
 ```
 
 ### Method 2: Manual Update via SSH (Bypasses Web UI)
@@ -67,9 +67,9 @@ timeout 300 bash post_update.sh
 
 # Check exit code
 if [ \$? -eq 0 ]; then
-    echo "✓ Update completed successfully"
+    echo "Update completed successfully"
 else
-    echo "⚠ Update had issues (exit code: \$?)"
+    echo "Update had issues (exit code: \$?)"
 fi
 '"
 
@@ -85,8 +85,8 @@ ssh root@<proxmox-host> "pct exec <ctid> -- systemctl is-active proxmox-balance"
 
 When testing from an old installation, you may see these **expected** warnings:
 
-- ⚠ `Build failed with exit code -15` (SIGTERM from service restart conflict)
-- ⚠ `Command timed out after 5 seconds` (API service restart timeout)
+- `Build failed with exit code -15` (SIGTERM from service restart conflict)
+- `Command timed out after 5 seconds` (API service restart timeout)
 
 **These are cosmetic errors.** The update should still succeed because:
 
@@ -98,9 +98,9 @@ When testing from an old installation, you may see these **expected** warnings:
 
 Once updated to `e927ca4` or later, subsequent updates should show:
 
-- ✓ No SIGTERM errors
-- ✓ No timeout errors
-- ℹ Clean message: "API service will restart automatically in 2 seconds..."
+- No SIGTERM errors
+- No timeout errors
+- Clean message: "API service will restart automatically in 2 seconds..."
 
 ## Backward Compatibility Verification Checklist
 
@@ -132,12 +132,12 @@ ssh root@$PVE_HOST "pct exec $CTID -- bash -c 'cd /opt/proxmox-balance-manager &
 ## Expected Results
 
 **Old installations updating to fixed version:**
-- Update completes successfully ✓
-- May show cosmetic warnings (expected) ⚠
-- Services running after update ✓
-- Web UI functional ✓
+- Update completes successfully
+- May show cosmetic warnings (expected)
+- Services running after update
+- Web UI functional
 
 **Fixed installations updating to newer versions:**
-- Clean update with no errors ✓
-- Clear status messages ✓
-- Services restart properly ✓
+- Clean update with no errors
+- Clear status messages
+- Services restart properly
