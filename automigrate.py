@@ -206,6 +206,16 @@ def _extract_exclude_groups(tags_raw):
     return []
 
 
+def _extract_affinity_groups(tags_raw):
+    """Extract affinity groups from raw tags (handles both dict and string formats)."""
+    if isinstance(tags_raw, dict):
+        return tags_raw.get('affinity_groups', [])
+    elif isinstance(tags_raw, str):
+        tags = [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
+        return [t for t in tags if t.startswith('affinity_')]
+    return []
+
+
 def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Check if guest can be auto-migrated based on tags.
@@ -311,6 +321,74 @@ def check_exclude_group_affinity(
             return False, f"Would cluster {exclude_group} VMs on {target_node}"
 
     return True, "No exclude group clustering"
+
+
+def get_affinity_companions(
+    guest: Dict[str, Any],
+    target_node: str,
+    cache_data: Dict[str, Any],
+    rules: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    Find affinity group companions that should move with this guest.
+
+    When a guest with affinity_* tags is migrated, all other guests sharing
+    the same affinity_* tag should be migrated to the same target node.
+
+    Args:
+        guest: Guest being migrated
+        target_node: Target node for migration
+        cache_data: Current cluster data
+        rules: Automation rules
+
+    Returns:
+        List of companion guests that need to move to maintain affinity
+    """
+    if not rules.get('respect_affinity_rules', True):
+        return []
+
+    affinity_groups = _extract_affinity_groups(guest.get('tags', ''))
+    if not affinity_groups:
+        return []
+
+    companions = []
+    seen_vmids = set()
+    guest_vmid = str(guest.get('vmid', ''))
+
+    for affinity_group in affinity_groups:
+        for vmid, other_guest in cache_data.get('guests', {}).items():
+            vmid_str = str(vmid)
+            if vmid_str == guest_vmid or vmid_str in seen_vmids:
+                continue
+
+            other_affinity = _extract_affinity_groups(other_guest.get('tags', ''))
+            if affinity_group not in other_affinity:
+                continue
+
+            other_node = other_guest.get('node')
+            if other_node == target_node:
+                continue  # Already on the target node
+
+            # Skip guests that can't be migrated
+            other_tags = _extract_tags(other_guest.get('tags', ''))
+            if 'ignore' in other_tags:
+                continue
+            if other_guest.get('status') != 'running':
+                continue
+            if other_guest.get('local_disks', {}).get('is_pinned', False):
+                continue
+
+            seen_vmids.add(vmid_str)
+            companions.append({
+                'vmid': other_guest.get('vmid', vmid),
+                'name': other_guest.get('name', f'VM-{vmid}'),
+                'type': other_guest.get('type', 'Unknown'),
+                'node': other_node,
+                'affinity_group': affinity_group,
+                'guest_data': other_guest
+            })
+
+    return companions
 
 
 def perform_safety_checks(config: Dict[str, Any], cache_data: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1181,6 +1259,99 @@ def main():
             if result.get('success'):
                 success_count += 1
                 last_run_summary['migrations_successful'] = success_count
+
+                # Affinity companion migrations: if this VM has affinity groups,
+                # migrate companions to the same target node
+                try:
+                    guest_info = cache_data.get('guests', {}).get(str(vmid), {})
+                    companions = get_affinity_companions(guest_info, target, cache_data, rules)
+                    if companions:
+                        logger.info(f"Affinity rules: {len(companions)} companion(s) need to follow VM {vmid} to {target}")
+                        for companion in companions:
+                            comp_vmid = companion['vmid']
+                            comp_source = companion['node']
+                            comp_type = companion['type']
+                            comp_name = companion['name']
+                            ag = companion['affinity_group']
+
+                            logger.info(f"Migrating affinity companion {comp_type} {comp_vmid} ({comp_name}) "
+                                       f"from {comp_source} to {target} (group: {ag})")
+
+                            # Add companion decision
+                            comp_decision = {
+                                'vmid': comp_vmid,
+                                'name': comp_name,
+                                'type': comp_type,
+                                'source_node': comp_source,
+                                'target_node': target,
+                                'action': 'pending',
+                                'reason': f"Affinity group '{ag}' - follows VM {vmid}",
+                                'affinity_group': ag,
+                                'affinity_leader_vmid': vmid
+                            }
+                            last_run_summary['decisions'].append(comp_decision)
+
+                            comp_result = execute_migration(comp_vmid, target, comp_source, comp_type, config, dry_run=dry_run)
+                            migrations_attempted += 1
+                            last_run_summary['migrations_executed'] = migrations_attempted
+
+                            if comp_result.get('success'):
+                                comp_status = comp_result.get('status', 'completed')
+                                comp_decision['action'] = 'executed'
+                                comp_decision['status'] = comp_status
+                                success_count += 1
+                                last_run_summary['migrations_successful'] = success_count
+                                logger.info(f"Affinity companion {comp_vmid} migrated successfully")
+
+                                # Record companion migration
+                                record_migration({
+                                    'id': str(uuid.uuid4()),
+                                    'timestamp': datetime.utcnow().isoformat(),
+                                    'vmid': comp_vmid,
+                                    'name': comp_name,
+                                    'source_node': comp_source,
+                                    'target_node': target,
+                                    'reason': f"Affinity group '{ag}' - follows VM {vmid}",
+                                    'status': comp_status,
+                                    'duration_seconds': comp_result.get('duration', 0),
+                                    'initiated_by': 'automated',
+                                    'dry_run': dry_run,
+                                    'affinity_group': ag,
+                                    'affinity_leader_vmid': vmid
+                                })
+                            else:
+                                comp_decision['action'] = 'failed'
+                                comp_decision['status'] = 'failed'
+                                if comp_result.get('error'):
+                                    comp_decision['error'] = comp_result['error']
+                                logger.error(f"Affinity companion {comp_vmid} migration failed: {comp_result.get('error')}")
+
+                                record_migration({
+                                    'id': str(uuid.uuid4()),
+                                    'timestamp': datetime.utcnow().isoformat(),
+                                    'vmid': comp_vmid,
+                                    'name': comp_name,
+                                    'source_node': comp_source,
+                                    'target_node': target,
+                                    'reason': f"Affinity group '{ag}' - follows VM {vmid}",
+                                    'status': 'failed',
+                                    'error': comp_result.get('error'),
+                                    'initiated_by': 'automated',
+                                    'dry_run': dry_run,
+                                    'affinity_group': ag,
+                                    'affinity_leader_vmid': vmid
+                                })
+
+                            # Save decisions after each companion
+                            try:
+                                history = load_history()
+                                history.setdefault('state', {})['last_run'] = last_run_summary
+                                save_history(history)
+                            except Exception as e:
+                                logger.error(f"Failed to save companion decisions: {e}")
+
+                except Exception as e:
+                    logger.error(f"Error processing affinity companions for VM {vmid}: {e}")
 
                 # Grace period: wait for cluster to settle before next migration
                 # Skip grace period if this is the last migration or if it's a dry run

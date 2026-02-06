@@ -1652,6 +1652,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             if (!data) return [];
             const violations = [];
 
+            // Anti-affinity violations: VMs with same exclude_* tag on same node
             Object.values(data.nodes).forEach(node => {
               const guestsOnNode = node.guests.map(gid => data.guests[gid]);
 
@@ -1665,6 +1666,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                     if (conflicts.length > 0) {
                       violations.push({
+                        type: 'anti-affinity',
                         guest: guest,
                         node: node.name,
                         excludeTag: excludeTag,
@@ -1674,6 +1676,30 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   });
                 }
               });
+            });
+
+            // Affinity violations: VMs with same affinity_* tag on different nodes
+            const allGuests = Object.values(data.guests || {});
+            const affinityGroups = {};
+            allGuests.forEach(guest => {
+              const affinityTags = (guest.tags?.affinity_groups || guest.tags?.all_tags?.filter(t => t.startsWith('affinity_')) || []);
+              affinityTags.forEach(tag => {
+                if (!affinityGroups[tag]) affinityGroups[tag] = [];
+                affinityGroups[tag].push(guest);
+              });
+            });
+
+            Object.entries(affinityGroups).forEach(([tag, members]) => {
+              const nodes = [...new Set(members.map(m => m.node))];
+              if (nodes.length > 1) {
+                violations.push({
+                  type: 'affinity',
+                  affinityTag: tag,
+                  members: members,
+                  nodes: nodes,
+                  message: `Affinity group '${tag}' is split across ${nodes.length} nodes: ${nodes.join(', ')}`
+                });
+              }
             });
 
             return violations;
@@ -4904,6 +4930,24 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           </label>
                         </div>
                       </div>
+                      {/* Respect Affinity Rules */}
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between p-4">
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">Respect Affinity Rules (affinity_* tags)</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Keeps VMs with the same affinity tag together on one node. When one VM is migrated, all group members follow to the same target. Example: VMs with 'affinity_webstack' always stay on the same host.</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={automationConfig.rules?.respect_affinity_rules !== false}
+                              onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                          </label>
+                        </div>
+                      </div>
                       {/* Allow Container Restarts */}
                       <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="flex items-center justify-between p-4">
@@ -6561,6 +6605,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           // Dashboard Page - data is guaranteed to be available here
           const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
           const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
+          const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
           const violations = checkAffinityViolations();
 
           return (<>
@@ -8027,8 +8072,17 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
                             <Shield size={18} className="text-blue-600 dark:text-blue-400" />
                             <div>
-                              <div className="font-semibold text-gray-900 dark:text-white">Affinity Rules</div>
+                              <div className="font-semibold text-gray-900 dark:text-white">Anti-Affinity</div>
                               <div className="text-sm text-gray-600 dark:text-gray-400">{excludeGuests.length} guest{excludeGuests.length !== 1 ? 's' : ''}</div>
+                            </div>
+                          </div>
+                        )}
+                        {affinityGuests.length > 0 && (
+                          <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded">
+                            <Shield size={18} className="text-purple-600 dark:text-purple-400" />
+                            <div>
+                              <div className="font-semibold text-gray-900 dark:text-white">Affinity Groups</div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">{affinityGuests.length} guest{affinityGuests.length !== 1 ? 's' : ''}</div>
                             </div>
                           </div>
                         )}
@@ -8222,17 +8276,19 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                       bVal = b.status.toLowerCase();
                                       break;
                                     case 'tags':
-                                      // Sort by tag count (has_ignore + exclude_groups count)
+                                      // Sort by tag count (has_ignore + exclude_groups + affinity_groups count)
                                       // Then by first tag alphabetically
-                                      const aTagCount = (a.tags.has_ignore ? 1 : 0) + a.tags.exclude_groups.length;
-                                      const bTagCount = (b.tags.has_ignore ? 1 : 0) + b.tags.exclude_groups.length;
+                                      const aAffinityCount = (a.tags.affinity_groups || a.tags.all_tags?.filter(t => t.startsWith('affinity_')) || []).length;
+                                      const bAffinityCount = (b.tags.affinity_groups || b.tags.all_tags?.filter(t => t.startsWith('affinity_')) || []).length;
+                                      const aTagCount = (a.tags.has_ignore ? 1 : 0) + a.tags.exclude_groups.length + aAffinityCount;
+                                      const bTagCount = (b.tags.has_ignore ? 1 : 0) + b.tags.exclude_groups.length + bAffinityCount;
                                       if (aTagCount !== bTagCount) {
                                         aVal = aTagCount;
                                         bVal = bTagCount;
                                       } else {
                                         // Same tag count, sort by tag name
-                                        const aFirstTag = a.tags.has_ignore ? 'ignore' : (a.tags.exclude_groups[0] || '');
-                                        const bFirstTag = b.tags.has_ignore ? 'ignore' : (b.tags.exclude_groups[0] || '');
+                                        const aFirstTag = a.tags.has_ignore ? 'ignore' : (a.tags.exclude_groups[0] || (a.tags.affinity_groups || [])[0] || '');
+                                        const bFirstTag = b.tags.has_ignore ? 'ignore' : (b.tags.exclude_groups[0] || (b.tags.affinity_groups || [])[0] || '');
                                         aVal = aFirstTag.toLowerCase();
                                         bVal = bFirstTag.toLowerCase();
                                       }
@@ -8320,6 +8376,20 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           <button
                                             onClick={() => handleRemoveTag(guest, tag)}
                                             className="hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
+                                            title={`Remove tag "${tag}"`}
+                                          >
+                                            <X size={12} />
+                                          </button>
+                                        )}
+                                      </span>
+                                    ))}
+                                    {(guest.tags.affinity_groups || guest.tags.all_tags?.filter(t => t.startsWith('affinity_')) || []).map(tag => (
+                                      <span key={tag} className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded font-medium">
+                                        {tag}
+                                        {canMigrate && (
+                                          <button
+                                            onClick={() => handleRemoveTag(guest, tag)}
+                                            className="hover:bg-purple-300 dark:hover:bg-purple-700 rounded-full p-0.5"
                                             title={`Remove tag "${tag}"`}
                                           >
                                             <X size={12} />
@@ -10231,6 +10301,16 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                       MAINTENANCE
                                     </span>
                                   )}
+                                  {rec.affinity_group && !isCompleted && (
+                                    <span className="px-2 py-0.5 bg-purple-500 text-white text-[10px] font-bold rounded" title={rec.affinity_leader_vmid ? `Follows VM ${rec.affinity_leader_vmid} - affinity group keeps VMs together` : 'Affinity group leader - companions will follow'}>
+                                      {rec.affinity_leader_vmid ? 'AFFINITY COMPANION' : 'AFFINITY GROUP'}
+                                    </span>
+                                  )}
+                                  {rec.affinity_companions?.length > 0 && !isCompleted && (
+                                    <span className="px-2 py-0.5 bg-purple-400 text-white text-[10px] font-bold rounded" title={`${rec.affinity_companions.length} companion VM(s) will follow to the same node`}>
+                                      +{rec.affinity_companions.length} COMPANION{rec.affinity_companions.length > 1 ? 'S' : ''}
+                                    </span>
+                                  )}
                                   {isCompleted && <CheckCircle size={18} className="text-green-600 dark:text-green-400" />}
                                   {status === 'failed' && <XCircle size={18} className="text-red-600 dark:text-red-400" />}
                                 </div>
@@ -11312,6 +11392,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         >
                           + exclude_...
                         </button>
+                        <button
+                          onClick={() => setNewTag('affinity_')}
+                          className="px-3 py-1.5 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                        >
+                          + affinity_...
+                        </button>
                       </div>
                     </div>
 
@@ -11329,10 +11415,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., exclude_database, exclude_web"
+                        placeholder="e.g., exclude_database, affinity_webstack"
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity group
+                        <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity (keep apart) | <span className="font-mono">affinity_[name]</span> = affinity (keep together)
                       </p>
                     </div>
 
