@@ -25,6 +25,7 @@ dev-cache/cache.json
 # Runtime state files
 migration_history.json
 automigrate.lock
+.previous_branch
 
 # IDE
 .vscode/
