@@ -83,10 +83,47 @@
     },
     "notifications": {
       "enabled": false,
-      "webhook_url": "",
       "on_start": true,
       "on_complete": true,
-      "on_failure": true
+      "on_failure": true,
+      "providers": {
+        "pushover": {
+          "enabled": false,
+          "api_token": "",
+          "user_key": "",
+          "priority": 0,
+          "sound": "pushover",
+          "device": ""
+        },
+        "email": {
+          "enabled": false,
+          "smtp_host": "",
+          "smtp_port": 587,
+          "smtp_username": "",
+          "smtp_password": "",
+          "smtp_tls": true,
+          "from_address": "",
+          "to_addresses": []
+        },
+        "telegram": {
+          "enabled": false,
+          "bot_token": "",
+          "chat_id": ""
+        },
+        "discord": {
+          "enabled": false,
+          "webhook_url": ""
+        },
+        "slack": {
+          "enabled": false,
+          "webhook_url": ""
+        },
+        "webhook": {
+          "enabled": false,
+          "url": "",
+          "headers": {}
+        }
+      }
     }
   },
   "distribution_balancing": {
