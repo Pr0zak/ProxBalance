@@ -169,6 +169,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const [logoBalancing, setLogoBalancing] = useState(false);
           const [loadingBranches, setLoadingBranches] = useState(false);
           const [switchingBranch, setSwitchingBranch] = useState(false);
+          const [branchPreview, setBranchPreview] = useState(null);
+          const [loadingPreview, setLoadingPreview] = useState(false);
+          const [rollingBack, setRollingBack] = useState(false);
 
           // Debug & Logging
           const [logLevel, setLogLevel] = useState('INFO');
@@ -1277,6 +1280,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
           const fetchBranches = async () => {
             setLoadingBranches(true);
+            setBranchPreview(null);
             try {
               const response = await fetch(`${API_BASE}/system/branches`);
               const result = await response.json();
@@ -1291,6 +1295,21 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             setLoadingBranches(false);
           };
 
+          const fetchBranchPreview = async (branchName) => {
+            setLoadingPreview(true);
+            setBranchPreview(null);
+            try {
+              const response = await fetch(`${API_BASE}/system/branch-preview/${encodeURIComponent(branchName)}`);
+              const result = await response.json();
+              if (result.success) {
+                setBranchPreview(result);
+              }
+            } catch (err) {
+              console.error('Error fetching branch preview:', err);
+            }
+            setLoadingPreview(false);
+          };
+
           const switchBranch = async (branchName) => {
             setSwitchingBranch(true);
             try {
@@ -1303,8 +1322,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
               if (result.success) {
                 setShowBranchModal(false);
+                setBranchPreview(null);
                 await fetchSystemInfo();
-                // Page will reload automatically to apply branch changes
                 setTimeout(() => window.location.reload(), 1000);
               } else {
                 setError(`Failed to switch branch: ${result.error}`);
@@ -1313,6 +1332,29 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               setError(`Error switching branch: ${err.message}`);
             }
             setSwitchingBranch(false);
+          };
+
+          const rollbackBranch = async () => {
+            setRollingBack(true);
+            try {
+              const response = await fetch(`${API_BASE}/system/rollback-branch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              const result = await response.json();
+
+              if (result.success) {
+                setShowBranchModal(false);
+                setBranchPreview(null);
+                await fetchSystemInfo();
+                setTimeout(() => window.location.reload(), 1000);
+              } else {
+                setError(`Failed to rollback: ${result.error}`);
+              }
+            } catch (err) {
+              setError(`Error rolling back branch: ${err.message}`);
+            }
+            setRollingBack(false);
           };
 
           const cancelMigration = async (vmid, targetNode) => {
@@ -10619,12 +10661,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <GitBranch size={24} className="text-white" />
                         </div>
                         <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Switch Branch</h2>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Change code branch</p>
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
                         </div>
                       </div>
                       <button
-                        onClick={() => setShowBranchModal(false)}
+                        onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
                         className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
                       >
                         <X size={20} className="text-gray-600 dark:text-gray-400" />
@@ -10638,20 +10680,87 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-4">
-                          <div className="flex items-start gap-2">
-                            <AlertTriangle size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                            <div className="text-sm text-blue-800 dark:text-blue-300">
-                              <p className="font-semibold mb-1">Switching branches will:</p>
-                              <ul className="list-disc ml-4 space-y-1">
-                                <li>Pull the latest code from the selected branch</li>
-                                <li>Update dependencies if needed</li>
-                                <li>Restart ProxBalance services</li>
-                                <li>Reload the page automatically</li>
-                              </ul>
+                        {/* Return to previous branch banner */}
+                        {systemInfo && systemInfo.previous_branch && systemInfo.previous_branch !== systemInfo.branch && (
+                          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <ArrowLeft size={18} className="text-amber-600 dark:text-amber-400" />
+                                <span className="text-sm text-amber-800 dark:text-amber-300">
+                                  Testing a branch? Return to <span className="font-mono font-semibold">{systemInfo.previous_branch}</span>
+                                </span>
+                              </div>
+                              <button
+                                onClick={rollbackBranch}
+                                disabled={rollingBack || switchingBranch}
+                                className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {rollingBack ? 'Switching...' : 'Go Back'}
+                              </button>
                             </div>
                           </div>
-                        </div>
+                        )}
+
+                        {/* Branch preview panel */}
+                        {branchPreview && (
+                          <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                                <GitBranch size={16} />
+                                <span className="font-mono">{branchPreview.branch}</span>
+                              </h3>
+                              <button
+                                onClick={() => setBranchPreview(null)}
+                                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                              >
+                                Close preview
+                              </button>
+                            </div>
+                            <div className="text-sm text-indigo-800 dark:text-indigo-300 space-y-2">
+                              <div className="flex gap-4 text-xs">
+                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+                                  +{branchPreview.ahead} ahead
+                                </span>
+                                <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded">
+                                  -{branchPreview.behind} behind
+                                </span>
+                                <span className="text-indigo-600 dark:text-indigo-400">
+                                  vs {branchPreview.base_branch}
+                                </span>
+                              </div>
+                              {branchPreview.commits && branchPreview.commits.length > 0 && (
+                                <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                                  {branchPreview.commits.map((item, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-xs">
+                                      <span className="text-indigo-500 dark:text-indigo-400 flex-shrink-0">●</span>
+                                      <span className="text-indigo-900 dark:text-indigo-100">{item.message}</span>
+                                      <span className="font-mono text-indigo-500 dark:text-indigo-400 flex-shrink-0">({item.commit})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {branchPreview.commits && branchPreview.commits.length === 0 && (
+                                <p className="text-xs text-indigo-600 dark:text-indigo-400 italic">No unique commits (branch is up to date with {branchPreview.base_branch})</p>
+                              )}
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                onClick={() => switchBranch(branchPreview.branch)}
+                                disabled={switchingBranch}
+                                className="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white text-sm rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {switchingBranch ? 'Switching...' : `Switch to ${branchPreview.branch}`}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {loadingPreview && (
+                          <div className="flex items-center justify-center py-4">
+                            <RefreshCw size={18} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+                            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading branch preview...</span>
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                           <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Available Branches</h3>
@@ -10661,15 +10770,17 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             availableBranches.map((branch) => (
                               <div
                                 key={branch.name}
-                                className={`border rounded-lg p-4 ${
+                                className={`border rounded-lg p-4 transition-all duration-200 ${
                                   branch.current
                                     ? 'border-purple-500 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
+                                    : branch.previous
+                                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10'
+                                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <GitBranch size={16} className={branch.current ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'} />
                                       <span className={`font-mono font-semibold ${
                                         branch.current
@@ -10683,21 +10794,48 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           Current
                                         </span>
                                       )}
+                                      {branch.previous && !branch.current && (
+                                        <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">
+                                          Previous
+                                        </span>
+                                      )}
+                                      {branch.ahead_of_base > 0 && (
+                                        <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+                                          +{branch.ahead_of_base}
+                                        </span>
+                                      )}
                                     </div>
-                                    {branch.last_commit && (
-                                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6">
-                                        Latest: {branch.last_commit.substring(0, 50)}{branch.last_commit.length > 50 ? '...' : ''}
-                                      </p>
-                                    )}
+                                    <div className="flex items-center gap-3 mt-1 ml-6">
+                                      {branch.last_commit && (
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                          {branch.last_commit.substring(0, 60)}{branch.last_commit.length > 60 ? '...' : ''}
+                                        </p>
+                                      )}
+                                      {branch.last_commit_date && (
+                                        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                                          {branch.last_commit_date}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   {!branch.current && (
-                                    <button
-                                      onClick={() => switchBranch(branch.name)}
-                                      disabled={switchingBranch}
-                                      className="ml-4 px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {switchingBranch ? 'Switching...' : 'Switch'}
-                                    </button>
+                                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                                      <button
+                                        onClick={() => fetchBranchPreview(branch.name)}
+                                        disabled={loadingPreview}
+                                        className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                                        title="Preview branch changes"
+                                      >
+                                        Preview
+                                      </button>
+                                      <button
+                                        onClick={() => switchBranch(branch.name)}
+                                        disabled={switchingBranch}
+                                        className="px-3 py-2 text-sm bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {switchingBranch ? 'Switching...' : 'Switch'}
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -10707,7 +10845,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                         <div className="flex justify-end pt-4">
                           <button
-                            onClick={() => setShowBranchModal(false)}
+                            onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
                             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                           >
                             Close
@@ -11303,8 +11441,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         <span>Branch: <button
                           onClick={() => { fetchBranches(); setShowBranchModal(true); }}
                           className="font-mono text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline decoration-dotted cursor-pointer"
-                          title="Click to switch branch"
+                          title="Click to manage branches"
                         >{systemInfo.branch}</button></span>
+                        {systemInfo.previous_branch && systemInfo.previous_branch !== systemInfo.branch && (
+                          <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded" title={`Return to ${systemInfo.previous_branch}`}>
+                            testing
+                          </span>
+                        )}
                         <span className="text-gray-300 dark:text-gray-700">|</span>
                         <span>Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
                         {systemInfo.updates_available && (

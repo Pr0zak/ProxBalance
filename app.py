@@ -4131,7 +4131,8 @@ def system_info():
             "current_version": update_info.get('current_version'),
             "latest_version": update_info.get('latest_version'),
             "commits_behind": update_info.get('commits_behind', 0),
-            "changelog": update_info.get('changelog', [])
+            "changelog": update_info.get('changelog', []),
+            "previous_branch": update_manager._load_previous_branch()
         }
 
         return jsonify(system_data)
@@ -4179,6 +4180,20 @@ def switch_branch():
     status_code = 200 if result.get('success', False) else 400
     return jsonify(result), status_code
 
+
+@app.route("/api/system/branch-preview/<branch>", methods=["GET"])
+def branch_preview(branch):
+    """Preview commits in a branch compared to main"""
+    result = update_manager.branch_preview(branch)
+    status_code = 200 if result.get('success', False) else 400
+    return jsonify(result), status_code
+
+@app.route("/api/system/rollback-branch", methods=["POST"])
+def rollback_branch():
+    """Switch back to the previously active branch"""
+    result = update_manager.rollback_branch()
+    status_code = 200 if result.get('success', False) else 400
+    return jsonify(result), status_code
 
 @app.route("/api/system/restart-service", methods=["POST"])
 def restart_service():

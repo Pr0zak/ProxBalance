@@ -6,6 +6,7 @@ Handles version detection, update checking, system updates, branch switching,
 and service management. Extracted from app.py for maintainability.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -141,6 +142,46 @@ class GitManager:
         result = self._run(['log', '-1', '--format=%s', f'origin/{branch}'], timeout=5)
         return result.stdout.strip() if result.returncode == 0 else ''
 
+    def branch_last_commit_date(self, branch: str) -> str:
+        result = self._run(['log', '-1', '--format=%cd', '--date=short', f'origin/{branch}'], timeout=5)
+        return result.stdout.strip() if result.returncode == 0 else ''
+
+    def branch_author(self, branch: str) -> str:
+        result = self._run(['log', '-1', '--format=%an', f'origin/{branch}'], timeout=5)
+        return result.stdout.strip() if result.returncode == 0 else ''
+
+    def commits_between(self, base: str, target: str) -> int:
+        """Count commits in target that are not in base."""
+        result = self._run(['rev-list', '--count', f'{base}..{target}'], timeout=5)
+        if result.returncode == 0:
+            try:
+                return int(result.stdout.strip())
+            except ValueError:
+                pass
+        return 0
+
+    def log_between(self, base: str, target: str, limit: int = 50) -> List[Dict[str, str]]:
+        """Get commit log between two refs."""
+        result = self._run(
+            ['log', '--oneline', '--no-decorate', f'-{limit}', f'{base}..{target}'],
+            timeout=10,
+        )
+        entries: List[Dict[str, str]] = []
+        if result.returncode != 0 or not result.stdout.strip():
+            return entries
+        for line in result.stdout.strip().split('\n'):
+            if not line:
+                continue
+            parts = line.split(' ', 1)
+            if len(parts) == 2:
+                entries.append({'commit': parts[0], 'message': parts[1]})
+        return entries
+
+    def merge_base(self, ref_a: str, ref_b: str) -> Optional[str]:
+        """Find the common ancestor of two refs."""
+        result = self._run(['merge-base', ref_a, ref_b], timeout=5)
+        return result.stdout.strip() if result.returncode == 0 else None
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------
@@ -236,10 +277,41 @@ class ServiceManager:
 class UpdateManager:
     """Orchestrates version detection, update checking, and system updates."""
 
+    PREVIOUS_BRANCH_FILE = '.previous_branch'
+
     def __init__(self, repo_path: str, git_cmd: str = '/usr/bin/git'):
         self.repo_path = repo_path
         self.git = GitManager(repo_path, git_cmd)
         self.services = ServiceManager()
+
+    # ------------------------------------------------------------------
+    # Previous branch tracking
+    # ------------------------------------------------------------------
+
+    def _save_previous_branch(self, branch: str) -> None:
+        """Persist the branch name so the user can return later."""
+        path = os.path.join(self.repo_path, self.PREVIOUS_BRANCH_FILE)
+        try:
+            with open(path, 'w') as f:
+                json.dump({'branch': branch}, f)
+        except Exception:
+            pass  # Best-effort
+
+    def _load_previous_branch(self) -> Optional[str]:
+        path = os.path.join(self.repo_path, self.PREVIOUS_BRANCH_FILE)
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+            return data.get('branch')
+        except Exception:
+            return None
+
+    def _clear_previous_branch(self) -> None:
+        path = os.path.join(self.repo_path, self.PREVIOUS_BRANCH_FILE)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
     # ------------------------------------------------------------------
     # Pip path resolution
@@ -561,7 +633,7 @@ class UpdateManager:
     # ------------------------------------------------------------------
 
     def list_branches(self) -> Dict:
-        """List all available git branches."""
+        """List all available git branches with comparison metadata."""
         try:
             self.git.fetch(tags=False, prune=True)
         except GitError:
@@ -569,16 +641,47 @@ class UpdateManager:
 
         current = self.git.current_branch()
         remote_names = self.git.remote_branches()
+        previous = self._load_previous_branch()
+
+        # Determine the base branch for comparison (main or master)
+        base_ref = None
+        for candidate in ['main', 'master']:
+            if candidate in remote_names:
+                base_ref = f'origin/{candidate}'
+                break
 
         branches = []
         for name in remote_names:
-            branches.append({
+            info: Dict = {
                 'name': name,
                 'current': name == current,
+                'previous': name == previous,
                 'last_commit': self.git.branch_last_commit_message(name),
-            })
+                'last_commit_date': self.git.branch_last_commit_date(name),
+                'author': self.git.branch_author(name),
+            }
 
-        return {'success': True, 'branches': branches}
+            # Add ahead/behind counts relative to base branch
+            if base_ref and name not in ('main', 'master'):
+                target_ref = f'origin/{name}'
+                common = self.git.merge_base(base_ref, target_ref)
+                if common:
+                    info['ahead_of_base'] = self.git.commits_between(base_ref, target_ref)
+                    info['behind_base'] = self.git.commits_between(target_ref, base_ref)
+                else:
+                    info['ahead_of_base'] = 0
+                    info['behind_base'] = 0
+            else:
+                info['ahead_of_base'] = 0
+                info['behind_base'] = 0
+
+            branches.append(info)
+
+        return {
+            'success': True,
+            'branches': branches,
+            'previous_branch': previous,
+        }
 
     def switch_branch(self, target_branch: str) -> Dict:
         """Switch to a different git branch with full build pipeline."""
@@ -611,6 +714,9 @@ class UpdateManager:
                 }
 
             log.append(f'Switching from {current} to {target_branch}...')
+
+            # Save current branch so the user can return later
+            self._save_previous_branch(current)
 
             # Stash local changes
             if self.git.stash():
@@ -653,6 +759,87 @@ class UpdateManager:
             print(f'Branch switch error: {e}', flush=True)
             traceback.print_exc()
             return {'success': False, 'error': str(e), 'log': log}
+
+    # ------------------------------------------------------------------
+    # Branch preview and rollback
+    # ------------------------------------------------------------------
+
+    def branch_preview(self, branch: str) -> Dict:
+        """Preview what a branch contains compared to main/current."""
+        if not branch:
+            return {'success': False, 'error': 'Branch name is required'}
+        if not validate_branch_name(branch):
+            return {'success': False, 'error': 'Invalid branch name'}
+
+        try:
+            self.git.fetch(tags=False)
+        except GitError:
+            pass
+
+        remote_branches = self.git.remote_branches()
+        if branch not in remote_branches:
+            return {'success': False, 'error': f'Branch "{branch}" not found on remote'}
+
+        current = self.git.current_branch()
+        target_ref = f'origin/{branch}'
+
+        # Find base branch for comparison
+        base_ref = None
+        base_name = None
+        for candidate in ['main', 'master']:
+            if candidate in remote_branches:
+                base_ref = f'origin/{candidate}'
+                base_name = candidate
+                break
+
+        # If no main/master, compare against current branch
+        if not base_ref:
+            base_ref = f'origin/{current}' if current in remote_branches else 'HEAD'
+            base_name = current
+
+        common = self.git.merge_base(base_ref, target_ref)
+        if not common:
+            return {
+                'success': True,
+                'branch': branch,
+                'base_branch': base_name,
+                'commits': [],
+                'ahead': 0,
+                'behind': 0,
+            }
+
+        ahead = self.git.commits_between(base_ref, target_ref)
+        behind = self.git.commits_between(target_ref, base_ref)
+        commits = self.git.log_between(base_ref, target_ref, limit=50)
+
+        return {
+            'success': True,
+            'branch': branch,
+            'base_branch': base_name,
+            'commits': commits,
+            'ahead': ahead,
+            'behind': behind,
+            'last_commit_date': self.git.branch_last_commit_date(branch),
+            'author': self.git.branch_author(branch),
+        }
+
+    def rollback_branch(self) -> Dict:
+        """Switch back to the previously active branch."""
+        previous = self._load_previous_branch()
+        if not previous:
+            return {'success': False, 'error': 'No previous branch recorded'}
+
+        current = self.git.current_branch()
+        if current == previous:
+            self._clear_previous_branch()
+            return {'success': False, 'error': f'Already on branch {previous}'}
+
+        # Delegate to switch_branch (which will save current as the new "previous")
+        result = self.switch_branch(previous)
+        if result.get('success'):
+            # Clear the previous-branch file since we've returned
+            self._clear_previous_branch()
+        return result
 
     # ------------------------------------------------------------------
     # Service restart (public API)
