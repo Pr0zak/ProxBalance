@@ -20,6 +20,8 @@ from typing import Dict, List
 from pathlib import Path
 from ai_provider import AIProviderFactory
 
+DISK_PREFIXES = ('scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs')
+
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 Compress(app)  # Enable gzip compression for all responses
@@ -214,6 +216,44 @@ def load_config():
         }
     
     return config
+
+def get_proxmox_client(config=None, **kwargs):
+    """Create and return a ProxmoxAPI client from config.
+
+    Args:
+        config: Configuration dict. If None, loads from file.
+        **kwargs: Additional keyword arguments passed to ProxmoxAPI.
+
+    Returns:
+        ProxmoxAPI instance
+
+    Raises:
+        ValueError: If API token is not configured
+    """
+    from proxmoxer import ProxmoxAPI
+
+    if config is None:
+        config = load_config()
+
+    token_id = config.get('proxmox_api_token_id', '')
+    token_secret = config.get('proxmox_api_token_secret', '')
+    proxmox_host = config.get('proxmox_host', 'localhost')
+    proxmox_port = config.get('proxmox_port', 8006)
+    verify_ssl = config.get('proxmox_verify_ssl', False)
+
+    if not token_id or not token_secret:
+        raise ValueError("API token not configured. Please configure Proxmox API token in settings.")
+
+    user, token_name = token_id.split('!', 1)
+    return ProxmoxAPI(
+        proxmox_host,
+        user=user,
+        token_name=token_name,
+        token_value=token_secret,
+        port=proxmox_port,
+        verify_ssl=verify_ssl,
+        **kwargs
+    )
 
 def load_penalty_config():
     """Load penalty configuration from config.json, merging with defaults"""
@@ -1608,7 +1648,7 @@ def check_storage_compatibility(guest: Dict, src_node_name: str, tgt_node_name: 
         storage_volumes = set()
         for key, value in guest_config.items():
             # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-            if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs']):
+            if key.startswith(DISK_PREFIXES):
                 # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
                 if isinstance(value, str) and ':' in value:
                     storage_id = value.split(':')[0]
@@ -1803,26 +1843,13 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
     proxmox = None
     storage_cache = {}
     try:
-        from proxmoxer import ProxmoxAPI
         config = load_config()
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError:
+            pass  # proxmox remains None, storage compatibility checks will be skipped
 
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if token_id and token_secret:
-            user, token_name = token_id.split('!', 1)
-            proxmox = ProxmoxAPI(
-                proxmox_host,
-                user=user,
-                token_name=token_name,
-                token_value=token_secret,
-                port=proxmox_port,
-                verify_ssl=verify_ssl
-            )
-
+        if proxmox:
             # Build storage cache once for all compatibility checks (major performance boost!)
             print(f"Building storage cache for {len(nodes)} nodes...", file=sys.stderr)
             storage_cache = build_storage_cache(nodes, proxmox)
@@ -2203,29 +2230,10 @@ def execute_migration():
         config = load_config()
 
         # Require API token authentication
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured. Please configure Proxmox API token in settings."
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Execute migration via API
         if guest_type == "VM":
@@ -2273,29 +2281,10 @@ def execute_batch_migration():
         print(f"Starting batch migration of {len(migrations)} guests via API", file=sys.stderr)
 
         config = load_config()
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured. Please configure Proxmox API token in settings."
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         results = []
         for idx, mig in enumerate(migrations):
@@ -2523,7 +2512,7 @@ def verify_storage_availability():
                 # Check all config keys for storage references
                 for key, value in guest_config.items():
                     # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-                    if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs']):
+                    if key.startswith(DISK_PREFIXES):
                         # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
                         if isinstance(value, str) and ':' in value:
                             storage_id = value.split(':')[0]
@@ -2637,29 +2626,10 @@ def evacuate_node():
 
         # Setup Proxmox API
         config = load_config()
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Generate migration plan first
         migration_plan = []
@@ -2753,7 +2723,7 @@ def evacuate_node():
                 storage_volumes = set()
                 for key, value in guest_config.items():
                     # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-                    if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs']):
+                    if key.startswith(DISK_PREFIXES):
                         # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
                         if isinstance(value, str) and ':' in value:
                             storage_id = value.split(':')[0]
@@ -3064,7 +3034,7 @@ def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, g
                 storage_volumes = set()
                 for key, value in guest_config.items():
                     # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-                    if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs']):
+                    if key.startswith(DISK_PREFIXES):
                         # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
                         if isinstance(value, str) and ':' in value:
                             storage_id = value.split(':')[0]
@@ -3273,21 +3243,7 @@ def check_permissions():
         # Try to check permissions by querying Proxmox API
         # We'll check if the token has VM.Migrate capability
         try:
-            from proxmoxer import ProxmoxAPI
-
-            proxmox_host = config.get('proxmox_host', 'localhost')
-            proxmox_port = config.get('proxmox_port', 8006)
-            verify_ssl = config.get('proxmox_verify_ssl', False)
-
-            user, token_name = token_id.split('!', 1)
-            proxmox = ProxmoxAPI(
-                proxmox_host,
-                user=user,
-                token_name=token_name,
-                token_value=token_secret,
-                port=proxmox_port,
-                verify_ssl=verify_ssl
-            )
+            proxmox = get_proxmox_client(config)
 
             # Check cluster status to verify connection
             proxmox.cluster.status.get()
@@ -3785,10 +3741,6 @@ def validate_token():
                 "error": "Failed to load configuration"
             }), 500
 
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
         # Parse token ID to extract user and token name
         # Format: user@realm!tokenname
         try:
@@ -3801,15 +3753,10 @@ def validate_token():
 
         # Test API connectivity with the provided token
         try:
-            from proxmoxer import ProxmoxAPI
-            proxmox = ProxmoxAPI(
-                proxmox_host,
-                user=user_part,
-                token_name=token_name,
-                token_value=token_secret,
-                port=proxmox_port,
-                verify_ssl=verify_ssl
-            )
+            test_config = dict(config)
+            test_config['proxmox_api_token_id'] = token_id
+            test_config['proxmox_api_token_secret'] = token_secret
+            proxmox = get_proxmox_client(test_config)
 
             # Test basic connectivity by getting version
             version_info = proxmox.version.get()
@@ -5364,29 +5311,10 @@ def get_guest_location(vmid):
         if config.get("error"):
             return jsonify({"success": False, "error": config["message"]}), 500
 
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Search all nodes for this guest
         for node in proxmox.nodes.get():
@@ -5441,29 +5369,10 @@ def get_all_guest_locations():
         if config.get("error"):
             return jsonify({"success": False, "error": config["message"]}), 500
 
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         guests = {}
         nodes = {}
@@ -5530,29 +5439,10 @@ def get_task_status(node, taskid):
         if config.get("error"):
             return jsonify({"success": False, "error": config["message"]}), 500
 
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get task status
         task_status = proxmox.nodes(node).tasks(taskid).status.get()
@@ -5604,7 +5494,7 @@ def get_task_status(node, taskid):
                     for key, value in vm_config.items():
                         # For VMs: virtio0, scsi0, sata0, ide0, etc.
                         # For CTs: rootfs, mp0, mp1, etc.
-                        if any(key.startswith(prefix) for prefix in ['virtio', 'scsi', 'sata', 'ide', 'rootfs', 'mp']):
+                        if key.startswith(DISK_PREFIXES):
                             if isinstance(value, str):
                                 # Parse size from string like "local-lvm:vm-100-disk-0,size=2G"
                                 size_match = re.search(r'size=(\d+)([KMGT]?)', value)
@@ -5692,29 +5582,10 @@ def get_guest_migration_status(vmid):
         if config.get("error"):
             return jsonify({"success": False, "error": config["message"]}), 500
 
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get all cluster tasks
         tasks = proxmox.cluster.tasks.get()
@@ -5756,30 +5627,10 @@ def stop_task(node, taskid):
         if config.get("error"):
             return jsonify({"success": False, "error": config["message"]}), 500
 
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl,
-            timeout=30  # Increase timeout for task cancellation (can take a while)
-        )
+        try:
+            proxmox = get_proxmox_client(config, timeout=30)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Stop the task
         proxmox.nodes(node).tasks(taskid).delete()
@@ -5814,29 +5665,10 @@ def refresh_guest_tags(vmid):
             return jsonify({"success": False, "error": config["message"]}), 500
 
         # Get fresh tags from Proxmox
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get current tags from Proxmox
         node = guest["node"]
@@ -5891,29 +5723,10 @@ def get_guest_tags(vmid):
             return jsonify({"success": False, "error": config["message"]}), 500
 
         # Require API token authentication
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get current tags from Proxmox
         node = guest["node"]
@@ -5973,29 +5786,10 @@ def add_guest_tag(vmid):
             return jsonify({"success": False, "error": config["message"]}), 500
 
         # Require API token authentication
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get current tags from Proxmox
         node = guest["node"]
@@ -6062,29 +5856,10 @@ def remove_guest_tag(vmid, tag):
             return jsonify({"success": False, "error": config["message"]}), 500
 
         # Require API token authentication
-        from proxmoxer import ProxmoxAPI
-
-        token_id = config.get('proxmox_api_token_id', '')
-        token_secret = config.get('proxmox_api_token_secret', '')
-        proxmox_host = config.get('proxmox_host', 'localhost')
-        proxmox_port = config.get('proxmox_port', 8006)
-        verify_ssl = config.get('proxmox_verify_ssl', False)
-
-        if not token_id or not token_secret:
-            return jsonify({
-                "success": False,
-                "error": "API token not configured"
-            }), 500
-
-        user, token_name = token_id.split('!', 1)
-        proxmox = ProxmoxAPI(
-            proxmox_host,
-            user=user,
-            token_name=token_name,
-            token_value=token_secret,
-            port=proxmox_port,
-            verify_ssl=verify_ssl
-        )
+        try:
+            proxmox = get_proxmox_client(config)
+        except ValueError as e:
+            return jsonify({"success": False, "error": str(e)}), 500
 
         # Get current tags from Proxmox
         node = guest["node"]

@@ -2,6 +2,7 @@
 """AI Provider abstraction layer for ProxBalance migration recommendations"""
 
 import json
+import re
 import requests
 from typing import Dict, List, Optional, Any
 from abc import ABC, abstractmethod
@@ -203,6 +204,59 @@ Do not include rejected migrations with priority "skipped" - omit them completel
 
 Return valid JSON only."""
 
+    @staticmethod
+    def _extract_json_from_response(text):
+        """Extract JSON from AI response, handling markdown code fences."""
+        text = text.strip()
+        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+        if json_match:
+            text = json_match.group(1).strip()
+        return text
+
+    @staticmethod
+    def _build_nodes_summary(cluster_metrics):
+        """Build a summary of node metrics for enhancement prompts."""
+        nodes_summary = {}
+        for node_name, node in cluster_metrics.get("nodes", {}).items():
+            metrics = node.get("metrics", {})
+            nodes_summary[node_name] = {
+                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
+                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
+                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
+                "cpu_trend": metrics.get("cpu_trend", "unknown"),
+                "mem_trend": metrics.get("mem_trend", "unknown")
+            }
+        return nodes_summary
+
+    def _build_enhancement_prompt(self, recommendations, cluster_metrics):
+        """Build the enhancement prompt - shared by all providers."""
+        nodes_summary = self._build_nodes_summary(cluster_metrics)
+
+        return f"""Review these algorithm-generated migration recommendations and provide brief insights for each.
+
+CLUSTER NODE STATUS (7-day averages):
+{json.dumps(nodes_summary, indent=2)}
+
+ALGORITHM RECOMMENDATIONS:
+{json.dumps(recommendations[:5], indent=2)}
+
+For each recommendation, provide a 1-2 sentence insight explaining:
+- Why this target node is suitable (or potential concerns)
+- Any historical patterns that support or question this choice
+- Brief risk assessment based on 7-day trends
+
+Return JSON format:
+{{
+  "success": true,
+  "insights": [
+    {{
+      "vmid": 999,
+      "insight": "pve4 is a good choice because...",
+      "confidence_adjustment": 0  // -10 to +10 to adjust algorithm confidence
+    }}
+  ]
+}}"""
+
 
 class OpenAIProvider(AIProvider):
     """OpenAI GPT provider"""
@@ -263,42 +317,7 @@ class OpenAIProvider(AIProvider):
         if not recommendations:
             return {"success": True, "enhanced_recommendations": []}
 
-        # Build enhancement prompt
-        nodes_summary = {}
-        for node_name, node in cluster_metrics.get("nodes", {}).items():
-            metrics = node.get("metrics", {})
-            nodes_summary[node_name] = {
-                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
-                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
-                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
-                "cpu_trend": metrics.get("cpu_trend", "unknown"),
-                "mem_trend": metrics.get("mem_trend", "unknown")
-            }
-
-        prompt = f"""Review these algorithm-generated migration recommendations and provide brief insights for each.
-
-CLUSTER NODE STATUS (7-day averages):
-{json.dumps(nodes_summary, indent=2)}
-
-ALGORITHM RECOMMENDATIONS:
-{json.dumps(recommendations[:5], indent=2)}
-
-For each recommendation, provide a 1-2 sentence insight explaining:
-- Why this target node is suitable (or potential concerns)
-- Any historical patterns that support or question this choice
-- Brief risk assessment based on 7-day trends
-
-Return JSON format:
-{{
-  "success": true,
-  "insights": [
-    {{
-      "vmid": 999,
-      "insight": "pve4 is a good choice because...",
-      "confidence_adjustment": 0  // -10 to +10 to adjust algorithm confidence
-    }}
-  ]
-}}"""
+        prompt = self._build_enhancement_prompt(recommendations, cluster_metrics)
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -375,10 +394,7 @@ class AnthropicProvider(AIProvider):
             content = result['content'][0]['text']
 
             # Extract JSON from response (Claude might wrap it in markdown)
-            if '```json' in content:
-                content = content.split('```json')[1].split('```')[0].strip()
-            elif '```' in content:
-                content = content.split('```')[1].split('```')[0].strip()
+            content = self._extract_json_from_response(content)
 
             # Try to parse JSON, with fallback for common issues
             try:
@@ -386,7 +402,6 @@ class AnthropicProvider(AIProvider):
             except json.JSONDecodeError as je:
                 # Try to fix common JSON issues
                 # Remove trailing commas before } or ]
-                import re
                 fixed_content = re.sub(r',(\s*[}\]])', r'\1', content)
                 try:
                     return json.loads(fixed_content)
@@ -423,42 +438,7 @@ class AnthropicProvider(AIProvider):
         if not recommendations:
             return {"success": True, "insights": []}
 
-        # Reuse OpenAI's enhancement logic with Anthropic API
-        nodes_summary = {}
-        for node_name, node in cluster_metrics.get("nodes", {}).items():
-            metrics = node.get("metrics", {})
-            nodes_summary[node_name] = {
-                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
-                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
-                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
-                "cpu_trend": metrics.get("cpu_trend", "unknown"),
-                "mem_trend": metrics.get("mem_trend", "unknown")
-            }
-
-        prompt = f"""Review these algorithm-generated migration recommendations and provide brief insights for each.
-
-CLUSTER NODE STATUS (7-day averages):
-{json.dumps(nodes_summary, indent=2)}
-
-ALGORITHM RECOMMENDATIONS:
-{json.dumps(recommendations[:5], indent=2)}
-
-For each recommendation, provide a 1-2 sentence insight explaining:
-- Why this target node is suitable (or potential concerns)
-- Any historical patterns that support or question this choice
-- Brief risk assessment based on 7-day trends
-
-Return JSON format:
-{{
-  "success": true,
-  "insights": [
-    {{
-      "vmid": 999,
-      "insight": "pve4 is a good choice because...",
-      "confidence_adjustment": 0
-    }}
-  ]
-}}"""
+        prompt = self._build_enhancement_prompt(recommendations, cluster_metrics)
 
         headers = {
             "x-api-key": self.api_key,
@@ -486,11 +466,7 @@ Return JSON format:
             result = response.json()
             content = result['content'][0]['text']
 
-            # Extract JSON from response
-            if '```json' in content:
-                content = content.split('```json')[1].split('```')[0].strip()
-            elif '```' in content:
-                content = content.split('```')[1].split('```')[0].strip()
+            content = self._extract_json_from_response(content)
 
             return json.loads(content)
         except Exception as e:
@@ -540,17 +516,7 @@ class LocalLLMProvider(AIProvider):
         if not recommendations:
             return {"success": True, "insights": []}
 
-        # Similar logic for local LLM
-        nodes_summary = {}
-        for node_name, node in cluster_metrics.get("nodes", {}).items():
-            metrics = node.get("metrics", {})
-            nodes_summary[node_name] = {
-                "avg_cpu_week": metrics.get("avg_cpu_week", metrics.get("avg_cpu", 0)),
-                "max_cpu_week": metrics.get("max_cpu_week", metrics.get("max_cpu", 0)),
-                "avg_mem_week": metrics.get("avg_mem_week", metrics.get("avg_mem", 0)),
-                "cpu_trend": metrics.get("cpu_trend", "unknown"),
-                "mem_trend": metrics.get("mem_trend", "unknown")
-            }
+        nodes_summary = self._build_nodes_summary(cluster_metrics)
 
         prompt = f"""Review these migration recommendations and provide brief insights.
 

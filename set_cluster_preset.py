@@ -5,61 +5,31 @@ Automatically configures optimal collection settings based on cluster size
 """
 
 import json
+import subprocess
 import sys
-import os
+import traceback
 
 CONFIG_FILE = "/opt/proxmox-balance-manager/config.json"
 
+# Base optimization template - all presets share these defaults
+_BASE_OPTIMIZATION = {
+    "parallel_collection_enabled": True,
+    "skip_stopped_guest_rrd": True,
+    "node_rrd_timeframe": "day",
+    "guest_rrd_timeframe": "hour"
+}
+
+def _make_preset(description, interval, size, workers, **overrides):
+    """Create a preset by merging overrides into the base optimization template."""
+    optimization = {**_BASE_OPTIMIZATION, "cluster_size": size, "max_parallel_workers": workers, **overrides}
+    return {"description": description, "collection_interval_minutes": interval, "collection_optimization": optimization}
+
 # Cluster size presets
 PRESETS = {
-    "small": {
-        "description": "Small cluster (< 30 VMs/CTs)",
-        "collection_interval_minutes": 5,
-        "collection_optimization": {
-            "cluster_size": "small",
-            "parallel_collection_enabled": True,
-            "max_parallel_workers": 3,
-            "skip_stopped_guest_rrd": True,
-            "node_rrd_timeframe": "day",
-            "guest_rrd_timeframe": "hour"
-        }
-    },
-    "medium": {
-        "description": "Medium cluster (30-100 VMs/CTs)",
-        "collection_interval_minutes": 15,
-        "collection_optimization": {
-            "cluster_size": "medium",
-            "parallel_collection_enabled": True,
-            "max_parallel_workers": 5,
-            "skip_stopped_guest_rrd": True,
-            "node_rrd_timeframe": "day",
-            "guest_rrd_timeframe": "hour"
-        }
-    },
-    "large": {
-        "description": "Large cluster (100+ VMs/CTs)",
-        "collection_interval_minutes": 30,
-        "collection_optimization": {
-            "cluster_size": "large",
-            "parallel_collection_enabled": True,
-            "max_parallel_workers": 8,
-            "skip_stopped_guest_rrd": True,
-            "node_rrd_timeframe": "hour",
-            "guest_rrd_timeframe": "hour"
-        }
-    },
-    "custom": {
-        "description": "Custom settings (manual configuration)",
-        "collection_interval_minutes": 60,
-        "collection_optimization": {
-            "cluster_size": "custom",
-            "parallel_collection_enabled": True,
-            "max_parallel_workers": 5,
-            "skip_stopped_guest_rrd": True,
-            "node_rrd_timeframe": "day",
-            "guest_rrd_timeframe": "hour"
-        }
-    }
+    "small":  _make_preset("Small cluster (< 30 VMs/CTs)",      5, "small",  3),
+    "medium": _make_preset("Medium cluster (30-100 VMs/CTs)",   15, "medium", 5),
+    "large":  _make_preset("Large cluster (100+ VMs/CTs)",      30, "large",  8, node_rrd_timeframe="hour"),
+    "custom": _make_preset("Custom settings (manual configuration)", 60, "custom", 5),
 }
 
 def apply_preset(preset_name: str) -> bool:
@@ -92,7 +62,6 @@ def apply_preset(preset_name: str) -> bool:
         print("Updating collection timer...")
 
         # Update systemd timer
-        import subprocess
         try:
             subprocess.run(['/opt/proxmox-balance-manager/venv/bin/python3',
                           '/opt/proxmox-balance-manager/update_timer.py'],
@@ -105,7 +74,6 @@ def apply_preset(preset_name: str) -> bool:
 
     except Exception as e:
         print(f"Error applying preset: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         return False
 
