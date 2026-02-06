@@ -1,273 +1,79 @@
-# ProxBalance Installation Guide
-
-Complete step-by-step installation instructions for ProxBalance.
+# Installation Guide
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Prerequisites](#-prerequisites)
-- [Quick Install (Recommended)](#-quick-install-recommended)
-- [What the Installer Does](#-what-the-installer-does)
-- [Manual Installation](#-manual-installation)
-- [Post-Installation](#-post-installation)
-- [Verification](#-verification)
-- [Troubleshooting](#-troubleshooting)
+- [Prerequisites](#prerequisites)
+- [Quick Install](#quick-install)
+- [Manual Installation](#manual-installation)
+- [Post-Installation](#post-installation)
+- [Security Hardening](#security-hardening)
+- [Verification](#verification)
+- [Common Issues](#common-issues)
 
 ---
 
-## 📋 Prerequisites
-
-Before installing ProxBalance, ensure you have:
+## Prerequisites
 
 ### Required
-- **Proxmox VE 7.0+** (tested on 7.x and 8.x)
-- **Root access** to Proxmox host
-- **Network connectivity** between container and all nodes
-- **API access** to Proxmox (installer automatically creates API tokens)
 
-### Resource Requirements
+- Proxmox VE 7.0+ (tested on 7.x and 8.x)
+- Root access to the Proxmox host
+- Network connectivity between the container and all cluster nodes
+- API access to Proxmox (the installer creates tokens automatically)
 
-**Minimum:**
-- 2GB RAM
-- 2 CPU cores
-- 8GB disk space
-- 1 available container ID
+### Resources
 
-**Recommended:**
-- 4GB RAM
-- 2 CPU cores
-- 16GB disk space
+| | Minimum | Recommended |
+|--|---------|-------------|
+| RAM | 2 GB | 4 GB |
+| CPU | 2 cores | 2 cores |
+| Disk | 8 GB | 16 GB |
 
-### Network Requirements
-- Container needs network access to all Proxmox nodes
-- DHCP server (recommended) or ability to configure static IP
-- Port 80 available for web interface
-- Port 8006 (Proxmox API) access from container to all nodes
+### Network
+
+- DHCP or the ability to assign a static IP
+- Port 80 for the web interface
+- Port 8006 access from the container to all Proxmox nodes
 
 ---
 
-## 🚀 Quick Install (Recommended)
+## Quick Install
 
-### One-Command Installation
+Run on your Proxmox host:
 
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/install.sh)"
 ```
 
-**That's it!** The enhanced installer v2.0 handles everything automatically with:
-- 🎨 Beautiful visual interface with colors and animations
-- ⚡ Real-time progress tracking with spinning status indicators
-- 📊 Detailed installation steps showing exactly what's happening
-- ✅ Smart validation and comprehensive error checking
-- 🔄 Intelligent error recovery with retry/continue options
-- 📝 Verbose logging to separate file for troubleshooting
-- ⚙️ Improved token validation and API connectivity testing
+The installer prompts for container ID, hostname, network configuration, storage, and resource allocation, then handles everything automatically:
 
-### Installation Time
-- **Small clusters** (1-4 nodes): ~3-5 minutes
-- **Large clusters** (5+ nodes): ~5-10 minutes
-- **First data collection**: Additional 2-5 minutes
-
-### What You'll Be Asked
-
-The installer is interactive and will prompt you for:
-
-1. **Container ID** 
-   - Option 1: Automatic (next available ID) - **Recommended**
-   - Option 2: Manual (specify custom ID)
-
-2. **Hostname**
-   - Default: `ProxBalance`
-   - Can customize if desired
-
-3. **Network Configuration**
-   - Option 1: DHCP (Automatic) - **Recommended**
-   - Option 2: Static IP (manual configuration)
-
-4. **Storage Location**
-   - Select from available Proxmox storage
-   - Shows storage type for each option
-
-5. **Template Selection**
-   - Auto-detects if Debian 12 template exists
-   - Downloads automatically if missing
-   - Default: debian-12-standard_12.2-1_amd64
-
-6. **Resources**
-   - Memory: Default 2048MB (recommended)
-   - CPU Cores: Default 2 (recommended)
-   - Disk: Default 8GB (recommended)
-
-7. **Confirmation**
-   - Review all settings before proceeding
+1. Downloads the Debian 12 template (if needed)
+2. Creates an unprivileged LXC container
+3. Installs Python 3, Node.js 20, Nginx, and dependencies
+4. Clones the repository and sets up the Python virtual environment
+5. Auto-detects cluster nodes
+6. Creates a Proxmox API token with proper permissions
+7. Builds the frontend (Babel compilation)
+8. Configures and starts all systemd services
+9. Runs the first data collection
 
 ---
 
-## 🔧 What the Installer Does
+## Manual Installation
 
-The automated installer performs these steps:
-
-### Phase 1: Pre-Installation (30 seconds)
-1. ✅ Validates you're running on Proxmox VE (checks for `pct` command)
-2. ✅ Checks for root privileges (EUID must be 0)
-3. ✅ Detects next available container ID (starting from 100, auto-increments)
-4. ✅ Gathers your configuration preferences (interactive prompts)
-
-### Phase 2: Container Creation (1-2 minutes)
-1. ✅ Downloads Debian 12 template (if not present)
-2. ✅ Creates unprivileged LXC container
-3. ✅ Configures with your specified resources
-4. ✅ Sets up networking (DHCP or static)
-5. ✅ Starts the container
-6. ✅ Detects container IP address
-
-### Phase 3: Dependency Installation (1-2 minutes)
-1. ✅ Updates package repositories with progress spinner
-2. ✅ Installs Python 3, venv, and pip with real-time progress
-3. ✅ Installs Node.js 20 LTS (for frontend build process)
-4. ✅ Installs Nginx web server with progress indicator
-5. ✅ Installs utilities (curl, jq, git) with detailed feedback
-6. ✅ System packages installed:
-   - Python 3 (3.8+ from Debian 12)
-   - python3-venv (virtual environment)
-   - python3-pip (package manager)
-   - Node.js 20 LTS (JavaScript runtime for Babel)
-   - Nginx web server (reverse proxy)
-   - curl (API testing)
-   - jq (JSON parsing)
-   - git (repository cloning)
-7. ✅ Cleans up package cache (reduces container size)
-
-### Phase 4: ProxBalance Installation (1 minute)
-1. ✅ Clones ProxBalance repository from GitHub to /opt/proxmox-balance-manager
-2. ✅ Creates Python virtual environment (venv/)
-3. ✅ Installs Python dependencies via pip:
-   - Flask 3.x (web framework for REST API)
-   - Flask-CORS (cross-origin resource sharing for API)
-   - Gunicorn (production WSGI HTTP server)
-4. ✅ Sets file permissions (chmod +x for *.py and *.sh scripts)
-
-### Phase 5: Configuration (1 minute)
-1. ✅ Auto-detects cluster nodes using 4 methods (in order):
-   - Method 1: Parses `/etc/pve/corosync.conf` for node names
-   - Method 2: Scans `/etc/pve/nodes/` directory listing
-   - Method 3: Tries `pvecm status` command output
-   - Method 4: Queries `pvesh get /nodes` API endpoint
-2. ✅ Creates config.json with detected settings:
-   - `collection_interval_minutes`: 60 (default)
-   - `ui_refresh_interval_minutes`: 15 (default)
-   - `proxmox_host`: Auto-detected primary node IP/hostname
-3. ✅ Sets up systemd services (copies to /etc/systemd/system/):
-   - proxmox-balance.service (Flask API with Gunicorn)
-   - proxmox-collector.service (data collection script)
-   - proxmox-collector.timer (OnBootSec=1min, OnUnitActiveSec=60min)
-4. ✅ Configures Nginx as reverse proxy:
-   - Copies proxmox-balance to /etc/nginx/sites-available/
-   - Creates symlink in sites-enabled/
-   - Removes default site
-   - Proxies port 80 → 127.0.0.1:5000
-5. ✅ Enables services to start on boot (systemctl enable)
-
-### Phase 6: API Authentication Setup (1-2 minutes)
-1. ✅ Creates Proxmox API token (proxbalance@pam!proxbalance)
-   - Uses pvesh to create token with full privileges
-   - Sets privilege separation to 0 for Administrator access
-   - Generates unique secret automatically
-2. ✅ **Saves API token to configuration**
-   - Stores token ID and secret in config.json
-   - Securely transfers to container
-   - Removes temporary token file after transfer
-3. ✅ **Enhanced API token validation**
-   - Verifies token authentication works
-   - Tests basic API call (/api2/json/version)
-   - Confirms cluster access
-   - Retry options if token validation fails
-   - Continue option to manually configure token later
-4. ✅ Reports API token creation success with token ID
-5. ✅ **Verbose logging for troubleshooting**
-   - All installation steps logged to `/tmp/proxbalance-install-verbose.log`
-   - Detailed error messages and command output captured
-   - Useful for diagnosing installation issues
-
-### Phase 7: Frontend Build Process (1-2 minutes)
-1. ✅ Detects if build is needed (checks for inline JSX in index.html)
-2. ✅ Installs Babel CLI and dependencies (@babel/core, @babel/cli, @babel/preset-react)
-3. ✅ Creates .babelrc configuration for React JSX transpilation
-4. ✅ Extracts JSX from index.html (for new installations)
-5. ✅ Adds React hooks import (useState, useEffect, useMemo, useCallback, useRef)
-6. ✅ Compiles JSX to optimized JavaScript (app.js ~361KB)
-7. ✅ Downloads React libraries locally:
-   - react.production.min.js (~11KB)
-   - react-dom.production.min.js (~129KB)
-8. ✅ Creates optimized index.html without Babel library
-9. ✅ Performance improvement: LCP from 6.5s to 0.48s (93% faster)
-
-### Phase 8: Service Startup (30 seconds)
-1. ✅ Starts Flask API service
-2. ✅ Starts data collector timer
-3. ✅ Starts Nginx web server
-4. ✅ Verifies all services are running
-
-### Phase 9: Initial Data Collection (2-5 minutes)
-1. ✅ Triggers first cluster data collection with progress monitoring
-2. ✅ Shows detailed progress with animation and status updates
-3. ✅ **Optimized collection timeout** - Reduced from 180s to 15s for faster feedback
-4. ✅ Retries up to 3 times if collection fails or times out
-5. ✅ Monitors both service status and cache file creation
-6. ✅ Data collection process:
-   - Connects to Proxmox API using token authentication
-   - Collects cluster resources via API
-   - Gathers RRD data (1-hour to 7-day timeframe configurable) for each node
-   - Fetches guest configurations and tags
-   - Writes to cluster_cache.json with atomic rename
-   - Takes 30-90 seconds depending on cluster size
-7. ✅ Displays success confirmation or detailed error messages
-8. ✅ **Improved error handling**
-   - Clear error messages for common failures
-   - Suggestions for fixing configuration issues
-   - Ctrl+C support for canceling installation
-
-### Phase 10: Completion
-1. ✅ Displays access information
-2. ✅ Shows useful management commands
-3. ✅ Provides quick action examples
-
----
-
-## 📦 Manual Installation Steps
-
-For advanced users who want full control over the installation process.
-
-### Step 1: Download Debian Template
+### 1. Create the container
 
 ```bash
-# Update template list
-pveam update
-
-# List available Debian 12 templates
-pveam available | grep debian-12
-
-# Download Debian 12 template
-pveam download local debian-12-standard_12.2-1_amd64.tar.zst
-
-# Verify download
-pveam list local | grep debian-12
-```
-
-### Step 2: Create Container
-
-```bash
-# Set variables (customize as needed)
 CTID=333
-IP_ADDRESS="10.0.0.131/24"  # or "dhcp"
-GATEWAY="10.0.0.1"
-HOSTNAME="ProxBalance"
 STORAGE="local-lvm"
 
-# Create container with DHCP
+pveam update
+pveam download local debian-12-standard_12.2-1_amd64.tar.zst
+
 pct create $CTID local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst \
-  --hostname $HOSTNAME \
+  --hostname ProxBalance \
   --memory 2048 \
   --cores 2 \
   --rootfs ${STORAGE}:8 \
@@ -276,850 +82,226 @@ pct create $CTID local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst \
   --features nesting=1 \
   --onboot 1
 
-# OR create container with static IP
-pct create $CTID local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst \
-  --hostname $HOSTNAME \
-  --memory 2048 \
-  --cores 2 \
-  --rootfs ${STORAGE}:8 \
-  --net0 name=eth0,bridge=vmbr0,ip=$IP_ADDRESS,gw=$GATEWAY \
-  --unprivileged 1 \
-  --features nesting=1 \
-  --onboot 1
-
-# Start container
 pct start $CTID
-
-# Wait for boot
 sleep 10
 ```
 
-### Step 3: Install Dependencies
+### 2. Install dependencies
 
 ```bash
-# Enter container
 pct enter $CTID
 
-# Update system
-apt-get update
-apt-get upgrade -y
-
-# Install Node.js 20 LTS (for frontend build)
+apt-get update && apt-get upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
+apt-get install -y python3 python3-venv python3-pip nodejs nginx curl jq git
 
-# Install required packages
-apt-get install -y \
-  python3 \
-  python3-venv \
-  python3-pip \
-  nginx \
-  curl \
-  jq \
-  git
-
-# Exit container
 exit
 ```
 
-### Step 4: Install ProxBalance
+### 3. Install ProxBalance
 
 ```bash
-# Install from GitHub
 pct exec $CTID -- bash -c "
 cd /opt
 git clone https://github.com/Pr0zak/ProxBalance.git proxmox-balance-manager
 cd proxmox-balance-manager
-
-# Create Python virtual environment
 python3 -m venv venv
-source venv/bin/activate
-
-# Install Python dependencies
-pip install --upgrade pip
-pip install flask flask-cors gunicorn
-
-# Deactivate venv
-deactivate
-
-# Set permissions for Python scripts and shell scripts
-chmod +x /opt/proxmox-balance-manager/*.py 2>/dev/null || true
-chmod +x /opt/proxmox-balance-manager/*.sh 2>/dev/null || true
+venv/bin/pip install --upgrade pip
+venv/bin/pip install flask flask-cors gunicorn proxmoxer requests pytz flask-compress
+chmod +x *.py *.sh 2>/dev/null || true
 "
 ```
 
-**What this installs:**
-- Flask API server (app.py) - 8 REST endpoints
-- Data collector (collector.py) - RRD analysis and caching
-- Settings manager (manage_settings.sh) - CLI configuration tool
-- Timer updater (update_timer.py) - Dynamic systemd timer management
-- Status checker (check-status.sh) - Comprehensive diagnostics
-- Service debugger (debug-services.sh) - Troubleshooting tool
-
-### Step 5: Configure Application
+### 4. Configure
 
 ```bash
-# Create configuration file
 pct exec $CTID -- bash -c 'cat > /opt/proxmox-balance-manager/config.json <<EOF
 {
   "collection_interval_minutes": 60,
   "ui_refresh_interval_minutes": 15,
-  "proxmox_host": "YOUR_PROXMOX_HOST_IP"
+  "proxmox_host": "YOUR_PROXMOX_HOST_IP",
+  "proxmox_port": 8006,
+  "proxmox_auth_method": "api_token",
+  "proxmox_api_token_id": "proxbalance@pam!proxbalance",
+  "proxmox_api_token_secret": "YOUR_TOKEN_SECRET",
+  "proxmox_verify_ssl": false
 }
 EOF'
-
-# Replace YOUR_PROXMOX_HOST_IP with your actual Proxmox host IP
-# Example: "10.0.0.1" or hostname like "pve1"
 ```
 
-**Configuration Options:**
-- `collection_interval_minutes` (5-240): How often to collect cluster data
-- `ui_refresh_interval_minutes` (5-120): How often UI auto-refreshes
-- `proxmox_host`: Primary Proxmox node IP or hostname for API connections
-- `proxmox_api_token_id`: API token ID (format: user@realm!tokenname)
-- `proxmox_api_token_secret`: API token secret
+### 5. Create API token
 
-**Note:** The automated installer auto-detects `proxmox_host` and creates API tokens automatically. Manual installation requires you to create a token and configure these values.
-
-### Step 6: Setup System Services
+On the Proxmox host:
 
 ```bash
-# Copy systemd service files
-pct exec $CTID -- bash -c "
-cp /opt/proxmox-balance-manager/systemd/proxmox-balance.service /etc/systemd/system/
-cp /opt/proxmox-balance-manager/systemd/proxmox-collector.service /etc/systemd/system/
-cp /opt/proxmox-balance-manager/systemd/proxmox-collector.timer /etc/systemd/system/
+pvesh create /access/users/proxbalance@pam/token/proxbalance \
+  --comment "ProxBalance monitoring" --privsep 0
 
-# Reload systemd
-systemctl daemon-reload
-
-# Enable services to start on boot
-systemctl enable proxmox-balance.service
-systemctl enable proxmox-collector.timer
-systemctl enable nginx.service
-"
-```
-
-**Service Descriptions:**
-
-1. **proxmox-balance.service**
-   - Runs Flask API via Gunicorn on port 5000
-   - 4 worker processes (adjust based on load)
-   - Serves 8 REST API endpoints
-   - Reads from cluster_cache.json
-
-2. **proxmox-collector.service**
-   - Runs collector_api.py script
-   - Collects data via Proxmox API
-   - Uses pvesh commands for cluster data
-   - Writes to cluster_cache.json atomically
-
-3. **proxmox-collector.timer**
-   - Triggers collector.service periodically
-   - OnBootSec=1min (runs 1 min after boot)
-   - OnUnitActiveSec=60min (runs every 60 min by default)
-   - Dynamically updated by update_timer.py when interval changes
-
-### Step 7: Configure Nginx
-
-```bash
-# Setup web server
-pct exec $CTID -- bash -c "
-# Copy web interface (React single-page app)
-cp /opt/proxmox-balance-manager/index.html /var/www/html/
-
-# Copy Nginx configuration
-cp /opt/proxmox-balance-manager/nginx/proxmox-balance /etc/nginx/sites-available/
-
-# Enable site (create symlink)
-ln -sf /etc/nginx/sites-available/proxmox-balance /etc/nginx/sites-enabled/
-
-# Remove default Nginx site
-rm -f /etc/nginx/sites-enabled/default
-
-# Test configuration syntax
-nginx -t
-
-# Restart Nginx to apply changes
-systemctl restart nginx
-"
-```
-
-**Nginx Configuration Details:**
-- Listens on port 80 (HTTP)
-- Serves static files from /var/www/html/ (index.html)
-- Proxies /api/* requests to http://127.0.0.1:5000 (Flask backend)
-- Sets proper headers for API requests
-- Client max body size: 10M (for configuration updates)
-- Access log: /var/log/nginx/access.log
-- Error log: /var/log/nginx/error.log
-
-### Step 8: Setup API Authentication
-
-```bash
-# Create Proxmox API token (run on Proxmox host)
-TOKEN_USER="proxbalance@pam"
-TOKEN_NAME="proxbalance"
-
-# Create the API token
-pvesh create /access/users/${TOKEN_USER}/token/${TOKEN_NAME} \
-  --comment "ProxBalance automated monitoring" \
-  --privsep 0
-
-# The output will show:
-# {
-#    "full-tokenid" : "proxbalance@pam!proxbalance",
-#    "value" : "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-# }
-
-# Save the token secret - you'll need it for config.json
-TOKEN_SECRET="<paste-secret-from-output>"
-
-# IMPORTANT: Set ACL permissions on BOTH user and token (even with privsep=0)
-# Choose based on your needs:
-
-# Option 1: Minimal permissions (read-only monitoring)
-pveum acl modify / --users proxbalance@pam --roles PVEAuditor --propagate 1
-pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEAuditor --propagate 1
-
-# Option 2: Full permissions (monitoring + migrations)
+# Set permissions (both user and token need ACLs)
 pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin --propagate 1
 pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin --propagate 1
+```
 
-# Verify permissions were set
-pveum acl list | grep proxbalance
+Copy the token secret into `config.json`.
 
-# Update config.json in container
-pct exec $CTID -- bash -c "cat > /opt/proxmox-balance-manager/config.json <<EOF
-{
-  \"collection_interval_minutes\": 60,
-  \"ui_refresh_interval_minutes\": 15,
-  \"proxmox_host\": \"<your-proxmox-host>\",
-  \"proxmox_port\": 8006,
-  \"proxmox_auth_method\": \"api_token\",
-  \"proxmox_api_token_id\": \"proxbalance@pam!proxbalance\",
-  \"proxmox_api_token_secret\": \"${TOKEN_SECRET}\",
-  \"proxmox_verify_ssl\": false
-}
-EOF"
+### 6. Set up services
 
-# Test API connectivity from container
-pct exec $CTID -- python3 -c "
-from proxmoxer import ProxmoxAPI
-proxmox = ProxmoxAPI(
-    '<your-proxmox-host>',
-    user='proxbalance@pam',
-    token_name='proxbalance',
-    token_value='${TOKEN_SECRET}',
-    port=8006,
-    verify_ssl=False
-)
-print('API Token Test:', proxmox.version.get())
+```bash
+pct exec $CTID -- bash -c "
+cp /opt/proxmox-balance-manager/systemd/*.service /etc/systemd/system/
+cp /opt/proxmox-balance-manager/systemd/*.timer /etc/systemd/system/
+cp /opt/proxmox-balance-manager/nginx/proxmox-balance /etc/nginx/sites-available/
+ln -sf /etc/nginx/sites-available/proxmox-balance /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+systemctl daemon-reload
+systemctl enable proxmox-balance proxmox-collector.timer nginx
+systemctl start proxmox-balance proxmox-collector.timer nginx
 "
 ```
 
-**API Token Details:**
-- Token ID: proxbalance@pam!proxbalance (user@realm!tokenname format)
-- Privileges: Administrator access (privsep=0)
-- No expiration: Token remains valid until manually deleted
-- Secure: Token secret is separate from user password
-- Revocable: Can be deleted without affecting user account
-
-**Permission Requirements:**
-- **Both user AND token need ACL permissions** - Even with privsep=0, Proxmox requires ACLs on both the user account and the token
-- **PVEAuditor** - Minimal role for read-only monitoring (VM.Audit, Sys.Audit, Datastore.Audit)
-- **PVEVMAdmin** - Full role for monitoring + migrations (includes VM.Migrate, VM.Allocate, VM.Console)
-
-**Why API Tokens?**
-- More secure than password authentication
-- Faster than SSH (5-10x performance improvement)
-- Fine-grained permission control
-- Easy to rotate and revoke
-- No SSH key management needed
-
-### Step 9: Start Services
+### 7. Verify
 
 ```bash
-# Start all services
-pct exec $CTID -- systemctl start proxmox-balance.service
-pct exec $CTID -- systemctl start proxmox-collector.timer
-pct exec $CTID -- systemctl start nginx.service
-
-# Check status
-pct exec $CTID -- systemctl status proxmox-balance.service
-pct exec $CTID -- systemctl status proxmox-collector.timer
-pct exec $CTID -- systemctl status nginx.service
-```
-
-### Step 10: Initial Data Collection
-
-```bash
-# Get container IP
-CONTAINER_IP=$(pct exec $CTID -- hostname -I | awk '{print $1}')
-echo "Container IP: $CONTAINER_IP"
-
-# Trigger first collection
-curl -X POST http://$CONTAINER_IP/api/refresh
-
-# Wait for collection to complete (60-90 seconds)
-echo "Waiting for data collection..."
+CONTAINER_IP=\$(pct exec $CTID -- hostname -I | awk '{print \$1}')
+curl -X POST http://\$CONTAINER_IP/api/refresh
 sleep 90
-
-# Verify data was collected
-curl http://$CONTAINER_IP/api/analyze | jq '.success'
-
-# Should return: true
+curl http://\$CONTAINER_IP/api/health
 ```
 
-### Step 11: Access Web Interface
-
-Open your browser and navigate to:
-```
-http://<container-ip>
-```
-
-You should see the ProxBalance dashboard!
+Open `http://<container-ip>` in your browser.
 
 ---
 
-## 🔧 Post-Installation Configuration
+## Post-Installation
 
-### 1. Verify Installation
+### Collection optimization
 
-Run the status checker:
+Configure through the web UI Settings panel under **Collection Optimization**, or use presets:
+
+| Preset | Guests | Interval | Workers |
+|--------|--------|----------|---------|
+| Small | < 30 | 5 min | 3 |
+| Medium | 30-100 | 15 min | 5 |
+| Large | 100+ | 30 min | 8 |
+
+### Guest tags
+
+ProxBalance reads tags from VMs and containers via the Proxmox API:
+
+- **`ignore`** - Exclude the guest from migration recommendations
+- **`exclude_<group>`** - Anti-affinity: guests sharing the same `exclude_` tag are kept on separate nodes
+- **`auto-migrate-ok`** - Whitelist mode opt-in (when enabled in config)
 
 ```bash
-# Download and run status checker
+# Set tags via Proxmox CLI
+pvesh set /nodes/<node>/qemu/<vmid>/config --tags "ignore"
+pvesh set /nodes/<node>/qemu/<vmid>/config --tags "exclude_database"
+```
+
+After changing tags, trigger a refresh: `curl -X POST http://<container-ip>/api/refresh`
+
+### AI recommendations (optional)
+
+1. Open Settings in the web UI
+2. Enable AI Recommendations
+3. Select a provider (OpenAI, Anthropic, or Ollama)
+4. Enter credentials and save
+
+See [AI Features](AI_FEATURES.md) for detailed setup.
+
+### Notification providers (optional)
+
+Configure notification providers in Settings under **Automated Migrations > Notifications**. See [Notifications](NOTIFICATIONS.md) for provider details.
+
+---
+
+## Security Hardening
+
+### Firewall
+
+```bash
+pct exec $CTID -- apt-get install -y ufw
+pct exec $CTID -- ufw allow from 10.0.0.0/24 to any port 80
+pct exec $CTID -- ufw --force enable
+```
+
+### SSL/TLS
+
+```bash
+pct exec $CTID -- apt-get install -y certbot python3-certbot-nginx
+pct exec $CTID -- certbot --nginx -d your-domain.com --non-interactive --agree-tos -m you@example.com
+```
+
+---
+
+## Verification
+
+After installation, confirm these are working:
+
+```bash
+# Container running
+pct status $CTID
+
+# Services active
+pct exec $CTID -- systemctl is-active proxmox-balance proxmox-collector.timer nginx
+
+# API responding
+curl http://<container-ip>/api/health
+
+# Cache file exists with recent data
+pct exec $CTID -- jq '.collected_at' /opt/proxmox-balance-manager/cluster_cache.json
+```
+
+Or run the status checker:
+
+```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)" _ $CTID
 ```
 
-This comprehensive check verifies:
-- ✅ Container status and networking
-- ✅ All service status
-- ✅ Data collection status
-- ✅ API health
-- ✅ API token connectivity test
-
-### 2. Collection Optimization
-
-ProxBalance now includes intelligent parallel data collection with configurable cluster size presets.
-
-#### Via Web Interface (Recommended)
-1. Click the ⚙️ **Settings** icon in the top right
-2. Scroll to **Collection Optimization** section
-3. Select **Cluster Size Preset**:
-   - **Small** (< 30 VMs/CTs): 5 min interval, 3 workers
-   - **Medium** (30-100 VMs/CTs): 15 min interval, 5 workers
-   - **Large** (100+ VMs/CTs): 30 min interval, 8 workers
-   - **Custom**: Manual configuration
-4. Or customize individual settings:
-   - **Collection Interval** (5-240 minutes)
-   - **Parallel Collection** (Enable/Disable)
-   - **Max Workers** (1-8 threads)
-   - **Skip Stopped RRD** (Enable/Disable)
-5. Click **Apply Collection Settings**
-6. View real-time performance metrics below settings
-
-**Performance Metrics:**
-- **Total Collection Time**: Complete data collection duration
-- **Node Processing Time**: Parallel node collection time
-- **Guest Processing Time**: VM/CT data collection time
-- **Workers Used**: Number of parallel threads
-
-**Multi-Timeframe Charts:**
-- ProxBalance now fetches 5 RRD timeframes simultaneously
-- View historical data: 1 hour, 6 hours, 12 hours, 24 hours, 7 days, 30 days, 1 year
-- Automatic resolution optimization for each time range
-- No performance impact - all timeframes collected in ~2-3 seconds
-
-#### Via Command Line
-
-```bash
-# Apply a cluster size preset
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/python3 \
-  /opt/proxmox-balance-manager/set_cluster_preset.py small
-
-# Available presets: small, medium, large, custom
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/python3 \
-  /opt/proxmox-balance-manager/set_cluster_preset.py --list
-```
-
-### 3. Configure Collection Intervals (Legacy)
-
-The new Collection Optimization presets are recommended, but you can still manually adjust intervals:
-
-#### Via Web Interface
-1. Click the ⚙️ **Settings** icon
-2. Scroll to **Data Collection** section
-3. Adjust **Collection Interval** (5-240 minutes)
-4. Click **Save Settings**
-
-**What happens when you save:**
-1. API validates the new values (range checks)
-2. Updates config.json
-3. Runs update_timer.py to modify systemd timer
-4. Executes systemctl daemon-reload
-5. Restarts proxmox-collector.timer with new interval
-6. No manual service restart needed!
-
-#### Via Command Line
-
-```bash
-# Show current settings
-pct exec $CTID -- /opt/proxmox-balance-manager/manage_settings.sh show
-
-# Set backend collection to 60 minutes
-pct exec $CTID -- /opt/proxmox-balance-manager/manage_settings.sh set-backend 60
-
-# Set UI refresh to 15 minutes
-pct exec $CTID -- /opt/proxmox-balance-manager/manage_settings.sh set-ui 15
-
-# Set both at once
-pct exec $CTID -- /opt/proxmox-balance-manager/manage_settings.sh set-both 45
-```
-
-### 4. Configure Guest Tags
-
-ProxBalance respects two types of tags on VMs and containers:
-
-#### Ignore Tag - Prevent Migration
-```bash
-# For VMs
-pvesh set /nodes/<node-name>/qemu/<vmid>/config --tags "ignore"
-
-# For Containers
-pvesh set /nodes/<node-name>/lxc/<vmid>/config --tags "ignore"
-```
-
-**How it works:**
-- Collector.py reads tags via pvesh get config
-- parse_tags() function extracts "ignore" keyword
-- Sets `has_ignore: true` in cache
-- Recommendation engine skips guests with has_ignore=true
-- Guests with ignore tag won't appear in migration recommendations
-
-#### Anti-Affinity Tags - Keep Workloads Separated
-```bash
-# Example: Firewall VMs that must be on different nodes
-pvesh set /nodes/pve1/qemu/100/config --tags "exclude_firewall"
-pvesh set /nodes/pve2/qemu/101/config --tags "exclude_firewall"
-
-# Example: Database servers
-pvesh set /nodes/pve1/qemu/200/config --tags "exclude_database"
-pvesh set /nodes/pve3/qemu/201/config --tags "exclude_database"
-
-# Combine multiple tags (semicolon or space separated)
-pvesh set /nodes/pve1/qemu/300/config --tags "ignore;exclude_critical"
-```
-
-**How anti-affinity works:**
-- Tags starting with `exclude_` are extracted into `exclude_groups` array
-- Before recommending migration, checks if target node has any guest with same exclusion tag
-- If conflict detected, skips that migration recommendation
-- Prevents guests with same `exclude_*` tag from being on same node
-
-After adding tags, trigger a data refresh:
-```bash
-curl -X POST http://<container-ip>/api/refresh
-```
-
-**Tag Format Rules:**
-- Case-sensitive (use lowercase for consistency)
-- No spaces in tag names
-- Multiple tags separated by semicolon (`;`) or space
-- `exclude_` prefix required for anti-affinity groups
-- Exact match required (exclude_db ≠ exclude_database)
-
-### 4. Configure AI Recommendations (Optional)
-
-ProxBalance v2.0 supports optional AI-powered migration recommendations.
-
-#### Enable AI Features
-
-1. Click ⚙️ **Settings** icon (top-right corner)
-2. Scroll to **AI-Enhanced Migration Recommendations**
-3. Toggle **Enable AI Recommendations**
-4. Select your **AI Provider**:
-   - **OpenAI** (GPT-4) - Requires API key from https://platform.openai.com/api-keys
-   - **Anthropic** (Claude) - Requires API key from https://console.anthropic.com/settings/keys
-   - **Ollama** (Local LLM) - Self-hosted, no API key needed
-5. Enter required credentials based on provider
-6. Select **Analysis Time Period**:
-   - 1 hour - Fast, recent trends only
-   - 6 hours - Balanced view
-   - 24 hours - Full day pattern (recommended)
-   - 7 days - Long-term trends
-7. Click **Save Settings**
-
-#### Setting Up Ollama (Local LLM)
-
-For cost-free AI recommendations using a self-hosted LLM:
-
-```bash
-# On a server with GPU (recommended) or powerful CPU:
-
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull a model (choose based on your hardware)
-ollama pull llama3.1:8b     # Smaller, faster (requires ~8GB RAM)
-ollama pull llama3.1:70b    # Larger, more accurate (requires 48GB+ RAM)
-ollama pull mistral:7b      # Alternative lightweight model
-
-# Verify Ollama is running
-curl http://localhost:11434/api/version
-
-# In ProxBalance settings:
-# - AI Provider: Ollama
-# - Base URL: http://<ollama-server-ip>:11434
-# - Model: llama3.1:8b (or your chosen model)
-```
-
-**Benefits of AI Recommendations:**
-- Analyzes historical usage patterns over your selected timeframe
-- Considers workload characteristics and node capabilities
-- Provides detailed reasoning for each recommendation
-- Helps identify optimal migration timing
-- Prevents migrations during peak usage periods
-
-### 5. Adjust Thresholds
-
-In the web interface:
-- Use **CPU Threshold** slider (40-90%)
-  - Default: 60%
-  - Lower = more aggressive rebalancing
-  - Higher = less frequent migrations
-- Use **Memory Threshold** slider (50-95%)
-  - Default: 70%
-  - Adjust based on your workload patterns
-- CPU/Memory threshold lines appear on node charts as you adjust
-- Recommendations update automatically as you adjust
-
-### 6. Test a Migration
-
-Before using in production, test with a non-critical guest:
-
-1. Navigate to **Migration Recommendations** section
-2. If recommendations appear, click **Execute** on one
-3. Monitor progress in Proxmox web interface
-4. Verify guest continues running after migration
-5. Check ProxBalance logs: `pct exec $CTID -- journalctl -u proxmox-balance -f`
-
 ---
 
-## 🔒 Security Hardening (Optional)
+## Common Issues
 
-### 1. Implement Firewall Rules
-
-Restrict access to the web interface:
+### Container won't start
 
 ```bash
-# Install UFW
-pct exec $CTID -- apt-get install -y ufw
-
-# Allow web interface only from your network
-pct exec $CTID -- ufw allow from 10.0.0.0/24 to any port 80
-
-# Enable firewall
-pct exec $CTID -- ufw --force enable
-
-# Check status
-pct exec $CTID -- ufw status
+pct config $CTID    # Check configuration
+pct start $CTID     # Read error message
+free -h && df -h    # Check host resources
 ```
 
-### 2. Setup SSL/TLS with Let's Encrypt
-
-If exposing externally with a domain name:
+### API authentication fails
 
 ```bash
-# Install Certbot
-pct exec $CTID -- apt-get install -y certbot python3-certbot-nginx
-
-# Obtain certificate (requires public domain)
-pct exec $CTID -- certbot --nginx -d your-domain.com --non-interactive --agree-tos -m your-email@example.com
-
-# Nginx will be automatically configured for HTTPS
-# Certificate auto-renews via systemd timer
-
-# Verify auto-renewal
-pct exec $CTID -- systemctl list-timers | grep certbot
-```
-
-### 3. Enable Automatic Updates (Optional)
-
-```bash
-# Install unattended-upgrades
-pct exec $CTID -- apt-get install -y unattended-upgrades
-
-# Configure for security updates only
-pct exec $CTID -- dpkg-reconfigure -plow unattended-upgrades
-```
-
----
-
-## ✅ Verification Checklist
-
-After installation, verify everything is working:
-
-### Container & Services
-- [ ] Container is running: `pct status $CTID`
-- [ ] Container has IP address (DHCP or static)
-- [ ] Web interface loads: `http://<container-ip>`
-- [ ] API responds: `curl http://<container-ip>/api/health`
-- [ ] API service is active: `pct exec $CTID -- systemctl is-active proxmox-balance`
-- [ ] Collector timer is active: `pct exec $CTID -- systemctl is-active proxmox-collector.timer`
-- [ ] Nginx is active: `pct exec $CTID -- systemctl is-active nginx`
-
-### Data Collection
-- [ ] Cache file exists: `pct exec $CTID -- ls /opt/proxmox-balance-manager/cluster_cache.json`
-- [ ] Cache has recent data: `pct exec $CTID -- jq '.collected_at' /opt/proxmox-balance-manager/cluster_cache.json`
-- [ ] All nodes appear in dashboard
-- [ ] Guest counts are correct
-- [ ] CPU/Memory metrics are showing
-
-### API Connectivity
-- [ ] API token is configured in config.json
-- [ ] Test: `pct exec $CTID -- python3 -c "from proxmoxer import ProxmoxAPI; print('OK')"`
-- [ ] Container can reach Proxmox API (port 8006)
-- [ ] API calls work from collector
-
-### Functionality
-- [ ] Tags are recognized (if configured)
-- [ ] Recommendations are generated (if cluster is imbalanced)
-- [ ] Can adjust CPU/Memory thresholds
-- [ ] Settings can be changed and persist
-- [ ] Test migration works (optional, use non-critical guest)
-
-### Boot Persistence
-- [ ] Container set to start on boot: `pct config $CTID | grep onboot`
-- [ ] Services enabled: `pct exec $CTID -- systemctl is-enabled proxmox-balance proxmox-collector.timer nginx`
-- [ ] Reboot test: `pct reboot $CTID && sleep 30 && curl http://<container-ip>/api/health`
-
----
-
-## 🐛 Common Installation Issues
-
-### Issue: Container won't start
-
-**Symptoms:** `pct start $CTID` fails or container shows as stopped
-
-**Solutions:**
-```bash
-# Check container configuration
-pct config $CTID
-
-# Check for errors
-pct start $CTID
-# Read error message
-
-# Common fixes:
-# - Wrong storage specified
-# - Insufficient resources on host
-# - Network configuration error
-
-# Check host resources
-free -h
-df -h
-
-# Try starting in debug mode
-pct start $CTID --debug
-```
-
-### Issue: API authentication fails
-
-**Symptoms:** Data collection fails, API errors in logs
-
-**Solutions:**
-```bash
-# Verify API token configuration
-pct exec $CTID -- cat /opt/proxmox-balance-manager/config.json | jq '.proxmox_api_token_id, .proxmox_api_token_secret'
-
-# Check if token exists in Proxmox
+# Check token exists
 pvesh get /access/users/proxbalance@pam/token/proxbalance
 
-# Recreate token if needed
+# Recreate if needed
 pvesh delete /access/users/proxbalance@pam/token/proxbalance
 pvesh create /access/users/proxbalance@pam/token/proxbalance --comment "ProxBalance" --privsep 0
 
-# Update config.json with new token secret
-# (Edit the config file with the new token values)
-
-# Test API connectivity
-pct exec $CTID -- python3 -c "
-from proxmoxer import ProxmoxAPI
-proxmox = ProxmoxAPI(
-    '<proxmox-host>',
-    user='proxbalance@pam',
-    token_name='proxbalance',
-    token_value='<token-secret>',
-    port=8006,
-    verify_ssl=False
-)
-print('API Version:', proxmox.version.get())
-"
+# Set permissions on both user and token
+pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
+pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
 ```
 
-### Issue: Python dependencies fail to install
+### 502 Bad Gateway
 
-**Symptoms:** `pip install` commands fail
-
-**Solutions:**
 ```bash
-# Check internet connectivity from container
-pct exec $CTID -- ping -c 3 8.8.8.8
-pct exec $CTID -- curl -I https://pypi.org
-
-# Update pip
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/pip install --upgrade pip
-
-# Try installing one package at a time
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/pip install flask
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/pip install flask-cors
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/pip install gunicorn
-
-# If still failing, check Python version
-pct exec $CTID -- python3 --version
-# Should be 3.8 or higher
-```
-
-### Issue: Nginx returns 502 Bad Gateway
-
-**Symptoms:** Web interface shows 502 error
-
-**Solutions:**
-```bash
-# Check if Flask is running
 pct exec $CTID -- systemctl status proxmox-balance
-
-# If not running, check logs
 pct exec $CTID -- journalctl -u proxmox-balance -n 50
-
-# Common causes:
-# 1. Python syntax error in app.py
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/python3 -m py_compile /opt/proxmox-balance-manager/app.py
-
-# 2. Missing Python packages
-pct exec $CTID -- /opt/proxmox-balance-manager/venv/bin/python3 -c "import flask, flask_cors; print('OK')"
-
-# 3. Wrong port in Nginx config
-pct exec $CTID -- grep proxy_pass /etc/nginx/sites-available/proxmox-balance
-# Should show: proxy_pass http://127.0.0.1:5000;
-
-# Restart Flask service
 pct exec $CTID -- systemctl restart proxmox-balance
 ```
 
-### Issue: DHCP IP not detected
+### No data after installation
 
-**Symptoms:** Installer can't determine container IP
-
-**Solutions:**
 ```bash
-# Check if container has IP
-pct exec $CTID -- ip addr show eth0
-
-# If no IP, check DHCP server
-# Look for DHCP offers in container logs
-pct exec $CTID -- journalctl -n 50 | grep -i dhcp
-
-# Manually restart networking
-pct exec $CTID -- systemctl restart networking
-
-# Or configure static IP instead
-pct set $CTID -net0 name=eth0,bridge=vmbr0,ip=10.0.0.131/24,gw=10.0.0.1
-pct reboot $CTID
+pct exec $CTID -- systemctl start proxmox-collector.service
+pct exec $CTID -- journalctl -u proxmox-collector -f
 ```
 
-### Issue: Nodes not auto-detected
-
-**Symptoms:** Installer asks for manual node entry
-
-**Solutions:**
-```bash
-# Test detection methods manually
-
-# Method 1: corosync.conf
-grep -oP '(?<=name: ).*' /etc/pve/corosync.conf
-
-# Method 2: /etc/pve/nodes/
-ls /etc/pve/nodes/
-
-# Method 3: pvecm
-pvecm status
-
-# Method 4: pvesh
-pvesh get /nodes --output-format json | jq -r '.[].node'
-
-# If all fail, manually enter your node hostnames when prompted
-```
+For more issues, see [Troubleshooting](TROUBLESHOOTING.md).
 
 ---
 
-## ⚙️ Settings Menu
-
-Access the Settings menu from the web interface to configure ProxBalance.
-
-### AI Recommendations
-
-Configure AI-powered migration analysis:
-
-**Supported Providers:**
-- **OpenAI** - GPT-4o and other OpenAI models ([Get API Key](https://platform.openai.com/api-keys))
-- **Anthropic** - Claude 3.5 Sonnet and other Claude models ([Get API Key](https://console.anthropic.com/))
-- **Ollama** - Local LLM with privacy and no API costs ([Install Ollama](https://ollama.ai))
-
-**Configuration:**
-1. Enable AI Recommendations
-2. Select your provider
-3. Enter API credentials (or Ollama URL for local)
-4. Choose your model
-5. Click "Refresh Models" to see available options
-6. Save settings
-
-### Advanced System Settings
-
-**Debug & Logging:**
-- View real-time service logs (collector, API, nginx)
-- Download log files for troubleshooting
-- Adjust log verbosity
-
-**Service Management:**
-- Restart services (collector, API, nginx)
-- Check service status
-- View resource usage
-
-**Proxmox Configuration:**
-- Change Proxmox host connection
-- Update API credentials
-- Test connectivity
-
-**System Updates:**
-- View current version and branch
-- Check for updates
-- Switch between branches (main/dev)
-- One-click update with automatic rollback
-
----
-
-## 📚 Next Steps
-
-After successful installation:
-
-1. **Configure Node Maintenance** - [Node Maintenance Mode](../README.md#node-maintenance-mode)
-2. **Setup AI Recommendations** - [AI Features](AI_FEATURES.md)
-3. **Configure Tagging Rules** - [Tagging Documentation](../README.md#tagging-guests)
-4. **Review API Documentation** - [API.md](API.md)
-5. **Join Community Discussions** - [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/discussions)
-
----
-
-## 🆘 Need Help?
-
-- **Run Diagnostics**: `bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)" _ $CTID`
-- **Check Troubleshooting Guide**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- **Open an Issue**: [GitHub Issues](https://github.com/Pr0zak/ProxBalance/issues)
-- **Ask Questions**: [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/discussions)
-
----
-
-[⬆ Back to README](../README.md)
+[Back to Documentation](README.md)
