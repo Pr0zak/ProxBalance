@@ -97,19 +97,6 @@ else
   echo "  ✓ Web interface updated"
 fi
 
-# Update Python dependencies
-echo "Updating Python dependencies..."
-if [ -f /opt/proxmox-balance-manager/requirements.txt ]; then
-    /opt/proxmox-balance-manager/venv/bin/pip install -q --upgrade -r /opt/proxmox-balance-manager/requirements.txt 2>&1
-else
-    /opt/proxmox-balance-manager/venv/bin/pip install -q --upgrade flask flask-cors gunicorn requests proxmoxer 2>&1
-fi
-if [ $? -eq 0 ]; then
-    echo "✓ Dependencies updated"
-else
-    echo "⚠ Dependency update had issues"
-fi
-
 # Update systemd service files (for new services/timers)
 # NOTE: Service restarts are handled by the caller (app.py or update.sh)
 # to avoid the API trying to restart itself
