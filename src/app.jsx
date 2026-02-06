@@ -10597,10 +10597,11 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </button>
                         <button
                           onClick={handleUpdate}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                          disabled={systemInfo && systemInfo.update_in_progress}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <RefreshCw size={18} />
-                          Update Now
+                          {systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : 'Update Now'}
                         </button>
                       </div>
                     </div>
@@ -10680,6 +10681,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
                     ) : (
                       <div className="space-y-4">
+                        {/* Operation in progress banner */}
+                        {systemInfo && systemInfo.update_in_progress && (
+                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <div className="flex items-center gap-2">
+                              <RefreshCw size={18} className="text-blue-600 dark:text-blue-400 animate-spin" />
+                              <span className="text-sm text-blue-800 dark:text-blue-300">
+                                An update or branch switch is in progress. Health check is verifying the service...
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Return to previous branch banner */}
                         {systemInfo && systemInfo.previous_branch && systemInfo.previous_branch !== systemInfo.branch && (
                           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
@@ -10692,10 +10705,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               </div>
                               <button
                                 onClick={rollbackBranch}
-                                disabled={rollingBack || switchingBranch}
+                                disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
                                 className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {rollingBack ? 'Switching...' : 'Go Back'}
+                                {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
                               </button>
                             </div>
                           </div>
@@ -10746,10 +10759,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <div className="mt-3 flex justify-end">
                               <button
                                 onClick={() => switchBranch(branchPreview.branch)}
-                                disabled={switchingBranch}
+                                disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
                                 className="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white text-sm rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {switchingBranch ? 'Switching...' : `Switch to ${branchPreview.branch}`}
+                                {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : `Switch to ${branchPreview.branch}`)}
                               </button>
                             </div>
                           </div>
@@ -10822,7 +10835,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                                       <button
                                         onClick={() => fetchBranchPreview(branch.name)}
-                                        disabled={loadingPreview}
+                                        disabled={loadingPreview || (systemInfo && systemInfo.update_in_progress)}
                                         className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
                                         title="Preview branch changes"
                                       >
@@ -10830,10 +10843,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                       </button>
                                       <button
                                         onClick={() => switchBranch(branch.name)}
-                                        disabled={switchingBranch}
+                                        disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
                                         className="px-3 py-2 text-sm bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
-                                        {switchingBranch ? 'Switching...' : 'Switch'}
+                                        {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Switch')}
                                       </button>
                                     </div>
                                   )}

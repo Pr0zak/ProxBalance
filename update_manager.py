@@ -14,6 +14,8 @@ import shutil
 import threading
 import time
 from typing import Dict, List, Optional, Tuple
+from urllib.request import urlopen
+from urllib.error import URLError
 
 
 # Valid branch name pattern: alphanumeric, hyphens, underscores, slashes, dots
@@ -278,11 +280,17 @@ class UpdateManager:
     """Orchestrates version detection, update checking, and system updates."""
 
     PREVIOUS_BRANCH_FILE = '.previous_branch'
+    LOCK_FILE = '.update_lock'
+    HEALTH_URL = 'http://127.0.0.1:5000/api/health'
+    HEALTH_TIMEOUT = 30          # seconds to wait for healthy response
+    HEALTH_POLL_INTERVAL = 3     # seconds between health polls
+    RESTART_SETTLE_DELAY = 4     # seconds to wait after restart before first poll
 
     def __init__(self, repo_path: str, git_cmd: str = '/usr/bin/git'):
         self.repo_path = repo_path
         self.git = GitManager(repo_path, git_cmd)
         self.services = ServiceManager()
+        self._op_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Previous branch tracking
@@ -312,6 +320,54 @@ class UpdateManager:
             os.remove(path)
         except FileNotFoundError:
             pass
+
+    # ------------------------------------------------------------------
+    # Operation lock (prevents concurrent updates/switches)
+    # ------------------------------------------------------------------
+
+    def _acquire_lock(self) -> bool:
+        """Try to acquire the operation lock. Returns False if already held."""
+        return self._op_lock.acquire(blocking=False)
+
+    def _release_lock(self) -> None:
+        try:
+            self._op_lock.release()
+        except RuntimeError:
+            pass  # Already released
+
+    @property
+    def is_locked(self) -> bool:
+        """Check if an operation is in progress without blocking."""
+        if self._op_lock.acquire(blocking=False):
+            self._op_lock.release()
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Health check
+    # ------------------------------------------------------------------
+
+    def _check_health(self) -> bool:
+        """Poll the health endpoint once. Returns True if healthy."""
+        try:
+            resp = urlopen(self.HEALTH_URL, timeout=5)
+            if resp.status == 200:
+                body = json.loads(resp.read().decode())
+                return body.get('status') == 'healthy'
+        except Exception:
+            pass
+        return False
+
+    def _wait_for_healthy(self) -> bool:
+        """Wait for the API to come back healthy after a restart.
+        Returns True if healthy within the timeout, False otherwise."""
+        deadline = time.time() + self.HEALTH_TIMEOUT
+        time.sleep(self.RESTART_SETTLE_DELAY)
+        while time.time() < deadline:
+            if self._check_health():
+                return True
+            time.sleep(self.HEALTH_POLL_INTERVAL)
+        return False
 
     # ------------------------------------------------------------------
     # Pip path resolution
@@ -434,9 +490,13 @@ class UpdateManager:
 
     def perform_update(self) -> Dict:
         """Update ProxBalance to latest version (release or branch commit)."""
+        if not self._acquire_lock():
+            return {'success': False, 'error': 'Another update or branch switch is in progress'}
+
         log: List[str] = []
         try:
             version_info = self.get_version_info()
+            pre_update_branch = version_info['branch']
 
             # Fetch latest
             log.append('Fetching latest changes from GitHub...')
@@ -451,7 +511,9 @@ class UpdateManager:
             log.append('Code updated successfully')
             self._run_build(log)
             self._update_dependencies(log)
-            self._restart_services(log)
+
+            # Restart with health check; lock is released by the verify thread
+            self._restart_services(log, rollback_branch=None)
 
             new_commit = self.git.current_commit_short()
             log.append(f'Update complete! Now at commit: {new_commit}')
@@ -467,6 +529,7 @@ class UpdateManager:
             import traceback
             print(f'Update error: {e}', flush=True)
             traceback.print_exc()
+            self._release_lock()
             return {'success': False, 'error': str(e), 'log': log}
 
     def _update_release(self, version_info: Dict, log: List[str]) -> None:
@@ -612,21 +675,109 @@ class UpdateManager:
     # Service restarts
     # ------------------------------------------------------------------
 
-    def _restart_services(self, log: List[str]) -> None:
-        """Restart collector timer and schedule API restart."""
+    def _restart_services(self, log: List[str], rollback_branch: Optional[str] = None) -> None:
+        """Restart collector timer and schedule API restart with health verification.
+
+        If rollback_branch is set and the health check fails after restart,
+        the system will automatically revert to that branch.
+        """
         log.append('Restarting ProxBalance services...')
 
         # Restart collector timer
         ok, msg = self.services.restart('proxmox-collector.timer', timeout=15)
         log.append(f'{"" if ok else ""} {msg}')
 
-        # Defer API service restart so the response can be sent first
-        log.append('API service will restart automatically in 2 seconds...')
+        # Defer API restart with health verification
+        log.append('API service will restart in 2 seconds (health check follows)...')
         try:
-            self.services.restart_deferred('proxmox-balance', delay=2.0)
+            self._restart_and_verify(rollback_branch)
         except Exception as e:
             log.append(f'Failed to schedule API restart: {e}')
             log.append('Please manually restart: systemctl restart proxmox-balance')
+
+    def _restart_and_verify(self, rollback_branch: Optional[str] = None) -> None:
+        """Restart the API service, then verify health. Auto-rollback on failure."""
+        def _worker():
+            try:
+                # Give the HTTP response time to flush
+                time.sleep(2.0)
+
+                # Restart the service
+                subprocess.Popen(
+                    [SYSTEMCTL_CMD, 'restart', 'proxmox-balance'],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+
+                # Wait for healthy
+                if self._wait_for_healthy():
+                    print('[update_manager] Health check passed after restart', flush=True)
+                    self._release_lock()
+                    return
+
+                # Health check failed
+                print('[update_manager] Health check FAILED after restart', flush=True)
+
+                if not rollback_branch:
+                    print('[update_manager] No rollback branch set, giving up', flush=True)
+                    self._release_lock()
+                    return
+
+                print(f'[update_manager] Auto-rolling back to {rollback_branch}', flush=True)
+                self._auto_rollback(rollback_branch)
+            except Exception as e:
+                print(f'[update_manager] Error in restart-and-verify: {e}', flush=True)
+                self._release_lock()
+
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
+
+    def _auto_rollback(self, target_branch: str) -> None:
+        """Emergency rollback: checkout branch, rebuild, restart. Runs in background thread."""
+        try:
+            self.git.checkout(target_branch)
+            self.git.pull(target_branch)
+
+            # Run build
+            post_update_script = os.path.join(self.repo_path, 'post_update.sh')
+            if os.path.exists(post_update_script):
+                subprocess.run(
+                    ['/bin/bash', post_update_script],
+                    cwd=self.repo_path,
+                    capture_output=True, text=True,
+                    timeout=300,
+                )
+
+            # Update dependencies
+            pip = self._pip_cmd
+            requirements = os.path.join(self.repo_path, 'requirements.txt')
+            if os.path.exists(requirements):
+                subprocess.run(
+                    [pip, 'install', '-q', '--upgrade', '-r', requirements],
+                    cwd=self.repo_path,
+                    capture_output=True, text=True,
+                    timeout=120,
+                )
+
+            # Restart services again
+            subprocess.run(
+                [SYSTEMCTL_CMD, 'restart', 'proxmox-collector.timer'],
+                capture_output=True, text=True, timeout=15,
+            )
+            subprocess.Popen(
+                [SYSTEMCTL_CMD, 'restart', 'proxmox-balance'],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+
+            # Verify recovery
+            if self._wait_for_healthy():
+                print(f'[update_manager] Auto-rollback to {target_branch} succeeded', flush=True)
+            else:
+                print(f'[update_manager] Auto-rollback to {target_branch} - health still failing', flush=True)
+        except Exception as e:
+            print(f'[update_manager] Auto-rollback failed: {e}', flush=True)
+        finally:
+            self._release_lock()
 
     # ------------------------------------------------------------------
     # Branch switching
@@ -683,20 +834,33 @@ class UpdateManager:
             'previous_branch': previous,
         }
 
-    def switch_branch(self, target_branch: str) -> Dict:
-        """Switch to a different git branch with full build pipeline."""
+    def switch_branch(self, target_branch: str, _internal: bool = False) -> Dict:
+        """Switch to a different git branch with full build pipeline.
+
+        _internal=True skips the lock (used by auto-rollback which already holds it).
+        """
         log: List[str] = []
+
+        if not _internal:
+            if not self._acquire_lock():
+                return {'success': False, 'error': 'Another update or branch switch is in progress', 'log': log}
 
         try:
             # Validate branch name
             if not target_branch:
+                if not _internal:
+                    self._release_lock()
                 return {'success': False, 'error': 'Branch name is required', 'log': log}
 
             if not validate_branch_name(target_branch):
+                if not _internal:
+                    self._release_lock()
                 return {'success': False, 'error': 'Invalid branch name', 'log': log}
 
             current = self.git.current_branch()
             if current == target_branch:
+                if not _internal:
+                    self._release_lock()
                 return {'success': False, 'error': f'Already on branch {target_branch}', 'log': log}
 
             # Verify target exists on remote
@@ -707,6 +871,8 @@ class UpdateManager:
 
             remote_branches = self.git.remote_branches()
             if target_branch not in remote_branches:
+                if not _internal:
+                    self._release_lock()
                 return {
                     'success': False,
                     'error': f'Branch "{target_branch}" not found on remote',
@@ -735,17 +901,12 @@ class UpdateManager:
             self._run_build(log)
             self._update_dependencies(log)
 
-            # Restart services
-            log.append('Restarting ProxBalance services...')
-
-            ok, msg = self.services.restart('proxmox-collector.timer', timeout=15)
-            log.append(f'{"" if ok else ""} {msg}')
-
-            # Defer API restart
-            self.services.restart_deferred('proxmox-balance', delay=2.0)
-            log.append('API service will restart automatically in 2 seconds...')
+            # Restart with health check + auto-rollback to the branch we came from
+            # Lock is released by the verify thread
+            self._restart_services(log, rollback_branch=current)
 
             log.append(f'Branch switch complete! Now on {target_branch}')
+            log.append(f'Health check will verify the service comes back up...')
 
             return {
                 'success': True,
@@ -758,6 +919,8 @@ class UpdateManager:
             import traceback
             print(f'Branch switch error: {e}', flush=True)
             traceback.print_exc()
+            if not _internal:
+                self._release_lock()
             return {'success': False, 'error': str(e), 'log': log}
 
     # ------------------------------------------------------------------
@@ -834,10 +997,9 @@ class UpdateManager:
             self._clear_previous_branch()
             return {'success': False, 'error': f'Already on branch {previous}'}
 
-        # Delegate to switch_branch (which will save current as the new "previous")
+        # switch_branch acquires the lock itself
         result = self.switch_branch(previous)
         if result.get('success'):
-            # Clear the previous-branch file since we've returned
             self._clear_previous_branch()
         return result
 

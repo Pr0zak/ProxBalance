@@ -4132,7 +4132,8 @@ def system_info():
             "latest_version": update_info.get('latest_version'),
             "commits_behind": update_info.get('commits_behind', 0),
             "changelog": update_info.get('changelog', []),
-            "previous_branch": update_manager._load_previous_branch()
+            "previous_branch": update_manager._load_previous_branch(),
+            "update_in_progress": update_manager.is_locked
         }
 
         return jsonify(system_data)
