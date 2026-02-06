@@ -15,8 +15,13 @@ from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any
 import uuid
+import re
 import pytz
 import requests
+
+# Constants
+MIGRATION_TASK_TYPES = ('qmigrate', 'vzmigrate')
+MAX_RUN_HISTORY = 50
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -101,6 +106,59 @@ def save_history(history: Dict[str, Any]):
         json.dump(history, f, indent=2)
 
 
+def _check_time_window(config, window_key, window_label, default_when_empty):
+    """
+    Check if current time falls within any of the configured time windows.
+
+    Args:
+        config: Configuration dictionary
+        window_key: Key in schedule dict ('migration_windows' or 'blackout_windows')
+        window_label: Label for logging ('window' or 'blackout')
+        default_when_empty: Tuple to return when no windows defined
+
+    Returns:
+        Tuple of (in_window, message)
+    """
+    schedule = config.get('automated_migrations', {}).get('schedule', {})
+    windows = schedule.get(window_key, [])
+
+    if not windows:
+        return default_when_empty
+
+    global_tz = schedule.get('timezone', 'UTC')
+
+    for window in windows:
+        if not window.get('enabled', True):
+            continue
+        try:
+            tz = pytz.timezone(window.get('timezone', global_tz))
+            now = datetime.now(tz)
+            current_day = now.strftime('%A').lower()
+            window_days = [d.lower() for d in window.get('days', [])]
+            if current_day not in window_days:
+                continue
+            start = datetime.strptime(window['start_time'], '%H:%M').time()
+            end = datetime.strptime(window['end_time'], '%H:%M').time()
+            current = now.time()
+            if start <= end:
+                in_window = start <= current <= end
+            else:
+                in_window = current >= start or current <= end
+            if in_window:
+                logger.info(f"In {window_label}: {window['name']} ({tz} time: {now.strftime('%H:%M')})")
+                return True, f"In {window_label}: {window['name']} ({tz} time: {now.strftime('%H:%M')})"
+        except Exception as e:
+            logger.error(f"Error checking {window_label} {window.get('name', 'unknown')}: {e}")
+            continue
+
+    try:
+        tz = pytz.timezone(global_tz)
+        now = datetime.now(tz)
+        return False, f"Outside all {window_label}s (Current time: {now.strftime('%A')} {now.strftime('%H:%M')} {global_tz})"
+    except:
+        return False, f"Outside all {window_label}s"
+
+
 def is_in_migration_window(config: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Check if current time is in allowed migration window.
@@ -111,59 +169,8 @@ def is_in_migration_window(config: Dict[str, Any]) -> Tuple[bool, str]:
     Returns:
         Tuple of (in_window, message)
     """
-    schedule = config.get('automated_migrations', {}).get('schedule', {})
-    windows = schedule.get('migration_windows', [])
-
-    if not windows:
-        return True, "No windows defined (always allowed)"
-
-    # Get global timezone setting (fallback to window-specific or UTC)
-    global_tz = schedule.get('timezone', 'UTC')
-
-    for window in windows:
-        # Windows are enabled by default unless explicitly disabled
-        if not window.get('enabled', True):
-            continue
-
-        try:
-            # Use window-specific timezone if set, otherwise use global timezone
-            tz = pytz.timezone(window.get('timezone', global_tz))
-            now = datetime.now(tz)
-
-            # Check day of week
-            current_day = now.strftime('%A').lower()
-            window_days = [d.lower() for d in window.get('days', [])]
-            if current_day not in window_days:
-                continue
-
-            # Parse time range
-            start = datetime.strptime(window['start_time'], '%H:%M').time()
-            end = datetime.strptime(window['end_time'], '%H:%M').time()
-            current = now.time()
-
-            # Check time range (handles overnight windows)
-            if start <= end:
-                in_window = start <= current <= end
-            else:  # Crosses midnight
-                in_window = current >= start or current <= end
-
-            if in_window:
-                logger.info(f"In migration window: {window['name']} ({tz} time: {now.strftime('%H:%M')})")
-                return True, f"In window: {window['name']} ({tz} time: {now.strftime('%H:%M')})"
-
-        except Exception as e:
-            logger.error(f"Error checking window {window.get('name', 'unknown')}: {e}")
-            continue
-
-    # Provide detailed message about why we're outside windows
-    try:
-        tz = pytz.timezone(global_tz)
-        now = datetime.now(tz)
-        current_time = now.strftime('%H:%M')
-        current_day = now.strftime('%A')
-        return False, f"Outside all migration windows (Current time: {current_day} {current_time} {global_tz})"
-    except:
-        return False, "Outside all migration windows"
+    return _check_time_window(config, 'migration_windows', 'migration window',
+                               (True, "No windows defined (always allowed)"))
 
 
 def is_in_blackout_window(config: Dict[str, Any]) -> Tuple[bool, str]:
@@ -176,51 +183,27 @@ def is_in_blackout_window(config: Dict[str, Any]) -> Tuple[bool, str]:
     Returns:
         Tuple of (in_blackout, message)
     """
-    schedule = config.get('automated_migrations', {}).get('schedule', {})
-    blackouts = schedule.get('blackout_windows', [])
+    return _check_time_window(config, 'blackout_windows', 'blackout',
+                               (False, "No blackout windows defined"))
 
-    if not blackouts:
-        return False, "No blackout windows defined"
 
-    # Get global timezone setting (same as migration windows)
-    global_tz = schedule.get('timezone', 'UTC')
+def _extract_tags(tags_raw):
+    """Extract tag list from raw tags (handles both dict and string formats)."""
+    if isinstance(tags_raw, dict):
+        return [str(t).strip().lower() for t in tags_raw.get('all_tags', [])]
+    elif isinstance(tags_raw, str):
+        return [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
+    return []
 
-    for blackout in blackouts:
-        # Blackouts are enabled by default unless explicitly disabled
-        if not blackout.get('enabled', True):
-            continue
 
-        try:
-            # Use blackout-specific timezone if set, otherwise use global timezone
-            tz = pytz.timezone(blackout.get('timezone', global_tz))
-            now = datetime.now(tz)
-
-            # Check day of week
-            current_day = now.strftime('%A').lower()
-            blackout_days = [d.lower() for d in blackout.get('days', [])]
-            if current_day not in blackout_days:
-                continue
-
-            # Parse time range
-            start = datetime.strptime(blackout['start_time'], '%H:%M').time()
-            end = datetime.strptime(blackout['end_time'], '%H:%M').time()
-            current = now.time()
-
-            # Check time range
-            if start <= end:
-                in_blackout = start <= current <= end
-            else:  # Crosses midnight
-                in_blackout = current >= start or current <= end
-
-            if in_blackout:
-                logger.info(f"In blackout window: {blackout['name']} ({tz} time: {now.strftime('%H:%M')})")
-                return True, f"In blackout: {blackout['name']} ({tz} time: {now.strftime('%H:%M')})"
-
-        except Exception as e:
-            logger.error(f"Error checking blackout {blackout.get('name', 'unknown')}: {e}")
-            continue
-
-    return False, "Not in any blackout window"
+def _extract_exclude_groups(tags_raw):
+    """Extract exclude groups from raw tags (handles both dict and string formats)."""
+    if isinstance(tags_raw, dict):
+        return tags_raw.get('exclude_groups', [])
+    elif isinstance(tags_raw, str):
+        tags = [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
+        return [t for t in tags if t.startswith('exclude_')]
+    return []
 
 
 def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool, str]:
@@ -236,29 +219,21 @@ def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool
     """
     # Handle tags - can be string or dict
     tags_raw = guest.get('tags', '')
-    if isinstance(tags_raw, dict):
-        # Tags is a dict with structure: {has_ignore: bool, exclude_groups: [], all_tags: []}
-        # Check ignore flag
-        if rules.get('respect_ignore_tags', True) and tags_raw.get('has_ignore', False):
+
+    # Check ignore flag (dict format has dedicated flag, string format checks tag list)
+    if rules.get('respect_ignore_tags', True):
+        if isinstance(tags_raw, dict) and tags_raw.get('has_ignore', False):
             return False, "Has 'ignore' tag"
+        elif isinstance(tags_raw, str):
+            quick_tags = [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
+            if 'ignore' in quick_tags:
+                return False, "Has 'ignore' tag"
 
-        # NOTE: exclude tags are handled by check_exclude_group_affinity() per-target-node
-        # They don't prevent migration entirely, only migration to nodes with same tag
+    # NOTE: exclude tags are handled by check_exclude_group_affinity() per-target-node
+    # They don't prevent migration entirely, only migration to nodes with same tag
 
-        # Get all tags for other checks
-        tags = [str(t).strip().lower() for t in tags_raw.get('all_tags', [])]
-    elif isinstance(tags_raw, str):
-        # Tags is a semicolon-separated string
-        tags = [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
-
-        # Check ignore tag (existing functionality)
-        if rules.get('respect_ignore_tags', True) and 'ignore' in tags:
-            return False, "Has 'ignore' tag"
-
-        # NOTE: exclude tags are handled by check_exclude_group_affinity() per-target-node
-        # They don't prevent migration entirely, only migration to nodes with same tag
-    else:
-        tags = []
+    # Get all tags for other checks
+    tags = _extract_tags(tags_raw)
 
     # Check no-auto-migrate tag (new)
     if 'no-auto-migrate' in tags:
@@ -304,15 +279,8 @@ def check_exclude_group_affinity(
     if not rules.get('respect_exclude_affinity', True):
         return True, "Exclude affinity checks disabled"
 
-    # Extract tags - handle both dict and string formats
-    tags_raw = guest.get('tags', '')
-    if isinstance(tags_raw, dict):
-        exclude_groups = tags_raw.get('exclude_groups', [])
-    elif isinstance(tags_raw, str):
-        guest_tags = [t.strip().lower() for t in tags_raw.split(';') if t.strip()]
-        exclude_groups = [t for t in guest_tags if t.startswith('exclude_')]
-    else:
-        exclude_groups = []
+    # Extract exclude groups - handle both dict and string formats
+    exclude_groups = _extract_exclude_groups(guest.get('tags', ''))
 
     if not exclude_groups:
         return True, "No exclude groups"
@@ -326,17 +294,9 @@ def check_exclude_group_affinity(
             if other_guest.get('vmid') == guest.get('vmid'):
                 continue
 
-            # Extract other guest's tags - handle both dict and string formats
-            other_tags_raw = other_guest.get('tags', '')
-            if isinstance(other_tags_raw, dict):
-                other_exclude_groups = other_tags_raw.get('exclude_groups', [])
-                if exclude_group not in other_exclude_groups:
-                    continue
-            elif isinstance(other_tags_raw, str):
-                other_tags = [t.strip().lower() for t in other_tags_raw.split(';') if t.strip()]
-                if exclude_group not in other_tags:
-                    continue
-            else:
+            # Extract other guest's exclude groups - handle both dict and string formats
+            other_exclude_groups = _extract_exclude_groups(other_guest.get('tags', ''))
+            if exclude_group not in other_exclude_groups:
                 continue
 
             node = other_guest.get('node')
@@ -435,8 +395,6 @@ def validates_resource_improvement(recommendation: Dict[str, Any]) -> Tuple[bool
     Returns:
         Tuple of (is_valid, message)
     """
-    import re
-
     reason = recommendation.get('reason', '')
     is_dist_bal = recommendation.get('distribution_balancing', False)
     prefix = "⚖️ Distribution Balancing: " if is_dist_bal else ""
@@ -645,7 +603,7 @@ def is_migration_in_progress(vmid: int, source_node: str, config: Dict[str, Any]
 
             # Check for running migration tasks for this VM (running tasks have a 'pid')
             for task in tasks_data:
-                if (task.get('type') in ['qmigrate', 'vzmigrate'] and
+                if (task.get('type') in MIGRATION_TASK_TYPES and
                     str(task.get('id')) == str(vmid) and
                     task.get('pid') is not None):  # Running tasks have pid
                     logger.info(f"Found active migration task for VM {vmid}: {task.get('upid')}")
@@ -885,7 +843,7 @@ def main():
                     tasks_data = response.json().get('data', [])
                     # Count running migration tasks
                     for task in tasks_data:
-                        if (task.get('type') in ['qmigrate', 'vzmigrate'] and
+                        if (task.get('type') in MIGRATION_TASK_TYPES and
                             task.get('pid') is not None):
                             running_count += 1
         except Exception as e:
@@ -1280,8 +1238,8 @@ def main():
             # Archive completed run to run_history (keep last 50 runs)
             if last_run_summary.get('status') in ['success', 'partial', 'failed', 'no_action']:
                 history.setdefault('run_history', []).insert(0, last_run_summary.copy())
-                # Keep only last 50 runs
-                history['run_history'] = history['run_history'][:50]
+                # Keep only last N runs
+                history['run_history'] = history['run_history'][:MAX_RUN_HISTORY]
                 logger.info(f"Archived run to history (total: {len(history['run_history'])} runs)")
 
             save_history(history)

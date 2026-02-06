@@ -337,6 +337,8 @@ class ProxmoxAPICollector:
             "mount_count": len(mount_points)
         }
 
+    DISK_PREFIXES = ('scsi', 'ide', 'virtio', 'sata', 'rootfs', 'mp')
+
     def detect_local_disks(self, config: Dict) -> Dict:
         """
         Detect passthrough disks in VM/CT configuration that prevent migration.
@@ -348,14 +350,11 @@ class ProxmoxAPICollector:
         as Proxmox handles storage replication during migration.
         """
         passthrough_disks = []
-        has_passthrough = False
 
         # Check for disk keys (scsi0-N, ide0-N, virtio0-N, sata0-N, rootfs, mp*)
-        for key in config.keys():
+        for key, disk_config in config.items():
             # Check if key is a disk/storage key
-            if any(key.startswith(prefix) for prefix in ['scsi', 'ide', 'virtio', 'sata', 'rootfs', 'mp']):
-                disk_config = config[key]
-
+            if key.startswith(self.DISK_PREFIXES):
                 if isinstance(disk_config, str):
                     # Parse disk config
                     parts = disk_config.split(',')
@@ -363,21 +362,44 @@ class ProxmoxAPICollector:
 
                     # Check for passthrough disks (direct device paths)
                     if source.startswith('/dev/'):
-                        has_passthrough = True
                         passthrough_disks.append({
                             "key": key,
                             "device": source,
                             "type": "passthrough"
                         })
 
+        has_passthrough = bool(passthrough_disks)
+        passthrough_count = len(passthrough_disks)
         return {
             "passthrough_disks": passthrough_disks,
             "has_passthrough": has_passthrough,
             "is_pinned": has_passthrough,
             "pinned_reason": "Hardware passthrough disks" if has_passthrough else None,
-            "passthrough_count": len(passthrough_disks),
-            "total_pinned_disks": len(passthrough_disks)
+            "passthrough_count": passthrough_count,
+            "total_pinned_disks": passthrough_count
         }
+
+    @staticmethod
+    def _extract_rrd_values(rrd_data, key, scale=100, filter_fn=None):
+        """Extract and scale values from RRD data points."""
+        if filter_fn:
+            return [filter_fn(d) for d in rrd_data if filter_fn(d) is not None]
+        return [d[key] * scale for d in rrd_data if key in d and d[key] is not None]
+
+    @staticmethod
+    def _detect_trend(values, threshold=10):
+        """Detect trend from a list of values: 'rising', 'falling', or 'stable'."""
+        if not values:
+            return "stable"
+        recent_size = max(1, len(values) // 5)
+        recent_avg = sum(values[-recent_size:]) / recent_size
+        older_avg = sum(values[:recent_size]) / recent_size
+        diff = recent_avg - older_avg
+        if diff > threshold:
+            return "rising"
+        elif diff < -threshold:
+            return "falling"
+        return "stable"
 
     def _process_single_node(self, node: Dict) -> Dict:
         """Process a single node's data (called in parallel or sequential)"""
@@ -422,11 +444,11 @@ class ProxmoxAPICollector:
         # Calculate 24-hour metrics (detailed)
         rrd_day = timeframes['day']
         if rrd_day:
-            cpu_values_day = [d["cpu"] * 100 for d in rrd_day if "cpu" in d and d["cpu"] is not None]
-            mem_values_day = [(d["memused"] / d["memtotal"] * 100) for d in rrd_day
-                         if "memused" in d and "memtotal" in d and d["memtotal"] > 0]
-            iowait_values_day = [d["iowait"] * 100 for d in rrd_day if "iowait" in d and d["iowait"] is not None]
-            load_values_day = [d["loadavg"] for d in rrd_day if "loadavg" in d and d["loadavg"] is not None]
+            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if "memused" in d and "memtotal" in d and d["memtotal"] > 0 else None
+            cpu_values_day = self._extract_rrd_values(rrd_day, "cpu")
+            mem_values_day = self._extract_rrd_values(rrd_day, None, filter_fn=mem_filter)
+            iowait_values_day = self._extract_rrd_values(rrd_day, "iowait")
+            load_values_day = self._extract_rrd_values(rrd_day, "loadavg", scale=1)
 
             if cpu_values_day:
                 metrics["avg_cpu"] = sum(cpu_values_day) / len(cpu_values_day)
@@ -448,38 +470,20 @@ class ProxmoxAPICollector:
         # Calculate 7-day metrics (longer-term patterns)
         rrd_week = timeframes['week']
         if rrd_week:
-            cpu_values_week = [d["cpu"] * 100 for d in rrd_week if "cpu" in d and d["cpu"] is not None]
-            mem_values_week = [(d["memused"] / d["memtotal"] * 100) for d in rrd_week
-                          if "memused" in d and "memtotal" in d and d["memtotal"] > 0]
-            iowait_values_week = [d["iowait"] * 100 for d in rrd_week if "iowait" in d and d["iowait"] is not None]
+            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if "memused" in d and "memtotal" in d and d["memtotal"] > 0 else None
+            cpu_values_week = self._extract_rrd_values(rrd_week, "cpu")
+            mem_values_week = self._extract_rrd_values(rrd_week, None, filter_fn=mem_filter)
+            iowait_values_week = self._extract_rrd_values(rrd_week, "iowait")
 
             if cpu_values_week:
                 metrics["avg_cpu_week"] = sum(cpu_values_week) / len(cpu_values_week)
                 metrics["max_cpu_week"] = max(cpu_values_week)
-
-                # Detect CPU trend: compare recent 20% vs older 20%
-                recent_size = max(1, len(cpu_values_week) // 5)
-                recent_avg = sum(cpu_values_week[-recent_size:]) / recent_size
-                older_avg = sum(cpu_values_week[:recent_size]) / recent_size
-                diff = recent_avg - older_avg
-                if diff > 10:  # Rising more than 10%
-                    metrics["cpu_trend"] = "rising"
-                elif diff < -10:  # Falling more than 10%
-                    metrics["cpu_trend"] = "falling"
+                metrics["cpu_trend"] = self._detect_trend(cpu_values_week)
 
             if mem_values_week:
                 metrics["avg_mem_week"] = sum(mem_values_week) / len(mem_values_week)
                 metrics["max_mem_week"] = max(mem_values_week)
-
-                # Detect memory trend
-                recent_size = max(1, len(mem_values_week) // 5)
-                recent_avg = sum(mem_values_week[-recent_size:]) / recent_size
-                older_avg = sum(mem_values_week[:recent_size]) / recent_size
-                diff = recent_avg - older_avg
-                if diff > 10:
-                    metrics["mem_trend"] = "rising"
-                elif diff < -10:
-                    metrics["mem_trend"] = "falling"
+                metrics["mem_trend"] = self._detect_trend(mem_values_week)
 
             if iowait_values_week:
                 metrics["avg_iowait_week"] = sum(iowait_values_week) / len(iowait_values_week)
@@ -507,7 +511,7 @@ class ProxmoxAPICollector:
         storage_info = []
         storage_status = self.get_storage_status(node_name)
         for storage in storage_status:
-            if storage.get("enabled", 1) == 1:  # Only enabled storage
+            if storage.get("enabled", 1):  # Only enabled storage
                 total_gb = storage.get("total", 0) / (1024**3)
                 used_gb = storage.get("used", 0) / (1024**3)
                 avail_gb = storage.get("avail", 0) / (1024**3)
@@ -517,7 +521,7 @@ class ProxmoxAPICollector:
                     "storage": storage.get("storage", "unknown"),
                     "type": storage.get("type", "unknown"),
                     "content": storage.get("content", ""),
-                    "active": storage.get("active", 0) == 1,
+                    "active": bool(storage.get("active", 0)),
                     "total_gb": round(total_gb, 2),
                     "used_gb": round(used_gb, 2),
                     "avail_gb": round(avail_gb, 2),
@@ -577,14 +581,12 @@ class ProxmoxAPICollector:
                 not_backed_up_ids.add(str(vmid))
 
         # Create pool membership lookup
-        pool_membership = {}  # vmid -> pool_name
-        for pool in resource_pools:
-            pool_name = pool.get("poolid", "")
-            members = pool.get("members", [])
-            for member in members:
-                vmid = member.get("vmid")
-                if vmid:
-                    pool_membership[str(vmid)] = pool_name
+        pool_membership = {
+            str(member.get("vmid")): pool.get("poolid", "")
+            for pool in resource_pools
+            for member in pool.get("members", [])
+            if member.get("vmid")
+        }
 
         # Parse cluster health
         cluster_health = {
@@ -594,10 +596,10 @@ class ProxmoxAPICollector:
         }
         for item in cluster_status:
             if item.get("type") == "cluster":
-                cluster_health["quorate"] = item.get("quorate", 0) == 1
+                cluster_health["quorate"] = bool(item.get("quorate", 0))
                 cluster_health["nodes"] = item.get("nodes", 0)
             elif item.get("type") == "node":
-                if item.get("online", 0) == 1:
+                if bool(item.get("online", 0)):
                     cluster_health["online_nodes"] += 1
 
         # Store performance metrics
@@ -675,10 +677,7 @@ class ProxmoxAPICollector:
             net_in_bps = 0
             net_out_bps = 0
 
-            if self.skip_stopped_rrd and guest_status != "running":
-                # Skip RRD collection for stopped guests
-                pass
-            else:
+            if not (self.skip_stopped_rrd and guest_status != "running"):
                 # Get RRD data for I/O metrics using configured timeframe
                 rrd_data = self.get_guest_rrd_data(node_name, vmid, guest_type_raw, self.guest_rrd_timeframe)
 

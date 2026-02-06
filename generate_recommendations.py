@@ -9,12 +9,12 @@ The timer interval dynamically adjusts based on cluster size to balance freshnes
 """
 
 import sys
-import os
 import json
 import logging
 import requests
 import subprocess
 import time
+import traceback
 from pathlib import Path
 
 # Paths
@@ -76,17 +76,13 @@ def calculate_optimal_interval(num_guests, num_nodes, generation_time_seconds):
     Returns:
         Interval in minutes
     """
-    # Base intervals by guest count
-    if num_guests < 50:
-        base_interval = 10  # Small cluster - every 10 minutes
-    elif num_guests < 150:
-        base_interval = 15  # Medium cluster - every 15 minutes
-    elif num_guests < 300:
-        base_interval = 20  # Large cluster - every 20 minutes
-    elif num_guests < 500:
-        base_interval = 30  # Very large - every 30 minutes
-    else:
-        base_interval = 60  # Huge cluster - every hour
+    # Base intervals by guest count (threshold, interval_minutes)
+    INTERVAL_TIERS = [(50, 10), (150, 15), (300, 20), (500, 30)]
+    base_interval = 60  # Default for huge clusters
+    for threshold, interval in INTERVAL_TIERS:
+        if num_guests < threshold:
+            base_interval = interval
+            break
 
     # Adjust for generation time (ensure interval is at least 2x generation time)
     min_safe_interval = int((generation_time_seconds / 60) * 2) + 1
@@ -186,7 +182,6 @@ def generate_recommendations():
         return 1
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        import traceback
         traceback.print_exc()
         return 1
 
