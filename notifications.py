@@ -398,7 +398,7 @@ class NotificationManager:
         """Check whether notifications should fire for this event type."""
         if not self.enabled or not self.providers:
             return False
-        return self.notifications_config.get(f"on_{event_type}", False)
+        return self.notifications_config.get(f"on_{event_type}", True)
 
     def notify(self, event_type: str, data: Dict[str, Any]):
         """
