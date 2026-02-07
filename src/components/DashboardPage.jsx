@@ -1510,7 +1510,7 @@ export default function DashboardPage({
             </div>
 
             {collapsedSections.taggedGuests ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                 <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded">
                   <HardDrive size={16} className="text-gray-600 dark:text-gray-400 shrink-0 sm:hidden" />
                   <HardDrive size={18} className="text-gray-600 dark:text-gray-400 shrink-0 hidden sm:block" />
@@ -1519,46 +1519,38 @@ export default function DashboardPage({
                     <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{Object.keys(data.guests).length}</div>
                   </div>
                 </div>
-                {ignoredGuests.length > 0 && (
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded">
-                    <Shield size={16} className="text-yellow-600 dark:text-yellow-400 shrink-0 sm:hidden" />
-                    <Shield size={18} className="text-yellow-600 dark:text-yellow-400 shrink-0 hidden sm:block" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Ignored</div>
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{ignoredGuests.length}</div>
-                    </div>
+                <div className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded border ${ignoredGuests.length > 0 ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'}`}>
+                  <Shield size={16} className={`shrink-0 sm:hidden ${ignoredGuests.length > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <Shield size={18} className={`shrink-0 hidden sm:block ${ignoredGuests.length > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Ignored</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{ignoredGuests.length}</div>
                   </div>
-                )}
-                {autoMigrateOkGuests.length > 0 && (
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded">
-                    <CheckCircle size={16} className="text-green-600 dark:text-green-400 shrink-0 sm:hidden" />
-                    <CheckCircle size={18} className="text-green-600 dark:text-green-400 shrink-0 hidden sm:block" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Auto-Migrate</div>
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{autoMigrateOkGuests.length}</div>
-                    </div>
+                </div>
+                <div className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded border ${autoMigrateOkGuests.length > 0 ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'}`}>
+                  <CheckCircle size={16} className={`shrink-0 sm:hidden ${autoMigrateOkGuests.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <CheckCircle size={18} className={`shrink-0 hidden sm:block ${autoMigrateOkGuests.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Auto-Migrate</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{autoMigrateOkGuests.length}</div>
                   </div>
-                )}
-                {excludeGuests.length > 0 && (
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
-                    <Shield size={16} className="text-blue-600 dark:text-blue-400 shrink-0 sm:hidden" />
-                    <Shield size={18} className="text-blue-600 dark:text-blue-400 shrink-0 hidden sm:block" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Anti-Affinity</div>
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{excludeGuests.length}</div>
-                    </div>
+                </div>
+                <div className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded border ${excludeGuests.length > 0 ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'}`}>
+                  <Shield size={16} className={`shrink-0 sm:hidden ${excludeGuests.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <Shield size={18} className={`shrink-0 hidden sm:block ${excludeGuests.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Anti-Affinity</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{excludeGuests.length}</div>
                   </div>
-                )}
-                {affinityGuests.length > 0 && (
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded">
-                    <Shield size={16} className="text-purple-600 dark:text-purple-400 shrink-0 sm:hidden" />
-                    <Shield size={18} className="text-purple-600 dark:text-purple-400 shrink-0 hidden sm:block" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Affinity</div>
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{affinityGuests.length}</div>
-                    </div>
+                </div>
+                <div className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded border ${affinityGuests.length > 0 ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800' : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'}`}>
+                  <Shield size={16} className={`shrink-0 sm:hidden ${affinityGuests.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <Shield size={18} className={`shrink-0 hidden sm:block ${affinityGuests.length > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Affinity</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{affinityGuests.length}</div>
                   </div>
-                )}
+                </div>
               </div>
             ) : (
               <div>
@@ -1785,8 +1777,19 @@ export default function DashboardPage({
 
                         return (
                           <>
-                            {paginatedGuests.map(guest => (
-                      <tr key={guest.vmid} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            {paginatedGuests.map(guest => {
+                      const guestHasTags = guest.tags.has_ignore || guest.tags.all_tags?.includes('auto_migrate_ok') || guest.tags.exclude_groups?.length > 0 || guest.tags.affinity_groups?.length > 0;
+                      return (
+                      <tr
+                        key={guest.vmid}
+                        className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${canMigrate ? 'sm:cursor-default cursor-pointer' : ''}`}
+                        onClick={() => {
+                          if (canMigrate && window.innerWidth < 640) {
+                            setTagModalGuest(guest);
+                            setShowTagModal(true);
+                          }
+                        }}
+                      >
                         <td className="p-3">
                           <span className={`px-2 py-1 text-xs rounded font-medium ${
                             guest.type === 'VM' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
@@ -1796,19 +1799,62 @@ export default function DashboardPage({
                           </span>
                         </td>
                         <td className="hidden sm:table-cell p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
-                        <td className="p-3 text-sm text-gray-900 dark:text-white">{guest.name}</td>
+                        <td className="p-3">
+                          <div className="text-sm text-gray-900 dark:text-white">{guest.name}</div>
+                          {/* Mobile: show tag badges below name */}
+                          {guestHasTags && (
+                            <div className="flex flex-wrap gap-1 mt-1 sm:hidden">
+                              {guest.tags.has_ignore && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded font-medium">
+                                  ignore
+                                </span>
+                              )}
+                              {guest.tags.all_tags?.includes('auto_migrate_ok') && (
+                                <span className="text-[10px] px-1.5 py-0.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded font-medium">
+                                  auto_migrate
+                                </span>
+                              )}
+                              {guest.tags.exclude_groups?.map(tag => (
+                                <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded font-medium">
+                                  {tag}
+                                </span>
+                              ))}
+                              {guest.tags.affinity_groups?.map(tag => (
+                                <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded font-medium">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                         <td className="p-3 text-sm text-gray-600 dark:text-gray-400">{guest.node}</td>
                         <td className="p-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded font-medium ${
-                            guest.status === 'migrating' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
-                            guest.status === 'running' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
-                            'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                          }`}>
-                            {guest.status === 'migrating' && (
-                              <Loader size={12} className="animate-spin" />
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded font-medium ${
+                              guest.status === 'migrating' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
+                              guest.status === 'running' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                              'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                            }`}>
+                              {guest.status === 'migrating' && (
+                                <Loader size={12} className="animate-spin" />
+                              )}
+                              {guest.status}
+                            </span>
+                            {/* Mobile: tag manage button */}
+                            {canMigrate && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTagModalGuest(guest);
+                                  setShowTagModal(true);
+                                }}
+                                className="sm:hidden p-1 text-purple-500 hover:text-purple-400 hover:bg-purple-900/30 rounded transition-colors"
+                                title="Manage tags"
+                              >
+                                <Tag size={14} />
+                              </button>
                             )}
-                            {guest.status}
-                          </span>
+                          </div>
                         </td>
                         <td className="hidden sm:table-cell p-3">
                           <div className="flex flex-wrap gap-1">
@@ -1872,7 +1918,8 @@ export default function DashboardPage({
                           </td>
                         )}
                       </tr>
-                            ))}
+                      );
+                    })}
                           </>
                         );
                       })()}
