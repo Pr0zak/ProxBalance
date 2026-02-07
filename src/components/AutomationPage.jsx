@@ -1272,13 +1272,26 @@ export default function AutomationPage(props) {
                   type="number"
                   min="1"
                   max="10"
-                  value={config.distribution_balancing?.guest_count_threshold || 2}
+                  value={config.distribution_balancing?.guest_count_threshold ?? 2}
                   onChange={(e) => {
+                    const val = e.target.value;
+                    const numVal = val === '' ? '' : parseInt(val);
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.guest_count_threshold = parseInt(e.target.value);
+                    newConfig.distribution_balancing.guest_count_threshold = numVal;
                     setConfig(newConfig);
-                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    if (val !== '' && !isNaN(numVal)) {
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      const newConfig = { ...config };
+                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                      newConfig.distribution_balancing.guest_count_threshold = 2;
+                      setConfig(newConfig);
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
@@ -1296,13 +1309,26 @@ export default function AutomationPage(props) {
                   type="number"
                   min="0"
                   max="32"
-                  value={config.distribution_balancing?.max_cpu_cores || 2}
+                  value={config.distribution_balancing?.max_cpu_cores ?? 2}
                   onChange={(e) => {
+                    const val = e.target.value;
+                    const numVal = val === '' ? '' : parseInt(val);
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.max_cpu_cores = parseInt(e.target.value);
+                    newConfig.distribution_balancing.max_cpu_cores = numVal;
                     setConfig(newConfig);
-                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    if (val !== '' && !isNaN(numVal)) {
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      const newConfig = { ...config };
+                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                      newConfig.distribution_balancing.max_cpu_cores = 2;
+                      setConfig(newConfig);
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
@@ -1320,13 +1346,26 @@ export default function AutomationPage(props) {
                   type="number"
                   min="0"
                   max="256"
-                  value={config.distribution_balancing?.max_memory_gb || 4}
+                  value={config.distribution_balancing?.max_memory_gb ?? 4}
                   onChange={(e) => {
+                    const val = e.target.value;
+                    const numVal = val === '' ? '' : parseInt(val);
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.max_memory_gb = parseInt(e.target.value);
+                    newConfig.distribution_balancing.max_memory_gb = numVal;
                     setConfig(newConfig);
-                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    if (val !== '' && !isNaN(numVal)) {
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (e.target.value === '') {
+                      const newConfig = { ...config };
+                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                      newConfig.distribution_balancing.max_memory_gb = 4;
+                      setConfig(newConfig);
+                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+                    }
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
