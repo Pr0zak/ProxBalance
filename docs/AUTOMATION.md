@@ -141,8 +141,48 @@ The engine tracks recent migration history to detect "ping-pong" scenarios where
 | Tag | Effect on automation |
 |-----|---------------------|
 | `ignore` | Guest is never auto-migrated (when `respect_ignore_tags` is `true`) |
-| `exclude_*` | Anti-affinity is enforced (when `respect_exclude_tags` is `true`) |
+| `no-auto-migrate` | Guest is never auto-migrated (alternative to `ignore`) |
+| `exclude_*` | Anti-affinity: guests sharing the same `exclude_` tag are kept on separate nodes (when `respect_exclude_tags` is `true`) |
+| `affinity_*` | Pro-affinity: guests sharing the same `affinity_` tag are kept together on the same node (when `respect_affinity_rules` is `true`) |
 | `auto-migrate-ok` | Whitelist mode: only tagged guests are migrated (when `require_auto_migrate_ok_tag` is `true`) |
+
+### Ignore and no-auto-migrate
+
+Both `ignore` and `no-auto-migrate` prevent a guest from being automatically migrated. They are checked independently — a guest with either tag is skipped. The `ignore` tag is controlled by the `respect_ignore_tags` setting, while `no-auto-migrate` is always enforced.
+
+The installer automatically applies the `ignore` tag to the ProxBalance container itself to prevent the automation from migrating its own service.
+
+### Anti-affinity (exclude_* tags)
+
+Guests tagged with the same `exclude_<group>` tag are prevented from being placed on the same node. This is useful for separating redundant services (e.g., two database replicas).
+
+```bash
+# Tag two database VMs to stay on separate nodes
+pvesh set /nodes/pve1/qemu/101/config --tags "exclude_database"
+pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
+```
+
+When the automation considers migrating a guest, it checks whether the target node already hosts another guest with the same `exclude_*` tag. If so, the migration is blocked.
+
+### Affinity rules (affinity_* tags)
+
+Guests tagged with the same `affinity_<group>` tag are kept together on the same node. When one member of an affinity group is recommended for migration, all other members are automatically recommended to follow to the same target node ("companion migrations").
+
+```bash
+# Tag VMs that should stay together
+pvesh set /nodes/pve1/qemu/200/config --tags "affinity_webstack"
+pvesh set /nodes/pve1/qemu/201/config --tags "affinity_webstack"
+pvesh set /nodes/pve1/qemu/202/config --tags "affinity_webstack"
+```
+
+Companion migration behavior:
+- The first guest recommended for migration is the **group leader**
+- All other group members not already on the target node become **affinity companions**
+- Companions that have the `ignore` tag, are stopped, or have pinned disks are skipped
+- The dashboard displays split detection warnings when affinity group members are on different nodes
+- Recommendation cards show "AFFINITY GROUP LEADER" and "AFFINITY COMPANION" badges
+
+Controlled by `respect_affinity_rules` (default: `true`).
 
 ### Whitelist mode
 
@@ -150,7 +190,7 @@ When `require_auto_migrate_ok_tag` is enabled, only guests with the `auto-migrat
 
 ### Maintenance mode override
 
-During maintenance evacuations, tag restrictions are bypassed. All guests on a maintenance node are migrated regardless of `ignore` or `exclude_*` tags.
+During maintenance evacuations, tag restrictions are bypassed. All guests on a maintenance node are migrated regardless of `ignore`, `no-auto-migrate`, or `exclude_*` tags.
 
 ---
 

@@ -17,7 +17,8 @@ Complete documentation for ProxBalance - cluster monitoring and automated load b
 
 ## Features
 
-- **[Automated Migrations](AUTOMATION.md)** - Scheduling, safety checks, and distribution balancing
+- **[Feature Overview](FEATURES.md)** - Complete feature list with descriptions
+- **[Automated Migrations](AUTOMATION.md)** - Scheduling, safety checks, tagging, and distribution balancing
 - **[AI Features](AI_FEATURES.md)** - AI-powered recommendations with OpenAI, Anthropic, or Ollama
 - **[Notifications](NOTIFICATIONS.md)** - Multi-provider alert system (Pushover, Email, Telegram, Discord, Slack, Webhooks)
 
@@ -51,21 +52,56 @@ bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main
 
 ```
 ProxBalance/
-├── app.py                    # Flask API server
-├── collector_api.py          # Proxmox data collection
-├── ai_provider.py            # AI provider abstraction
-├── automigrate.py            # Automated migration engine
-├── generate_recommendations.py # Recommendation generator
-├── notifications.py          # Multi-provider notifications
-├── update_manager.py         # Update/version management
-├── index.html                # React web UI
-├── src/app.jsx               # React source
-├── config.example.json       # Configuration template
-├── requirements.txt          # Python dependencies
-├── install.sh                # Automated installer
-├── systemd/                  # Service and timer files
-├── nginx/                    # Reverse proxy config
-└── docs/                     # Documentation
+├── app.py                       # Flask entry point (modular Blueprint architecture)
+├── collector_api.py             # Proxmox data collection service
+├── ai_provider.py               # AI provider abstraction (OpenAI/Anthropic/Ollama)
+├── automigrate.py               # Automated migration engine
+├── generate_recommendations.py  # Background recommendation generator
+├── notifications.py             # Multi-provider notification system
+├── update_manager.py            # Update/version management
+│
+├── proxbalance/                 # Core backend package
+│   ├── config_manager.py        # Config loading, Proxmox client, path constants
+│   ├── cache.py                 # In-memory cache with 60s TTL
+│   ├── scoring.py               # Penalty-based scoring algorithm
+│   ├── migrations.py            # Migration execution logic
+│   ├── evacuation.py            # Node evacuation planning
+│   ├── recommendations.py       # Recommendation engine
+│   └── routes/                  # Flask Blueprints (all API endpoints)
+│       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary
+│       ├── automation.py        # /api/automigrate/* endpoints
+│       ├── config.py            # /api/config endpoints
+│       ├── evacuation.py        # /api/nodes/evacuate endpoints
+│       ├── guests.py            # /api/guests/*, /api/affinity-groups
+│       ├── migrations.py        # /api/migrate endpoint
+│       ├── notifications.py     # /api/notifications/test endpoint
+│       ├── penalty.py           # /api/penalty-config endpoint
+│       ├── recommendations.py   # /api/recommendations endpoints
+│       └── system.py            # /api/update/*, /api/health, /api/version
+│
+├── src/                         # Frontend source (React JSX)
+│   ├── index.jsx                # esbuild entry point
+│   ├── app.jsx                  # Main React SPA component
+│   ├── components/
+│   │   ├── DashboardPage.jsx    # Dashboard UI with charts
+│   │   ├── AutomationPage.jsx   # Automation configuration
+│   │   ├── SettingsPage.jsx     # Settings panel
+│   │   ├── Icons.jsx            # SVG icon components
+│   │   └── Skeletons.jsx        # Loading skeleton components
+│   ├── api/
+│   │   └── client.js            # API client with error handling
+│   └── utils/
+│       ├── formatters.js        # Utility formatting functions
+│       └── useIsMobile.js       # Mobile responsiveness hook
+│
+├── index.html                   # SPA entry point
+├── assets/                      # SVG logos, favicon, and built JS
+├── config.example.json          # Configuration template
+├── requirements.txt             # Python dependencies
+├── install.sh                   # Automated LXC installer
+├── systemd/                     # Systemd service and timer files
+├── nginx/                       # Nginx reverse proxy config
+└── docs/                        # Documentation (17 markdown files)
 ```
 
 ---

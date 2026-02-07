@@ -57,10 +57,10 @@ ProxBalance/
 │       └── system.py            # /api/update/*, /api/health, etc. (861 lines)
 │
 ├── src/                         # Frontend source (React JSX)
-│   ├── index.jsx                # Entry point for esbuild bundling (2,362 lines)
-│   ├── app.jsx                  # Main React SPA component (~11,800 lines)
+│   ├── index.jsx                # Entry point for esbuild bundling (2,422 lines)
+│   ├── app.jsx                  # Main React SPA component (~11,900 lines)
 │   ├── components/
-│   │   ├── DashboardPage.jsx    # Dashboard UI with charts (5,322 lines)
+│   │   ├── DashboardPage.jsx    # Dashboard UI with charts (5,333 lines)
 │   │   ├── AutomationPage.jsx   # Automation configuration (2,588 lines)
 │   │   ├── SettingsPage.jsx     # Settings panel (1,857 lines)
 │   │   ├── Icons.jsx            # SVG icon components
@@ -68,7 +68,8 @@ ProxBalance/
 │   ├── api/
 │   │   └── client.js            # API client with error handling (504 lines)
 │   └── utils/
-│       └── formatters.js        # Utility formatting functions
+│       ├── formatters.js        # Utility formatting functions
+│       └── useIsMobile.js       # Mobile responsiveness hook
 │
 ├── index.html                   # SPA entry point (loads React, ReactDOM, then app.js)
 ├── assets/                      # SVG logos, favicon, and built JS
@@ -87,7 +88,8 @@ ProxBalance/
 ├── nginx/                       # Nginx reverse proxy config
 │   └── proxmox-balance          # port 80 → Gunicorn port 5000
 │
-├── docs/                        # Documentation (15 markdown files + images)
+├── docs/                        # Documentation (17 markdown files + images)
+│   ├── README.md                # Documentation index
 │   ├── API.md                   # REST API reference (48+ endpoints)
 │   ├── SCORING_ALGORITHM.md     # Penalty scoring details
 │   ├── AUTOMATION.md            # Auto-migration scheduling
@@ -97,6 +99,7 @@ ProxBalance/
 │   ├── INSTALL.md, USAGE.md, FEATURES.md, TROUBLESHOOTING.md
 │   ├── DOCKER_DEV.md, CONTRIBUTING.md
 │   ├── MODULAR_REFACTORING_PLAN.md
+│   ├── MOBILE_REDESIGN_PLAN.md  # Mobile UI redesign planning
 │   ├── TESTING_UPDATE_COMPATIBILITY.md
 │   └── UPDATE_FROM_OLD_VERSION.md
 │
@@ -190,7 +193,7 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 - **`notifications.py`** — Multi-provider notifications (Pushover, Email, Telegram, Discord, Slack, Webhooks).
 
 ### Frontend
-- **`src/app.jsx`** — The main React SPA (~11,800 lines). Contains most UI components, state management, and routing logic.
+- **`src/app.jsx`** — The main React SPA (~11,900 lines). Contains most UI components, state management, and routing logic.
 - **`src/components/DashboardPage.jsx`** — Dashboard with cluster charts and metrics (5,322 lines).
 - **`src/components/AutomationPage.jsx`** — Automation configuration UI.
 - **`src/components/SettingsPage.jsx`** — Settings and configuration panel.
@@ -301,7 +304,7 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 
 - **`config.json` contains secrets** — Never commit it. Use `config.example.json` for reference.
 - **Modular architecture** — `app.py` is a thin 60-line entry point. Route handlers are in `proxbalance/routes/`. Core logic is in `proxbalance/` domain modules. Do not add large blocks of code back into `app.py`.
-- **`src/app.jsx` is still very large** (~11,800 lines) — Be precise when making edits. Search for specific component names.
+- **`src/app.jsx` is still very large** (~11,900 lines) — Be precise when making edits. Search for specific component names.
 - **Frontend build** — Uses esbuild, not Babel. Run `./build.sh` to rebuild. Output goes to `assets/js/app.js`.
 - **No package.json committed** — It's gitignored. Use `npx esbuild` or install locally.
 - **JSON-file storage** — No database. All state lives in JSON files (`cluster_cache.json`, `config.json`, `migration_history.json`).

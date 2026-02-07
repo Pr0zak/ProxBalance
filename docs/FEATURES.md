@@ -73,6 +73,17 @@ pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
 
 Guests with matching `exclude_*` tags are penalized when placed on the same node. Violations are flagged in the dashboard.
 
+### Affinity Rules
+
+Tag-based system to keep related workloads together:
+
+```bash
+pvesh set /nodes/pve1/qemu/200/config --tags "affinity_webstack"
+pvesh set /nodes/pve1/qemu/201/config --tags "affinity_webstack"
+```
+
+Guests with matching `affinity_*` tags are kept on the same node. When one member is migrated, companion migrations are automatically generated for the rest of the group. Split groups (members on different nodes) are flagged in the dashboard.
+
 ### Storage Compatibility
 
 Pre-migration validation ensures all required storage volumes exist on the target node. Incompatible targets are heavily penalized in scoring but not completely excluded, allowing emergency evacuations.
@@ -105,8 +116,9 @@ Balances guest counts across nodes by migrating small VMs/CTs. Addresses uneven 
 
 ### Tag Controls
 
-- `ignore` tag excludes guests from automation
-- `exclude_*` tags enforce anti-affinity
+- `ignore` and `no-auto-migrate` tags exclude guests from automation
+- `exclude_*` tags enforce anti-affinity (keep guests apart)
+- `affinity_*` tags enforce pro-affinity (keep guests together) with automatic companion migrations
 - `auto-migrate-ok` enables whitelist mode
 - Tags are bypassed for maintenance evacuations
 

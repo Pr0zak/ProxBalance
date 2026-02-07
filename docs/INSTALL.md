@@ -189,16 +189,23 @@ Configure through the web UI Settings panel under **Collection Optimization**, o
 ProxBalance reads tags from VMs and containers via the Proxmox API:
 
 - **`ignore`** - Exclude the guest from migration recommendations
+- **`no-auto-migrate`** - Exclude the guest from automated migration (alternative to `ignore`)
 - **`exclude_<group>`** - Anti-affinity: guests sharing the same `exclude_` tag are kept on separate nodes
+- **`affinity_<group>`** - Pro-affinity: guests sharing the same `affinity_` tag are kept together on the same node
 - **`auto-migrate-ok`** - Whitelist mode opt-in (when enabled in config)
 
 ```bash
 # Set tags via Proxmox CLI
 pvesh set /nodes/<node>/qemu/<vmid>/config --tags "ignore"
 pvesh set /nodes/<node>/qemu/<vmid>/config --tags "exclude_database"
+pvesh set /nodes/<node>/qemu/<vmid>/config --tags "affinity_webstack"
 ```
 
+Tags are separated by semicolons or spaces in Proxmox. Tag names must be lowercase with no spaces (use underscores).
+
 After changing tags, trigger a refresh: `curl -X POST http://<container-ip>/api/refresh`
+
+See [Automated Migrations](AUTOMATION.md#tag-behavior) for detailed tag behavior during automation.
 
 ### AI recommendations (optional)
 
