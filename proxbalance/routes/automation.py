@@ -678,9 +678,18 @@ def automigrate_config():
             if 'automated_migrations' not in config:
                 config['automated_migrations'] = {}
 
+            # Keys that belong at the root config level, not under automated_migrations
+            root_level_keys = {'distribution_balancing'}
+
             # Update configuration (deep merge)
             for key, value in updates.items():
-                if isinstance(value, dict) and key in config['automated_migrations']:
+                if key in root_level_keys:
+                    # Save root-level keys at the top level of config
+                    if isinstance(value, dict) and key in config:
+                        config[key].update(value)
+                    else:
+                        config[key] = value
+                elif isinstance(value, dict) and key in config['automated_migrations']:
                     config['automated_migrations'][key].update(value)
                 else:
                     config['automated_migrations'][key] = value
