@@ -373,36 +373,11 @@ export default function DashboardPage({
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                {collapsedSections.automatedMigrations && (() => {
-                  const now = new Date();
-                  const last24h = now - (24 * 60 * 60 * 1000);
-                  const last7d = now - (7 * 24 * 60 * 60 * 1000);
-
-                  // Calculate 24h stats
-                  const stats24h = automationStatus.recent_migrations ? automationStatus.recent_migrations.filter(m => {
-                    const timestamp = m.timestamp.endsWith('Z') ? m.timestamp : m.timestamp + 'Z';
-                    return new Date(timestamp) > last24h;
-                  }) : [];
-                  const success24h = stats24h.filter(m => m.status === 'completed').length;
-                  const successRate24h = stats24h.length > 0 ? Math.round((success24h / stats24h.length) * 100) : 0;
-
-                  // Calculate 7d stats
-                  const stats7d = automationStatus.recent_migrations ? automationStatus.recent_migrations.filter(m => {
-                    const timestamp = m.timestamp.endsWith('Z') ? m.timestamp : m.timestamp + 'Z';
-                    return new Date(timestamp) > last7d;
-                  }) : [];
-
-                  return (
-                    <div className="flex items-center gap-4">
-                      {/* Dry run indicator */}
-                      {automationStatus.dry_run && automationStatus.enabled && (
-                        <div className="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                          <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
+                  <div className="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
+                  </div>
+                )}
 
                 {/* Combined Status & Pause/Resume Button */}
                 <button
