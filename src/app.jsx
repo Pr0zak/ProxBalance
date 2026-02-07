@@ -8454,39 +8454,39 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           const endIndex = Math.min(guestCurrentPage * guestPageSize, filteredGuestsCount);
 
                           return (
-                            <div className="mt-4 flex items-center justify-between">
-                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                                 Showing {startIndex}-{endIndex} of {filteredGuestsCount} guests
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2">
                                 <button
                                   onClick={() => setGuestCurrentPage(1)}
                                   disabled={guestCurrentPage === 1}
-                                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
                                   First
                                 </button>
                                 <button
                                   onClick={() => setGuestCurrentPage(guestCurrentPage - 1)}
                                   disabled={guestCurrentPage === 1}
-                                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
-                                  Previous
+                                  Prev
                                 </button>
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  Page {guestCurrentPage} of {totalPages}
+                                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                  {guestCurrentPage} / {totalPages}
                                 </span>
                                 <button
                                   onClick={() => setGuestCurrentPage(guestCurrentPage + 1)}
                                   disabled={guestCurrentPage === totalPages}
-                                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
                                   Next
                                 </button>
                                 <button
                                   onClick={() => setGuestCurrentPage(totalPages)}
                                   disabled={guestCurrentPage === totalPages}
-                                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
                                   Last
                                 </button>
@@ -8642,7 +8642,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 <div className="relative group">
                                   <div
                                     onClick={() => setSelectedNode(node)}
-                                    className={`w-24 h-32 sm:w-32 sm:h-40 rounded-lg border-4 flex flex-col items-center justify-between p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
+                                    className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                                     maintenanceNodes.has(node.name)
                                       ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-600 hover:border-yellow-600 dark:hover:border-yellow-500'
                                       : node.status === 'online'
@@ -8651,7 +8651,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   }`}>
                                     {/* Node header */}
                                     <div className="flex flex-col items-center z-10">
-                                      <Server size={28} className={maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'} />
+                                      <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} />
                                       <div className="text-sm font-bold text-gray-900 dark:text-white mt-1">{node.name}</div>
                                       {maintenanceNodes.has(node.name) && (
                                         <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
@@ -8667,13 +8667,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     </div>
 
                                     {/* Capacity indicators */}
-                                    <div className="w-full space-y-2 z-10">
+                                    <div className="w-full space-y-1.5 z-10 mt-1.5">
                                       {/* CPU Bar */}
-                                      <div className="relative">
-                                        <div className="text-xs mb-1">
+                                      <div>
+                                        <div className="text-[10px] sm:text-xs mb-0.5">
                                           <span className="text-gray-600 dark:text-gray-400 font-medium">CPU</span>
                                         </div>
-                                        <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                           <div
                                             className={`h-full rounded-full transition-all duration-500 ${
                                               (node.cpu_percent || 0) > 80 ? 'bg-red-500' :
@@ -8686,11 +8686,11 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                       </div>
 
                                       {/* Memory Bar */}
-                                      <div className="relative">
-                                        <div className="text-xs mb-1">
+                                      <div>
+                                        <div className="text-[10px] sm:text-xs mb-0.5">
                                           <span className="text-gray-600 dark:text-gray-400 font-medium">MEM</span>
                                         </div>
-                                        <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                           <div
                                             className={`h-full rounded-full transition-all duration-500 ${
                                               (node.mem_percent || 0) > 80 ? 'bg-red-500' :
@@ -8965,34 +8965,34 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 {/* Node Details Modal (from Cluster Map click) */}
                 {selectedNode && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedNode(null)}>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-                      {/* Modal Header */}
-                      <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-3">
-                          <Server size={28} className={maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'} />
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{selectedNode.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Node Details & Maintenance</p>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedNode(null)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                      {/* Modal Header - sticky so close button is always reachable */}
+                      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <Server size={24} className={`shrink-0 ${maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`} />
+                          <div className="min-w-0">
+                            <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">{selectedNode.name}</h3>
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Node Details</p>
                           </div>
                           {maintenanceNodes.has(selectedNode.name) && (
-                            <span className="px-2.5 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full">
+                            <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full shrink-0">
                               MAINTENANCE
                             </span>
                           )}
                         </div>
                         <button
                           onClick={() => setSelectedNode(null)}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                         >
-                          <X size={24} />
+                          <X size={22} />
                         </button>
                       </div>
 
-                      {/* Modal Body */}
-                      <div className="p-6">
+                      {/* Scrollable Modal Body */}
+                      <div className="p-4 sm:p-6 overflow-y-auto">
                         {/* Node Stats Grid */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
                           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Guests</div>
                             <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -9344,33 +9344,33 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 {/* Guest Details Modal (from Cluster Map click) */}
                 {selectedGuestDetails && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedGuestDetails(null)}>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedGuestDetails(null)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                       {/* Modal Header */}
-                      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`p-1.5 rounded-lg shrink-0 ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
                             {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-white" /> : <Package size={20} className="text-white" />}
                           </div>
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                               {selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`}
                             </h3>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                              {selectedGuestDetails.type === 'qemu' ? 'Virtual Machine' : 'Container'} #{selectedGuestDetails.vmid}
+                              {selectedGuestDetails.type === 'qemu' ? 'VM' : 'CT'} #{selectedGuestDetails.vmid}
                             </p>
                           </div>
                         </div>
                         <button
                           onClick={() => setSelectedGuestDetails(null)}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                         >
                           <X size={20} />
                         </button>
                       </div>
 
                       {/* Modal Body */}
-                      <div className="p-4">
+                      <div className="p-4 overflow-y-auto">
                         {/* Status Bar */}
                         <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                           <div className="flex items-center gap-2">
