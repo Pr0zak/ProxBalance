@@ -347,7 +347,7 @@ export default function DashboardPage({
         {/* Automated Migrations Status */}
         {automationStatus && (
           <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
                   automationStatus.enabled
@@ -372,7 +372,8 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
                 {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
                   <div className="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
@@ -465,7 +466,6 @@ export default function DashboardPage({
                     </>
                   )}
                 </button>
-              </div>
             </div>
 
             {!collapsedSections.automatedMigrations && (
