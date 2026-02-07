@@ -22,7 +22,8 @@ export default function DashboardPage({
   // Cluster health
   clusterHealth,
   // System info & updates
-  systemInfo, showUpdateModal, setShowUpdateModal, updating, updateLog, setUpdateLog, handleUpdate,
+  systemInfo, showUpdateModal, setShowUpdateModal, updating, updateLog, setUpdateLog,
+  updateResult, setUpdateResult, updateError, handleUpdate,
   // Branch management
   showBranchModal, setShowBranchModal, loadingBranches, availableBranches, branchPreview, setBranchPreview,
   loadingPreview, switchingBranch, rollingBack, fetchBranches, switchBranch, rollbackBranch, fetchBranchPreview,
@@ -4311,7 +4312,7 @@ export default function DashboardPage({
 
     {showUpdateModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md ${updating ? 'animate-pulse' : ''}`}>
@@ -4322,9 +4323,9 @@ export default function DashboardPage({
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">System update management</p>
               </div>
             </div>
-            {!updating && (
+            {!updating && updateResult !== 'success' && (
               <button
-                onClick={() => setShowUpdateModal(false)}
+                onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
                 className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
               >
                 <X size={20} className="text-gray-600 dark:text-gray-400" />
@@ -4332,7 +4333,7 @@ export default function DashboardPage({
             )}
           </div>
 
-          {systemInfo && !updating && updateLog.length === 0 && (
+          {systemInfo && !updating && updateResult === null && (
             <div className="space-y-4">
               <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-4">
                 <div className="flex items-start gap-3">
@@ -4409,45 +4410,114 @@ export default function DashboardPage({
             </div>
           )}
 
-          {(updating || updateLog.length > 0) && (
+          {updating && (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <RefreshCw size={40} className="text-blue-600 dark:text-blue-400 animate-spin" />
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">Updating ProxBalance...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This may take a minute.</p>
+              </div>
+            </div>
+          )}
+
+          {!updating && updateResult === 'success' && (
             <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <div className="font-mono text-sm space-y-1">
-                  {updateLog.map((line, idx) => (
-                    <div key={idx} className="text-gray-800 dark:text-gray-200">
-                      {line.includes('✓') ? (
-                        <span className="text-green-600 dark:text-green-400">{line}</span>
-                      ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
-                        <span className="text-red-600 dark:text-red-400">{line}</span>
-                      ) : line.includes('━') ? (
-                        <span className="text-blue-600 dark:text-blue-400">{line}</span>
-                      ) : (
-                        <span>{line}</span>
-                      )}
-                    </div>
-                  ))}
-                  {updating && (
-                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                      <RefreshCw size={16} className="animate-spin" />
-                      <span>Updating...</span>
-                    </div>
-                  )}
+              <div className="flex items-center gap-3">
+                <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">Update complete!</p>
+              </div>
+              {updateLog.length > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <div className="font-mono text-sm space-y-1">
+                    {updateLog.map((line, idx) => (
+                      <div key={idx} className="text-gray-800 dark:text-gray-200">
+                        {line.includes('✓') ? (
+                          <span className="text-green-600 dark:text-green-400">{line}</span>
+                        ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
+                          <span className="text-red-600 dark:text-red-400">{line}</span>
+                        ) : line.includes('━') ? (
+                          <span className="text-blue-600 dark:text-blue-400">{line}</span>
+                        ) : (
+                          <span>{line}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                >
+                  <RefreshCw size={16} />
+                  Close & Reload
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!updating && updateResult === 'up-to-date' && (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <CheckCircle size={40} className="text-blue-600 dark:text-blue-400" />
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">Already up to date</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">No new updates available.</p>
+              </div>
+              <button
+                onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
+                className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {!updating && updateResult === 'error' && (
+            <div className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={20} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-red-900 dark:text-red-200">Update failed</h3>
+                    <p className="text-sm text-red-800 dark:text-red-300 mt-1">{updateError}</p>
+                  </div>
                 </div>
               </div>
 
-              {!updating && (
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => {
-                      setShowUpdateModal(false);
-                      setUpdateLog([]);
-                    }}
-                    className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
-                  >
-                    Close
-                  </button>
-                </div>
+              {updateLog.length > 0 && (
+                <details>
+                  <summary className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
+                    Show update log
+                  </summary>
+                  <div className="mt-2 bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                    <div className="font-mono text-sm space-y-1">
+                      {updateLog.map((line, idx) => (
+                        <div key={idx} className="text-gray-800 dark:text-gray-200">
+                          {line.includes('✓') ? (
+                            <span className="text-green-600 dark:text-green-400">{line}</span>
+                          ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
+                            <span className="text-red-600 dark:text-red-400">{line}</span>
+                          ) : line.includes('━') ? (
+                            <span className="text-blue-600 dark:text-blue-400">{line}</span>
+                          ) : (
+                            <span>{line}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </details>
               )}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -4456,7 +4526,7 @@ export default function DashboardPage({
 
     {showBranchModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
