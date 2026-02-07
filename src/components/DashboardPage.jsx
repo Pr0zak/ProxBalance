@@ -78,6 +78,8 @@ export default function DashboardPage({
   // Dashboard Page - data is guaranteed to be available here
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
+  const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
+  const autoMigrateOkGuests = Object.values(data.guests || {}).filter(g => g.tags?.all_tags?.includes('auto_migrate_ok'));
   const violations = checkAffinityViolations();
 
   return (<>
@@ -1508,54 +1510,78 @@ export default function DashboardPage({
 
 
         {data && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
-                  <Tag size={24} className="text-white" />
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
+                  <Tag size={18} className="text-white sm:hidden" />
+                  <Tag size={24} className="text-white hidden sm:block" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Manage ignore tags and affinity rules for all guests</p>
+                  <h2 className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 hidden sm:block">Manage ignore tags and affinity rules for all guests</p>
                 </div>
-                <button
-                  onClick={() => toggleSection('taggedGuests')}
-                  className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
-                  title={collapsedSections.taggedGuests ? "Expand section" : "Collapse section"}
-                >
-                  {collapsedSections.taggedGuests ? (
-                    <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-                  ) : (
-                    <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-                  )}
-                </button>
               </div>
+              <button
+                onClick={() => toggleSection('taggedGuests')}
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 shrink-0"
+                title={collapsedSections.taggedGuests ? "Expand section" : "Collapse section"}
+              >
+                {collapsedSections.taggedGuests ? (
+                  <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" />
+                ) : (
+                  <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" />
+                )}
+              </button>
             </div>
 
             {collapsedSections.taggedGuests ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded">
-                  <HardDrive size={18} className="text-gray-600 dark:text-gray-400" />
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Total Guests</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">{Object.keys(data.guests).length} guests</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded">
+                  <HardDrive size={16} className="text-gray-600 dark:text-gray-400 shrink-0 sm:hidden" />
+                  <HardDrive size={18} className="text-gray-600 dark:text-gray-400 shrink-0 hidden sm:block" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Total</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{Object.keys(data.guests).length}</div>
                   </div>
                 </div>
                 {ignoredGuests.length > 0 && (
-                  <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded">
-                    <Shield size={18} className="text-yellow-600 dark:text-yellow-400" />
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">Ignored</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">{ignoredGuests.length} guest{ignoredGuests.length !== 1 ? 's' : ''}</div>
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded">
+                    <Shield size={16} className="text-yellow-600 dark:text-yellow-400 shrink-0 sm:hidden" />
+                    <Shield size={18} className="text-yellow-600 dark:text-yellow-400 shrink-0 hidden sm:block" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Ignored</div>
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{ignoredGuests.length}</div>
+                    </div>
+                  </div>
+                )}
+                {autoMigrateOkGuests.length > 0 && (
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded">
+                    <CheckCircle size={16} className="text-green-600 dark:text-green-400 shrink-0 sm:hidden" />
+                    <CheckCircle size={18} className="text-green-600 dark:text-green-400 shrink-0 hidden sm:block" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Auto-Migrate</div>
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{autoMigrateOkGuests.length}</div>
                     </div>
                   </div>
                 )}
                 {excludeGuests.length > 0 && (
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
-                    <Shield size={18} className="text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">Affinity Rules</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">{excludeGuests.length} guest{excludeGuests.length !== 1 ? 's' : ''}</div>
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
+                    <Shield size={16} className="text-blue-600 dark:text-blue-400 shrink-0 sm:hidden" />
+                    <Shield size={18} className="text-blue-600 dark:text-blue-400 shrink-0 hidden sm:block" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Anti-Affinity</div>
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{excludeGuests.length}</div>
+                    </div>
+                  </div>
+                )}
+                {affinityGuests.length > 0 && (
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded">
+                    <Shield size={16} className="text-purple-600 dark:text-purple-400 shrink-0 sm:hidden" />
+                    <Shield size={18} className="text-purple-600 dark:text-purple-400 shrink-0 hidden sm:block" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">Affinity</div>
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">{affinityGuests.length}</div>
                     </div>
                   </div>
                 )}
