@@ -62,7 +62,7 @@ export default function AutomationPage(props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
       <div className="max-w-5xl mx-auto p-4">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
@@ -77,7 +77,7 @@ export default function AutomationPage(props) {
               </button>
               <div className="flex items-center gap-3">
                 <Clock size={28} className="text-blue-600 dark:text-blue-400" />
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
                 <span className="relative group inline-block">
                   <Info size={18} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
@@ -347,7 +347,7 @@ export default function AutomationPage(props) {
                 };
 
                 return (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {Object.entries(presets).map(([key, preset]) => {
                       const info = presetInfo[key];
                       const Icon = info.icon;
@@ -860,7 +860,7 @@ export default function AutomationPage(props) {
 
           {!collapsedSections.safetyRules && (
           <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Min Confidence Score
@@ -1280,7 +1280,7 @@ export default function AutomationPage(props) {
             </div>
 
             {config.distribution_balancing?.enabled && (
-            <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
               {/* Guest Count Threshold */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1735,7 +1735,7 @@ export default function AutomationPage(props) {
                                 <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                               </label>
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                                 <label key={day} className="flex items-center">
                                   <input
@@ -1770,7 +1770,7 @@ export default function AutomationPage(props) {
                           </div>
 
                           {/* Start/End Time */}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
                               <div className="flex gap-2">
@@ -2030,7 +2030,7 @@ export default function AutomationPage(props) {
                       <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                     </label>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                       <label key={day} className="flex items-center">
                         <input
@@ -2082,7 +2082,7 @@ export default function AutomationPage(props) {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Start Time

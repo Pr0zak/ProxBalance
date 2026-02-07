@@ -54,7 +54,7 @@ export default function SettingsPage(props) {
   } = props;
 
   return (
-              <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
                 <div className="max-w-5xl mx-auto p-4">
                   {/* Settings Header */}
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
@@ -69,7 +69,7 @@ export default function SettingsPage(props) {
                         </button>
                         <div className="flex items-center gap-3">
                           <Settings size={28} className="text-blue-600 dark:text-blue-400" />
-                          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+                          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
                         </div>
                       </div>
                       <button
@@ -304,7 +304,7 @@ export default function SettingsPage(props) {
                       <div className="mb-6">
                         <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">Performance Metrics</h4>
                         <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="bg-white/50 dark:bg-gray-800/50 rounded p-3">
                               <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Time</div>
                               <div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.performance.total_time}s</div>
@@ -439,7 +439,7 @@ export default function SettingsPage(props) {
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Node RRD Timeframe
@@ -564,7 +564,7 @@ export default function SettingsPage(props) {
                         {/* Notification Events */}
                         <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
                           <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Notification Events</div>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_start !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_start: e.target.checked } })}
@@ -607,7 +607,7 @@ export default function SettingsPage(props) {
                             </label>
                           </div>
                           <div id="settings-notif-pushover" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">API Token</label>
                                 <input type="password" placeholder="Application API token"
@@ -631,7 +631,7 @@ export default function SettingsPage(props) {
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
                                 <select value={automationConfig.notifications?.providers?.pushover?.priority ?? 0}
@@ -707,7 +707,7 @@ export default function SettingsPage(props) {
                             </label>
                           </div>
                           <div id="settings-notif-email" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP Host</label>
                                 <input type="text" placeholder="smtp.gmail.com"
@@ -731,7 +731,7 @@ export default function SettingsPage(props) {
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                                 <input type="text" placeholder="user@example.com"
@@ -755,7 +755,7 @@ export default function SettingsPage(props) {
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">From Address</label>
                                 <input type="email" placeholder="proxbalance@example.com"
@@ -813,7 +813,7 @@ export default function SettingsPage(props) {
                             </label>
                           </div>
                           <div id="settings-notif-telegram" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Bot Token</label>
                                 <input type="password" placeholder="123456:ABC-DEF..."

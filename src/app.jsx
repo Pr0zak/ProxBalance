@@ -2192,7 +2192,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </button>
                         <div className="flex items-center gap-3">
                           <Settings size={28} className="text-blue-600 dark:text-blue-400" />
-                          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+                          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
                         </div>
                       </div>
                       <button
@@ -2562,7 +2562,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Node RRD Timeframe
@@ -2687,7 +2687,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         {/* Notification Events */}
                         <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
                           <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Notification Events</div>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_start !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_start: e.target.checked } })}
@@ -2730,7 +2730,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             </label>
                           </div>
                           <div id="settings-notif-pushover" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">API Token</label>
                                 <input type="password" placeholder="Application API token"
@@ -2754,7 +2754,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
                                 <select value={automationConfig.notifications?.providers?.pushover?.priority ?? 0}
@@ -2830,7 +2830,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             </label>
                           </div>
                           <div id="settings-notif-email" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP Host</label>
                                 <input type="text" placeholder="smtp.gmail.com"
@@ -2854,7 +2854,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                                 <input type="text" placeholder="user@example.com"
@@ -2878,7 +2878,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">From Address</label>
                                 <input type="email" placeholder="proxbalance@example.com"
@@ -2936,7 +2936,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             </label>
                           </div>
                           <div id="settings-notif-telegram" className="hidden p-3 pt-0 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Bot Token</label>
                                 <input type="password" placeholder="123456:ABC-DEF..."
@@ -4005,7 +4005,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </button>
                         <div className="flex items-center gap-3">
                           <Clock size={28} className="text-blue-600 dark:text-blue-400" />
-                          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
+                          <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
                           <span className="relative group inline-block">
                             <Info size={18} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
                             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
@@ -4256,7 +4256,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           };
 
                           return (
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               {Object.entries(presets).map(([key, preset]) => {
                                 const info = presetInfo[key];
                                 const Icon = info.icon;
@@ -4769,7 +4769,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                     {!collapsedSections.safetyRules && (
                     <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Min Confidence Score
@@ -5207,7 +5207,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
 
                       {config.distribution_balancing?.enabled && (
-                      <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                         {/* Guest Count Threshold */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -5662,7 +5662,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                                         </label>
                                       </div>
-                                      <div className="grid grid-cols-4 gap-2">
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                                           <label key={day} className="flex items-center">
                                             <input
@@ -5697,7 +5697,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     </div>
 
                                     {/* Start/End Time */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                       <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
                                         <div className="flex gap-2">
@@ -5957,7 +5957,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                               </label>
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                                 <label key={day} className="flex items-center">
                                   <input
@@ -6009,7 +6009,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 </button>
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                   Start Time
@@ -6650,13 +6650,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 overflow-hidden">
                   {/* Minimal Header - Always Visible */}
-                  <div className="flex items-center justify-between p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
                     <div className="flex items-center gap-3">
                       <div onMouseEnter={handleLogoHover} className={logoBalancing ? 'logo-balancing' : 'transition-transform'}>
                         <ProxBalanceLogo size={dashboardHeaderCollapsed ? 64 : 128} />
                       </div>
                       <div>
-                        <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-3xl'}`}>ProxBalance</h1>
+                        <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>ProxBalance</h1>
                         {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization</p>}
                         {dashboardHeaderCollapsed && data && data.nodes && (() => {
                           const nodes = Object.values(data.nodes);
@@ -6664,7 +6664,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           const totalMemory = (nodes.reduce((sum, node) => sum + (node.mem_percent || 0), 0) / nodes.length).toFixed(1);
                           const onlineNodes = nodes.filter(node => node.status === 'online').length;
                           return (
-                            <div className="flex items-center gap-4 mt-1 text-xs">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-xs">
                               <span className="text-gray-600 dark:text-gray-400">
                                 Nodes: <span className="font-semibold text-green-600 dark:text-green-400">{onlineNodes}/{nodes.length}</span>
                               </span>
@@ -7050,7 +7050,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                       <div className="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Automation Status</div>
                         <div className={`flex items-center gap-2 ${
@@ -8589,7 +8589,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                     {!collapsedSections.clusterMap && (
                       <div className="relative" style={{minHeight: '400px'}}>
-                        <div className="flex flex-wrap gap-8 justify-center items-start py-8">
+                        <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
                           {Object.values(data.nodes).map(node => {
                             const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
                             const poweredOffCount = allNodeGuests.filter(g => g.status !== 'running').length;
@@ -8632,7 +8632,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 <div className="relative group">
                                   <div
                                     onClick={() => setSelectedNode(node)}
-                                    className={`w-32 h-40 rounded-lg border-4 flex flex-col items-center justify-between p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
+                                    className={`w-24 h-32 sm:w-32 sm:h-40 rounded-lg border-4 flex flex-col items-center justify-between p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                                     maintenanceNodes.has(node.name)
                                       ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-600 hover:border-yellow-600 dark:hover:border-yellow-500'
                                       : node.status === 'online'
@@ -9049,7 +9049,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </div>
 
                         {/* Additional Node Info */}
-                        <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</div>
                             <div className={`text-lg font-semibold ${
@@ -9112,7 +9112,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                               Weighted scoring used for recommendations: {penaltyConfig ? `${(penaltyConfig.weight_current * 100).toFixed(0)}% current, ${(penaltyConfig.weight_24h * 100).toFixed(0)}% 24h avg, ${(penaltyConfig.weight_7d * 100).toFixed(0)}% 7-day avg` : '50% current, 30% 24h avg, 20% 7-day avg'}
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               <div className="bg-white dark:bg-gray-800 rounded p-2">
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">CPU Score</div>
                                 <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -9377,7 +9377,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </div>
 
                         {/* Resource Usage - Compact 2-Column Grid with Sparklines */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                           {/* CPU */}
                           <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded p-2 border border-blue-200 dark:border-blue-800">
                             {/* Sparkline background */}
@@ -9422,7 +9422,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </div>
 
                         {/* I/O Metrics - Compact 2-Column */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                           {/* Disk I/O (Read/Write Stacked) */}
                           <div className="bg-green-50 dark:bg-green-900/20 rounded p-2 border border-green-200 dark:border-green-800">
                             <div className="text-[10px] uppercase tracking-wide text-green-600 dark:text-green-400 font-medium mb-1">Disk I/O</div>
@@ -10119,7 +10119,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
                         </div>
 
-                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
                           <div><span className="text-gray-600 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
                           <div><span className="text-gray-600 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
                           <div><span className="text-gray-600 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
@@ -11626,7 +11626,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 mb-2 text-sm">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 text-sm">
                                   <div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Source Node</div>
                                     <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -11734,7 +11734,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             )}
 
             {/* Footer with timestamp and system info */}
-            <div className="fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
+            <div className="hidden sm:block fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
               <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                 <div className="flex items-center gap-4">
                   {lastUpdate && (

@@ -81,7 +81,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -122,13 +122,13 @@ export default function DashboardPage({
 
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 overflow-hidden">
           {/* Minimal Header - Always Visible */}
-          <div className="flex items-center justify-between p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
             <div className="flex items-center gap-3">
               <div onMouseEnter={handleLogoHover} className={logoBalancing ? 'logo-balancing' : 'transition-transform'}>
                 <ProxBalanceLogo size={dashboardHeaderCollapsed ? 64 : 128} />
               </div>
               <div>
-                <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-3xl'}`}>ProxBalance</h1>
+                <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>ProxBalance</h1>
                 {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization</p>}
                 {dashboardHeaderCollapsed && data && data.nodes && (() => {
                   const nodes = Object.values(data.nodes);
@@ -136,7 +136,7 @@ export default function DashboardPage({
                   const totalMemory = (nodes.reduce((sum, node) => sum + (node.mem_percent || 0), 0) / nodes.length).toFixed(1);
                   const onlineNodes = nodes.filter(node => node.status === 'online').length;
                   return (
-                    <div className="flex items-center gap-4 mt-1 text-xs">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-xs">
                       <span className="text-gray-600 dark:text-gray-400">
                         Nodes: <span className="font-semibold text-green-600 dark:text-green-400">{onlineNodes}/{nodes.length}</span>
                       </span>
@@ -157,7 +157,7 @@ export default function DashboardPage({
                 })()}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {systemInfo && systemInfo.updates_available && (
                 <button
                   onClick={() => setShowUpdateModal(true)}
@@ -165,7 +165,7 @@ export default function DashboardPage({
                   title={`${systemInfo.commits_behind} update(s) available`}
                 >
                   <RefreshCw size={18} />
-                  Update Available
+                  <span className="hidden sm:inline">Update Available</span>
                 </button>
               )}
               <a
@@ -522,7 +522,7 @@ export default function DashboardPage({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Automation Status</div>
                 <div className={`flex items-center gap-2 ${
@@ -881,7 +881,7 @@ export default function DashboardPage({
                 {!collapsedSections.lastRunSummary && (
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                     {/* Run Overview */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Status</div>
                         <div className={`text-sm font-bold ${
@@ -1960,7 +1960,7 @@ export default function DashboardPage({
                 </button>
               </div>
               {!collapsedSections.clusterMap && (
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Show Powered Off:</span>
                     <button
@@ -1978,7 +1978,7 @@ export default function DashboardPage({
                     </button>
                   </div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">View by:</span>
-                  <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+                  <div className="flex flex-wrap rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
                     <button
                       onClick={() => setClusterMapViewMode('cpu')}
                       className={`px-3 py-1 text-sm rounded transition-colors ${
@@ -2036,7 +2036,7 @@ export default function DashboardPage({
 
             {!collapsedSections.clusterMap && (
               <div className="relative" style={{minHeight: '400px'}}>
-                <div className="flex flex-wrap gap-8 justify-center items-start py-8">
+                <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
                   {Object.values(data.nodes).map(node => {
                     const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
                     const poweredOffCount = allNodeGuests.filter(g => g.status !== 'running').length;
@@ -2079,7 +2079,7 @@ export default function DashboardPage({
                         <div className="relative group">
                           <div
                             onClick={() => setSelectedNode(node)}
-                            className={`w-32 h-40 rounded-lg border-4 flex flex-col items-center justify-between p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
+                            className={`w-24 h-32 sm:w-32 sm:h-40 rounded-lg border-4 flex flex-col items-center justify-between p-1.5 sm:p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                             maintenanceNodes.has(node.name)
                               ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-600 hover:border-yellow-600 dark:hover:border-yellow-500'
                               : node.status === 'online'
@@ -2088,7 +2088,7 @@ export default function DashboardPage({
                           }`}>
                             {/* Node header */}
                             <div className="flex flex-col items-center z-10">
-                              <Server size={28} className={maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'} />
+                              <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} />
                               <div className="text-sm font-bold text-gray-900 dark:text-white mt-1">{node.name}</div>
                               {maintenanceNodes.has(node.name) && (
                                 <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
@@ -2496,7 +2496,7 @@ export default function DashboardPage({
                 </div>
 
                 {/* Additional Node Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</div>
                     <div className={`text-lg font-semibold ${
@@ -2559,7 +2559,7 @@ export default function DashboardPage({
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                       Weighted scoring used for recommendations: {penaltyConfig ? `${(penaltyConfig.weight_current * 100).toFixed(0)}% current, ${(penaltyConfig.weight_24h * 100).toFixed(0)}% 24h avg, ${(penaltyConfig.weight_7d * 100).toFixed(0)}% 7-day avg` : '50% current, 30% 24h avg, 20% 7-day avg'}
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="bg-white dark:bg-gray-800 rounded p-2">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">CPU Score</div>
                         <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -3566,7 +3566,7 @@ export default function DashboardPage({
                   <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
                 </div>
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
                   <div><span className="text-gray-600 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
                   <div><span className="text-gray-600 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
                   <div><span className="text-gray-600 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
@@ -5057,7 +5057,7 @@ export default function DashboardPage({
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 text-sm">
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Source Node</div>
                             <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -5165,8 +5165,8 @@ export default function DashboardPage({
     )}
 
     {/* Footer with timestamp and system info */}
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
-      <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+    <div className="hidden sm:block fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-1 text-xs text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-4">
           {lastUpdate && (
             <div className="flex items-center gap-1.5">
