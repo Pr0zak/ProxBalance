@@ -373,13 +373,12 @@ export default function DashboardPage({
                 </button>
               </div>
             </div>
+            {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
+              <div className="mb-3">
+                <span className="inline-block px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-                {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
-                  <div className="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                    <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
-                  </div>
-                )}
-
                 {/* Combined Status & Pause/Resume Button */}
                 <button
                   onClick={async () => {
