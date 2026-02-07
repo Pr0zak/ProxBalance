@@ -378,7 +378,7 @@ export default function DashboardPage({
                 <span className="inline-block px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 mb-4">
                 {/* Combined Status & Pause/Resume Button */}
                 <button
                   onClick={async () => {
@@ -399,7 +399,7 @@ export default function DashboardPage({
                     }
                   }}
                   disabled={!automationStatus.enabled}
-                  className={`px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors flex items-center gap-2 ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2 ${
                     !automationStatus.enabled
                       ? 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : automationStatus.timer_active
@@ -435,7 +435,7 @@ export default function DashboardPage({
                 {/* Configure Button */}
                 <button
                   onClick={() => setCurrentPage('automation')}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
                 >
                   <Settings size={16} />
                   Configure
@@ -446,7 +446,7 @@ export default function DashboardPage({
                   type="button"
                   onClick={runAutomationNow}
                   disabled={!automationStatus.enabled || runningAutomation}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                  className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 sm:gap-2 ${
                     automationStatus.enabled && !runningAutomation
                       ? 'bg-green-600 hover:bg-green-700 text-white'
                       : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
