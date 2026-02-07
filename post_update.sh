@@ -41,37 +41,31 @@ else
 fi
 
 if [ "$NEEDS_BUILD" = "true" ]; then
-  # Install Babel dependencies if not present
-  if [ ! -d node_modules/@babel ]; then
-    echo "  → Installing Babel dependencies..."
-    npm install --save-dev @babel/core @babel/cli @babel/preset-react >/dev/null 2>&1
-  fi
-
-  # Create Babel configuration
-  cat > .babelrc <<'BABEL_CONFIG'
-{
-  "presets": ["@babel/preset-react"]
-}
-BABEL_CONFIG
-
-  # Extract JSX from index.html if needed (for upgrades from old versions)
-  if [ ! -f src/app.jsx ]; then
-    echo "  → Extracting JSX from index.html..."
-    mkdir -p src
-    sed -n '/<script type="text\/babel">/,/<\/script>/p' index.html | \
-      sed '1d;$d' | sed '1,2d' > src/app.jsx
-  fi
-
-  # Compile JSX to JavaScript
-  echo "  → Compiling JSX to JavaScript..."
-  mkdir -p /var/www/html/assets/js
-
-  # Use node_modules/.bin/babel directly with preset flag if npx is not available
-  if command -v npx >/dev/null 2>&1; then
-    npx babel src/app.jsx --out-file /var/www/html/assets/js/app.js 2>/dev/null
+  # Bundle the frontend using esbuild (handles all imports from src/index.jsx)
+  echo "  → Bundling frontend with esbuild..."
+  mkdir -p assets/js
+  if [ -f build.sh ]; then
+    bash build.sh
   else
-    node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /var/www/html/assets/js/app.js 2>/dev/null
+    # Fallback: direct esbuild call matching build.sh
+    if [ -f "node_modules/.bin/esbuild" ]; then
+      ESBUILD="node_modules/.bin/esbuild"
+    else
+      ESBUILD="npx esbuild"
+    fi
+    $ESBUILD src/index.jsx \
+      --bundle \
+      --outfile=assets/js/app.js \
+      --format=iife \
+      --jsx=transform \
+      --target=es2020 \
+      --minify-syntax
   fi
+
+  # Deploy built files to web root
+  echo "  → Deploying to web root..."
+  mkdir -p /var/www/html/assets/js
+  cp assets/js/app.js /var/www/html/assets/js/app.js
 
   # Download React libraries if not present
   if [ ! -f /var/www/html/assets/js/react.production.min.js ]; then
