@@ -722,6 +722,23 @@ export default function DashboardPage({
                     </span>
                   </div>
                 )}
+                {automationStatus.next_check && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Next Run:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {(() => {
+                        let timestamp = automationStatus.next_check;
+                        if (timestamp && typeof timestamp === 'string') {
+                          if (!timestamp.endsWith('Z') && !timestamp.includes('+')) {
+                            timestamp += 'Z';
+                          }
+                          return new Date(timestamp).toLocaleString();
+                        }
+                        return 'Unknown';
+                      })()}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
