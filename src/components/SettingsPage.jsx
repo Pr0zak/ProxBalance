@@ -594,7 +594,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Pushover</span>
                               {automationConfig.notifications?.providers?.pushover?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -694,7 +694,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Email (SMTP)</span>
                               {automationConfig.notifications?.providers?.email?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -800,7 +800,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Telegram</span>
                               {automationConfig.notifications?.providers?.telegram?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -849,7 +849,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Discord</span>
                               {automationConfig.notifications?.providers?.discord?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -885,7 +885,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Slack</span>
                               {automationConfig.notifications?.providers?.slack?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -921,7 +921,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Generic Webhook</span>
                               {automationConfig.notifications?.providers?.webhook?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>

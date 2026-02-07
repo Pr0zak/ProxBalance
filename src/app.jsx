@@ -5599,7 +5599,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                               : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                           }`}
                                         >
-                                          <Calendar size={14} /> Migration Window
+                                          <Calendar size={14} /> <span className="hidden sm:inline">Migration </span>Window
                                         </button>
                                         <button
                                           onClick={() => {
@@ -5632,7 +5632,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                               : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                           }`}
                                         >
-                                          <Moon2 size={14} /> Blackout Window
+                                          <Moon2 size={14} /> <span className="hidden sm:inline">Blackout </span>Window
                                         </button>
                                       </div>
                                     </div>
@@ -5837,7 +5837,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         onClick={() => setEditingWindowIndex(null)}
                                         className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold"
                                       >
-                                        <Check size={14} /> Done
+                                        <Check size={14} /> <span className="hidden sm:inline">Done</span>
                                       </button>
                                     </div>
                                   </div>
@@ -5867,7 +5867,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                       onClick={() => setEditingWindowIndex(idx)}
                                       className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
                                     >
-                                      <Edit size={14} /> Edit
+                                      <Edit size={14} /> <span className="hidden sm:inline">Edit</span>
                                     </button>
                                     <button
                                       onClick={() => {
@@ -5898,7 +5898,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           : 'bg-red-600 hover:bg-red-700'
                                       }`}
                                     >
-                                      <Trash size={14} /> {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : 'Remove'}
+                                      <Trash size={14} /> {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : <span className="hidden sm:inline">Remove</span>}
                                     </button>
                                   </div>
                                 )}
@@ -5930,7 +5930,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                <Calendar size={14} /> Migration Window
+                                <Calendar size={14} /> <span className="hidden sm:inline">Migration </span>Window
                               </button>
                               <button
                                 onClick={() => setNewWindowData({ ...newWindowData, type: 'blackout' })}
@@ -5940,7 +5940,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                <Moon2 size={14} /> Blackout Window
+                                <Moon2 size={14} /> <span className="hidden sm:inline">Blackout </span>Window
                               </button>
                             </div>
                           </div>
@@ -7002,24 +7002,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               ? 'bg-green-500 animate-pulse'
                               : 'bg-yellow-500'
                           }`}></div>
-                          {!automationStatus.enabled
-                            ? 'Disabled'
-                            : automationStatus.timer_active
-                            ? 'Active'
-                            : 'Paused'
-                          }
-                          {automationStatus.enabled && (
-                            automationStatus.timer_active ? <Pause size={14} /> : <Play size={14} />
-                          )}
+                          {!automationStatus.enabled ? (<XCircle size={14} />) : automationStatus.timer_active ? (<CheckCircle size={14} />) : (<Pause size={14} />)}
+                          <span className="hidden sm:inline">{!automationStatus.enabled ? 'Disabled' : automationStatus.timer_active ? 'Active' : 'Paused'}</span>
                         </button>
 
                         {/* Configure Button */}
                         <button
                           onClick={() => setCurrentPage('automation')}
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                          title="Configure Automation"
                         >
                           <Settings size={16} />
-                          Configure
+                          <span className="hidden sm:inline">Configure</span>
                         </button>
 
                         {/* Run Now Button */}
@@ -7037,12 +7031,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           {runningAutomation ? (
                             <>
                               <Loader size={14} className="animate-spin" />
-                              Running...
+                              <span className="hidden sm:inline">Running...</span>
                             </>
                           ) : (
                             <>
                               <Play size={14} />
-                              Run Now
+                              <span className="hidden sm:inline">Run Now</span>
                             </>
                           )}
                         </button>
@@ -7103,8 +7097,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               ? 'bg-green-500 animate-pulse'
                               : 'bg-gray-400'
                           }`}></div>
-                          <div className="text-sm font-semibold">
-                            {automationStatus.timer_active ? 'Active' : 'Inactive'}
+                          <div className="text-sm font-semibold flex items-center gap-1" title={automationStatus.timer_active ? 'Active' : 'Inactive'}>
+                            {automationStatus.timer_active ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
+                            <span className="hidden sm:inline">{automationStatus.timer_active ? 'Active' : 'Inactive'}</span>
                           </div>
                         </div>
                       </div>
@@ -7119,8 +7114,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             // Priority 1: Show "Running" badge if migrations are active
                             if (hasRunningMigrations) {
                               return (
-                                <span className="px-2 py-0.5 rounded-lg border text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
-                                  Running
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
+                                  <Loader size={12} className="animate-spin" /><span className="hidden sm:inline">Running</span>
                                 </span>
                               );
                             }
@@ -8387,11 +8382,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     guest.status === 'migrating' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
                                     guest.status === 'running' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
                                     'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                                  }`}>
-                                    {guest.status === 'migrating' && (
+                                  }`} title={guest.status.charAt(0).toUpperCase() + guest.status.slice(1)}>
+                                    {guest.status === 'migrating' ? (
                                       <Loader size={12} className="animate-spin" />
+                                    ) : guest.status === 'running' ? (
+                                      <Play size={12} />
+                                    ) : (
+                                      <Power size={12} />
                                     )}
-                                    {guest.status}
+                                    <span className="hidden sm:inline">{guest.status}</span>
                                   </span>
                                 </td>
                                 <td className="p-3">

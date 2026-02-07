@@ -111,9 +111,10 @@ export default function AutomationPage(props) {
               onClick={testAutomation}
               disabled={testingAutomation}
               className="shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              title={testingAutomation ? 'Running Test...' : 'Test Now'}
             >
               <Play size={18} />
-              {testingAutomation ? 'Running Test...' : 'Test Now'}
+              <span className="hidden sm:inline">{testingAutomation ? 'Running Test...' : 'Test Now'}</span>
             </button>
           </div>
         </div>
@@ -1672,7 +1673,7 @@ export default function AutomationPage(props) {
                                 }`}
                               >
                                 <Calendar size={14} />
-                                Migration Window
+                                <span className="hidden sm:inline">Migration</span> Window
                               </button>
                               <button
                                 onClick={() => {
@@ -1704,9 +1705,10 @@ export default function AutomationPage(props) {
                                     ? 'bg-red-600 text-white'
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
+                                title="Blackout Window"
                               >
                                 <Moon size={14} />
-                                Blackout Window
+                                <span className="hidden sm:inline">Blackout</span> Window
                               </button>
                             </div>
                           </div>
@@ -1910,9 +1912,10 @@ export default function AutomationPage(props) {
                             <button
                               onClick={() => setEditingWindowIndex(null)}
                               className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
+                              title="Done"
                             >
                               <Check size={14} />
-                              Done
+                              <span className="hidden sm:inline">Done</span>
                             </button>
                           </div>
                         </div>
@@ -1941,9 +1944,10 @@ export default function AutomationPage(props) {
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
                             className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
+                            title="Edit"
                           >
                             <Edit size={14} />
-                            Edit
+                            <span className="hidden sm:inline">Edit</span>
                           </button>
                           <button
                             onClick={() => {
@@ -1973,9 +1977,10 @@ export default function AutomationPage(props) {
                                 ? 'bg-orange-600 hover:bg-orange-700'
                                 : 'bg-red-600 hover:bg-red-700'
                             }`}
+                            title="Remove"
                           >
                             <Trash size={14} />
-                            {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : 'Remove'}
+                            {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Confirm?' : <span className="hidden sm:inline">Remove</span>}
                           </button>
                         </div>
                       )}
@@ -2006,9 +2011,10 @@ export default function AutomationPage(props) {
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
+                      title="Migration Window"
                     >
                       <Calendar size={14} />
-                      Migration Window
+                      <span className="hidden sm:inline">Migration</span> Window
                     </button>
                     <button
                       onClick={() => setNewWindowData({ ...newWindowData, type: 'blackout' })}
@@ -2017,9 +2023,10 @@ export default function AutomationPage(props) {
                           ? 'bg-red-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
+                      title="Blackout Window"
                     >
                       <Moon size={14} />
-                      Blackout Window
+                      <span className="hidden sm:inline">Blackout</span> Window
                     </button>
                   </div>
                 </div>
@@ -2563,9 +2570,10 @@ export default function AutomationPage(props) {
                       }
                     }}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
+                    title="Refresh Logs"
                   >
                     <RefreshCw size={14} />
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </button>
                   <button
                     onClick={() => {
