@@ -1200,7 +1200,6 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
                 setUpdateLog(result.log || []);
                 if (result.updated) {
                   setUpdateResult('success');
-                  setTimeout(() => window.location.reload(), 3000);
                 } else {
                   setUpdateResult('up-to-date');
                 }

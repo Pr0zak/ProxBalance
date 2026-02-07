@@ -10951,17 +10951,44 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       <RefreshCw size={40} className="text-blue-600 dark:text-blue-400 animate-spin" />
                       <div className="text-center">
                         <p className="text-lg font-semibold text-gray-900 dark:text-white">Updating ProxBalance...</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This may take a minute. The page will reload automatically.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This may take a minute.</p>
                       </div>
                     </div>
                   )}
 
                   {!updating && updateResult === 'success' && (
-                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                      <CheckCircle size={40} className="text-green-600 dark:text-green-400" />
-                      <div className="text-center">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
                         <p className="text-lg font-semibold text-gray-900 dark:text-white">Update complete!</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Reloading...</p>
+                      </div>
+                      {updateLog.length > 0 && (
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                          <div className="font-mono text-sm space-y-1">
+                            {updateLog.map((line, idx) => (
+                              <div key={idx} className="text-gray-800 dark:text-gray-200">
+                                {line.includes('✓') ? (
+                                  <span className="text-green-600 dark:text-green-400">{line}</span>
+                                ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
+                                  <span className="text-red-600 dark:text-red-400">{line}</span>
+                                ) : line.includes('━') ? (
+                                  <span className="text-blue-600 dark:text-blue-400">{line}</span>
+                                ) : (
+                                  <span>{line}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                        >
+                          <RefreshCw size={16} />
+                          Close & Reload
+                        </button>
                       </div>
                     </div>
                   )}
