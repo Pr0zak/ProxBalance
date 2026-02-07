@@ -1,7 +1,8 @@
 import {
   AlertCircle, Settings, ChevronDown, Save, Sun, Moon,
   ArrowLeft, Lock, RefreshCw, Download, Upload, CheckCircle,
-  Bell, AlertTriangle, Server
+  Bell, AlertTriangle, Server, Edit, Trash, Check, X, RotateCcw,
+  Copy, Eye, EyeOff, Plus, HelpCircle, Power
 } from './Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
 
@@ -593,7 +594,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Pushover</span>
                               {automationConfig.notifications?.providers?.pushover?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -693,7 +694,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Email (SMTP)</span>
                               {automationConfig.notifications?.providers?.email?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -799,7 +800,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Telegram</span>
                               {automationConfig.notifications?.providers?.telegram?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -848,7 +849,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Discord</span>
                               {automationConfig.notifications?.providers?.discord?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -884,7 +885,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Slack</span>
                               {automationConfig.notifications?.providers?.slack?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -920,7 +921,7 @@ export default function SettingsPage(props) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-700 dark:text-gray-300">Generic Webhook</span>
                               {automationConfig.notifications?.providers?.webhook?.enabled && (
-                                <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-0.5 rounded-full">Active</span>
+                                <span className="inline-flex items-center text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -969,8 +970,9 @@ export default function SettingsPage(props) {
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
+                            <Bell size={14} />
                             Send Test Notification
                           </button>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -1040,10 +1042,12 @@ export default function SettingsPage(props) {
                           <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">User Management</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400 mb-3">Create and manage user accounts with role-based permissions</div>
                           <div className="flex gap-2">
-                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
+                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium flex items-center justify-center gap-1.5">
+                              <Plus size={12} />
                               Add User
                             </button>
-                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
+                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium flex items-center justify-center gap-1.5">
+                              <Settings size={12} />
                               Manage Roles
                             </button>
                           </div>
@@ -1337,19 +1341,20 @@ export default function SettingsPage(props) {
                             <button
                               onClick={savePenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className={`flex-1 px-4 py-2 text-white rounded font-medium disabled:opacity-50 transition-colors ${
+                              className={`flex-1 px-4 py-2 text-white rounded font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${
                                 penaltyConfigSaved
                                   ? 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
                                   : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
                               }`}
                             >
-                              {savingPenaltyConfig ? 'Saving...' : penaltyConfigSaved ? 'Saved!' : 'Save Penalty Config'}
+                              {savingPenaltyConfig ? 'Saving...' : penaltyConfigSaved ? (<><CheckCircle size={14} /> Saved!</>) : (<><Save size={14} /> Save Penalty Config</>)}
                             </button>
                             <button
                               onClick={resetPenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className="flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50"
+                              className="flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
                             >
+                              <RotateCcw size={14} />
                               Reset to Defaults
                             </button>
                           </div>
@@ -1637,13 +1642,13 @@ export default function SettingsPage(props) {
                               setConfirmHostChange(newHost);
                             }
                           }}
-                          className={`w-full px-4 py-2 text-white rounded font-medium ${
+                          className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-1.5 ${
                             confirmHostChange
                               ? 'bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600'
                               : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
                           }`}
                         >
-                          {confirmHostChange ? 'Click again to confirm' : 'Update Proxmox Host'}
+                          {confirmHostChange ? (<><AlertTriangle size={14} /> Click again to confirm</>) : (<><Server size={14} /> Update Proxmox Host</>)}
                         </button>
                       </div>
                     </div>

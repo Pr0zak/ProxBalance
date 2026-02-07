@@ -40,6 +40,29 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const MinusCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>);
         const Folder = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>);
         const Minus = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><line x1="5" y1="12" x2="19" y2="12"></line></svg>);
+        const Edit = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>);
+        const Trash = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>);
+        const Check = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="20 6 9 17 4 12"></polyline></svg>);
+        const ChevronLeft = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="15 18 9 12 15 6"></polyline></svg>);
+        const ChevronsLeft = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>);
+        const ChevronsRight = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>);
+        const RotateCcw = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>);
+        const Cpu = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>);
+        const MemoryStick = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M6 19v-2"></path><path d="M10 19v-2"></path><path d="M14 19v-2"></path><path d="M18 19v-2"></path><path d="M8 11V9"></path><path d="M16 11V7"></path><path d="M12 11V5"></path><path d="M2 15h20"></path><path d="M2 17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4H2z"></path></svg>);
+        const Globe = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>);
+        const Zap = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>);
+        const Database = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>);
+        const Copy = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>);
+        const Calendar = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>);
+        const HelpCircle = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>);
+        const Eye = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>);
+        const Search = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>);
+        const Filter = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>);
+        const Power = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>);
+        const Square = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>);
+        const UserPlus = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>);
+        const Users = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
+        const Moon2 = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"></path></svg>);
 
 // Logo component
 const ProxBalanceLogo = ({ size = 32 }) => (
@@ -3169,11 +3192,11 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">User Management</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400 mb-3">Create and manage user accounts with role-based permissions</div>
                           <div className="flex gap-2">
-                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
-                              Add User
+                            <button disabled className="flex items-center gap-1 px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
+                              <UserPlus size={14} /> Add User
                             </button>
-                            <button disabled className="px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
-                              Manage Roles
+                            <button disabled className="flex items-center gap-1 px-3 py-1.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded text-xs font-medium">
+                              <Users size={14} /> Manage Roles
                             </button>
                           </div>
                         </div>
@@ -3466,20 +3489,20 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <button
                               onClick={savePenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className={`flex-1 px-4 py-2 text-white rounded font-medium disabled:opacity-50 transition-colors ${
+                              className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-white rounded font-medium disabled:opacity-50 transition-colors ${
                                 penaltyConfigSaved
                                   ? 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
                                   : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
                               }`}
                             >
-                              {savingPenaltyConfig ? 'Saving...' : penaltyConfigSaved ? 'Saved!' : 'Save Penalty Config'}
+                              <Save size={14} /> {savingPenaltyConfig ? 'Saving...' : penaltyConfigSaved ? 'Saved!' : 'Save Penalty Config'}
                             </button>
                             <button
                               onClick={resetPenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className="flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50"
+                              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50"
                             >
-                              Reset to Defaults
+                              <RotateCcw size={14} /> Reset to Defaults
                             </button>
                           </div>
                         </div>
@@ -4136,15 +4159,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         saveAutomationConfig({ enabled: true });
                                         setConfirmEnableAutomation(false);
                                       }}
-                                      className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium"
+                                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium"
                                     >
-                                      Enable Automation
+                                      <Power size={14} /> Enable Automation
                                     </button>
                                     <button
                                       onClick={() => setConfirmEnableAutomation(false)}
-                                      className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+                                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
                                     >
-                                      Cancel
+                                      <X size={14} /> Cancel
                                     </button>
                                   </div>
                                 </div>
@@ -4197,15 +4220,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         saveAutomationConfig({ dry_run: false });
                                         setConfirmDisableDryRun(false);
                                       }}
-                                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold"
+                                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold"
                                     >
-                                      Yes, Disable Dry Run
+                                      <AlertTriangle size={14} /> Yes, Disable Dry Run
                                     </button>
                                     <button
                                       onClick={() => setConfirmDisableDryRun(false)}
-                                      className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium"
+                                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium"
                                     >
-                                      Cancel (Keep Dry Run On)
+                                      <X size={14} /> Cancel (Keep Dry Run On)
                                     </button>
                                   </div>
                                 </div>
@@ -4997,15 +5020,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: true } });
                                         setConfirmAllowContainerRestarts(false);
                                       }}
-                                      className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium"
+                                      className="flex items-center justify-center gap-1 px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium"
                                     >
-                                      Yes, Allow Restarts
+                                      <AlertTriangle size={14} /> Yes, Allow Restarts
                                     </button>
                                     <button
                                       onClick={() => setConfirmAllowContainerRestarts(false)}
-                                      className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600"
+                                      className="flex items-center justify-center gap-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600"
                                     >
-                                      Cancel
+                                      <X size={14} /> Cancel
                                     </button>
                                   </div>
                                 </div>
@@ -5570,13 +5593,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                             });
                                             setEditingWindowIndex(null);
                                           }}
-                                          className={`px-3 py-2 rounded text-sm font-semibold ${
+                                          className={`flex items-center justify-center gap-1 px-3 py-2 rounded text-sm font-semibold ${
                                             isMigration
                                               ? 'bg-green-600 text-white'
                                               : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                           }`}
                                         >
-                                          Migration Window
+                                          <Calendar size={14} /> <span className="hidden sm:inline">Migration </span>Window
                                         </button>
                                         <button
                                           onClick={() => {
@@ -5603,13 +5626,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                             });
                                             setEditingWindowIndex(null);
                                           }}
-                                          className={`px-3 py-2 rounded text-sm font-semibold ${
+                                          className={`flex items-center justify-center gap-1 px-3 py-2 rounded text-sm font-semibold ${
                                             !isMigration
                                               ? 'bg-red-600 text-white'
                                               : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                           }`}
                                         >
-                                          Blackout Window
+                                          <Moon2 size={14} /> <span className="hidden sm:inline">Blackout </span>Window
                                         </button>
                                       </div>
                                     </div>
@@ -5812,9 +5835,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     <div className="flex gap-2">
                                       <button
                                         onClick={() => setEditingWindowIndex(null)}
-                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold"
+                                        className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold"
                                       >
-                                        Done
+                                        <Check size={14} /> <span className="hidden sm:inline">Done</span>
                                       </button>
                                     </div>
                                   </div>
@@ -5842,9 +5865,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     {/* Action Buttons */}
                                     <button
                                       onClick={() => setEditingWindowIndex(idx)}
-                                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                                      className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
                                     >
-                                      Edit
+                                      <Edit size={14} /> <span className="hidden sm:inline">Edit</span>
                                     </button>
                                     <button
                                       onClick={() => {
@@ -5869,13 +5892,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                           setConfirmRemoveWindow({ id: windowId, type: isMigration ? 'migration' : 'blackout' });
                                         }
                                       }}
-                                      className={`px-2 py-1 text-white rounded text-sm ${
+                                      className={`flex items-center gap-1 px-2 py-1 text-white rounded text-sm ${
                                         confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
                                           ? 'bg-orange-600 hover:bg-orange-700'
                                           : 'bg-red-600 hover:bg-red-700'
                                       }`}
                                     >
-                                      {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : 'Remove'}
+                                      <Trash size={14} /> {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : <span className="hidden sm:inline">Remove</span>}
                                     </button>
                                   </div>
                                 )}
@@ -5901,23 +5924,23 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => setNewWindowData({ ...newWindowData, type: 'migration' })}
-                                className={`px-3 py-2 rounded text-sm font-semibold ${
+                                className={`flex items-center justify-center gap-1 px-3 py-2 rounded text-sm font-semibold ${
                                   newWindowData.type === 'migration'
                                     ? 'bg-green-600 text-white'
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                Migration Window
+                                <Calendar size={14} /> <span className="hidden sm:inline">Migration </span>Window
                               </button>
                               <button
                                 onClick={() => setNewWindowData({ ...newWindowData, type: 'blackout' })}
-                                className={`px-3 py-2 rounded text-sm font-semibold ${
+                                className={`flex items-center justify-center gap-1 px-3 py-2 rounded text-sm font-semibold ${
                                   newWindowData.type === 'blackout'
                                     ? 'bg-red-600 text-white'
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                Blackout Window
+                                <Moon2 size={14} /> <span className="hidden sm:inline">Blackout </span>Window
                               </button>
                             </div>
                           </div>
@@ -6979,24 +7002,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               ? 'bg-green-500 animate-pulse'
                               : 'bg-yellow-500'
                           }`}></div>
-                          {!automationStatus.enabled
-                            ? 'Disabled'
-                            : automationStatus.timer_active
-                            ? 'Active'
-                            : 'Paused'
-                          }
-                          {automationStatus.enabled && (
-                            automationStatus.timer_active ? <Pause size={14} /> : <Play size={14} />
-                          )}
+                          {!automationStatus.enabled ? (<XCircle size={14} />) : automationStatus.timer_active ? (<CheckCircle size={14} />) : (<Pause size={14} />)}
+                          <span className="hidden sm:inline">{!automationStatus.enabled ? 'Disabled' : automationStatus.timer_active ? 'Active' : 'Paused'}</span>
                         </button>
 
                         {/* Configure Button */}
                         <button
                           onClick={() => setCurrentPage('automation')}
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                          title="Configure Automation"
                         >
                           <Settings size={16} />
-                          Configure
+                          <span className="hidden sm:inline">Configure</span>
                         </button>
 
                         {/* Run Now Button */}
@@ -7014,12 +7031,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           {runningAutomation ? (
                             <>
                               <Loader size={14} className="animate-spin" />
-                              Running...
+                              <span className="hidden sm:inline">Running...</span>
                             </>
                           ) : (
                             <>
                               <Play size={14} />
-                              Run Now
+                              <span className="hidden sm:inline">Run Now</span>
                             </>
                           )}
                         </button>
@@ -7080,8 +7097,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               ? 'bg-green-500 animate-pulse'
                               : 'bg-gray-400'
                           }`}></div>
-                          <div className="text-sm font-semibold">
-                            {automationStatus.timer_active ? 'Active' : 'Inactive'}
+                          <div className="text-sm font-semibold flex items-center gap-1" title={automationStatus.timer_active ? 'Active' : 'Inactive'}>
+                            {automationStatus.timer_active ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
+                            <span className="hidden sm:inline">{automationStatus.timer_active ? 'Active' : 'Inactive'}</span>
                           </div>
                         </div>
                       </div>
@@ -7096,8 +7114,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             // Priority 1: Show "Running" badge if migrations are active
                             if (hasRunningMigrations) {
                               return (
-                                <span className="px-2 py-0.5 rounded-lg border text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
-                                  Running
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
+                                  <Loader size={12} className="animate-spin" /><span className="hidden sm:inline">Running</span>
                                 </span>
                               );
                             }
@@ -8364,11 +8382,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                     guest.status === 'migrating' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
                                     guest.status === 'running' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
                                     'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                                  }`}>
-                                    {guest.status === 'migrating' && (
+                                  }`} title={guest.status.charAt(0).toUpperCase() + guest.status.slice(1)}>
+                                    {guest.status === 'migrating' ? (
                                       <Loader size={12} className="animate-spin" />
+                                    ) : guest.status === 'running' ? (
+                                      <Play size={12} />
+                                    ) : (
+                                      <Power size={12} />
                                     )}
-                                    {guest.status}
+                                    <span className="hidden sm:inline">{guest.status}</span>
                                   </span>
                                 </td>
                                 <td className="p-3">
@@ -9856,15 +9878,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             setGuestActions({});
                             setGuestTargets({});
                           }}
-                          className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium"
                         >
-                          Cancel
+                          <X size={14} /> Cancel
                         </button>
                         <button
                           onClick={() => setShowConfirmModal(true)}
-                          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
                         >
-                          Review & Confirm
+                          <Eye size={14} /> Review & Confirm
                         </button>
                       </div>
                     </div>
@@ -9935,9 +9957,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
                         <button
                           onClick={() => setShowConfirmModal(false)}
-                          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
                         >
-                          Cancel
+                          <X size={14} /> Cancel
                         </button>
                         <button
                           onClick={async () => {
@@ -9979,9 +10001,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               });
                             }
                           }}
-                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
                         >
-                          Confirm Evacuation
+                          <AlertTriangle size={14} /> Confirm Evacuation
                         </button>
                       </div>
                     </div>
@@ -11580,15 +11602,15 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => setConfirmRemoveTag(null)}
-                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      <X size={14} /> Cancel
                     </button>
                     <button
                       onClick={confirmAndRemoveTag}
-                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
                     >
-                      Remove Tag
+                      <Trash size={14} /> Remove Tag
                     </button>
                   </div>
                 </div>
@@ -11642,9 +11664,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => setConfirmMigration(null)}
-                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                     >
-                      Cancel
+                      <X size={14} /> Cancel
                     </button>
                     <button
                       onClick={confirmAndMigrate}
@@ -11935,9 +11957,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   <div className="flex gap-3 justify-end">
                     <button
                       onClick={() => setCancelMigrationModal(null)}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
                     >
-                      Keep Running
+                      <Play size={14} /> Keep Running
                     </button>
                     <button
                       onClick={async () => {

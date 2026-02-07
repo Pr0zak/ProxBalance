@@ -1,7 +1,8 @@
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Activity, Bell, CheckCircle,
   ChevronDown, ChevronUp, Clock, Download, Info, Play, RefreshCw,
-  Settings, Shield, X, XCircle
+  Settings, Shield, X, XCircle, Save, Edit, Trash, Check, RotateCcw,
+  Calendar, Power, Zap, Copy, Eye, Lock, Plus, Moon
 } from './Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
 
@@ -110,9 +111,10 @@ export default function AutomationPage(props) {
               onClick={testAutomation}
               disabled={testingAutomation}
               className="shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              title={testingAutomation ? 'Running Test...' : 'Test Now'}
             >
               <Play size={18} />
-              {testingAutomation ? 'Running Test...' : 'Test Now'}
+              <span className="hidden sm:inline">{testingAutomation ? 'Running Test...' : 'Test Now'}</span>
             </button>
           </div>
         </div>
@@ -203,14 +205,16 @@ export default function AutomationPage(props) {
                               saveAutomationConfig({ enabled: true });
                               setConfirmEnableAutomation(false);
                             }}
-                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium"
+                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
                           >
+                            <Power size={14} />
                             Enable Automation
                           </button>
                           <button
                             onClick={() => setConfirmEnableAutomation(false)}
-                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5"
                           >
+                            <X size={14} />
                             Cancel
                           </button>
                         </div>
@@ -264,14 +268,16 @@ export default function AutomationPage(props) {
                               saveAutomationConfig({ dry_run: false });
                               setConfirmDisableDryRun(false);
                             }}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold"
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
                           >
+                            <AlertTriangle size={14} />
                             Yes, Disable Dry Run
                           </button>
                           <button
                             onClick={() => setConfirmDisableDryRun(false)}
-                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium"
+                            className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
                           >
+                            <X size={14} />
                             Cancel (Keep Dry Run On)
                           </button>
                         </div>
@@ -1046,14 +1052,16 @@ export default function AutomationPage(props) {
                               saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: true } });
                               setConfirmAllowContainerRestarts(false);
                             }}
-                            className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium"
+                            className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
                           >
+                            <AlertTriangle size={14} />
                             Yes, Allow Restarts
                           </button>
                           <button
                             onClick={() => setConfirmAllowContainerRestarts(false)}
-                            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600"
+                            className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1"
                           >
+                            <X size={14} />
                             Cancel
                           </button>
                         </div>
@@ -1658,13 +1666,14 @@ export default function AutomationPage(props) {
                                   });
                                   setEditingWindowIndex(null);
                                 }}
-                                className={`px-3 py-2 rounded text-sm font-semibold ${
+                                className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
                                   isMigration
                                     ? 'bg-green-600 text-white'
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
                               >
-                                Migration Window
+                                <Calendar size={14} />
+                                <span className="hidden sm:inline">Migration</span> Window
                               </button>
                               <button
                                 onClick={() => {
@@ -1691,13 +1700,15 @@ export default function AutomationPage(props) {
                                   });
                                   setEditingWindowIndex(null);
                                 }}
-                                className={`px-3 py-2 rounded text-sm font-semibold ${
+                                className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
                                   !isMigration
                                     ? 'bg-red-600 text-white'
                                     : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}
+                                title="Blackout Window"
                               >
-                                Blackout Window
+                                <Moon size={14} />
+                                <span className="hidden sm:inline">Blackout</span> Window
                               </button>
                             </div>
                           </div>
@@ -1900,9 +1911,11 @@ export default function AutomationPage(props) {
                           <div className="flex gap-2">
                             <button
                               onClick={() => setEditingWindowIndex(null)}
-                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold"
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
+                              title="Done"
                             >
-                              Done
+                              <Check size={14} />
+                              <span className="hidden sm:inline">Done</span>
                             </button>
                           </div>
                         </div>
@@ -1930,9 +1943,11 @@ export default function AutomationPage(props) {
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
+                            title="Edit"
                           >
-                            Edit
+                            <Edit size={14} />
+                            <span className="hidden sm:inline">Edit</span>
                           </button>
                           <button
                             onClick={() => {
@@ -1957,13 +1972,15 @@ export default function AutomationPage(props) {
                                 setConfirmRemoveWindow({ id: windowId, type: isMigration ? 'migration' : 'blackout' });
                               }
                             }}
-                            className={`px-2 py-1 text-white rounded text-sm ${
+                            className={`px-2 py-1 text-white rounded text-sm flex items-center justify-center gap-1 ${
                               confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
                                 ? 'bg-orange-600 hover:bg-orange-700'
                                 : 'bg-red-600 hover:bg-red-700'
                             }`}
+                            title="Remove"
                           >
-                            {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Click to confirm' : 'Remove'}
+                            <Trash size={14} />
+                            {confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}` ? 'Confirm?' : <span className="hidden sm:inline">Remove</span>}
                           </button>
                         </div>
                       )}
@@ -1989,23 +2006,27 @@ export default function AutomationPage(props) {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setNewWindowData({ ...newWindowData, type: 'migration' })}
-                      className={`px-3 py-2 rounded text-sm font-semibold ${
+                      className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
                         newWindowData.type === 'migration'
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
+                      title="Migration Window"
                     >
-                      Migration Window
+                      <Calendar size={14} />
+                      <span className="hidden sm:inline">Migration</span> Window
                     </button>
                     <button
                       onClick={() => setNewWindowData({ ...newWindowData, type: 'blackout' })}
-                      className={`px-3 py-2 rounded text-sm font-semibold ${
+                      className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
                         newWindowData.type === 'blackout'
                           ? 'bg-red-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
+                      title="Blackout Window"
                     >
-                      Blackout Window
+                      <Moon size={14} />
+                      <span className="hidden sm:inline">Blackout</span> Window
                     </button>
                   </div>
                 </div>
@@ -2206,12 +2227,13 @@ export default function AutomationPage(props) {
                         setError('Please fill in all fields');
                       }
                     }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-1.5 ${
                       newWindowData.type === 'migration'
                         ? 'bg-green-600 hover:bg-green-700'
                         : 'bg-red-600 hover:bg-red-700'
                     }`}
                   >
+                    <Save size={14} />
                     Save Window
                   </button>
                   <button
@@ -2219,8 +2241,9 @@ export default function AutomationPage(props) {
                       setNewWindowData({ name: '', type: 'migration', days: [], start_time: '00:00', end_time: '00:00' });
                       setShowTimeWindowForm(false);
                     }}
-                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold"
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
                   >
+                    <X size={14} />
                     Cancel
                   </button>
                 </div>
@@ -2229,8 +2252,9 @@ export default function AutomationPage(props) {
           ) : (
             <button
               onClick={() => setShowTimeWindowForm(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
             >
+              <Plus size={14} />
               Add Time Window
             </button>
           )}
@@ -2546,9 +2570,10 @@ export default function AutomationPage(props) {
                       }
                     }}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
+                    title="Refresh Logs"
                   >
                     <RefreshCw size={14} />
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </button>
                   <button
                     onClick={() => {
