@@ -81,7 +81,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -122,13 +122,13 @@ export default function DashboardPage({
 
         <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 overflow-hidden">
           {/* Minimal Header - Always Visible */}
-          <div className="flex items-center justify-between p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
             <div className="flex items-center gap-3">
               <div onMouseEnter={handleLogoHover} className={logoBalancing ? 'logo-balancing' : 'transition-transform'}>
                 <ProxBalanceLogo size={dashboardHeaderCollapsed ? 64 : 128} />
               </div>
               <div>
-                <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-3xl'}`}>ProxBalance</h1>
+                <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>ProxBalance</h1>
                 {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization</p>}
                 {dashboardHeaderCollapsed && data && data.nodes && (() => {
                   const nodes = Object.values(data.nodes);
@@ -136,7 +136,7 @@ export default function DashboardPage({
                   const totalMemory = (nodes.reduce((sum, node) => sum + (node.mem_percent || 0), 0) / nodes.length).toFixed(1);
                   const onlineNodes = nodes.filter(node => node.status === 'online').length;
                   return (
-                    <div className="flex items-center gap-4 mt-1 text-xs">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-xs">
                       <span className="text-gray-600 dark:text-gray-400">
                         Nodes: <span className="font-semibold text-green-600 dark:text-green-400">{onlineNodes}/{nodes.length}</span>
                       </span>
@@ -152,12 +152,22 @@ export default function DashboardPage({
                           <span className="font-semibold">Quorum</span>
                         </span>
                       )}
+                      {systemInfo && (
+                        <button
+                          onClick={() => { fetchBranches(); setShowBranchModal(true); }}
+                          className="sm:hidden flex items-center gap-1 text-gray-500 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="Click to manage branches"
+                        >
+                          <GitBranch size={12} />
+                          <span className="font-mono text-blue-600 dark:text-blue-400 underline decoration-dotted">{systemInfo.branch?.length > 20 ? systemInfo.branch.substring(0, 20) + '...' : systemInfo.branch}</span>
+                        </button>
+                      )}
                     </div>
                   );
                 })()}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {systemInfo && systemInfo.updates_available && (
                 <button
                   onClick={() => setShowUpdateModal(true)}
@@ -165,7 +175,7 @@ export default function DashboardPage({
                   title={`${systemInfo.commits_behind} update(s) available`}
                 >
                   <RefreshCw size={18} />
-                  Update Available
+                  <span className="hidden sm:inline">Update Available</span>
                 </button>
               )}
               <a
@@ -217,13 +227,13 @@ export default function DashboardPage({
 
             return (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+                <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                       <Server size={24} className="text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>
                       <p className="text-xs text-gray-600 dark:text-gray-400">{onlineNodes} of {totalNodes} nodes online</p>
                     </div>
                   </div>
@@ -334,18 +344,18 @@ export default function DashboardPage({
 
         {/* Automated Migrations Status */}
         {automationStatus && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-lg shadow-md ${
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
                   automationStatus.enabled
                     ? 'bg-gradient-to-br from-green-600 to-emerald-600'
                     : 'bg-gradient-to-br from-gray-500 to-gray-600'
                 }`}>
                   <Clock size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Automated Migrations</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Automated Migrations</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Scheduled automatic balancing</p>
                 </div>
                 <button
@@ -360,7 +370,7 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {collapsedSections.automatedMigrations && (() => {
                   const now = new Date();
                   const last24h = now - (24 * 60 * 60 * 1000);
@@ -522,7 +532,7 @@ export default function DashboardPage({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Automation Status</div>
                 <div className={`flex items-center gap-2 ${
@@ -881,7 +891,7 @@ export default function DashboardPage({
                 {!collapsedSections.lastRunSummary && (
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                     {/* Run Overview */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div className="bg-white/60 dark:bg-gray-800/60 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Status</div>
                         <div className={`text-sm font-bold ${
@@ -1498,14 +1508,14 @@ export default function DashboardPage({
 
 
         {data && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md">
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
                   <Tag size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Manage ignore tags and affinity rules for all guests</p>
                 </div>
                 <button
@@ -1553,8 +1563,8 @@ export default function DashboardPage({
             ) : (
               <div>
                 {/* Search and controls */}
-                <div className="mb-4 flex flex-wrap gap-3 items-center justify-between">
-                  <div className="flex-1 min-w-[200px]">
+                <div className="mb-4 flex flex-wrap gap-2 sm:gap-3 items-center justify-between">
+                  <div className="flex-1 min-w-[150px] sm:min-w-[200px]">
                     <input
                       type="text"
                       placeholder="Search guests by ID, name, node..."
@@ -1615,7 +1625,7 @@ export default function DashboardPage({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
                         >
                           <div className="flex items-center gap-1">
                             ID
@@ -1687,7 +1697,7 @@ export default function DashboardPage({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
                         >
                           <div className="flex items-center gap-1">
                             Tags
@@ -1696,7 +1706,7 @@ export default function DashboardPage({
                             )}
                           </div>
                         </th>
-                        {canMigrate && <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>}
+                        {canMigrate && <th className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1785,7 +1795,7 @@ export default function DashboardPage({
                             {guest.type}
                           </span>
                         </td>
-                        <td className="p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
+                        <td className="hidden sm:table-cell p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
                         <td className="p-3 text-sm text-gray-900 dark:text-white">{guest.name}</td>
                         <td className="p-3 text-sm text-gray-600 dark:text-gray-400">{guest.node}</td>
                         <td className="p-3">
@@ -1800,7 +1810,7 @@ export default function DashboardPage({
                             {guest.status}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="hidden sm:table-cell p-3">
                           <div className="flex flex-wrap gap-1">
                             {guest.tags.has_ignore && (
                               <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded font-medium">
@@ -1847,7 +1857,7 @@ export default function DashboardPage({
                           </div>
                         </td>
                         {canMigrate && (
-                          <td className="p-3">
+                          <td className="hidden sm:table-cell p-3">
                             <button
                               onClick={() => {
                                 setTagModalGuest(guest);
@@ -1891,39 +1901,39 @@ export default function DashboardPage({
                   const endIndex = Math.min(guestCurrentPage * guestPageSize, filteredGuestsCount);
 
                   return (
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         Showing {startIndex}-{endIndex} of {filteredGuestsCount} guests
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <button
                           onClick={() => setGuestCurrentPage(1)}
                           disabled={guestCurrentPage === 1}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           First
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(guestCurrentPage - 1)}
                           disabled={guestCurrentPage === 1}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
-                          Previous
+                          Prev
                         </button>
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Page {guestCurrentPage} of {totalPages}
+                        <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                          {guestCurrentPage} / {totalPages}
                         </span>
                         <button
                           onClick={() => setGuestCurrentPage(guestCurrentPage + 1)}
                           disabled={guestCurrentPage === totalPages}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           Next
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(totalPages)}
                           disabled={guestCurrentPage === totalPages}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           Last
                         </button>
@@ -1937,14 +1947,14 @@ export default function DashboardPage({
         )}
 
         {data && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                   <Server size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Visual cluster overview</p>
                 </div>
                 <button
@@ -1960,7 +1970,7 @@ export default function DashboardPage({
                 </button>
               </div>
               {!collapsedSections.clusterMap && (
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Show Powered Off:</span>
                     <button
@@ -1978,7 +1988,7 @@ export default function DashboardPage({
                     </button>
                   </div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">View by:</span>
-                  <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+                  <div className="flex flex-wrap rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
                     <button
                       onClick={() => setClusterMapViewMode('cpu')}
                       className={`px-3 py-1 text-sm rounded transition-colors ${
@@ -2036,7 +2046,7 @@ export default function DashboardPage({
 
             {!collapsedSections.clusterMap && (
               <div className="relative" style={{minHeight: '400px'}}>
-                <div className="flex flex-wrap gap-8 justify-center items-start py-8">
+                <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
                   {Object.values(data.nodes).map(node => {
                     const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
                     const poweredOffCount = allNodeGuests.filter(g => g.status !== 'running').length;
@@ -2079,7 +2089,7 @@ export default function DashboardPage({
                         <div className="relative group">
                           <div
                             onClick={() => setSelectedNode(node)}
-                            className={`w-32 h-40 rounded-lg border-4 flex flex-col items-center justify-between p-2 overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
+                            className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                             maintenanceNodes.has(node.name)
                               ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-600 hover:border-yellow-600 dark:hover:border-yellow-500'
                               : node.status === 'online'
@@ -2088,7 +2098,7 @@ export default function DashboardPage({
                           }`}>
                             {/* Node header */}
                             <div className="flex flex-col items-center z-10">
-                              <Server size={28} className={maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'} />
+                              <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} />
                               <div className="text-sm font-bold text-gray-900 dark:text-white mt-1">{node.name}</div>
                               {maintenanceNodes.has(node.name) && (
                                 <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
@@ -2104,13 +2114,13 @@ export default function DashboardPage({
                             </div>
 
                             {/* Capacity indicators */}
-                            <div className="w-full space-y-2 z-10">
+                            <div className="w-full space-y-1.5 z-10 mt-1.5">
                               {/* CPU Bar */}
-                              <div className="relative">
-                                <div className="text-xs mb-1">
+                              <div>
+                                <div className="text-[10px] sm:text-xs mb-0.5">
                                   <span className="text-gray-600 dark:text-gray-400 font-medium">CPU</span>
                                 </div>
-                                <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all duration-500 ${
                                       (node.cpu_percent || 0) > 80 ? 'bg-red-500' :
@@ -2123,11 +2133,11 @@ export default function DashboardPage({
                               </div>
 
                               {/* Memory Bar */}
-                              <div className="relative">
-                                <div className="text-xs mb-1">
+                              <div>
+                                <div className="text-[10px] sm:text-xs mb-0.5">
                                   <span className="text-gray-600 dark:text-gray-400 font-medium">MEM</span>
                                 </div>
-                                <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all duration-500 ${
                                       (node.mem_percent || 0) > 80 ? 'bg-red-500' :
@@ -2402,34 +2412,35 @@ export default function DashboardPage({
 
         {/* Node Details Modal (from Cluster Map click) */}
         {selectedNode && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedNode(null)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3">
-                  <Server size={28} className={maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'} />
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{selectedNode.name}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Node Details & Maintenance</p>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedNode(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              {/* Modal Header - sticky so close button is always reachable */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <Server size={24} className={`shrink-0 ${maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`} />
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">{selectedNode.name}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Node Details</p>
                   </div>
                   {maintenanceNodes.has(selectedNode.name) && (
-                    <span className="px-2.5 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full">
+                    <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full shrink-0">
                       MAINTENANCE
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => setSelectedNode(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                 >
-                  <X size={24} />
+                  <X size={22} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6">
+              {/* Scrollable Modal Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto">
                 {/* Node Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Guests</div>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -2496,7 +2507,7 @@ export default function DashboardPage({
                 </div>
 
                 {/* Additional Node Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</div>
                     <div className={`text-lg font-semibold ${
@@ -2559,7 +2570,7 @@ export default function DashboardPage({
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                       Weighted scoring used for recommendations: {penaltyConfig ? `${(penaltyConfig.weight_current * 100).toFixed(0)}% current, ${(penaltyConfig.weight_24h * 100).toFixed(0)}% 24h avg, ${(penaltyConfig.weight_7d * 100).toFixed(0)}% 7-day avg` : '50% current, 30% 24h avg, 20% 7-day avg'}
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="bg-white dark:bg-gray-800 rounded p-2">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">CPU Score</div>
                         <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
@@ -2781,33 +2792,33 @@ export default function DashboardPage({
 
         {/* Guest Details Modal (from Cluster Map click) */}
         {selectedGuestDetails && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedGuestDetails(null)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedGuestDetails(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`p-1.5 rounded-lg shrink-0 ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
                     {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-white" /> : <Package size={20} className="text-white" />}
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                       {selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`}
                     </h3>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {selectedGuestDetails.type === 'qemu' ? 'Virtual Machine' : 'Container'} #{selectedGuestDetails.vmid}
+                      {selectedGuestDetails.type === 'qemu' ? 'VM' : 'CT'} #{selectedGuestDetails.vmid}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedGuestDetails(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-4">
+              <div className="p-4 overflow-y-auto">
                 {/* Status Bar */}
                 <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-2">
@@ -3135,8 +3146,8 @@ export default function DashboardPage({
             setGuestTargets({});
           }}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                   Evacuation Plan for {evacuationPlan.source_node}
                 </h3>
                 <button
@@ -3151,7 +3162,7 @@ export default function DashboardPage({
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
                 {evacuationPlan.will_skip > 0 && (
                   <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -3289,15 +3300,15 @@ export default function DashboardPage({
         {/* Global Confirmation Modal */}
         {showConfirmModal && evacuationPlan && planNode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirmModal(false)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
                 <button onClick={() => setShowConfirmModal(false)}>
                   <XCircle size={24} />
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {(() => {
                   const toMigrate = [];
                   const toIgnore = [];
@@ -3347,7 +3358,7 @@ export default function DashboardPage({
                 })()}
               </div>
 
-              <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
@@ -3404,14 +3415,14 @@ export default function DashboardPage({
         )}
 
 
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md shrink-0">
                 <HardDrive size={24} className="text-white" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Detailed node metrics</p>
               </div>
               <button
@@ -3426,7 +3437,7 @@ export default function DashboardPage({
                 )}
               </button>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
@@ -3566,7 +3577,7 @@ export default function DashboardPage({
                   <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
                 </div>
 
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
                   <div><span className="text-gray-600 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
                   <div><span className="text-gray-600 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
                   <div><span className="text-gray-600 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
@@ -3585,16 +3596,16 @@ export default function DashboardPage({
           )}
         </div>
 
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-24">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0">
                   <Activity size={24} className="text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
+                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
                     <button
                       onClick={() => toggleSection('recommendations')}
                       className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200"
@@ -3726,9 +3737,9 @@ export default function DashboardPage({
                       ? 'border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
                       : 'border-gray-200 dark:border-gray-700'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-white'}`}>
                             [{rec.type} {rec.vmid}] {rec.name}
                           </span>
@@ -3860,7 +3871,7 @@ export default function DashboardPage({
                           )}
                         </div>
                       </div>
-                      <div className="ml-4 flex items-center gap-2 shrink-0">
+                      <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                         {(() => {
                           // If migration is completed, show "Migrated" badge
                           if (isCompleted) {
@@ -3948,13 +3959,13 @@ export default function DashboardPage({
 
         {config?.ai_recommendations_enabled && aiEnabled && (
           <div className="hidden bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                   <Activity size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
                 </div>
                 <button
@@ -3969,7 +3980,7 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Analysis Period:</label>
                   <select
@@ -4253,14 +4264,14 @@ export default function DashboardPage({
 
     {showUpdateModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-6">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md ${updating ? 'animate-pulse' : ''}`}>
                 <RefreshCw size={24} className={updating ? "text-white animate-spin" : "text-white"} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">System update management</p>
               </div>
             </div>
@@ -4398,15 +4409,15 @@ export default function DashboardPage({
 
     {showBranchModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-          <div className="p-6">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg shadow-md">
                   <GitBranch size={24} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
                 </div>
               </div>
@@ -4617,14 +4628,14 @@ export default function DashboardPage({
 
     {/* Migration Dialog Modal */}
     {showMigrationDialog && selectedGuest && canMigrate && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowMigrationDialog(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowMigrationDialog(false)}>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
               <Activity size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migrate Guest</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Migrate Guest</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Move VM or container</p>
             </div>
           </div>
@@ -4694,10 +4705,10 @@ export default function DashboardPage({
     {/* Tag Management Modal */}
     {showTagModal && tagModalGuest && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -4707,7 +4718,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Body */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="mb-4">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                 Guest: <span className="font-semibold text-gray-900 dark:text-white">[{tagModalGuest.type} {tagModalGuest.vmid}] {tagModalGuest.name}</span>
@@ -4893,21 +4904,21 @@ export default function DashboardPage({
     {/* Remove Tag Confirmation Modal */}
     {confirmRemoveTag && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmRemoveTag(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
             <button onClick={() => setConfirmRemoveTag(null)}>
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <p className="text-gray-700 dark:text-gray-300">
               Remove tag <span className="font-mono font-semibold text-red-600 dark:text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmRemoveTag(null)}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -4928,15 +4939,15 @@ export default function DashboardPage({
     {/* Migration Confirmation Modal */}
     {confirmMigration && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmMigration(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
             <button onClick={() => setConfirmMigration(null)}>
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <p className="text-gray-700 dark:text-gray-300 mb-4">
               Start migration for <span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
             </p>
@@ -4969,7 +4980,7 @@ export default function DashboardPage({
             )}
           </div>
 
-          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmMigration(null)}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -4993,9 +5004,9 @@ export default function DashboardPage({
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle size={24} className="text-yellow-500" />
                 Confirm Batch Migration
               </h2>
@@ -5012,7 +5023,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Body - Scrollable Task List */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
               <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
                 <Info size={20} />
@@ -5057,7 +5068,7 @@ export default function DashboardPage({
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mb-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 text-sm">
                           <div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Source Node</div>
                             <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -5136,7 +5147,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Footer */}
-          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
             <div className="flex items-center justify-between gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 <AlertTriangle size={16} className="inline mr-1 text-yellow-500" />
@@ -5164,9 +5175,9 @@ export default function DashboardPage({
       </div>
     )}
 
-    {/* Footer with timestamp and system info */}
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
-      <div className="max-w-7xl mx-auto flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+    {/* Footer with timestamp and system info - desktop only */}
+    <div className="hidden sm:block fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-1 text-xs text-gray-600 dark:text-gray-400">
         <div className="flex items-center gap-4">
           {lastUpdate && (
             <div className="flex items-center gap-1.5">
@@ -5227,8 +5238,8 @@ export default function DashboardPage({
 
     {/* Cancel Migration Confirmation Modal */}
     {cancelMigrationModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setCancelMigrationModal(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md shadow-xl border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setCancelMigrationModal(null)}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-4">
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />

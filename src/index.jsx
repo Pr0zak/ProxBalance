@@ -1,8 +1,10 @@
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
+import useIsMobile from './utils/useIsMobile.js';
 import {
-  AlertCircle, RefreshCw, Info, Sun, Moon, Settings, X, ProxBalanceLogo
+  AlertCircle, RefreshCw, Info, Sun, Moon, Settings, X, ProxBalanceLogo,
+  Activity, Clock
 } from './components/Icons.jsx';
 
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -10,6 +12,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
         const API_BASE = `/api`;
 
         const ProxmoxBalanceManager = () => {
+          const isMobile = useIsMobile(640);
           const [data, setData] = useState(null);
           const [recommendations, setRecommendations] = useState([]);
           const [recommendationData, setRecommendationData] = useState(null);  // Store full recommendation response
@@ -2082,7 +2085,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
           // Settings Page - allow access even without data
           if (currentPage === 'settings') {
-            return <SettingsPage
+            return <><SettingsPage
               darkMode={darkMode} setDarkMode={setDarkMode}
               setCurrentPage={setCurrentPage}
               aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
@@ -2127,12 +2130,31 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               saveSettings={saveSettings}
               formatLocalTime={formatLocalTime}
               getTimezoneAbbr={getTimezoneAbbr}
-            />;
+            />
+            {isMobile && (
+              <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
+                <div className="flex items-center justify-around h-14">
+                  <button onClick={() => setCurrentPage('dashboard')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                    <Activity size={20} />
+                    <span className="text-xs">Dashboard</span>
+                  </button>
+                  <button onClick={() => setCurrentPage('automation')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                    <Clock size={20} />
+                    <span className="text-xs">Automation</span>
+                  </button>
+                  <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
+                    <Settings size={20} />
+                    <span className="text-xs font-semibold">Settings</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            </>;
           }
 
           // Automation Settings Page
           if (currentPage === 'automation') {
-            return <AutomationPage
+            return <><AutomationPage
               automationConfig={automationConfig}
               automationStatus={automationStatus}
               automigrateLogs={automigrateLogs}
@@ -2177,13 +2199,32 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               testAutomation={testAutomation}
               testingAutomation={testingAutomation}
               testResult={testResult}
-            />;
+            />
+            {isMobile && (
+              <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
+                <div className="flex items-center justify-around h-14">
+                  <button onClick={() => setCurrentPage('dashboard')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                    <Activity size={20} />
+                    <span className="text-xs">Dashboard</span>
+                  </button>
+                  <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
+                    <Clock size={20} />
+                    <span className="text-xs font-semibold">Automation</span>
+                  </button>
+                  <button onClick={() => setCurrentPage('settings')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                    <Settings size={20} />
+                    <span className="text-xs">Settings</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            </>;
           }
 
           // If no data available, show loading or error message but don't block UI
           if (!data) {
             return (
-              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4">
                 <div className="max-w-7xl mx-auto">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -2270,7 +2311,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           }
 
           // Dashboard Page - data is guaranteed to be available here
-          return <DashboardPage
+          return <><DashboardPage
             data={data} setData={setData}
             loading={loading} error={error} setError={setError}
             config={config}
@@ -2355,7 +2396,26 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             generateSparkline={generateSparkline}
             fetchGuestLocations={fetchGuestLocations}
             API_BASE={API_BASE}
-          />;
+          />
+          {isMobile && (
+            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
+              <div className="flex items-center justify-around h-14">
+                <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
+                  <Activity size={20} />
+                  <span className="text-xs font-semibold">Dashboard</span>
+                </button>
+                <button onClick={() => setCurrentPage('automation')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                  <Clock size={20} />
+                  <span className="text-xs">Automation</span>
+                </button>
+                <button onClick={() => setCurrentPage('settings')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
+                  <Settings size={20} />
+                  <span className="text-xs">Settings</span>
+                </button>
+              </div>
+            </div>
+          )}
+          </>;
       };
 
       const root = ReactDOM.createRoot(document.getElementById('root'));

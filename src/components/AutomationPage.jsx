@@ -62,22 +62,22 @@ export default function AutomationPage(props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
       <div className="max-w-5xl mx-auto p-4">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between flex-wrap gap-y-3">
+            <div className="flex items-center gap-4 min-w-0">
               <button
                 onClick={() => setCurrentPage('dashboard')}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 shrink-0"
                 title="Back to Dashboard"
               >
                 <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
               </button>
-              <div className="flex items-center gap-3">
-                <Clock size={28} className="text-blue-600 dark:text-blue-400" />
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
+              <div className="flex items-center gap-3 min-w-0">
+                <Clock size={28} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
                 <span className="relative group inline-block">
                   <Info size={18} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
@@ -109,7 +109,7 @@ export default function AutomationPage(props) {
             <button
               onClick={testAutomation}
               disabled={testingAutomation}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              className="shrink-0 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
             >
               <Play size={18} />
               {testingAutomation ? 'Running Test...' : 'Test Now'}
@@ -167,15 +167,15 @@ export default function AutomationPage(props) {
         )}
 
         {/* Main Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, mainSettings: !prev.mainSettings }))}
-            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity"
+            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Main Settings</h2>
             <ChevronDown
               size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform ${collapsedSections.mainSettings ? '-rotate-180' : ''}`}
+              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? '-rotate-180' : ''}`}
             />
           </button>
 
@@ -347,7 +347,7 @@ export default function AutomationPage(props) {
                 };
 
                 return (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {Object.entries(presets).map(([key, preset]) => {
                       const info = presetInfo[key];
                       const Icon = info.icon;
@@ -502,16 +502,16 @@ export default function AutomationPage(props) {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
           <button
             onClick={() => setCollapsedSections(prev => ({...prev, howItWorks: !prev.howItWorks}))}
-            className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors flex-wrap gap-y-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
               <div className="font-bold text-blue-900 dark:text-blue-200 text-left">How Automated Migrations Work</div>
             </div>
             {collapsedSections.howItWorks ? (
-              <ChevronDown size={20} className="text-blue-600 dark:text-blue-400" />
+              <ChevronDown size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
             ) : (
-              <ChevronUp size={20} className="text-blue-600 dark:text-blue-400" />
+              <ChevronUp size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
             )}
           </button>
 
@@ -564,16 +564,16 @@ export default function AutomationPage(props) {
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
           <button
             onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
-            className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors flex-wrap gap-y-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
               <div className="font-bold text-blue-900 dark:text-blue-200 text-left">Migration Decision Flowchart</div>
             </div>
             {collapsedSections.decisionTree ? (
-              <ChevronDown size={20} className="text-blue-600 dark:text-blue-400" />
+              <ChevronDown size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
             ) : (
-              <ChevronUp size={20} className="text-blue-600 dark:text-blue-400" />
+              <ChevronUp size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
             )}
           </button>
 
@@ -846,21 +846,21 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Safety & Rules */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, safetyRules: !prev.safetyRules }))}
-            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity"
+            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Safety & Rules</h2>
             <ChevronDown
               size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform ${collapsedSections.safetyRules ? '-rotate-180' : ''}`}
+              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.safetyRules ? '-rotate-180' : ''}`}
             />
           </button>
 
           {!collapsedSections.safetyRules && (
           <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Min Confidence Score
@@ -1179,15 +1179,15 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Distribution Balancing */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancing: !prev.distributionBalancing }))}
-            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity"
+            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
             <ChevronDown
               size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform ${collapsedSections.distributionBalancing ? '-rotate-180' : ''}`}
+              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.distributionBalancing ? '-rotate-180' : ''}`}
             />
           </button>
 
@@ -1280,7 +1280,7 @@ export default function AutomationPage(props) {
             </div>
 
             {config.distribution_balancing?.enabled && (
-            <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
               {/* Guest Count Threshold */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1360,7 +1360,7 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Time Windows (Unified) */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Time Windows</h2>
 
           {/* Timezone Selector */}
@@ -1735,7 +1735,7 @@ export default function AutomationPage(props) {
                                 <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                               </label>
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                                 <label key={day} className="flex items-center">
                                   <input
@@ -1770,7 +1770,7 @@ export default function AutomationPage(props) {
                           </div>
 
                           {/* Start/End Time */}
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
                               <div className="flex gap-2">
@@ -2030,7 +2030,7 @@ export default function AutomationPage(props) {
                       <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                     </label>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                       <label key={day} className="flex items-center">
                         <input
@@ -2082,7 +2082,7 @@ export default function AutomationPage(props) {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Start Time
@@ -2216,9 +2216,9 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Migration Logs & History */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
+            <div className="flex items-center gap-2 min-w-0">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration Logs & History</h2>
               <span className="relative group inline-block">
                 <Info size={16} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
@@ -2278,8 +2278,8 @@ export default function AutomationPage(props) {
           {/* Migration History Table */}
           {migrationLogsTab === 'history' && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
+                <div className="flex items-center gap-3 min-w-0 flex-wrap">
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0
                       ? `Showing ${((migrationHistoryPage - 1) * migrationHistoryPageSize) + 1}-${Math.min(migrationHistoryPage * migrationHistoryPageSize, automationStatus.recent_migrations.length)} of ${automationStatus.recent_migrations.length} migrations`
@@ -2506,11 +2506,11 @@ export default function AutomationPage(props) {
           {/* Script Logs */}
           {migrationLogsTab === 'logs' && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
+                <div className="text-xs text-gray-500 dark:text-gray-400 min-w-0">
                   {logRefreshTime && `Last updated: ${logRefreshTime}`}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
                   <button
                     onClick={async () => {
                       try {
@@ -2560,11 +2560,11 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Notification Settings - Link to Settings page */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bell size={24} className="text-blue-600 dark:text-blue-400" />
-              <div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+          <div className="flex items-center justify-between flex-wrap gap-y-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Bell size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <div className="min-w-0">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notification Settings</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {automationConfig.notifications?.enabled
@@ -2575,7 +2575,7 @@ export default function AutomationPage(props) {
             </div>
             <button
               onClick={() => setCurrentPage('settings')}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               <Settings size={16} />
               Open Settings
