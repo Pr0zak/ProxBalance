@@ -8981,7 +8981,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 {/* Node Details Modal (from Cluster Map click) */}
                 {selectedNode && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedNode(null)}>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60] sm:p-4" onClick={() => setSelectedNode(null)}>
                     <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                       {/* Modal Header - sticky so close button is always reachable */}
                       <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -9360,7 +9360,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 {/* Guest Details Modal (from Cluster Map click) */}
                 {selectedGuestDetails && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={() => setSelectedGuestDetails(null)}>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60] sm:p-4" onClick={() => setSelectedGuestDetails(null)}>
                     <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                       {/* Modal Header */}
                       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
