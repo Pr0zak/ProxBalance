@@ -372,7 +372,7 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
                 {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
                   <div className="px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                     <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
