@@ -62,7 +62,7 @@ export default function AutomationPage(props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-32 sm:pb-0">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
       <div className="max-w-5xl mx-auto p-4">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">

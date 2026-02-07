@@ -81,7 +81,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-32 sm:pb-4 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -151,6 +151,16 @@ export default function DashboardPage({
                           {clusterHealth.quorate ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
                           <span className="font-semibold">Quorum</span>
                         </span>
+                      )}
+                      {systemInfo && (
+                        <button
+                          onClick={() => { fetchBranches(); setShowBranchModal(true); }}
+                          className="sm:hidden flex items-center gap-1 text-gray-500 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                          title="Click to manage branches"
+                        >
+                          <GitBranch size={12} />
+                          <span className="font-mono text-blue-600 dark:text-blue-400 underline decoration-dotted">{systemInfo.branch?.length > 20 ? systemInfo.branch.substring(0, 20) + '...' : systemInfo.branch}</span>
+                        </button>
                       )}
                     </div>
                   );
@@ -1891,7 +1901,7 @@ export default function DashboardPage({
                   const endIndex = Math.min(guestCurrentPage * guestPageSize, filteredGuestsCount);
 
                   return (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-y-2">
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         Showing {startIndex}-{endIndex} of {filteredGuestsCount} guests
                       </div>
@@ -2403,13 +2413,13 @@ export default function DashboardPage({
         {/* Node Details Modal (from Cluster Map click) */}
         {selectedNode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedNode(null)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                   <Server size={28} className={maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'} />
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{selectedNode.name}</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{selectedNode.name}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Node Details & Maintenance</p>
                   </div>
                   {maintenanceNodes.has(selectedNode.name) && (
@@ -2427,7 +2437,7 @@ export default function DashboardPage({
               </div>
 
               {/* Modal Body */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {/* Node Stats Grid */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -3135,8 +3145,8 @@ export default function DashboardPage({
             setGuestTargets({});
           }}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                   Evacuation Plan for {evacuationPlan.source_node}
                 </h3>
                 <button
@@ -3151,7 +3161,7 @@ export default function DashboardPage({
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
                 {evacuationPlan.will_skip > 0 && (
                   <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                     <p className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -3289,15 +3299,15 @@ export default function DashboardPage({
         {/* Global Confirmation Modal */}
         {showConfirmModal && evacuationPlan && planNode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirmModal(false)}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
                 <button onClick={() => setShowConfirmModal(false)}>
                   <XCircle size={24} />
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {(() => {
                   const toMigrate = [];
                   const toIgnore = [];
@@ -3347,7 +3357,7 @@ export default function DashboardPage({
                 })()}
               </div>
 
-              <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setShowConfirmModal(false)}
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
@@ -4253,14 +4263,14 @@ export default function DashboardPage({
 
     {showUpdateModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-6">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md ${updating ? 'animate-pulse' : ''}`}>
                 <RefreshCw size={24} className={updating ? "text-white animate-spin" : "text-white"} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">System update management</p>
               </div>
             </div>
@@ -4398,15 +4408,15 @@ export default function DashboardPage({
 
     {showBranchModal && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-          <div className="p-6">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg shadow-md">
                   <GitBranch size={24} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
                 </div>
               </div>
@@ -4617,14 +4627,14 @@ export default function DashboardPage({
 
     {/* Migration Dialog Modal */}
     {showMigrationDialog && selectedGuest && canMigrate && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowMigrationDialog(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowMigrationDialog(false)}>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
               <Activity size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migrate Guest</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Migrate Guest</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Move VM or container</p>
             </div>
           </div>
@@ -4694,10 +4704,10 @@ export default function DashboardPage({
     {/* Tag Management Modal */}
     {showTagModal && tagModalGuest && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -4707,7 +4717,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Body */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="mb-4">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                 Guest: <span className="font-semibold text-gray-900 dark:text-white">[{tagModalGuest.type} {tagModalGuest.vmid}] {tagModalGuest.name}</span>
@@ -4893,21 +4903,21 @@ export default function DashboardPage({
     {/* Remove Tag Confirmation Modal */}
     {confirmRemoveTag && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmRemoveTag(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
             <button onClick={() => setConfirmRemoveTag(null)}>
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <p className="text-gray-700 dark:text-gray-300">
               Remove tag <span className="font-mono font-semibold text-red-600 dark:text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmRemoveTag(null)}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -4928,15 +4938,15 @@ export default function DashboardPage({
     {/* Migration Confirmation Modal */}
     {confirmMigration && (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmMigration(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
             <button onClick={() => setConfirmMigration(null)}>
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <p className="text-gray-700 dark:text-gray-300 mb-4">
               Start migration for <span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
             </p>
@@ -4969,7 +4979,7 @@ export default function DashboardPage({
             )}
           </div>
 
-          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmMigration(null)}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -4993,9 +5003,9 @@ export default function DashboardPage({
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Modal Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle size={24} className="text-yellow-500" />
                 Confirm Batch Migration
               </h2>
@@ -5012,7 +5022,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Body - Scrollable Task List */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
               <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
                 <Info size={20} />
@@ -5136,7 +5146,7 @@ export default function DashboardPage({
           </div>
 
           {/* Modal Footer */}
-          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
             <div className="flex items-center justify-between gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 <AlertTriangle size={16} className="inline mr-1 text-yellow-500" />
@@ -5164,20 +5174,20 @@ export default function DashboardPage({
       </div>
     )}
 
-    {/* Footer with timestamp and system info */}
-    <div className="fixed bottom-14 sm:bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-1.5 sm:py-2 px-4 z-40">
+    {/* Footer with timestamp and system info - desktop only */}
+    <div className="hidden sm:block fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-1 text-xs text-gray-600 dark:text-gray-400">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-4">
           {lastUpdate && (
-            <div className="hidden sm:flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5">
               <Clock size={12} />
               <span>UI refreshed: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatLocalTime(lastUpdate)} {getTimezoneAbbr()}</span></span>
             </div>
           )}
           {backendCollected && (
             <>
-              <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
-              <div className="hidden sm:flex items-center gap-1.5">
+              <span className="text-gray-300 dark:text-gray-700">|</span>
+              <div className="flex items-center gap-1.5">
                 <Server size={12} />
                 <span>Data collected: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>{data?.performance?.total_time && <span className="text-gray-500 dark:text-gray-400 ml-1">({data.performance.total_time}s)</span>}</span>
                 <button
@@ -5193,7 +5203,7 @@ export default function DashboardPage({
           )}
           {systemInfo && (
             <>
-              <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
+              <span className="text-gray-300 dark:text-gray-700">|</span>
               <div className="flex items-center gap-2">
                 <span>Branch: <button
                   onClick={() => { fetchBranches(); setShowBranchModal(true); }}
@@ -5205,8 +5215,8 @@ export default function DashboardPage({
                     testing
                   </span>
                 )}
-                <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
-                <span className="hidden sm:inline">Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
+                <span className="text-gray-300 dark:text-gray-700">|</span>
+                <span>Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
                 {systemInfo.updates_available && (
                   <>
                     <span className="text-gray-300 dark:text-gray-700">|</span>
@@ -5227,8 +5237,8 @@ export default function DashboardPage({
 
     {/* Cancel Migration Confirmation Modal */}
     {cancelMigrationModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setCancelMigrationModal(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md shadow-xl border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setCancelMigrationModal(null)}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-4">
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
