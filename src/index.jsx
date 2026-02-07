@@ -88,6 +88,8 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           const [systemInfo, setSystemInfo] = useState(null);
           const [updating, setUpdating] = useState(false);
           const [updateLog, setUpdateLog] = useState([]);
+          const [updateResult, setUpdateResult] = useState(null); // null | 'success' | 'up-to-date' | 'error'
+          const [updateError, setUpdateError] = useState(null);
           const [chartPeriod, setChartPeriod] = useState('1h');
           const [charts, setCharts] = useState({});
           const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -1183,6 +1185,8 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           const handleUpdate = async () => {
             setUpdating(true);
             setUpdateLog([]);
+            setUpdateResult(null);
+            setUpdateError(null);
             setShowUpdateModal(true);
 
             try {
@@ -1195,18 +1199,20 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               if (result.success) {
                 setUpdateLog(result.log || []);
                 if (result.updated) {
-                  // Refresh system info after update
-                  setTimeout(() => {
-                    fetchSystemInfo();
-                    // Reload page to get new code
-                    setTimeout(() => window.location.reload(), 2000);
-                  }, 1000);
+                  setUpdateResult('success');
+                  setTimeout(() => window.location.reload(), 3000);
+                } else {
+                  setUpdateResult('up-to-date');
                 }
               } else {
                 setUpdateLog([...(result.log || []), `Error: ${result.error}`]);
+                setUpdateResult('error');
+                setUpdateError(result.error || 'Unknown error');
               }
             } catch (err) {
               setUpdateLog(prev => [...prev, `Error: ${err.message}`]);
+              setUpdateResult('error');
+              setUpdateError(err.message);
             }
 
             setUpdating(false);
@@ -2326,6 +2332,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             systemInfo={systemInfo}
             showUpdateModal={showUpdateModal} setShowUpdateModal={setShowUpdateModal}
             updating={updating} updateLog={updateLog} setUpdateLog={setUpdateLog}
+            updateResult={updateResult} setUpdateResult={setUpdateResult} updateError={updateError}
             handleUpdate={handleUpdate}
             showBranchModal={showBranchModal} setShowBranchModal={setShowBranchModal}
             loadingBranches={loadingBranches} availableBranches={availableBranches}
