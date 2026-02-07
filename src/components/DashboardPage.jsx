@@ -4887,6 +4887,12 @@ export default function DashboardPage({
                 >
                   + exclude_...
                 </button>
+                <button
+                  onClick={() => setNewTag('affinity_')}
+                  className="px-3 py-1.5 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                >
+                  + affinity_...
+                </button>
               </div>
             </div>
 
@@ -4904,10 +4910,10 @@ export default function DashboardPage({
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., exclude_database, exclude_web"
+                placeholder="e.g., exclude_database, affinity_web"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity group
+                <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity | <span className="font-mono">affinity_[name]</span> = keep together
               </p>
             </div>
 
