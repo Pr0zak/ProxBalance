@@ -81,7 +81,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -217,13 +217,13 @@ export default function DashboardPage({
 
             return (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+                <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                       <Server size={24} className="text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>
                       <p className="text-xs text-gray-600 dark:text-gray-400">{onlineNodes} of {totalNodes} nodes online</p>
                     </div>
                   </div>
@@ -334,18 +334,18 @@ export default function DashboardPage({
 
         {/* Automated Migrations Status */}
         {automationStatus && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-lg shadow-md ${
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
                   automationStatus.enabled
                     ? 'bg-gradient-to-br from-green-600 to-emerald-600'
                     : 'bg-gradient-to-br from-gray-500 to-gray-600'
                 }`}>
                   <Clock size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Automated Migrations</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Automated Migrations</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Scheduled automatic balancing</p>
                 </div>
                 <button
@@ -360,7 +360,7 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {collapsedSections.automatedMigrations && (() => {
                   const now = new Date();
                   const last24h = now - (24 * 60 * 60 * 1000);
@@ -1498,14 +1498,14 @@ export default function DashboardPage({
 
 
         {data && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md">
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
                   <Tag size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Manage ignore tags and affinity rules for all guests</p>
                 </div>
                 <button
@@ -1937,14 +1937,14 @@ export default function DashboardPage({
         )}
 
         {data && (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                   <Server size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Visual cluster overview</p>
                 </div>
                 <button
@@ -3404,14 +3404,14 @@ export default function DashboardPage({
         )}
 
 
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md shrink-0">
                 <HardDrive size={24} className="text-white" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Detailed node metrics</p>
               </div>
               <button
@@ -3426,7 +3426,7 @@ export default function DashboardPage({
                 )}
               </button>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
@@ -3585,16 +3585,16 @@ export default function DashboardPage({
           )}
         </div>
 
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-24">
+        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0">
                   <Activity size={24} className="text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
+                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
                     <button
                       onClick={() => toggleSection('recommendations')}
                       className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200"
@@ -3726,9 +3726,9 @@ export default function DashboardPage({
                       ? 'border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
                       : 'border-gray-200 dark:border-gray-700'
                   }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-white'}`}>
                             [{rec.type} {rec.vmid}] {rec.name}
                           </span>
@@ -3860,7 +3860,7 @@ export default function DashboardPage({
                           )}
                         </div>
                       </div>
-                      <div className="ml-4 flex items-center gap-2 shrink-0">
+                      <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                         {(() => {
                           // If migration is completed, show "Migrated" badge
                           if (isCompleted) {
@@ -3948,13 +3948,13 @@ export default function DashboardPage({
 
         {config?.ai_recommendations_enabled && aiEnabled && (
           <div className="hidden bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                   <Activity size={24} className="text-white" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
                 </div>
                 <button
@@ -3969,7 +3969,7 @@ export default function DashboardPage({
                   )}
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Analysis Period:</label>
                   <select

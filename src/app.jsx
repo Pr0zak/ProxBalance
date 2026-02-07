@@ -6516,7 +6516,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           // If no data available, show loading or error message but don't block UI
           if (!data) {
             return (
-              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+              <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 overflow-x-hidden">
                 <div className="max-w-7xl mx-auto">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -6609,7 +6609,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const violations = checkAffinityViolations();
 
           return (<>
-            <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+            <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 overflow-x-hidden">
               <div className="max-w-7xl mx-auto">
                 {/* Token Authentication Error Banner */}
                 {tokenAuthError && (
@@ -6745,12 +6745,12 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                     return (
                       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+                        <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                               <Server size={24} className="text-white" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>
                               <p className="text-xs text-gray-600 dark:text-gray-400">{onlineNodes} of {totalNodes} nodes online</p>
                             </div>
@@ -6862,18 +6862,18 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                 {/* Automated Migrations Status */}
                 {automationStatus && (
-                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2.5 rounded-lg shadow-md ${
+                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
                           automationStatus.enabled
                             ? 'bg-gradient-to-br from-green-600 to-emerald-600'
                             : 'bg-gradient-to-br from-gray-500 to-gray-600'
                         }`}>
                           <Clock size={24} className="text-white" />
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Automated Migrations</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Automated Migrations</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Scheduled automatic balancing</p>
                         </div>
                         <button
@@ -6888,7 +6888,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           )}
                         </button>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         {collapsedSections.automatedMigrations && (() => {
                           const now = new Date();
                           const last24h = now - (24 * 60 * 60 * 1000);
@@ -8026,14 +8026,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
 
                 {data && (
-                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md">
+                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
                           <Tag size={24} className="text-white" />
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Manage ignore tags and affinity rules for all guests</p>
                         </div>
                         <button
@@ -8490,14 +8490,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                 )}
 
                 {data && (
-                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
+                  <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                           <Server size={24} className="text-white" />
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Visual cluster overview</p>
                         </div>
                         <button
@@ -8513,7 +8513,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </button>
                       </div>
                       {!collapsedSections.clusterMap && (
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-600 dark:text-gray-400">Show Powered Off:</span>
                             <button
@@ -9957,14 +9957,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                 )}
 
 
-                <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md">
+                <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md shrink-0">
                         <HardDrive size={24} className="text-white" />
                       </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
+                      <div className="min-w-0">
+                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Detailed node metrics</p>
                       </div>
                       <button
@@ -9979,7 +9979,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         )}
                       </button>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600 dark:text-gray-400">Grid:</label>
                         <div className="flex gap-1">
@@ -10138,16 +10138,16 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                   )}
                 </div>
 
-                <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-24">
+                <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden">
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0">
                           <Activity size={24} className="text-white" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
+                            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Migration Recommendations</h2>
                             <button
                               onClick={() => toggleSection('recommendations')}
                               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200"
@@ -10178,7 +10178,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={generateRecommendations}
                           disabled={loadingRecommendations || !data}
@@ -10279,9 +10279,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               ? 'border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
                               : 'border-gray-200 dark:border-gray-700'
                           }`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
                                   <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-white'}`}>
                                     [{rec.type} {rec.vmid}] {rec.name}
                                   </span>
@@ -10423,7 +10423,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   )}
                                 </div>
                               </div>
-                              <div className="ml-4 flex items-center gap-2 shrink-0">
+                              <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                                 {(() => {
                                   // If migration is completed, show "Migrated" badge
                                   if (isCompleted) {
@@ -10510,14 +10510,14 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                 </div>
 
                 {config?.ai_recommendations_enabled && aiEnabled && (
-                  <div className="hidden bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md">
+                  <div className="hidden bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md shrink-0">
                           <Activity size={24} className="text-white" />
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
                         </div>
                         <button
@@ -10532,7 +10532,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           )}
                         </button>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
                           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Analysis Period:</label>
                           <select
@@ -10817,13 +10817,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             {showUpdateModal && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md ${updating ? 'animate-pulse' : ''}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md shrink-0 ${updating ? 'animate-pulse' : ''}`}>
                         <RefreshCw size={24} className={updating ? "text-white animate-spin" : "text-white"} />
                       </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
+                      <div className="min-w-0">
+                        <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Update ProxBalance</h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">System update management</p>
                       </div>
                     </div>
@@ -10963,13 +10963,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                   <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg shadow-md">
+                    <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg shadow-md shrink-0">
                           <GitBranch size={24} className="text-white" />
                         </div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Branch Manager</h2>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
                         </div>
                       </div>

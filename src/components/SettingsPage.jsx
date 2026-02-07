@@ -57,18 +57,18 @@ export default function SettingsPage(props) {
               <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
                 <div className="max-w-5xl mx-auto p-4">
                   {/* Settings Header */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+                    <div className="flex items-center justify-between flex-wrap gap-y-3">
+                      <div className="flex items-center gap-4 min-w-0">
                         <button
                           onClick={() => setCurrentPage('dashboard')}
-                          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 shrink-0"
                           title="Back to Dashboard"
                         >
                           <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
                         </button>
-                        <div className="flex items-center gap-3">
-                          <Settings size={28} className="text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Settings size={28} className="text-blue-600 dark:text-blue-400 shrink-0" />
                           <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
                         </div>
                       </div>
@@ -542,10 +542,10 @@ export default function SettingsPage(props) {
 
                     {/* Notifications */}
                     <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/30">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <Bell className="text-gray-600 dark:text-gray-400" size={24} />
-                          <div>
+                      <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Bell className="text-gray-600 dark:text-gray-400 shrink-0" size={24} />
+                          <div className="min-w-0">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
                           </div>
@@ -1087,20 +1087,20 @@ export default function SettingsPage(props) {
                     <hr className="border-gray-300 dark:border-gray-600" />
 
                     {/* Penalty Scoring Configuration - Standalone Section */}
-                    <div id="penalty-config-section" className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div id="penalty-config-section" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
                       <button
                         onClick={() => setShowPenaltyConfig(!showPenaltyConfig)}
-                        className="w-full flex items-center justify-between text-left group"
+                        className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <Settings size={24} className="text-blue-600 dark:text-blue-400" />
-                          <div>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Settings size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                          <div className="min-w-0">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Penalty Scoring Configuration</h2>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Configure penalty weights used by the scoring algorithm</p>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`text-gray-600 dark:text-gray-400 transition-transform ${showPenaltyConfig ? 'rotate-180' : ''}`}
+                          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${showPenaltyConfig ? 'rotate-180' : ''}`}
                           size={20}
                         />
                       </button>
@@ -1363,17 +1363,17 @@ export default function SettingsPage(props) {
                     <div className="border-2 border-red-500 dark:border-red-600 rounded-lg p-4 bg-red-50 dark:bg-red-900/20">
                       <button
                         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                        className="w-full flex items-center justify-between text-left group"
+                        className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <AlertTriangle className="text-red-600 dark:text-red-500" size={24} />
-                          <div>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <AlertTriangle className="text-red-600 dark:text-red-500 shrink-0" size={24} />
+                          <div className="min-w-0">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Advanced System Settings</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Data management, debugging, API configuration, and system controls</p>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`text-gray-600 dark:text-gray-400 transition-transform ${showAdvancedSettings ? 'rotate-180' : ''}`}
+                          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${showAdvancedSettings ? 'rotate-180' : ''}`}
                           size={20}
                         />
                       </button>
