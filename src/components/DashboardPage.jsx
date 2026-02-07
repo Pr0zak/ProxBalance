@@ -81,7 +81,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-32 sm:pb-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -1553,8 +1553,8 @@ export default function DashboardPage({
             ) : (
               <div>
                 {/* Search and controls */}
-                <div className="mb-4 flex flex-wrap gap-3 items-center justify-between">
-                  <div className="flex-1 min-w-[200px]">
+                <div className="mb-4 flex flex-wrap gap-2 sm:gap-3 items-center justify-between">
+                  <div className="flex-1 min-w-[150px] sm:min-w-[200px]">
                     <input
                       type="text"
                       placeholder="Search guests by ID, name, node..."
@@ -1615,7 +1615,7 @@ export default function DashboardPage({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
                         >
                           <div className="flex items-center gap-1">
                             ID
@@ -1687,7 +1687,7 @@ export default function DashboardPage({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
                         >
                           <div className="flex items-center gap-1">
                             Tags
@@ -1696,7 +1696,7 @@ export default function DashboardPage({
                             )}
                           </div>
                         </th>
-                        {canMigrate && <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>}
+                        {canMigrate && <th className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1785,7 +1785,7 @@ export default function DashboardPage({
                             {guest.type}
                           </span>
                         </td>
-                        <td className="p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
+                        <td className="hidden sm:table-cell p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
                         <td className="p-3 text-sm text-gray-900 dark:text-white">{guest.name}</td>
                         <td className="p-3 text-sm text-gray-600 dark:text-gray-400">{guest.node}</td>
                         <td className="p-3">
@@ -1800,7 +1800,7 @@ export default function DashboardPage({
                             {guest.status}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="hidden sm:table-cell p-3">
                           <div className="flex flex-wrap gap-1">
                             {guest.tags.has_ignore && (
                               <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded font-medium">
@@ -1847,7 +1847,7 @@ export default function DashboardPage({
                           </div>
                         </td>
                         {canMigrate && (
-                          <td className="p-3">
+                          <td className="hidden sm:table-cell p-3">
                             <button
                               onClick={() => {
                                 setTagModalGuest(guest);
@@ -1891,22 +1891,22 @@ export default function DashboardPage({
                   const endIndex = Math.min(guestCurrentPage * guestPageSize, filteredGuestsCount);
 
                   return (
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-y-2">
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         Showing {startIndex}-{endIndex} of {filteredGuestsCount} guests
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                         <button
                           onClick={() => setGuestCurrentPage(1)}
                           disabled={guestCurrentPage === 1}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           First
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(guestCurrentPage - 1)}
                           disabled={guestCurrentPage === 1}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           Previous
                         </button>
@@ -1916,14 +1916,14 @@ export default function DashboardPage({
                         <button
                           onClick={() => setGuestCurrentPage(guestCurrentPage + 1)}
                           disabled={guestCurrentPage === totalPages}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           Next
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(totalPages)}
                           disabled={guestCurrentPage === totalPages}
-                          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
                         >
                           Last
                         </button>
@@ -5165,19 +5165,19 @@ export default function DashboardPage({
     )}
 
     {/* Footer with timestamp and system info */}
-    <div className="hidden sm:block fixed bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-2 px-4 z-40">
+    <div className="fixed bottom-14 sm:bottom-0 left-0 right-0 bg-gray-100/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 py-1.5 sm:py-2 px-4 z-40">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-1 text-xs text-gray-600 dark:text-gray-400">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {lastUpdate && (
-            <div className="flex items-center gap-1.5">
+            <div className="hidden sm:flex items-center gap-1.5">
               <Clock size={12} />
               <span>UI refreshed: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatLocalTime(lastUpdate)} {getTimezoneAbbr()}</span></span>
             </div>
           )}
           {backendCollected && (
             <>
-              <span className="text-gray-300 dark:text-gray-700">|</span>
-              <div className="flex items-center gap-1.5">
+              <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
+              <div className="hidden sm:flex items-center gap-1.5">
                 <Server size={12} />
                 <span>Data collected: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>{data?.performance?.total_time && <span className="text-gray-500 dark:text-gray-400 ml-1">({data.performance.total_time}s)</span>}</span>
                 <button
@@ -5193,7 +5193,7 @@ export default function DashboardPage({
           )}
           {systemInfo && (
             <>
-              <span className="text-gray-300 dark:text-gray-700">|</span>
+              <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
               <div className="flex items-center gap-2">
                 <span>Branch: <button
                   onClick={() => { fetchBranches(); setShowBranchModal(true); }}
@@ -5205,8 +5205,8 @@ export default function DashboardPage({
                     testing
                   </span>
                 )}
-                <span className="text-gray-300 dark:text-gray-700">|</span>
-                <span>Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
+                <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
+                <span className="hidden sm:inline">Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
                 {systemInfo.updates_available && (
                   <>
                     <span className="text-gray-300 dark:text-gray-700">|</span>
