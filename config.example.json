@@ -87,6 +87,7 @@
       "on_start": true,
       "on_complete": true,
       "on_failure": true,
+      "on_action": true,
       "providers": {
         "pushover": {
           "enabled": false,

@@ -1256,6 +1256,24 @@ def main():
                     logger.info(f"Updated decision for VM {vmid} from 'pending' to '{decision['action']}'")
                     break
 
+            # Send per-migration action notification
+            action_data = {
+                'vmid': vmid,
+                'name': rec['name'],
+                'type': guest_type,
+                'source_node': source,
+                'target_node': target,
+                'reason': rec['reason'],
+                'dry_run': dry_run,
+            }
+            if result.get('success'):
+                action_data['status'] = 'success'
+                action_data['duration'] = result.get('duration', 0)
+            else:
+                action_data['status'] = 'failed'
+                action_data['error'] = result.get('error', 'Unknown error')
+            send_notification(config, 'action', action_data)
+
             if result.get('success'):
                 success_count += 1
                 last_run_summary['migrations_successful'] = success_count
@@ -1294,6 +1312,24 @@ def main():
                             comp_result = execute_migration(comp_vmid, target, comp_source, comp_type, config, dry_run=dry_run)
                             migrations_attempted += 1
                             last_run_summary['migrations_executed'] = migrations_attempted
+
+                            # Send per-migration action notification for companion
+                            comp_action_data = {
+                                'vmid': comp_vmid,
+                                'name': comp_name,
+                                'type': comp_type,
+                                'source_node': comp_source,
+                                'target_node': target,
+                                'reason': f"Affinity group '{ag}' - follows VM {vmid}",
+                                'dry_run': dry_run,
+                            }
+                            if comp_result.get('success'):
+                                comp_action_data['status'] = 'success'
+                                comp_action_data['duration'] = comp_result.get('duration', 0)
+                            else:
+                                comp_action_data['status'] = 'failed'
+                                comp_action_data['error'] = comp_result.get('error', 'Unknown error')
+                            send_notification(config, 'action', comp_action_data)
 
                             if comp_result.get('success'):
                                 comp_status = comp_result.get('status', 'completed')
