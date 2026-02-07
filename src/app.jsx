@@ -2716,18 +2716,24 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         {/* Notification Events */}
                         <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
                           <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Notification Events</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_start !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_start: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                              Migration started
+                              Run started
                             </label>
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_complete !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_complete: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                              Migration completed
+                              Run completed
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_action !== false}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Each migration
                             </label>
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_failure !== false}

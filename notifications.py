@@ -479,6 +479,55 @@ class NotificationManager:
             message = "\n".join(lines)
             priority = "high" if failed > 0 else "normal"
 
+        elif event_type == "action":
+            vmid = data.get("vmid", "?")
+            name = data.get("name", f"VM-{vmid}")
+            guest_type = data.get("type", "VM")
+            source = data.get("source_node", "?")
+            target = data.get("target_node", "?")
+            reason = data.get("reason", "")
+            status = data.get("status", "started")
+
+            if status == "success":
+                title = f"Migration Completed: {guest_type} {vmid}{dry_run_tag}"
+                lines = [
+                    f"Guest: {name} ({guest_type} {vmid})",
+                    f"From: {source} → To: {target}",
+                ]
+                duration = data.get("duration", 0)
+                if duration:
+                    lines.append(f"Duration: {duration}s")
+                if reason:
+                    lines.append(f"Reason: {reason}")
+                if data.get("dry_run"):
+                    lines.append("Mode: Dry run (no actual migration)")
+                message = "\n".join(lines)
+                priority = "normal"
+            elif status == "failed":
+                title = f"Migration Failed: {guest_type} {vmid}{dry_run_tag}"
+                lines = [
+                    f"Guest: {name} ({guest_type} {vmid})",
+                    f"From: {source} → To: {target}",
+                ]
+                error = data.get("error", "Unknown error")
+                lines.append(f"Error: {error}")
+                if reason:
+                    lines.append(f"Reason: {reason}")
+                message = "\n".join(lines)
+                priority = "high"
+            else:
+                title = f"Migration Started: {guest_type} {vmid}{dry_run_tag}"
+                lines = [
+                    f"Guest: {name} ({guest_type} {vmid})",
+                    f"From: {source} → To: {target}",
+                ]
+                if reason:
+                    lines.append(f"Reason: {reason}")
+                if data.get("dry_run"):
+                    lines.append("Mode: Dry run (no actual migration)")
+                message = "\n".join(lines)
+                priority = "normal"
+
         elif event_type == "failure":
             title = f"Migration Safety Check Failed{dry_run_tag}"
             message = f"Reason: {data.get('reason', 'Unknown')}"
@@ -522,6 +571,7 @@ def get_default_notifications_config() -> Dict[str, Any]:
         "on_start": True,
         "on_complete": True,
         "on_failure": True,
+        "on_action": True,
         "providers": {
             "pushover": {
                 "enabled": False,
