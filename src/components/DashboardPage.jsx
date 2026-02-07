@@ -3,7 +3,10 @@ import {
   XCircle, ClipboardList, Tag, AlertTriangle, Info, Shield, Clock, Sun, Moon,
   Settings, X, ChevronDown, ChevronUp, ChevronRight, GitHub, GitBranch,
   ArrowLeft, Lock, Download, MoveRight, Loader, Plus, List, Terminal,
-  ArrowRight, Pause, Package, MinusCircle, Folder, Minus, ProxBalanceLogo
+  ArrowRight, Pause, Package, MinusCircle, Folder, Minus, ProxBalanceLogo,
+  Edit, Trash, Check, ChevronLeft, ChevronsLeft, ChevronsRight, RotateCcw,
+  Cpu, MemoryStick, Globe, Zap, Database, Copy, Save, Calendar, HelpCircle,
+  Eye, Search, Filter, Upload, Power, Square
 } from './Icons.jsx';
 
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
@@ -1958,15 +1961,17 @@ export default function DashboardPage({
                           onClick={() => setGuestCurrentPage(1)}
                           disabled={guestCurrentPage === 1}
                           className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          title="First"
                         >
-                          First
+                          <ChevronsLeft size={14} className="sm:hidden" /><span className="hidden sm:inline">First</span>
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(guestCurrentPage - 1)}
                           disabled={guestCurrentPage === 1}
                           className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          title="Previous"
                         >
-                          Prev
+                          <ChevronLeft size={14} className="sm:hidden" /><span className="hidden sm:inline">Prev</span>
                         </button>
                         <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                           {guestCurrentPage} / {totalPages}
@@ -1975,15 +1980,17 @@ export default function DashboardPage({
                           onClick={() => setGuestCurrentPage(guestCurrentPage + 1)}
                           disabled={guestCurrentPage === totalPages}
                           className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          title="Next"
                         >
-                          Next
+                          <ChevronRight size={14} className="sm:hidden" /><span className="hidden sm:inline">Next</span>
                         </button>
                         <button
                           onClick={() => setGuestCurrentPage(totalPages)}
                           disabled={guestCurrentPage === totalPages}
                           className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+                          title="Last"
                         >
-                          Last
+                          <ChevronsRight size={14} className="sm:hidden" /><span className="hidden sm:inline">Last</span>
                         </button>
                       </div>
                     </div>
@@ -2039,53 +2046,58 @@ export default function DashboardPage({
                   <div className="flex flex-wrap rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
                     <button
                       onClick={() => setClusterMapViewMode('cpu')}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                         clusterMapViewMode === 'cpu'
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
+                      title="CPU"
                     >
-                      CPU
+                      <Cpu size={14} /><span className="hidden sm:inline ml-1">CPU</span>
                     </button>
                     <button
                       onClick={() => setClusterMapViewMode('memory')}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                         clusterMapViewMode === 'memory'
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
+                      title="Memory"
                     >
-                      Memory
+                      <MemoryStick size={14} /><span className="hidden sm:inline ml-1">Memory</span>
                     </button>
                     <button
                       onClick={() => setClusterMapViewMode('allocated')}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                         clusterMapViewMode === 'allocated'
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
+                      title="Allocated"
                     >
-                      Allocated
+                      <Database size={14} /><span className="hidden sm:inline ml-1">Allocated</span>
                     </button>
                     <button
                       onClick={() => setClusterMapViewMode('disk_io')}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                         clusterMapViewMode === 'disk_io'
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
+                      title="Disk I/O"
                     >
-                      Disk I/O
+                      <Zap size={14} /><span className="hidden sm:inline ml-1">Disk I/O</span>
                     </button>
                     <button
                       onClick={() => setClusterMapViewMode('network')}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                         clusterMapViewMode === 'network'
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
+                      title="Network"
                     >
-                      Network
+                      <Globe size={14} /><span className="hidden sm:inline ml-1">Network</span>
                     </button>
                   </div>
                 </div>
@@ -3330,15 +3342,15 @@ export default function DashboardPage({
                     setGuestActions({});
                     setGuestTargets({});
                   }}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium"
                 >
-                  Cancel
+                  <X size={16} className="sm:hidden" /><span className="hidden sm:inline">Cancel</span>
                 </button>
                 <button
                   onClick={() => setShowConfirmModal(true)}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
                 >
-                  Review & Confirm
+                  <Check size={16} className="sm:hidden" /><span className="hidden sm:inline">Review & Confirm</span>
                 </button>
               </div>
             </div>
@@ -3409,9 +3421,9 @@ export default function DashboardPage({
               <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded"
                 >
-                  Cancel
+                  <X size={16} className="sm:hidden" /><span className="hidden sm:inline">Cancel</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -3453,9 +3465,9 @@ export default function DashboardPage({
                       });
                     }
                   }}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
                 >
-                  Confirm Evacuation
+                  <AlertTriangle size={14} /> Confirm Evacuation
                 </button>
               </div>
             </div>
@@ -5008,16 +5020,16 @@ export default function DashboardPage({
           <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
             >
-              Cancel
+              <X size={14} /> Cancel
             </button>
             <button
               onClick={handleAddTag}
               disabled={!newTag.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Add Tag
+              <Plus size={14} /> Add Tag
             </button>
           </div>
         </div>
@@ -5044,15 +5056,15 @@ export default function DashboardPage({
           <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmRemoveTag(null)}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
             >
-              Cancel
+              <X size={14} /> Cancel
             </button>
             <button
               onClick={confirmAndRemoveTag}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
-              Remove Tag
+              <Trash size={14} /> Remove Tag
             </button>
           </div>
         </div>
@@ -5106,9 +5118,9 @@ export default function DashboardPage({
           <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setConfirmMigration(null)}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
             >
-              Cancel
+              <X size={14} /> Cancel
             </button>
             <button
               onClick={confirmAndMigrate}
@@ -5399,9 +5411,9 @@ export default function DashboardPage({
           <div className="flex gap-3 justify-end">
             <button
               onClick={() => setCancelMigrationModal(null)}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
             >
-              Keep Running
+              <Play size={14} /> Keep Running
             </button>
             <button
               onClick={async () => {

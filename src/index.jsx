@@ -1,10 +1,11 @@
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
+import IconLegend from './components/IconLegend.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import {
   AlertCircle, RefreshCw, Info, Sun, Moon, Settings, X, ProxBalanceLogo,
-  Activity, Clock
+  Activity, Clock, HelpCircle
 } from './components/Icons.jsx';
 
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -93,6 +94,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           const [chartPeriod, setChartPeriod] = useState('1h');
           const [charts, setCharts] = useState({});
           const [showUpdateModal, setShowUpdateModal] = useState(false);
+          const [showIconLegend, setShowIconLegend] = useState(false);
           const [aiAnalysisPeriod, setAiAnalysisPeriod] = useState('24h');
           const [proxmoxTokenId, setProxmoxTokenId] = useState('');
           const [proxmoxTokenSecret, setProxmoxTokenSecret] = useState('');
@@ -2088,9 +2090,14 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           }, [data, chartPeriod, darkMode, collapsedSections.nodeStatus, cpuThreshold, memThreshold, currentPage, chartJsLoaded]);
 
 
+          // Icon Legend modal - rendered on all pages
+          const iconLegendModal = showIconLegend ? (
+            <IconLegend darkMode={darkMode} onClose={() => setShowIconLegend(false)} />
+          ) : null;
+
           // Settings Page - allow access even without data
           if (currentPage === 'settings') {
-            return <><SettingsPage
+            return <>{iconLegendModal}<SettingsPage
               darkMode={darkMode} setDarkMode={setDarkMode}
               setCurrentPage={setCurrentPage}
               aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
@@ -2159,7 +2166,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
           // Automation Settings Page
           if (currentPage === 'automation') {
-            return <><AutomationPage
+            return <>{iconLegendModal}<AutomationPage
               automationConfig={automationConfig}
               automationStatus={automationStatus}
               automigrateLogs={automigrateLogs}
@@ -2230,6 +2237,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           if (!data) {
             return (
               <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4">
+                {iconLegendModal}
                 <div className="max-w-7xl mx-auto">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -2238,6 +2246,13 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
                       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ProxBalance</h1>
                     </div>
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setShowIconLegend(true)}
+                        className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        title="Icon Reference"
+                      >
+                        <HelpCircle size={20} className="text-gray-600 dark:text-gray-300" />
+                      </button>
                       <button
                         onClick={() => setDarkMode(!darkMode)}
                         className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -2316,7 +2331,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           }
 
           // Dashboard Page - data is guaranteed to be available here
-          return <><DashboardPage
+          return <>{iconLegendModal}<DashboardPage
             data={data} setData={setData}
             loading={loading} error={error} setError={setError}
             config={config}
