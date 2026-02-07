@@ -191,10 +191,11 @@ Blackout windows always take priority over migration windows. If no windows are 
 | `max_migrations_per_run` | int | `3` | Maximum migrations per automation cycle (1-10) |
 | `max_concurrent_migrations` | int | `1` | Concurrent migration limit |
 | `cooldown_minutes` | int | `30` | Time between migrations for the same guest (1-1440) |
-| `respect_ignore_tags` | bool | `true` | Honor `ignore` tags |
-| `respect_exclude_tags` | bool | `true` | Honor `exclude_*` tags |
-| `respect_exclude_affinity` | bool | `true` | Honor anti-affinity rules |
-| `require_auto_migrate_ok_tag` | bool | `false` | Whitelist mode: only migrate tagged guests |
+| `respect_ignore_tags` | bool | `true` | Honor `ignore` tags (skip tagged guests) |
+| `respect_exclude_tags` | bool | `true` | Honor `exclude_*` tags (anti-affinity) |
+| `respect_exclude_affinity` | bool | `true` | Enforce anti-affinity placement checks |
+| `respect_affinity_rules` | bool | `true` | Honor `affinity_*` tags (pro-affinity companion migrations) |
+| `require_auto_migrate_ok_tag` | bool | `false` | Whitelist mode: only migrate guests with `auto-migrate-ok` tag |
 
 ### Safety Checks
 

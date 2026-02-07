@@ -207,7 +207,38 @@ Removes a tag from a guest.
 
 ### POST /api/guests/{vmid}/tags/refresh
 
-Refreshes cached tag data for a guest.
+Refreshes cached tag data for a guest from Proxmox without requiring a full data collection cycle.
+
+### GET /api/affinity-groups
+
+Returns all affinity groups with their members and split detection status.
+
+```bash
+curl http://<host>/api/affinity-groups
+```
+
+```json
+{
+  "success": true,
+  "affinity_groups": [
+    {
+      "name": "affinity_webstack",
+      "members": [
+        {"vmid": 200, "name": "nginx", "type": "VM", "node": "pve1", "status": "running"},
+        {"vmid": 201, "name": "app-server", "type": "VM", "node": "pve1", "status": "running"}
+      ],
+      "member_count": 2,
+      "nodes": ["pve1"],
+      "is_split": false,
+      "status": "together"
+    }
+  ],
+  "total_groups": 1,
+  "split_groups": 0
+}
+```
+
+Groups with members on different nodes have `is_split: true` and `status: "split"`.
 
 ### GET /api/tasks/{node}/{taskid}
 

@@ -117,6 +117,11 @@ if target == source: penalty += 999999
 3. **Rank by penalty**: Sort targets lowest-first
 4. **Convert to suitability ratings**: Normalize to 0-100%
 5. **Generate recommendations**: Create migration suggestions for guests where the best target meets the minimum threshold
+6. **Generate companion migrations**: For guests with `affinity_*` tags, automatically add recommendations for all group members to follow to the same target node
+
+### Affinity companion generation
+
+After standard recommendations are generated, the engine checks each recommended guest for `affinity_*` tags. If a guest belongs to an affinity group, all other group members not already on the target node are added as companion migration recommendations. Companions that have `ignore` tags, are stopped, or have pinned disks are skipped.
 
 ### Execution priority
 
@@ -125,7 +130,8 @@ When multiple migrations are recommended:
 1. Maintenance evacuations (highest)
 2. Anti-affinity violations
 3. Overloaded node evacuations
-4. Load balancing optimizations (lowest)
+4. Affinity companion migrations
+5. Load balancing optimizations (lowest)
 
 ---
 
@@ -206,6 +212,14 @@ VM 201 tagged `exclude_firewall`. VM 202 (same tag) already on node2:
 | node3 (CPU 60%) | 60 | 0 | **60** |
 
 Result: node3 = 100%. The affinity violation makes node2 unsuitable.
+
+### Pro-affinity companion migration
+
+VM 300 and VM 301 are both tagged `affinity_webstack`. VM 300 is on node1 (overloaded), VM 301 is on node2. The engine recommends migrating VM 300 to node3:
+
+1. VM 300 is scored and recommended to move from node1 → node3 (group leader)
+2. VM 301 shares `affinity_webstack` and is on node2 (not node3), so it is added as a companion
+3. Both VMs end up on node3, keeping the affinity group together
 
 ### Maintenance evacuation
 

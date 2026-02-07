@@ -81,7 +81,9 @@ VMs with passthrough disks (red indicator) are excluded from migration recommend
 | Tag | Effect |
 |-----|--------|
 | `ignore` | Excluded from automated migration recommendations |
+| `no-auto-migrate` | Excluded from automated migration (alternative to `ignore`) |
 | `exclude_<group>` | Anti-affinity: guests with the same tag are kept on different nodes |
+| `affinity_<group>` | Pro-affinity: guests with the same tag are kept together on the same node |
 | `auto-migrate-ok` | Whitelist mode: only tagged guests are auto-migrated (when enabled) |
 
 ### Applying tags
@@ -90,8 +92,12 @@ VMs with passthrough disks (red indicator) are excluded from migration recommend
 ```bash
 pvesh set /nodes/<node>/qemu/<vmid>/config --tags "ignore"
 pvesh set /nodes/<node>/qemu/<vmid>/config --tags "exclude_database"
+pvesh set /nodes/<node>/qemu/<vmid>/config --tags "affinity_webstack"
 pvesh set /nodes/<node>/qemu/<vmid>/config --tags "ignore;exclude_prod"
 ```
+
+**Via ProxBalance web UI:**
+Open the Tag Manager from the dashboard to add, remove, and view tags on all guests. Tags are color-coded: red for `ignore`, orange for `exclude_*`, and purple for `affinity_*`.
 
 **Via Proxmox web UI:**
 Navigate to the VM/CT > Options > Tags.
@@ -101,11 +107,17 @@ Navigate to the VM/CT > Options > Tags.
 - No spaces in tag names (use underscores)
 - Separate multiple tags with semicolons or spaces
 - Anti-affinity tags must start with `exclude_`
+- Affinity tags must start with `affinity_`
 - Exact match required (`exclude_db` and `exclude_database` are different groups)
 
 After changing tags, trigger a refresh:
 ```bash
 curl -X POST http://<container-ip>/api/refresh
+```
+
+You can also refresh tags for a single guest without a full collection cycle:
+```bash
+curl -X POST http://<container-ip>/api/guests/<vmid>/tags/refresh
 ```
 
 ---
