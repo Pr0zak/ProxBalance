@@ -562,9 +562,9 @@ export default function SettingsPage(props) {
 
                       {automationConfig.notifications?.enabled && (
                       <div className="space-y-4 mt-4">
-                        {/* Notification Events */}
+                        {/* Migration Events */}
                         <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
-                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Notification Events</div>
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Migration Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_start !== false}
@@ -589,6 +589,73 @@ export default function SettingsPage(props) {
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_failure: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Safety check failure
+                            </label>
+                          </div>
+                          {/* Sub-filter: success/failure for individual migrations */}
+                          {automationConfig.notifications?.on_action !== false && (
+                            <div className="mt-2 ml-6 flex flex-wrap gap-x-4 gap-y-1">
+                              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                                <input type="checkbox" checked={automationConfig.notifications?.on_action_success !== false}
+                                  onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action_success: e.target.checked } })}
+                                  className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500" />
+                                Successful migrations
+                              </label>
+                              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                                <input type="checkbox" checked={automationConfig.notifications?.on_action_failure !== false}
+                                  onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action_failure: e.target.checked } })}
+                                  className="w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-500" />
+                                Failed migrations
+                              </label>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Cluster Events */}
+                        <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Cluster Events</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when a node goes offline or comes back online">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_node_status !== false}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_node_status: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Node status changes
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when CPU or memory exceeds safety thresholds">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_resource_threshold === true}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_resource_threshold: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Resource threshold breach
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when node evacuation starts or completes">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_evacuation !== false}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_evacuation: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Evacuation events
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* System Events */}
+                        <div className="p-3 bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600">
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">System Events</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when new migration recommendations are generated">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_recommendations === true}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_recommendations: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              New recommendations
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when data collection succeeds or fails">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_collector_status === true}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_collector_status: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Collector status
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer" title="Alert when a new ProxBalance version is available">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_update_available !== false}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_update_available: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Update available
                             </label>
                           </div>
                         </div>

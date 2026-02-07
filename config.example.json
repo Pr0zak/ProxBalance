@@ -88,6 +88,14 @@
       "on_complete": true,
       "on_failure": true,
       "on_action": true,
+      "on_action_success": true,
+      "on_action_failure": true,
+      "on_node_status": true,
+      "on_resource_threshold": false,
+      "on_recommendations": false,
+      "on_evacuation": true,
+      "on_collector_status": false,
+      "on_update_available": true,
       "providers": {
         "pushover": {
           "enabled": false,

@@ -417,8 +417,12 @@ class UpdateManager:
     # Update check
     # ------------------------------------------------------------------
 
-    def check_for_updates(self) -> Dict:
-        """Check if updates are available based on release/branch status."""
+    def check_for_updates(self, config: Dict = None) -> Dict:
+        """Check if updates are available based on release/branch status.
+
+        Args:
+            config: Optional application config for sending notifications.
+        """
         try:
             version_info = self.get_version_info()
 
@@ -429,9 +433,23 @@ class UpdateManager:
                 pass  # Non-fatal: we can still compare with whatever we have
 
             if version_info['on_release']:
-                return self._check_release_update(version_info)
+                result = self._check_release_update(version_info)
             else:
-                return self._check_branch_update(version_info)
+                result = self._check_branch_update(version_info)
+
+            # Send update available notification
+            if result.get('update_available') and config:
+                try:
+                    from notifications import send_notification
+                    send_notification(config, 'update_available', {
+                        'current_version': result.get('current_version', '?'),
+                        'latest_version': result.get('latest_version', '?'),
+                        'commits_behind': result.get('commits_behind', 0),
+                    })
+                except Exception:
+                    pass  # Non-fatal
+
+            return result
         except Exception as e:
             print(f'Error checking for updates: {e}')
             return {'error': str(e), 'update_available': False}

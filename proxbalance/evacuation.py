@@ -626,6 +626,20 @@ def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, g
         successful = 0
         failed = 0
 
+        # Send evacuation started notification
+        try:
+            from proxbalance.config_manager import load_config as _load_cfg
+            from notifications import send_notification
+            _evac_config = _load_cfg()
+            if not _evac_config.get("error"):
+                send_notification(_evac_config, "evacuation", {
+                    "node": source_node,
+                    "status": "started",
+                    "guest_count": len(guest_vmids),
+                })
+        except Exception as _ne:
+            print(f"Warning: Could not send evacuation start notification: {_ne}", file=sys.stderr)
+
         # Update session status
         session = _read_session(session_id)
         if session:
@@ -919,6 +933,21 @@ def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, g
 
         print(f"[{session_id}] Evacuation completed: {successful} successful, {failed} failed", file=sys.stderr)
 
+        # Send evacuation completed notification
+        try:
+            from proxbalance.config_manager import load_config as _load_cfg
+            from notifications import send_notification
+            _evac_config = _load_cfg()
+            if not _evac_config.get("error"):
+                send_notification(_evac_config, "evacuation", {
+                    "node": source_node,
+                    "status": "completed",
+                    "migrated": successful,
+                    "failed": failed,
+                })
+        except Exception as _ne:
+            print(f"Warning: Could not send evacuation complete notification: {_ne}", file=sys.stderr)
+
     except Exception as e:
         print(f"[{session_id}] Evacuation error: {str(e)}", file=sys.stderr)
         traceback.print_exc()
@@ -930,3 +959,17 @@ def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, g
             session["completed"] = True
             session["error"] = str(e)
             _write_session(session_id, session)
+
+        # Send evacuation failed notification
+        try:
+            from proxbalance.config_manager import load_config as _load_cfg
+            from notifications import send_notification
+            _evac_config = _load_cfg()
+            if not _evac_config.get("error"):
+                send_notification(_evac_config, "evacuation", {
+                    "node": source_node,
+                    "status": "failed",
+                    "error": str(e),
+                })
+        except Exception as _ne:
+            print(f"Warning: Could not send evacuation failure notification: {_ne}", file=sys.stderr)
