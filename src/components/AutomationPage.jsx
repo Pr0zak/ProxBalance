@@ -117,24 +117,6 @@ export default function AutomationPage(props) {
           </div>
         </div>
 
-        {/* Experimental Warning */}
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-400 dark:border-yellow-600 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={24} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-            <div>
-              <div className="font-bold text-yellow-900 dark:text-yellow-200 mb-2 text-lg">⚠️ Experimental Feature</div>
-              <div className="text-sm text-yellow-800 dark:text-yellow-300 space-y-1">
-                <p>Automated Migrations is an <strong>experimental feature</strong>. Please use with caution:</p>
-                <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li>Keep <strong>Dry Run Mode enabled</strong> until you're confident in the configuration</li>
-                  <li>Monitor the system closely when enabling real migrations</li>
-                  <li>Start with conservative settings (low migration limits, high confidence scores)</li>
-                  <li>Test thoroughly in a non-production environment if possible</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Test Results */}
         {testResult && (
