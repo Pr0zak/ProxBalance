@@ -3175,9 +3175,9 @@ export default function DashboardPage({
               <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setSelectedGuestDetails(null)}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded font-medium flex items-center justify-center gap-1.5"
                 >
-                  Close
+                  <X size={14} /> Close
                 </button>
                 {canMigrate && selectedGuestDetails.status === 'running' && (
                   <button
@@ -4406,9 +4406,9 @@ export default function DashboardPage({
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowUpdateModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-1.5"
                 >
-                  Cancel
+                  <X size={14} /> Cancel
                 </button>
                 <button
                   onClick={handleUpdate}
@@ -4525,9 +4525,9 @@ export default function DashboardPage({
               <div className="flex justify-end">
                 <button
                   onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center justify-center gap-1.5"
                 >
-                  Close
+                  <X size={14} /> Close
                 </button>
               </div>
             </div>
@@ -4608,9 +4608,9 @@ export default function DashboardPage({
                       </h3>
                       <button
                         onClick={() => setBranchPreview(null)}
-                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                       >
-                        Close preview
+                        <X size={12} /> Close preview
                       </button>
                     </div>
                     <div className="text-sm text-indigo-800 dark:text-indigo-300 space-y-2">
@@ -4743,9 +4743,9 @@ export default function DashboardPage({
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-1.5"
                   >
-                    Close
+                    <X size={14} /> Close
                   </button>
                 </div>
               </div>
@@ -4804,9 +4804,9 @@ export default function DashboardPage({
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowMigrationDialog(false)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-1.5"
             >
-              Cancel
+              <X size={14} /> Cancel
             </button>
             <button
               onClick={() => {
@@ -4822,9 +4822,9 @@ export default function DashboardPage({
                 }
               }}
               disabled={!migrationTarget}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
-              Migrate
+              <MoveRight size={14} /> Migrate
             </button>
           </div>
         </div>
