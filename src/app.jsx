@@ -10865,7 +10865,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                   {systemInfo && !updating && updateLog.length === 0 && (
                     <div className="space-y-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-4">
+                      <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded p-4">
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0">
                             <RefreshCw size={24} className="text-blue-600 dark:text-blue-400" />
@@ -10883,7 +10883,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       </div>
 
                       {systemInfo.changelog && systemInfo.changelog.length > 0 && (
-                        <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded p-4">
+                        <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 rounded p-4">
                           <h3 className="font-semibold text-green-900 dark:text-green-200 mb-3 flex items-center gap-2">
                             <span>📋 What's New</span>
                             <span className="text-xs px-2 py-0.5 bg-green-200 dark:bg-green-800 rounded-full">
@@ -10906,7 +10906,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                         </div>
                       )}
 
-                      <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-4">
+                      <div className="bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-800 rounded p-4">
                         <div className="flex items-start gap-2">
                           <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                           <div className="text-sm text-yellow-800 dark:text-yellow-300">
@@ -11016,7 +11016,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                       <div className="space-y-4">
                         {/* Operation in progress banner */}
                         {systemInfo && systemInfo.update_in_progress && (
-                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                             <div className="flex items-center gap-2">
                               <RefreshCw size={18} className="text-blue-600 dark:text-blue-400 animate-spin" />
                               <span className="text-sm text-blue-800 dark:text-blue-300">
@@ -11028,7 +11028,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                         {/* Return to previous branch banner */}
                         {systemInfo && systemInfo.previous_branch && systemInfo.previous_branch !== systemInfo.branch && (
-                          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                          <div className="bg-amber-50 dark:bg-amber-900 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <ArrowLeft size={18} className="text-amber-600 dark:text-amber-400" />
@@ -11049,7 +11049,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                         {/* Branch preview panel */}
                         {branchPreview && (
-                          <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+                          <div className="bg-indigo-50 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
                             <div className="flex items-center justify-between mb-3">
                               <h3 className="font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
                                 <GitBranch size={16} />
@@ -11064,10 +11064,10 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                             </div>
                             <div className="text-sm text-indigo-800 dark:text-indigo-300 space-y-2">
                               <div className="flex gap-4 text-xs">
-                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+                                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">
                                   +{branchPreview.ahead} ahead
                                 </span>
-                                <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded">
+                                <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded">
                                   -{branchPreview.behind} behind
                                 </span>
                                 <span className="text-indigo-600 dark:text-indigo-400">
@@ -11118,9 +11118,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                 key={branch.name}
                                 className={`border rounded-lg p-4 transition-all duration-200 ${
                                   branch.current
-                                    ? 'border-purple-500 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                                    ? 'border-purple-500 dark:border-purple-600 bg-purple-50 dark:bg-purple-900'
                                     : branch.previous
-                                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10'
+                                      ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900'
                                       : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700'
                                 }`}
                               >
@@ -11146,7 +11146,7 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                         </span>
                                       )}
                                       {branch.ahead_of_base > 0 && (
-                                        <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+                                        <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">
                                           +{branch.ahead_of_base}
                                         </span>
                                       )}
