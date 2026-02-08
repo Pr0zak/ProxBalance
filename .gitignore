@@ -76,3 +76,4 @@ package-lock.json
 package.json
 .babelrc
 assets/js/app.js
+assets/css/tailwind.css
