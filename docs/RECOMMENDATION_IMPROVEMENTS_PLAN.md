@@ -25,6 +25,9 @@ This document proposes improvements to ProxBalance's recommendation engine, scor
    - [J. API & Integration Enhancements](#j-api--integration-enhancements)
 8. [Next-Phase Implementation Priority](#next-phase-implementation-priority)
 9. [Technical Architecture Notes](#technical-architecture-notes)
+   - [Feature Dependency Graph](#feature-dependency-graph)
+   - [Frontend/Backend Parity Tracking](#frontendbackend-parity-tracking)
+   - [Testing Strategy for New Features](#testing-strategy-for-new-features)
 10. [Success Metrics](#success-metrics)
 
 ---
@@ -655,39 +658,44 @@ This gives administrators a quick executive summary without having to parse indi
 
 ## Implementation Status
 
-This section tracks the implementation progress of each proposed improvement against the current codebase.
+This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08.
 
-### Completed
+### Completed (Backend + Frontend)
 
-| Item | Description | Implementation Details |
-|------|-------------|----------------------|
-| **A1** | Score Breakdown Panel | `calculate_target_node_score()` in `scoring.py` supports `return_details=True`, returning a full penalty breakdown with individual penalty components, total penalties, component scores, and metrics. Each recommendation in `recommendations.py` includes a `score_details` object with `source` and `target` breakdowns. |
-| **A2** | Node Score Comparison View | `GET /api/guest/{vmid}/migration-options` endpoint in `routes/recommendations.py` calculates per-node suitability scores for any guest, including anti-affinity checks, storage compatibility, penalty categories, and score improvement deltas. |
-| **B1** | Structured Reason Strings | Recommendations now include a `structured_reason` object with `primary_reason`, `primary_label`, `contributing_factors` (each with factor, value, weight, label), and a `summary` sentence. |
-| **B2** | Reworked Confidence Score | Multi-factor confidence replaces the old `improvement * 2` formula. Factors include score improvement (40%), target headroom (25%), historical stability (20%), and migration complexity (15%). Each maps to 0-100 with meaningful thresholds. |
-| **B3** | "Why Not?" Explanations | Full `skipped_guests` tracking during recommendation generation. Each skipped guest includes `vmid`, `name`, `type`, `node`, `reason` (key), `detail` (human-readable), and where applicable `best_target`, `score_improvement`, `current_score`, and `best_target_score`. Seven skip reasons: `has_ignore_tag`, `ha_managed`, `stopped`, `passthrough_disk`, `unshared_bind_mount`, `insufficient_improvement`, `no_suitable_target`. Frontend displays a collapsible "Not Recommended" section with reason-specific icons. |
-| **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` endpoint compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. |
-| **E2** | User Feedback on Recommendations | `POST /api/recommendations/feedback` accepts helpful/not_helpful ratings with optional reasons. `GET /api/recommendations/feedback` returns aggregated stats (totals, percentages, reason breakdowns, recent entries). Stored in `recommendation_feedback.json` with 500-entry cap. |
-| **E3** | Recommendation Digest/Summary | Recommendation generation returns a `summary` object with `total_recommendations`, `total_skipped`, `total_improvement`, `reasons_breakdown`, `cluster_health`, `predicted_health`, `urgency` (none/low/medium/high), and `skip_reasons` breakdown by category. |
+| Item | Description | Backend | Frontend |
+|------|-------------|---------|----------|
+| **A1** | Score Breakdown Panel | `calculate_target_node_score()` in `scoring.py` supports `return_details=True`, returning 12 individual penalty components, total penalties, component scores (health, predicted health, headroom, storage), and detailed metrics. Each recommendation includes a `score_details` object with `source` and `target` breakdowns. | Expandable score breakdown section per recommendation card (`DashboardPage.jsx:4209-4278`). Shows source/target penalty breakdown, predicted post-migration metrics (CPU%, Mem%, headroom). |
+| **A2** | Node Score Comparison View | `POST /api/guest/{vmid}/migration-options` endpoint calculates per-node suitability for any guest, including anti-affinity checks, storage compatibility, penalty categories, and score improvement deltas. Returns sorted target list with disqualification reasons. | `fetchGuestMigrationOptions()` in `client.js:321-334`. State management in `app.jsx:106-114` with `guestMigrationOptions` state. |
+| **B1** | Structured Reason Strings | `_build_structured_reason()` in `recommendations.py:456-585` builds `primary_reason`, `primary_label`, `contributing_factors` (each with factor, value, severity, label), and `summary` sentence. Reason types: `maintenance_evacuation`, `cpu_imbalance`, `mem_imbalance`, `combined`, `distribution_balancing`. | Recommendation cards render `primary_label` and up to 3 contributing factors (`DashboardPage.jsx:4169-4206`). |
+| **B2** | Reworked Confidence Score | `_calculate_confidence()` in `recommendations.py:381-453`. Four weighted factors: score improvement (40%), target headroom (25%), migration complexity (20%), stability signal (15%). Maps each to 0-100 with meaningful thresholds. | Color-coded confidence display: green >= 70%, yellow >= 40%, orange < 40% (`DashboardPage.jsx:4193-4199`). AI confidence adjustments shown when present. |
+| **B3** | "Why Not?" Explanations | Full `skipped_guests` tracking during generation. Seven skip reasons: `has_ignore_tag`, `ha_managed`, `stopped`, `passthrough_disk`, `unshared_bind_mount`, `insufficient_improvement`, `no_suitable_target`. Each entry includes `vmid`, `name`, `type`, `node`, `reason`, `detail`, and where applicable `best_target`, `score_improvement`, `current_score`, `best_target_score`. | Collapsible "Not Recommended" section (`DashboardPage.jsx:4463-4520`). Shows up to 20 guests with reason-specific icons (`~` insufficient, `H` HA, `!` no target, `S` stopped, `P` passthrough, `I` ignore tag, `B` bind mount). Score improvement vs. minimum threshold displayed. |
+| **E2** | User Feedback | `POST /api/recommendations/feedback` accepts helpful/not_helpful with optional reasons. `GET /api/recommendations/feedback` returns aggregated stats. Stored in `recommendation_feedback.json` with 500-entry cap. | Thumbs up/down buttons per recommendation card (`DashboardPage.jsx:4304-4378`). Status badge after submission ("Thanks!" / "Noted"). `feedbackGiven` state tracks per-recommendation. |
+| **E3** | Recommendation Digest | `_build_summary()` in `recommendations.py:588-656` generates `cluster_health` (0-100), `predicted_health`, `urgency` (high/medium/low/none) with `urgency_label`, `reasons_breakdown`, and `skip_reasons` counts by category. | Summary data available in `recommendationData.summary` state. Basic stats rendered in recommendation header. |
+
+### Completed (Backend Only — Frontend Integration Pending)
+
+| Item | Description | Backend Status | Frontend Gap |
+|------|-------------|---------------|-------------|
+| **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. | `simulatePenaltyConfig()` exists in `client.js:340-353` but is **not connected** to any UI component. No preview panel in SettingsPage when editing penalties. |
+| **D3** | Threshold Suggestions | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Also included in recommendation POST response as `threshold_suggestions`. | Threshold data is fetched and stored in state but **not rendered** in the UI. No actionable banner with "Apply" buttons. |
 
 ### Partially Implemented
 
 | Item | Description | Current State | Remaining Work |
 |------|-------------|---------------|----------------|
-| **A3** | Penalty Contribution Visualization | `node-scores` API returns `penalty_categories` (cpu, memory, iowait, trends, spikes) per node, ready for chart rendering. | Frontend ring/stacked bar chart component not yet built. Node cards still show metrics without penalty source visualization. |
-| **C1** | Recommendation Card Redesign | Cards include structured reasons, confidence scores, score details, and feedback buttons. | Full visual redesign (source/target flow, progress bars, collapsible detail sections per mockup) not yet implemented. |
-| **D3** | Threshold Suggestion Integration | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Included in recommendation POST response. | Prominent actionable banner UI with per-threshold "Apply" buttons not yet built. |
+| **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` (cpu, memory, iowait, trends, spikes) and full `penalty_breakdown` per node. Data is ready for chart rendering. | No ring chart, stacked bar, or any visual penalty breakdown on node cards. Cluster map shows CPU/Memory bars but not penalty composition. Frontend chart component needs building. |
+| **C1** | Recommendation Card Redesign | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, and migration commands. Substantial content parity with the mockup. | Missing visual elements from proposed mockup: source→target flow with inline metrics, visual progress bar for score improvement, confidence as dots/bar, overall layout restructure. Current layout is functional but text-heavy. |
+| **D1** | Penalty Config Presets + Sliders | Backend has `POST /api/penalty-config/presets/{presetName}` endpoint. `applyPenaltyPreset()` exists in `client.js:99-110`. Frontend has preset buttons (Conservative/Balanced/Aggressive) in `app.jsx:3368-3382` with active state highlighting. | Preset buttons live in `app.jsx`, not in `SettingsPage.jsx` (architectural inconsistency). **No slider-based tuning** — SettingsPage still uses raw number inputs for all 30+ penalties. No grouped slider-to-penalty mapping. Help text mentions "Conservative (20-30), Balanced (10-15), Aggressive (5-10)" but this is guidance text, not interactive presets. |
 
 ### Not Started
 
 | Item | Description | Notes |
 |------|-------------|-------|
-| **B4** | Predicted Impact Preview | `predict_post_migration_load()` exists in `scoring.py` but no full-cluster prediction endpoint or toggle overlay on the cluster map. |
-| **C2** | Interactive Cluster Map Arrows | No SVG arrow rendering or animation for migration flows on the cluster map. |
-| **C3** | Score Legend & Education Panel | No interactive scoring explanation panel. Static info box exists but doesn't use live data. |
-| **C4** | Recommendation History Timeline | No historical recommendation storage beyond current cache cycle. No before/after tracking for executed migrations. |
-| **D1** | Penalty Config Presets + Sliders | Settings page still shows raw number inputs. No preset profiles (Conservative/Balanced/Aggressive) or grouped slider mappings. |
-| **E1** | Migration Outcome Tracking | Migration history records events but does not capture pre/post metrics or compare predicted vs. actual improvement. |
+| **B4** | Predicted Impact Preview | `predict_post_migration_load()` exists in `scoring.py` and is used per-recommendation. `pending_target_guests` tracks cumulative impact within a generation cycle. However: no full-cluster prediction endpoint for all recommendations combined, no toggle overlay on cluster map showing before/after. |
+| **C2** | Interactive Cluster Map Arrows | Cluster map renders nodes and guests as visual elements (`DashboardPage.jsx:2136-2500+`) but no SVG arrows, animation, or migration flow visualization between nodes. |
+| **C3** | Score Legend & Education Panel | No interactive scoring explanation panel. Static "How It Works" collapsed section exists but doesn't use live cluster data or provide interactive examples. |
+| **C4** | Recommendation History Timeline | No historical recommendation storage beyond current cache cycle. `recommendations_cache.json` is overwritten each generation. No before/after tracking for executed migrations. |
+| **E1** | Migration Outcome Tracking | Migration history (`migration_history.json`) records events with status (completed/failed/timeout) and duration. Does **not** capture pre/post node metrics or compare predicted vs. actual score improvement. |
 
 ---
 
@@ -1244,43 +1252,79 @@ VMID,Name,Type,Source,Target,Score Improvement,Confidence,Risk,Reason
 
 ## Next-Phase Implementation Priority
 
-### Phase 4 — High-Impact Remaining Items (from original plan)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| D1 | Penalty config presets + sliders | Medium | Most impactful UX change remaining. Reduces barrier for new users. |
-| C3 | Score legend & education panel | Low | Frontend-only, builds understanding. Pairs well with D1. |
-| B4 | Predicted impact preview | Medium | Backend data mostly exists. Needs cluster-wide simulation + toggle UI. |
-| A3 | Penalty contribution visualization | Medium | API data ready (`penalty_categories`). Needs chart component. |
+### Implementation Status of Next-Phase Items
 
-### Phase 5 — Predictive & Safety (new items)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| H1 | Migration risk scoring | Medium | Directly improves automation safety. Informs min_confidence filtering. |
-| H2 | Pre-migration validation | Medium | Prevents stale-recommendation failures. Critical for automation trust. |
-| G1 | Migration conflict detection | Medium | Catches multi-migration issues that individual scoring misses. |
-| F3 | Capacity planning insights | Low-Medium | Advisory-only, no migration action. High value for cluster planning. |
+Before prioritizing, here is the current implementation status of next-phase items. Several are further along than initially expected due to existing infrastructure:
 
-### Phase 6 — Observability & Trends (new items)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| I2 | Score history & trend tracking | Medium | Enables understanding of cluster evolution. Foundation for F1. |
-| I3 | Recommendation change log | Low | Diff logic is straightforward. High user value for understanding changes. |
-| I1 | Recommendation engine diagnostics | Low-Medium | Debugging aid. Reduces support burden. |
-| J1 | Webhook events for recommendations | Low | Extends existing notification infrastructure. |
+| Item | Description | Backend | Frontend | Overall Status |
+|------|-------------|---------|----------|----------------|
+| **G1** | Migration conflict detection | **Partial** — `pending_target_guests` dict in `recommendations.py` tracks cumulative load for subsequent evaluations. Anti-affinity conflicts checked against pending targets. | Not started | Backend foundation exists. Missing: post-generation validation pass, conflict reporting in API response, UI warnings. |
+| **G2** | Migration ordering | **Partial** — Recommendations sorted by maintenance priority then improvement descending. `automigrate.py` picks highest-improvement first. | Not started | Basic ordering exists. Missing: dependency analysis, resource sequencing, parallel group identification. |
+| **G3** | Batch impact assessment | **Partial** — `pending_target_guests` models cumulative load within generation. Summary includes `total_improvement` and `predicted_health`. | Not started | Aggregate numbers exist. Missing: full before/after cluster snapshot, per-node comparison, variance metrics. |
+| **H2** | Pre-migration validation | **Partial** — `automigrate.py` has `is_vm_in_cooldown()`, `is_rollback_migration()`, `validates_resource_improvement()`, and confidence threshold checks. | Not started | Automation checks exist. Missing: `validate_migration()` function in `migrations.py`, dedicated validation endpoint, staleness/storage/lock checks, frontend status display. |
+| **H3** | Rollback awareness | **Partial** — `automigrate.py:734-782` has `is_rollback_migration()` that detects reverse migrations within `rollback_window_hours`. | Not started | Detection exists. Missing: UI rollback button, return-path tracking in migration history, capacity check before rollback. |
+| **J1** | Webhook events | **Partial** — `notifications.py` supports a "recommendations" event type with top recommendation details and count. | N/A | Basic event exists. Missing: urgency-specific events, cleared events, feedback events, capacity warnings. |
+| **F1** | Proactive alerts | **Minimal** — `scoring.py` detects "rising"/"stable" trend direction and applies +15 penalty. No projection or forecasting. | Not started | Trend detection only. Missing: linear regression, threshold crossing projection, forecast recommendation type. |
+| **F2** | Workload patterns | Not started | Not started | — |
+| **F3** | Capacity planning | **Minimal** — Summary includes `cluster_health` and `predicted_health`. No saturation warnings or advisory messages. | Not started | Headroom data exists. Missing: saturation detection, advisory generation, suggestion messages. |
+| **H1** | Migration risk scoring | Not started | Not started | — |
+| **I1** | Engine diagnostics | Not started | Not started | — |
+| **I2** | Score history | Not started | Not started | — |
+| **I3** | Recommendation change log | Not started | Not started | — |
+| **J2** | API filtering | Not started | Not started | — |
+| **J3** | Export & reporting | **Minimal** — `AutomationPage.jsx` has log export as `.txt` file. No CSV/JSON migration history or recommendation export. | Log export only | Missing: CSV/JSON formats, history export, recommendation export. |
+| **C2** | Cluster map arrows | Not started | Not started | — |
+| **C4** | History timeline | Not started | Not started | — |
+| **E1** | Outcome tracking | Not started | Not started | — |
 
-### Phase 7 — Advanced Features (new items)
+### Revised Phasing
+
+Based on the updated status assessment, phases are re-ordered to maximize leverage from existing infrastructure:
+
+### Phase 4 — Complete Partial Implementations (finish what's started)
 | Item | Description | Effort | Rationale |
 |------|-------------|--------|-----------|
-| F1 | Proactive recommendation alerts | High | Requires trend projection + new recommendation type. |
-| F2 | Workload pattern recognition | High | Requires RRD data analysis, pattern detection algorithms. |
-| G2 | Migration ordering & dependencies | High | Complex dependency analysis. Most value for automated migrations. |
-| G3 | Batch migration impact assessment | Medium | Builds on existing prediction functions. |
-| H3 | Rollback awareness | Medium | Migration history extension + validation. |
-| C2 | Interactive cluster map arrows | High | SVG rendering, interaction complexity. |
-| C4 | Recommendation history timeline | High | Requires long-term data storage and timeline UI. |
-| E1 | Migration outcome tracking | High | Background metric collection + comparison logic. |
-| J2 | API filtering & pagination | Low | Standard API improvement. |
-| J3 | Export & reporting | Low-Medium | CSV/JSON export logic + UI buttons. |
+| D1 | Penalty config presets: move preset buttons to SettingsPage, add slider groups | Medium | Backend + basic buttons exist. Need slider mapping and proper UI placement. |
+| D2 | Simulator UI integration | Low | Backend API + `client.js` function exist. Wire into SettingsPage with preview panel. |
+| D3 | Threshold suggestion UI | Low | Data fetched and stored in state. Render actionable banner with "Apply" buttons. |
+| G3 | Batch impact: add full before/after cluster snapshot | Low-Medium | `pending_target_guests` and `total_improvement` exist. Add per-node before/after, variance. |
+| J1 | Expand recommendation webhook events | Low | Base event type exists. Add urgency-specific, cleared, capacity events. |
+
+### Phase 5 — Core Remaining Items (from original plan)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| A3 | Penalty contribution visualization | Medium | API returns `penalty_categories`. Build Chart.js ring/bar component. |
+| C3 | Score legend & education panel | Low | Frontend-only. Use live cluster data for interactive examples. |
+| B4 | Predicted impact preview | Medium | Per-recommendation prediction exists. Add cluster-wide toggle overlay. |
+| C1 | Recommendation card full redesign | Medium | Content is complete. Restructure layout per mockup (flow, bars, dots). |
+
+### Phase 6 — Safety & Validation (complete existing foundations)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| H1 | Migration risk scoring | Medium | New function in `scoring.py`. Directly improves automation safety decisions. |
+| H2 | Pre-migration validation: add dedicated `validate_migration()` and endpoint | Medium | `automigrate.py` checks exist. Consolidate into reusable validation + endpoint. |
+| G1 | Migration conflict detection: add post-generation validation pass | Medium | `pending_target_guests` foundation exists. Add explicit conflict reporting. |
+| F3 | Capacity planning insights | Low-Medium | Health data exists. Add saturation detection and advisory generation. |
+
+### Phase 7 — Observability & Trends
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| I2 | Score history & trend tracking | Medium | Foundation for F1, C4, E1. Must be built first. |
+| I3 | Recommendation change log | Low | Diff against previous cache before overwrite. |
+| I1 | Recommendation engine diagnostics | Low-Medium | Timing metadata + debug panel. |
+| J3 | Export & reporting (CSV/JSON) | Low-Medium | Add recommendation and history export. Log export already exists. |
+
+### Phase 8 — Advanced Features
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| F1 | Proactive recommendation alerts | High | Requires trend projection (regression) + forecast recommendation type. Depends on I2. |
+| F2 | Workload pattern recognition | High | RRD data analysis, cycle detection. Most complex new feature. |
+| G2 | Migration ordering & dependencies | High | Extend existing sort with dependency graph analysis. |
+| H3 | Rollback awareness: UI + capacity check | Medium | Detection exists. Add UI button and return-path tracking. |
+| C2 | Interactive cluster map arrows | High | SVG rendering, interaction. High visual impact but complex. |
+| C4 | Recommendation history timeline | High | Depends on I2 for historical data. Timeline UI component. |
+| E1 | Migration outcome tracking | High | Pre/post metric capture + comparison logic. Depends on I2. |
+| J2 | API filtering & pagination | Low | Standard API improvement for larger clusters. |
 
 ---
 
@@ -1395,6 +1439,152 @@ All new data files should follow existing patterns:
 | H3 Rollback | embedded in `migration_history.json` | ~0.5 KB per migration | Per migration event |
 
 Total additional storage is negligible (< 1 MB/month for a typical cluster).
+
+### Feature Dependency Graph
+
+Features have interconnected dependencies. This graph identifies the critical path and parallelizable work:
+
+```
+                    ┌─────────────────────────────────────────────────┐
+                    │           Foundation Layer                      │
+                    │                                                 │
+                    │   I2 (Score History) ◄──── Unlocks 5 features   │
+                    │          │                                      │
+                    │          ├──► F1 (Proactive Alerts)             │
+                    │          ├──► C4 (History Timeline)             │
+                    │          ├──► E1 (Outcome Tracking)             │
+                    │          ├──► I3 (Change Log)                   │
+                    │          └──► Success Metrics collection        │
+                    │                                                 │
+                    └─────────────────────────────────────────────────┘
+
+    ┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+    │ Independent      │     │ Builds on A1/B1   │     │ Builds on G1     │
+    │ (can parallelize)│     │ (score details)   │     │ (conflict detect)│
+    │                  │     │                   │     │                  │
+    │ H1 Risk Scoring  │     │ A3 Penalty Viz    │     │ G2 Ordering      │
+    │ F3 Capacity      │     │ B4 Impact Preview │     │ G3 Batch Impact  │
+    │ I1 Diagnostics   │     │ C1 Card Redesign  │     │                  │
+    │ J2 API Filtering │     │ C3 Score Legend    │     │                  │
+    │ J3 Export        │     │                   │     │                  │
+    └─────────────────┘     └──────────────────┘     └──────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │ Frontend-only completions (no new backend needed)              │
+    │                                                                │
+    │ D2 UI: Wire simulatePenaltyConfig() into SettingsPage          │
+    │ D3 UI: Render threshold suggestions as actionable banner       │
+    │ D1 UI: Move preset buttons into SettingsPage, add sliders      │
+    │ C3 UI: Score legend panel with live data                       │
+    │                                                                │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │ Backend exists, needs frontend integration                     │
+    │                                                                │
+    │ D2: POST /api/penalty-config/simulate ──► SettingsPage panel   │
+    │ D3: threshold_suggestions in response ──► Dashboard banner     │
+    │ A3: penalty_categories in node-scores ──► Chart.js component   │
+    │ J1: notifications.py event type ──► expand event variants      │
+    │                                                                │
+    └─────────────────────────────────────────────────────────────────┘
+```
+
+**Critical path for maximum feature unlock:** I2 → {F1, C4, E1, I3} in parallel.
+
+**Quickest wins (frontend-only wiring):** D2, D3, D1 slider integration.
+
+### Frontend/Backend Parity Tracking
+
+A key pattern in the current codebase: several backend APIs exist with no corresponding frontend integration. This table tracks parity:
+
+| API Endpoint | Backend Status | `client.js` Function | Frontend UI |
+|---|---|---|---|
+| `POST /api/recommendations` | Complete | `generateRecommendations()` | Complete |
+| `GET /api/recommendations` | Complete | `fetchCachedRecommendations()` | Complete |
+| `POST /api/node-scores` | Complete | `fetchNodeScores()` | Partial (data fetched, no chart) |
+| `POST /api/guest/{vmid}/migration-options` | Complete | `fetchGuestMigrationOptions()` | Partial (data fetched, panel exists) |
+| `POST /api/penalty-config/simulate` | Complete | `simulatePenaltyConfig()` | **Not wired** — function exists but never called from UI |
+| `GET /api/recommendations/threshold-suggestions` | Complete | Included in POST response | **Not rendered** — data stored in state, no UI element |
+| `POST /api/recommendations/feedback` | Complete | `submitRecommendationFeedback()` | Complete |
+| `GET /api/recommendations/feedback` | Complete | Not in `client.js` | **Not available** — no way to view feedback analytics |
+| `POST /api/penalty-config/presets/{name}` | Complete | `applyPenaltyPreset()` | **Misplaced** — buttons in `app.jsx:3368`, should be in SettingsPage |
+| `POST /api/penalty-config/reset` | Complete | `resetPenaltyConfig()` | Complete (in SettingsPage) |
+
+**Priority integration gaps** (sorted by impact):
+1. **Threshold suggestions** — High impact, low effort. Data flows to frontend but isn't rendered.
+2. **Simulator preview** — High impact, medium effort. API + client function ready, need preview panel.
+3. **Feedback analytics** — Low effort. Add `client.js` function + summary display somewhere in Settings.
+4. **Preset button placement** — Low effort. Move from `app.jsx` into SettingsPage for better UX.
+
+### Testing Strategy for New Features
+
+ProxBalance currently has limited formal testing. As the recommendation engine grows more complex, the risk of regressions increases. This section proposes testing approaches for each improvement area.
+
+#### Unit Testing Priorities
+
+| Module | Test Focus | Priority |
+|--------|-----------|----------|
+| `proxbalance/scoring.py` | Penalty calculation determinism — given specific node metrics, verify exact penalty scores | **Critical** |
+| `proxbalance/recommendations.py` | Recommendation generation — verify skip reasons, confidence calculation, structured reasons | **Critical** |
+| `proxbalance/scoring.py` | `predict_post_migration_load()` accuracy — verify CPU/memory predictions | High |
+| `proxbalance/recommendations.py` | Distribution balancing — verify guest count thresholds and candidate selection | Medium |
+| `proxbalance/recommendations.py` | Affinity companion generation — verify group tracking and conflict detection | Medium |
+
+**Recommended approach:** Create a `tests/` directory with pytest fixtures that provide deterministic cluster data (nodes with known metrics, guests with known resource usage). Assert exact penalty values and recommendation outcomes.
+
+```python
+# Example test structure
+def test_high_cpu_penalty():
+    """Node at 75% CPU with 60% threshold should receive cpu_high_penalty."""
+    node = make_node(cpu=75, mem=40, iowait=5)
+    guest = make_guest(cores=1, mem_gb=1)
+    score, details = calculate_target_node_score(
+        node, guest, {}, cpu_threshold=60, mem_threshold=70, return_details=True
+    )
+    assert details["penalties"]["current_cpu"] == 20  # cpu_high_penalty default
+
+def test_skipped_guest_ha_managed():
+    """HA-managed guests should be skipped with 'ha_managed' reason."""
+    result = generate_recommendations(nodes, guests_with_ha, 60, 70, 30, set())
+    skipped = {g["vmid"]: g for g in result["skipped_guests"]}
+    assert 100 in skipped
+    assert skipped[100]["reason"] == "ha_managed"
+```
+
+#### Integration Testing
+
+For features that span backend + frontend:
+
+| Feature | Test Approach |
+|---------|--------------|
+| Penalty simulator (D2) | API test: POST proposed config, verify diff output matches expected changes |
+| Feedback system (E2) | API test: POST feedback, GET analytics, verify aggregation |
+| Score history (I2) | Integration test: generate recommendations twice, verify snapshot appended |
+| Export (J3) | API test: GET CSV export, parse and verify column headers and row counts |
+
+#### Frontend Testing
+
+Extend the existing `test-page-load.js` Puppeteer test to cover recommendation-specific scenarios:
+
+| Test | What to Verify |
+|------|----------------|
+| Recommendation card render | Cards appear with structured reason, confidence, score breakdown toggle |
+| Skipped guests expand | Clicking "Not Recommended" header expands section, shows skip reasons |
+| Feedback submission | Clicking thumbs up/down changes button state, shows confirmation |
+| Score breakdown toggle | Expanding breakdown shows source/target penalty tables |
+| Preset buttons | Clicking preset changes active state and reloads penalty config |
+
+#### Regression Testing for Scoring Changes
+
+Any change to `scoring.py` or penalty weights carries risk of shifting all recommendations. Before deploying scoring changes:
+
+1. **Snapshot current recommendations** — Save the full recommendation output for a reference cluster dataset
+2. **Apply the change** — Run recommendation generation with the same input data
+3. **Diff the output** — Compare recommendation counts, VMIDs, score improvements, skip reasons
+4. **Review the diff** — Verify changes are intentional (e.g., "3 new recommendations appeared because IOWait penalty increased")
+
+This can be automated as a CI check if a reference dataset is committed to the repository.
 
 ---
 
