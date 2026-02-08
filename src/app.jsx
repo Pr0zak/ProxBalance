@@ -292,7 +292,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               lastRunSummary: true,  // Collapsed by default - last automation run details
               mountPoints: true,  // Collapsed by default in guest details modal
               passthroughDisks: true,  // Collapsed by default in guest details modal
-              notificationSettings: true  // Collapsed by default
+              notificationSettings: true,  // Collapsed by default
+              skippedGuests: true,  // Collapsed by default - "Why Not?" skipped guests section
+              scoringInfo: true  // Collapsed by default - scoring system explanation
             };
           });
 

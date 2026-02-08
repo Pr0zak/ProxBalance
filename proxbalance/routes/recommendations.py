@@ -34,7 +34,7 @@ def get_recommendations():
             return jsonify({"success": False, "error": "No data available"}), 503
 
         try:
-            recommendations = generate_recommendations(
+            result = generate_recommendations(
                 cache_data.get('nodes', {}),
                 cache_data.get('guests', {}),
                 cpu_threshold,
@@ -42,6 +42,9 @@ def get_recommendations():
                 iowait_threshold,
                 maintenance_nodes
             )
+            recommendations = result.get("recommendations", [])
+            skipped_guests = result.get("skipped_guests", [])
+            rec_summary = result.get("summary", {})
         except Exception as e:
             print(f"Error in generate_recommendations: {str(e)}", file=sys.stderr)
             import traceback
@@ -88,7 +91,7 @@ def get_recommendations():
                                     ))
 
                         ai_enhanced = True
-                        print(f"✓ AI enhancement complete: {len(enhancement_result['insights'])} insights added", file=sys.stderr)
+                        print(f"\u2713 AI enhancement complete: {len(enhancement_result['insights'])} insights added", file=sys.stderr)
                     else:
                         print(f"AI enhancement returned no insights", file=sys.stderr)
             except Exception as e:
@@ -99,6 +102,8 @@ def get_recommendations():
         recommendations_cache = {
             "success": True,
             "recommendations": recommendations,
+            "skipped_guests": skipped_guests,
+            "summary": rec_summary,
             "count": len(recommendations),
             "threshold_suggestions": threshold_suggestions,
             "ai_enhanced": ai_enhanced,

@@ -430,10 +430,13 @@ def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, pe
     }
 
 
-def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_guests: Dict, cpu_threshold: float, mem_threshold: float, penalty_config: Dict = None) -> float:
+def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_guests: Dict, cpu_threshold: float, mem_threshold: float, penalty_config: Dict = None, return_details: bool = False):
     """
     Calculate weighted score for target node suitability (lower is better).
     Considers current load, predicted post-migration load, storage availability, and headroom.
+
+    When return_details=True, returns (score, details_dict) with full penalty breakdown.
+    When return_details=False (default), returns just the score float for backward compatibility.
     """
     if penalty_config is None:
         penalty_config = DEFAULT_PENALTY_CONFIG
@@ -478,8 +481,21 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     cpu_trend = metrics.get("cpu_trend", "stable")
     mem_trend = metrics.get("mem_trend", "stable")
 
-    # Initialize penalty accumulator
-    penalties = 0
+    # Initialize penalty tracking — individual categories for breakdown
+    penalty_breakdown = {
+        "current_cpu": 0,
+        "current_mem": 0,
+        "sustained_cpu": 0,
+        "sustained_mem": 0,
+        "iowait_current": 0,
+        "iowait_sustained": 0,
+        "cpu_trend": 0,
+        "mem_trend": 0,
+        "cpu_spikes": 0,
+        "mem_spikes": 0,
+        "predicted_cpu": 0,
+        "predicted_mem": 0,
+    }
 
     # Get configurable threshold offsets
     cpu_offset_1 = penalty_config.get("cpu_threshold_offset_1", 10)
@@ -489,79 +505,78 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
 
     # Current load penalty - heavily penalize nodes with high current load
     if immediate_cpu > (cpu_threshold + cpu_offset_2):
-        penalties += penalty_config.get("cpu_extreme_penalty", 100)  # Extreme current CPU load
+        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_extreme_penalty", 100)
     elif immediate_cpu > (cpu_threshold + cpu_offset_1):
-        penalties += penalty_config.get("cpu_very_high_penalty", 50)   # Very high current CPU load
+        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_very_high_penalty", 50)
     elif immediate_cpu > cpu_threshold:
-        penalties += penalty_config.get("cpu_high_penalty", 20)   # High current CPU load
+        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_high_penalty", 20)
 
     if immediate_mem > (mem_threshold + mem_offset_2):
-        penalties += penalty_config.get("mem_extreme_penalty", 100)  # Extreme current memory load
+        penalty_breakdown["current_mem"] = penalty_config.get("mem_extreme_penalty", 100)
     elif immediate_mem > (mem_threshold + mem_offset_1):
-        penalties += penalty_config.get("mem_very_high_penalty", 50)   # Very high current memory load
+        penalty_breakdown["current_mem"] = penalty_config.get("mem_very_high_penalty", 50)
     elif immediate_mem > mem_threshold:
-        penalties += penalty_config.get("mem_high_penalty", 20)   # High current memory load
+        penalty_breakdown["current_mem"] = penalty_config.get("mem_high_penalty", 20)
 
-    # Sustained load penalty - penalize sustained high averages
     # Sustained load penalties - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
         if long_cpu > 90:
-            penalties += penalty_config.get("cpu_sustained_critical", 150)  # Critically high sustained CPU
+            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_critical", 150)
         elif long_cpu > 80:
-            penalties += penalty_config.get("cpu_sustained_very_high", 80)   # Very high sustained CPU
+            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_very_high", 80)
         elif long_cpu > 70:
-            penalties += penalty_config.get("cpu_sustained_high", 40)   # High sustained CPU
+            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_high", 40)
 
         if long_mem > 90:
-            penalties += penalty_config.get("mem_sustained_critical", 150)  # Critically high sustained memory
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 150)
         elif long_mem > 80:
-            penalties += penalty_config.get("mem_sustained_very_high", 80)   # Very high sustained memory
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 80)
         elif long_mem > 70:
-            penalties += penalty_config.get("mem_sustained_high", 40)   # High sustained memory
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 40)
 
     # IOWait penalty - penalize high disk wait times (current always applies)
     if immediate_iowait > 30:
-        penalties += penalty_config.get("iowait_extreme_penalty", 80)   # Extreme current IOWait
+        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_extreme_penalty", 80)
     elif immediate_iowait > 20:
-        penalties += penalty_config.get("iowait_very_high_penalty", 40)   # Very high current IOWait
+        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_very_high_penalty", 40)
     elif immediate_iowait > 10:
-        penalties += penalty_config.get("iowait_high_penalty", 20)   # High current IOWait
+        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_high_penalty", 20)
 
     # Sustained IOWait penalties - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
         if long_iowait > 20:
-            penalties += penalty_config.get("iowait_sustained_critical", 60)   # Critically high sustained IOWait
+            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_critical", 60)
         elif long_iowait > 15:
-            penalties += penalty_config.get("iowait_sustained_high", 30)   # High sustained IOWait
+            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_high", 30)
         elif long_iowait > 10:
-            penalties += penalty_config.get("iowait_sustained_elevated", 15)   # Elevated sustained IOWait
+            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
 
     # Trend penalty - only apply if using historical data (24h or 7d weights > 0)
     if weight_24h > 0 or weight_7d > 0:
         if cpu_trend == "rising":
-            penalties += penalty_config.get("cpu_trend_rising_penalty", 15)  # Rising CPU trend
+            penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
         if mem_trend == "rising":
-            penalties += penalty_config.get("mem_trend_rising_penalty", 15)  # Rising memory trend
+            penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 15)
 
     # Max spike penalty - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
         if max_cpu_week > 95:
-            penalties += penalty_config.get("cpu_spike_extreme", 30)  # Extreme CPU spike
+            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_extreme", 30)
         elif max_cpu_week > 90:
-            penalties += penalty_config.get("cpu_spike_very_high", 20)  # Very high CPU spike
+            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_very_high", 20)
         elif max_cpu_week > 80:
-            penalties += penalty_config.get("cpu_spike_high", 10)  # High CPU spike
+            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_high", 10)
         elif max_cpu_week > 70:
-            penalties += penalty_config.get("cpu_spike_moderate", 5)   # Moderate CPU spike
+            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_moderate", 5)
 
         if max_mem_week > 95:
-            penalties += penalty_config.get("mem_spike_extreme", 30)  # Extreme memory spike
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 30)
         elif max_mem_week > 90:
-            penalties += penalty_config.get("mem_spike_very_high", 20)  # Very high memory spike
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 20)
         elif max_mem_week > 85:
-            penalties += penalty_config.get("mem_spike_high", 10)  # High memory spike
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 10)
         elif max_mem_week > 75:
-            penalties += penalty_config.get("mem_spike_moderate", 5)   # Moderate memory spike
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
     predicted = predict_post_migration_load(target_node, guest, adding=True, penalty_config=penalty_config)
@@ -580,18 +595,21 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
 
     # Penalize if predicted load exceeds thresholds (don't disqualify)
     if predicted["cpu"] > (cpu_threshold + cpu_offset_2):
-        penalties += penalty_config.get("predicted_cpu_extreme_penalty", 100)  # Predicted CPU way over threshold
+        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_extreme_penalty", 100)
     elif predicted["cpu"] > (cpu_threshold + cpu_offset_1):
-        penalties += penalty_config.get("predicted_cpu_high_penalty", 50)   # Predicted CPU significantly over threshold
+        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_high_penalty", 50)
     elif predicted["cpu"] > cpu_threshold:
-        penalties += penalty_config.get("predicted_cpu_over_penalty", 25)   # Predicted CPU over threshold
+        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_over_penalty", 25)
 
     if predicted["mem"] > (mem_threshold + mem_offset_2):
-        penalties += penalty_config.get("predicted_mem_extreme_penalty", 100)  # Predicted memory way over threshold
+        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_extreme_penalty", 100)
     elif predicted["mem"] > (mem_threshold + mem_offset_1):
-        penalties += penalty_config.get("predicted_mem_high_penalty", 50)   # Predicted memory significantly over threshold
+        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_high_penalty", 50)
     elif predicted["mem"] > mem_threshold:
-        penalties += penalty_config.get("predicted_mem_over_penalty", 25)   # Predicted memory over threshold
+        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
+
+    # Sum all penalties
+    penalties = sum(penalty_breakdown.values())
 
     # Health score (current state)
     health_score = calculate_node_health_score(target_node, metrics, penalty_config=penalty_config)
@@ -629,4 +647,43 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         penalties  # All accumulated penalties
     )
 
-    return total_score
+    if not return_details:
+        return total_score
+
+    # Build detailed breakdown for transparency
+    details = {
+        "penalties": penalty_breakdown,
+        "total_penalties": round(penalties, 1),
+        "components": {
+            "health_score": round(health_score, 1),
+            "predicted_health": round(predicted_health, 1),
+            "headroom_score": round(headroom_score, 1),
+            "storage_score": round(storage_score, 1),
+        },
+        "component_weights": {
+            "health": 0.25,
+            "predicted": 0.40,
+            "headroom": 0.20,
+            "storage": 0.15,
+        },
+        "metrics": {
+            "weighted_cpu": round(current_cpu, 1),
+            "weighted_mem": round(current_mem, 1),
+            "weighted_iowait": round(current_iowait, 1),
+            "immediate_cpu": round(immediate_cpu, 1),
+            "immediate_mem": round(immediate_mem, 1),
+            "immediate_iowait": round(immediate_iowait, 1),
+            "predicted_cpu": round(predicted["cpu"], 1),
+            "predicted_mem": round(predicted["mem"], 1),
+            "predicted_iowait": round(predicted["iowait"], 1),
+            "cpu_headroom": round(cpu_headroom, 1),
+            "mem_headroom": round(mem_headroom, 1),
+            "cpu_trend": cpu_trend,
+            "mem_trend": mem_trend,
+            "max_cpu_week": round(max_cpu_week, 1),
+            "max_mem_week": round(max_mem_week, 1),
+        },
+        "total_score": round(total_score, 1),
+    }
+
+    return total_score, details
