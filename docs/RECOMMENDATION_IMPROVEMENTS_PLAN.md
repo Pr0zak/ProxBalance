@@ -658,7 +658,7 @@ This gives administrators a quick executive summary without having to parse indi
 
 ## Implementation Status
 
-This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08.
+This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08 (Phase 4 + Phase 5 partial).
 
 ### Completed (Backend + Frontend)
 
@@ -670,14 +670,11 @@ This section tracks the implementation progress of each proposed improvement aga
 | **B2** | Reworked Confidence Score | `_calculate_confidence()` in `recommendations.py:381-453`. Four weighted factors: score improvement (40%), target headroom (25%), migration complexity (20%), stability signal (15%). Maps each to 0-100 with meaningful thresholds. | Color-coded confidence display: green >= 70%, yellow >= 40%, orange < 40% (`DashboardPage.jsx:4193-4199`). AI confidence adjustments shown when present. |
 | **B3** | "Why Not?" Explanations | Full `skipped_guests` tracking during generation. Seven skip reasons: `has_ignore_tag`, `ha_managed`, `stopped`, `passthrough_disk`, `unshared_bind_mount`, `insufficient_improvement`, `no_suitable_target`. Each entry includes `vmid`, `name`, `type`, `node`, `reason`, `detail`, and where applicable `best_target`, `score_improvement`, `current_score`, `best_target_score`. | Collapsible "Not Recommended" section (`DashboardPage.jsx:4463-4520`). Shows up to 20 guests with reason-specific icons (`~` insufficient, `H` HA, `!` no target, `S` stopped, `P` passthrough, `I` ignore tag, `B` bind mount). Score improvement vs. minimum threshold displayed. |
 | **E2** | User Feedback | `POST /api/recommendations/feedback` accepts helpful/not_helpful with optional reasons. `GET /api/recommendations/feedback` returns aggregated stats. Stored in `recommendation_feedback.json` with 500-entry cap. | Thumbs up/down buttons per recommendation card (`DashboardPage.jsx:4304-4378`). Status badge after submission ("Thanks!" / "Noted"). `feedbackGiven` state tracks per-recommendation. |
-| **E3** | Recommendation Digest | `_build_summary()` in `recommendations.py:588-656` generates `cluster_health` (0-100), `predicted_health`, `urgency` (high/medium/low/none) with `urgency_label`, `reasons_breakdown`, and `skip_reasons` counts by category. | Summary data available in `recommendationData.summary` state. Basic stats rendered in recommendation header. |
-
-### Completed (Backend Only — Frontend Integration Pending)
-
-| Item | Description | Backend Status | Frontend Gap |
-|------|-------------|---------------|-------------|
-| **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. | `simulatePenaltyConfig()` exists in `client.js:340-353` but is **not connected** to any UI component. No preview panel in SettingsPage when editing penalties. |
-| **D3** | Threshold Suggestions | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Also included in recommendation POST response as `threshold_suggestions`. | Threshold data is fetched and stored in state but **not rendered** in the UI. No actionable banner with "Apply" buttons. |
+| **E3** | Recommendation Digest | `_build_summary()` in `recommendations.py:588-656` generates `cluster_health` (0-100), `predicted_health`, `urgency` (high/medium/low/none) with `urgency_label`, `reasons_breakdown`, and `skip_reasons` counts by category. Now includes `batch_impact` with per-node before/after snapshots and variance metrics. | Summary data rendered in recommendation header with health bar, urgency badge, reason breakdown. Batch impact shown in collapsible "Batch Migration Impact" panel with per-node CPU/Mem/Guest before→after. |
+| **D1** | Penalty Config Presets + Sliders | Backend has `POST /api/penalty-config/presets/{presetName}` endpoint. `applyPenaltyPreset()` exists in `client.js:99-110`. Three presets (Conservative/Balanced/Aggressive) with full penalty configs. | Preset buttons in both `app.jsx` recommendation tab and `SettingsPage.jsx` penalty section. **Slider-based tuning** in SettingsPage: CPU Sensitivity, Memory Sensitivity, IOWait Sensitivity sliders that scale related penalty groups proportionally. Migration Threshold slider for `min_score_improvement`. Raw inputs preserved under "Advanced" toggle. |
+| **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. | "What-If Simulator" panel in SettingsPage penalty section. Shows current vs. proposed recommendation counts, per-guest additions/removals with source→target details, and per-node score deltas. Live simulation on demand via "Simulate" button. |
+| **D3** | Threshold Suggestions | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Also included in recommendation POST response as `threshold_suggestions`. | Actionable banner in Dashboard recommendations section showing suggested CPU/Memory/IOWait thresholds with current→suggested comparison. Confidence badge. "Apply All" button updates thresholds in state. Only shown when suggestions differ by ≥3% from current values. |
+| **C3** | Score Legend & Education Panel | Scoring system documented in static info section. Penalty weights configurable. | Enhanced "Penalty-Based Scoring System" collapsible panel in Dashboard with: color-coded suitability scale (0-30 Poor, 30-50 Fair, 50-70 Good, 70-100 Excellent), live "Your Configuration" summary showing time weights and min improvement, link to Settings for tuning. |
 
 ### Partially Implemented
 
@@ -685,7 +682,6 @@ This section tracks the implementation progress of each proposed improvement aga
 |------|-------------|---------------|----------------|
 | **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` (cpu, memory, iowait, trends, spikes) and full `penalty_breakdown` per node. Data is ready for chart rendering. | No ring chart, stacked bar, or any visual penalty breakdown on node cards. Cluster map shows CPU/Memory bars but not penalty composition. Frontend chart component needs building. |
 | **C1** | Recommendation Card Redesign | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, and migration commands. Substantial content parity with the mockup. | Missing visual elements from proposed mockup: source→target flow with inline metrics, visual progress bar for score improvement, confidence as dots/bar, overall layout restructure. Current layout is functional but text-heavy. |
-| **D1** | Penalty Config Presets + Sliders | Backend has `POST /api/penalty-config/presets/{presetName}` endpoint. `applyPenaltyPreset()` exists in `client.js:99-110`. Frontend has preset buttons (Conservative/Balanced/Aggressive) in `app.jsx:3368-3382` with active state highlighting. | Preset buttons live in `app.jsx`, not in `SettingsPage.jsx` (architectural inconsistency). **No slider-based tuning** — SettingsPage still uses raw number inputs for all 30+ penalties. No grouped slider-to-penalty mapping. Help text mentions "Conservative (20-30), Balanced (10-15), Aggressive (5-10)" but this is guidance text, not interactive presets. |
 
 ### Not Started
 
@@ -693,7 +689,6 @@ This section tracks the implementation progress of each proposed improvement aga
 |------|-------------|-------|
 | **B4** | Predicted Impact Preview | `predict_post_migration_load()` exists in `scoring.py` and is used per-recommendation. `pending_target_guests` tracks cumulative impact within a generation cycle. However: no full-cluster prediction endpoint for all recommendations combined, no toggle overlay on cluster map showing before/after. |
 | **C2** | Interactive Cluster Map Arrows | Cluster map renders nodes and guests as visual elements (`DashboardPage.jsx:2136-2500+`) but no SVG arrows, animation, or migration flow visualization between nodes. |
-| **C3** | Score Legend & Education Panel | No interactive scoring explanation panel. Static "How It Works" collapsed section exists but doesn't use live cluster data or provide interactive examples. |
 | **C4** | Recommendation History Timeline | No historical recommendation storage beyond current cache cycle. `recommendations_cache.json` is overwritten each generation. No before/after tracking for executed migrations. |
 | **E1** | Migration Outcome Tracking | Migration history (`migration_history.json`) records events with status (completed/failed/timeout) and duration. Does **not** capture pre/post node metrics or compare predicted vs. actual score improvement. |
 
@@ -1260,10 +1255,10 @@ Before prioritizing, here is the current implementation status of next-phase ite
 |------|-------------|---------|----------|----------------|
 | **G1** | Migration conflict detection | **Partial** — `pending_target_guests` dict in `recommendations.py` tracks cumulative load for subsequent evaluations. Anti-affinity conflicts checked against pending targets. | Not started | Backend foundation exists. Missing: post-generation validation pass, conflict reporting in API response, UI warnings. |
 | **G2** | Migration ordering | **Partial** — Recommendations sorted by maintenance priority then improvement descending. `automigrate.py` picks highest-improvement first. | Not started | Basic ordering exists. Missing: dependency analysis, resource sequencing, parallel group identification. |
-| **G3** | Batch impact assessment | **Partial** — `pending_target_guests` models cumulative load within generation. Summary includes `total_improvement` and `predicted_health`. | Not started | Aggregate numbers exist. Missing: full before/after cluster snapshot, per-node comparison, variance metrics. |
+| **G3** | Batch impact assessment | **Complete** — `_build_summary()` includes `batch_impact` with per-node before/after CPU%, Mem%, guest count, variance calculation, and improvement metrics (health_delta, variance_reduction_pct, all_nodes_improved). | **Complete** — Collapsible "Batch Migration Impact" panel in DashboardPage showing per-node before→after metrics with color-coded deltas and aggregate stats. | Complete. |
 | **H2** | Pre-migration validation | **Partial** — `automigrate.py` has `is_vm_in_cooldown()`, `is_rollback_migration()`, `validates_resource_improvement()`, and confidence threshold checks. | Not started | Automation checks exist. Missing: `validate_migration()` function in `migrations.py`, dedicated validation endpoint, staleness/storage/lock checks, frontend status display. |
 | **H3** | Rollback awareness | **Partial** — `automigrate.py:734-782` has `is_rollback_migration()` that detects reverse migrations within `rollback_window_hours`. | Not started | Detection exists. Missing: UI rollback button, return-path tracking in migration history, capacity check before rollback. |
-| **J1** | Webhook events | **Partial** — `notifications.py` supports a "recommendations" event type with top recommendation details and count. | N/A | Basic event exists. Missing: urgency-specific events, cleared events, feedback events, capacity warnings. |
+| **J1** | Webhook events | **Complete** — `notifications.py` supports four event types: `recommendations` (standard), `recommendations_urgent` (high-urgency with priority=high), `recommendations_cleared` (when all resolved), `capacity_warning` (cluster health <50). `generate_recommendations.py` sends all four event types conditionally based on urgency, count transitions, and cluster health. Default notification toggles added. | N/A | Complete. |
 | **F1** | Proactive alerts | **Minimal** — `scoring.py` detects "rising"/"stable" trend direction and applies +15 penalty. No projection or forecasting. | Not started | Trend detection only. Missing: linear regression, threshold crossing projection, forecast recommendation type. |
 | **F2** | Workload patterns | Not started | Not started | — |
 | **F3** | Capacity planning | **Minimal** — Summary includes `cluster_health` and `predicted_health`. No saturation warnings or advisory messages. | Not started | Headroom data exists. Missing: saturation detection, advisory generation, suggestion messages. |
@@ -1281,22 +1276,22 @@ Before prioritizing, here is the current implementation status of next-phase ite
 
 Based on the updated status assessment, phases are re-ordered to maximize leverage from existing infrastructure:
 
-### Phase 4 — Complete Partial Implementations (finish what's started)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| D1 | Penalty config presets: move preset buttons to SettingsPage, add slider groups | Medium | Backend + basic buttons exist. Need slider mapping and proper UI placement. |
-| D2 | Simulator UI integration | Low | Backend API + `client.js` function exist. Wire into SettingsPage with preview panel. |
-| D3 | Threshold suggestion UI | Low | Data fetched and stored in state. Render actionable banner with "Apply" buttons. |
-| G3 | Batch impact: add full before/after cluster snapshot | Low-Medium | `pending_target_guests` and `total_improvement` exist. Add per-node before/after, variance. |
-| J1 | Expand recommendation webhook events | Low | Base event type exists. Add urgency-specific, cleared, capacity events. |
+### Phase 4 — Complete Partial Implementations (finish what's started) ✓ COMPLETED
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| D1 | Penalty config presets: move preset buttons to SettingsPage, add slider groups | Medium | ✓ Preset buttons + slider groups + advanced toggle in SettingsPage |
+| D2 | Simulator UI integration | Low | ✓ "What-If Simulator" panel in SettingsPage with live preview |
+| D3 | Threshold suggestion UI | Low | ✓ Actionable banner with "Apply All" button in Dashboard |
+| G3 | Batch impact: add full before/after cluster snapshot | Low-Medium | ✓ Per-node before/after in summary + Dashboard visualization |
+| J1 | Expand recommendation webhook events | Low | ✓ Four event types: standard, urgent, cleared, capacity_warning |
 
-### Phase 5 — Core Remaining Items (from original plan)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| A3 | Penalty contribution visualization | Medium | API returns `penalty_categories`. Build Chart.js ring/bar component. |
-| C3 | Score legend & education panel | Low | Frontend-only. Use live cluster data for interactive examples. |
-| B4 | Predicted impact preview | Medium | Per-recommendation prediction exists. Add cluster-wide toggle overlay. |
-| C1 | Recommendation card full redesign | Medium | Content is complete. Restructure layout per mockup (flow, bars, dots). |
+### Phase 5 — Core Remaining Items (from original plan) — Partially Complete
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| A3 | Penalty contribution visualization | Medium | Pending — API returns `penalty_categories`. Build Chart.js ring/bar component. |
+| C3 | Score legend & education panel | Low | ✓ Color-coded suitability scale, live config summary, link to Settings |
+| B4 | Predicted impact preview | Medium | Pending — Per-recommendation prediction exists. Add cluster-wide toggle overlay. |
+| C1 | Recommendation card full redesign | Medium | Pending — Content is complete. Restructure layout per mockup (flow, bars, dots). |
 
 ### Phase 6 — Safety & Validation (complete existing foundations)
 | Item | Description | Effort | Rationale |
@@ -1504,18 +1499,15 @@ A key pattern in the current codebase: several backend APIs exist with no corres
 | `GET /api/recommendations` | Complete | `fetchCachedRecommendations()` | Complete |
 | `POST /api/node-scores` | Complete | `fetchNodeScores()` | Partial (data fetched, no chart) |
 | `POST /api/guest/{vmid}/migration-options` | Complete | `fetchGuestMigrationOptions()` | Partial (data fetched, panel exists) |
-| `POST /api/penalty-config/simulate` | Complete | `simulatePenaltyConfig()` | **Not wired** — function exists but never called from UI |
-| `GET /api/recommendations/threshold-suggestions` | Complete | Included in POST response | **Not rendered** — data stored in state, no UI element |
+| `POST /api/penalty-config/simulate` | Complete | `simulatePenaltyConfig()` | ✓ Complete — "What-If Simulator" panel in SettingsPage penalty section |
+| `GET /api/recommendations/threshold-suggestions` | Complete | Included in POST response | ✓ Complete — Actionable banner with "Apply All" in Dashboard |
 | `POST /api/recommendations/feedback` | Complete | `submitRecommendationFeedback()` | Complete |
 | `GET /api/recommendations/feedback` | Complete | Not in `client.js` | **Not available** — no way to view feedback analytics |
-| `POST /api/penalty-config/presets/{name}` | Complete | `applyPenaltyPreset()` | **Misplaced** — buttons in `app.jsx:3368`, should be in SettingsPage |
+| `POST /api/penalty-config/presets/{name}` | Complete | `applyPenaltyPreset()` | ✓ Complete — Buttons in both `app.jsx` and `SettingsPage.jsx` |
 | `POST /api/penalty-config/reset` | Complete | `resetPenaltyConfig()` | Complete (in SettingsPage) |
 
-**Priority integration gaps** (sorted by impact):
-1. **Threshold suggestions** — High impact, low effort. Data flows to frontend but isn't rendered.
-2. **Simulator preview** — High impact, medium effort. API + client function ready, need preview panel.
-3. **Feedback analytics** — Low effort. Add `client.js` function + summary display somewhere in Settings.
-4. **Preset button placement** — Low effort. Move from `app.jsx` into SettingsPage for better UX.
+**Remaining integration gaps** (sorted by impact):
+1. **Feedback analytics** — Low effort. Add `client.js` function + summary display somewhere in Settings.
 
 ### Testing Strategy for New Features
 

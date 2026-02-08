@@ -641,6 +641,111 @@ def _build_summary(recommendations: List[Dict], skipped_guests: List[Dict], node
         urgency = "none"
         urgency_label = "Cluster is balanced"
 
+    # --- Batch Impact Assessment ---
+    import statistics
+
+    # "Before" state: current node metrics for online nodes
+    before_node_scores = {}
+    for node_name, node in nodes.items():
+        if node.get("status") != "online":
+            continue
+        metrics = node.get("metrics", {})
+        before_node_scores[node_name] = {
+            "cpu": round(metrics.get("current_cpu", 0), 1),
+            "mem": round(metrics.get("current_mem", 0), 1),
+            "guest_count": len(node.get("guests", [])),
+        }
+
+    # "After" state: simulate all recommended migrations
+    after_node_scores = {n: dict(d) for n, d in before_node_scores.items()}
+
+    for rec in recommendations:
+        source = rec.get("source_node") or rec.get("current_node")
+        target = rec.get("target_node")
+
+        if not source or not target:
+            continue
+        if source not in after_node_scores or target not in after_node_scores:
+            continue
+
+        # Estimate guest memory contribution from allocated mem_gb
+        guest_mem_gb = rec.get("mem_gb", 0)
+        source_total_mem = nodes.get(source, {}).get("total_mem_gb", 1) or 1
+        target_total_mem = nodes.get(target, {}).get("total_mem_gb", 1) or 1
+        mem_delta_source = (guest_mem_gb / source_total_mem) * 100
+        mem_delta_target = (guest_mem_gb / target_total_mem) * 100
+
+        # Estimate guest CPU contribution from score_details predicted metrics
+        cpu_delta_target = 0.0
+        score_details = rec.get("score_details") or {}
+        target_det = score_details.get("target", {}) if isinstance(score_details, dict) else {}
+        target_met = target_det.get("metrics", {}) if isinstance(target_det, dict) else {}
+
+        predicted_cpu = target_met.get("predicted_cpu")
+        immediate_cpu = target_met.get("immediate_cpu")
+        if predicted_cpu is not None and immediate_cpu is not None:
+            cpu_delta_target = max(0.0, predicted_cpu - immediate_cpu)
+
+        # Fallback: rough estimate from memory ratio when no score_details
+        if cpu_delta_target == 0.0 and guest_mem_gb > 0:
+            cpu_delta_target = mem_delta_target * 0.5
+
+        # Scale CPU delta from target to source based on core count ratio
+        source_cores = nodes.get(source, {}).get("cpu_cores", 1) or 1
+        target_cores = nodes.get(target, {}).get("cpu_cores", 1) or 1
+        cpu_delta_source = cpu_delta_target * (target_cores / source_cores)
+
+        # Apply: remove guest from source, add to target
+        after_node_scores[source]["cpu"] = round(max(0, after_node_scores[source]["cpu"] - cpu_delta_source), 1)
+        after_node_scores[source]["mem"] = round(max(0, after_node_scores[source]["mem"] - mem_delta_source), 1)
+        after_node_scores[source]["guest_count"] = max(0, after_node_scores[source]["guest_count"] - 1)
+
+        after_node_scores[target]["cpu"] = round(min(100, after_node_scores[target]["cpu"] + cpu_delta_target), 1)
+        after_node_scores[target]["mem"] = round(min(100, after_node_scores[target]["mem"] + mem_delta_target), 1)
+        after_node_scores[target]["guest_count"] += 1
+
+    # Compute score variance (combined CPU + memory load spread across nodes)
+    def _calc_variance(node_scores):
+        if len(node_scores) < 2:
+            return 0.0
+        combined = [(s["cpu"] + s["mem"]) / 2.0 for s in node_scores.values()]
+        return round(statistics.variance(combined), 1)
+
+    before_variance = _calc_variance(before_node_scores)
+    after_variance = _calc_variance(after_node_scores)
+
+    # Determine if every node's combined load improved or held steady
+    all_nodes_improved = True
+    for name in before_node_scores:
+        if name not in after_node_scores:
+            continue
+        before_load = (before_node_scores[name]["cpu"] + before_node_scores[name]["mem"]) / 2.0
+        after_load = (after_node_scores[name]["cpu"] + after_node_scores[name]["mem"]) / 2.0
+        if after_load > before_load + 0.5:  # small tolerance for rounding
+            all_nodes_improved = False
+            break
+
+    variance_reduction_pct = (
+        round((1.0 - after_variance / before_variance) * 100, 1)
+        if before_variance > 0 else 0.0
+    )
+
+    batch_impact = {
+        "before": {
+            "node_scores": before_node_scores,
+            "score_variance": before_variance,
+        },
+        "after": {
+            "node_scores": after_node_scores,
+            "score_variance": after_variance,
+        },
+        "improvement": {
+            "health_delta": round(predicted_health - cluster_health, 1),
+            "variance_reduction_pct": variance_reduction_pct,
+            "all_nodes_improved": all_nodes_improved,
+        },
+    }
+
     return {
         "total_recommendations": len(recommendations),
         "total_skipped": len(skipped_guests),
@@ -653,6 +758,7 @@ def _build_summary(recommendations: List[Dict], skipped_guests: List[Dict], node
         "urgency": urgency,
         "urgency_label": urgency_label,
         "skip_reasons": skip_reasons,
+        "batch_impact": batch_impact,
     }
 
 

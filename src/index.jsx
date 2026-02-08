@@ -2192,6 +2192,12 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               penaltyDefaults={penaltyDefaults}
               savingPenaltyConfig={savingPenaltyConfig}
               penaltyConfigSaved={penaltyConfigSaved}
+              penaltyPresets={penaltyPresets}
+              activePreset={activePreset}
+              applyPenaltyPreset={applyPenaltyPreset}
+              cpuThreshold={cpuThreshold}
+              memThreshold={memThreshold}
+              iowaitThreshold={iowaitThreshold}
               savePenaltyConfig={savePenaltyConfig}
               resetPenaltyConfig={resetPenaltyConfig}
               showAdvancedSettings={showAdvancedSettings} setShowAdvancedSettings={setShowAdvancedSettings}

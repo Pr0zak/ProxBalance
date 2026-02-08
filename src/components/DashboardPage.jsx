@@ -3924,12 +3924,43 @@ export default function DashboardPage({
                 {!collapsedSections.scoringInfo && (
                   <div className="px-4 pb-4">
                     <div className="text-sm text-blue-900 dark:text-blue-100">
-                      <p className="text-blue-800 dark:text-blue-200 mb-2">
+                      <p className="text-blue-800 dark:text-blue-200 mb-3">
                         ProxBalance uses a penalty-based scoring system to evaluate every guest on every node. Migrations are recommended when moving a guest would improve its suitability rating by <span className="font-bold">{penaltyConfig?.min_score_improvement || 15}+ points</span>.
                       </p>
+
+                      {/* C3: Score Legend */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-1.5">Suitability Rating Scale</h5>
+                        <div className="flex rounded overflow-hidden h-5 mb-1">
+                          <div className="bg-red-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold">0-30</div>
+                          <div className="bg-orange-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold">30-50</div>
+                          <div className="bg-yellow-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold">50-70</div>
+                          <div className="bg-green-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold">70-100</div>
+                        </div>
+                        <div className="flex text-[10px] text-blue-700 dark:text-blue-300">
+                          <div className="flex-1 text-center">Poor</div>
+                          <div className="flex-1 text-center">Fair</div>
+                          <div className="flex-1 text-center">Good</div>
+                          <div className="flex-1 text-center">Excellent</div>
+                        </div>
+                      </div>
+
+                      {/* Your Configuration Summary */}
+                      <div className="p-2.5 bg-blue-100 dark:bg-blue-800/30 rounded mb-3">
+                        <h5 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-1">Your Configuration</h5>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-blue-700 dark:text-blue-300">
+                          <span>CPU weight: <span className="font-mono font-semibold">30%</span></span>
+                          <span>Memory weight: <span className="font-mono font-semibold">30%</span></span>
+                          <span>IOWait weight: <span className="font-mono font-semibold">20%</span></span>
+                          <span>Other factors: <span className="font-mono font-semibold">20%</span></span>
+                          <span>Current period: <span className="font-mono font-semibold">{penaltyConfig ? (penaltyConfig.weight_current * 100).toFixed(0) : '50'}%</span></span>
+                          <span>24h average: <span className="font-mono font-semibold">{penaltyConfig ? (penaltyConfig.weight_24h * 100).toFixed(0) : '30'}%</span></span>
+                          <span>7-day average: <span className="font-mono font-semibold">{penaltyConfig ? (penaltyConfig.weight_7d * 100).toFixed(0) : '20'}%</span></span>
+                          <span>Min improvement: <span className="font-mono font-semibold">{penaltyConfig?.min_score_improvement || 15} pts</span></span>
+                        </div>
+                      </div>
+
                       <ul className="ml-4 space-y-1 text-blue-700 dark:text-blue-300 text-xs list-disc">
-                        <li><span className="font-semibold">Suitability Rating:</span> 0-100% (lower penalties = higher rating). Penalties accumulate for unfavorable conditions.</li>
-                        <li><span className="font-semibold">Time weighting:</span> Current load ({penaltyConfig ? (penaltyConfig.weight_current * 100).toFixed(0) : '50'}%), 24h average ({penaltyConfig ? (penaltyConfig.weight_24h * 100).toFixed(0) : '30'}%), 7-day average ({penaltyConfig ? (penaltyConfig.weight_7d * 100).toFixed(0) : '20'}%)</li>
                         <li><span className="font-semibold">Penalties applied for:</span> High CPU/memory/IOWait, rising trends, historical spikes, predicted post-migration overload</li>
                         <li><span className="font-semibold">Smart decisions:</span> Balances immediate needs with long-term stability and capacity planning</li>
                       </ul>
@@ -4078,6 +4109,87 @@ export default function DashboardPage({
                 )}
               </div>
             </div>
+          )}
+
+          {/* G3: Batch Impact Assessment */}
+          {!loadingRecommendations && recommendationData?.summary?.batch_impact && recommendations.length > 0 && (
+            <details className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 group">
+              <summary className="p-3 cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors rounded-lg list-none">
+                <div className="flex items-center gap-2">
+                  <BarChart2 size={16} className="text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Batch Migration Impact</span>
+                  {recommendationData.summary.batch_impact.improvement && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                      {recommendationData.summary.batch_impact.improvement.variance_reduction_pct > 0
+                        ? `${recommendationData.summary.batch_impact.improvement.variance_reduction_pct.toFixed(0)}% variance reduction`
+                        : `+${recommendationData.summary.batch_impact.improvement.health_delta.toFixed(0)} health`
+                      }
+                    </span>
+                  )}
+                </div>
+                <ChevronDown size={16} className="text-gray-500 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {Object.entries(recommendationData.summary.batch_impact.before?.node_scores || {}).map(([node, before]) => {
+                    const after = recommendationData.summary.batch_impact.after?.node_scores?.[node];
+                    if (!after) return null;
+                    const cpuDelta = after.cpu - before.cpu;
+                    const memDelta = after.mem - before.mem;
+                    const guestDelta = after.guest_count - before.guest_count;
+                    return (
+                      <div key={node} className="p-2 bg-gray-50 dark:bg-gray-700/30 rounded">
+                        <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">{node}</div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">CPU</span>
+                            <div className="font-mono">
+                              {before.cpu.toFixed(0)}%
+                              <span className={`ml-1 ${cpuDelta < -0.5 ? 'text-green-600 dark:text-green-400' : cpuDelta > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`}>
+                                {cpuDelta !== 0 ? `→${after.cpu.toFixed(0)}%` : ''}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Mem</span>
+                            <div className="font-mono">
+                              {before.mem.toFixed(0)}%
+                              <span className={`ml-1 ${memDelta < -0.5 ? 'text-green-600 dark:text-green-400' : memDelta > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-gray-400'}`}>
+                                {memDelta !== 0 ? `→${after.mem.toFixed(0)}%` : ''}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Guests</span>
+                            <div className="font-mono">
+                              {before.guest_count}
+                              {guestDelta !== 0 && (
+                                <span className={`ml-1 ${guestDelta < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                                  →{after.guest_count}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {recommendationData.summary.batch_impact.improvement && (
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <span>Health: {recommendationData.summary.cluster_health} → {recommendationData.summary.predicted_health}
+                      <span className="text-green-600 dark:text-green-400 font-medium ml-1">
+                        (+{recommendationData.summary.batch_impact.improvement.health_delta.toFixed(1)})
+                      </span>
+                    </span>
+                    <span>Variance: {recommendationData.summary.batch_impact.before.score_variance.toFixed(1)} → {recommendationData.summary.batch_impact.after.score_variance.toFixed(1)}</span>
+                    {recommendationData.summary.batch_impact.improvement.all_nodes_improved && (
+                      <span className="text-green-600 dark:text-green-400 font-medium">All nodes improved or stable</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </details>
           )}
 
           {loadingRecommendations ? (
