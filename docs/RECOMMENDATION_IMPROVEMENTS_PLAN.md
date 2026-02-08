@@ -16,6 +16,16 @@ This document proposes improvements to ProxBalance's recommendation engine, scor
    - [E. Feedback & Learning](#e-feedback--learning)
 4. [Implementation Priority](#implementation-priority)
 5. [Alternative Approaches Considered](#alternative-approaches-considered)
+6. [Implementation Status](#implementation-status)
+7. [Next-Phase Improvements](#next-phase-improvements)
+   - [F. Predictive Analysis & Trend Forecasting](#f-predictive-analysis--trend-forecasting)
+   - [G. Multi-Migration Optimization](#g-multi-migration-optimization)
+   - [H. Risk Assessment & Migration Safety](#h-risk-assessment--migration-safety)
+   - [I. Observability & Diagnostics](#i-observability--diagnostics)
+   - [J. API & Integration Enhancements](#j-api--integration-enhancements)
+8. [Next-Phase Implementation Priority](#next-phase-implementation-priority)
+9. [Technical Architecture Notes](#technical-architecture-notes)
+10. [Success Metrics](#success-metrics)
 
 ---
 
@@ -640,3 +650,793 @@ This gives administrators a quick executive summary without having to parse indi
 5. **Preview before you commit** — Let users see predicted outcomes (B4) and simulate config changes (D2) before applying them.
 
 6. **Track outcomes to build trust** — Close the feedback loop by showing whether past migrations actually improved things (E1, C4).
+
+---
+
+## Implementation Status
+
+This section tracks the implementation progress of each proposed improvement against the current codebase.
+
+### Completed
+
+| Item | Description | Implementation Details |
+|------|-------------|----------------------|
+| **A1** | Score Breakdown Panel | `calculate_target_node_score()` in `scoring.py` supports `return_details=True`, returning a full penalty breakdown with individual penalty components, total penalties, component scores, and metrics. Each recommendation in `recommendations.py` includes a `score_details` object with `source` and `target` breakdowns. |
+| **A2** | Node Score Comparison View | `GET /api/guest/{vmid}/migration-options` endpoint in `routes/recommendations.py` calculates per-node suitability scores for any guest, including anti-affinity checks, storage compatibility, penalty categories, and score improvement deltas. |
+| **B1** | Structured Reason Strings | Recommendations now include a `structured_reason` object with `primary_reason`, `primary_label`, `contributing_factors` (each with factor, value, weight, label), and a `summary` sentence. |
+| **B2** | Reworked Confidence Score | Multi-factor confidence replaces the old `improvement * 2` formula. Factors include score improvement (40%), target headroom (25%), historical stability (20%), and migration complexity (15%). Each maps to 0-100 with meaningful thresholds. |
+| **B3** | "Why Not?" Explanations | Full `skipped_guests` tracking during recommendation generation. Each skipped guest includes `vmid`, `name`, `type`, `node`, `reason` (key), `detail` (human-readable), and where applicable `best_target`, `score_improvement`, `current_score`, and `best_target_score`. Seven skip reasons: `has_ignore_tag`, `ha_managed`, `stopped`, `passthrough_disk`, `unshared_bind_mount`, `insufficient_improvement`, `no_suitable_target`. Frontend displays a collapsible "Not Recommended" section with reason-specific icons. |
+| **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` endpoint compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. |
+| **E2** | User Feedback on Recommendations | `POST /api/recommendations/feedback` accepts helpful/not_helpful ratings with optional reasons. `GET /api/recommendations/feedback` returns aggregated stats (totals, percentages, reason breakdowns, recent entries). Stored in `recommendation_feedback.json` with 500-entry cap. |
+| **E3** | Recommendation Digest/Summary | Recommendation generation returns a `summary` object with `total_recommendations`, `total_skipped`, `total_improvement`, `reasons_breakdown`, `cluster_health`, `predicted_health`, `urgency` (none/low/medium/high), and `skip_reasons` breakdown by category. |
+
+### Partially Implemented
+
+| Item | Description | Current State | Remaining Work |
+|------|-------------|---------------|----------------|
+| **A3** | Penalty Contribution Visualization | `node-scores` API returns `penalty_categories` (cpu, memory, iowait, trends, spikes) per node, ready for chart rendering. | Frontend ring/stacked bar chart component not yet built. Node cards still show metrics without penalty source visualization. |
+| **C1** | Recommendation Card Redesign | Cards include structured reasons, confidence scores, score details, and feedback buttons. | Full visual redesign (source/target flow, progress bars, collapsible detail sections per mockup) not yet implemented. |
+| **D3** | Threshold Suggestion Integration | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Included in recommendation POST response. | Prominent actionable banner UI with per-threshold "Apply" buttons not yet built. |
+
+### Not Started
+
+| Item | Description | Notes |
+|------|-------------|-------|
+| **B4** | Predicted Impact Preview | `predict_post_migration_load()` exists in `scoring.py` but no full-cluster prediction endpoint or toggle overlay on the cluster map. |
+| **C2** | Interactive Cluster Map Arrows | No SVG arrow rendering or animation for migration flows on the cluster map. |
+| **C3** | Score Legend & Education Panel | No interactive scoring explanation panel. Static info box exists but doesn't use live data. |
+| **C4** | Recommendation History Timeline | No historical recommendation storage beyond current cache cycle. No before/after tracking for executed migrations. |
+| **D1** | Penalty Config Presets + Sliders | Settings page still shows raw number inputs. No preset profiles (Conservative/Balanced/Aggressive) or grouped slider mappings. |
+| **E1** | Migration Outcome Tracking | Migration history records events but does not capture pre/post metrics or compare predicted vs. actual improvement. |
+
+---
+
+## Next-Phase Improvements
+
+The following improvements go beyond the original plan, addressing gaps discovered during implementation and informed by patterns in the codebase.
+
+### F. Predictive Analysis & Trend Forecasting
+
+#### F1. Proactive Recommendation Alerts
+
+Generate recommendations before thresholds are crossed based on trend analysis.
+
+**Current:** Recommendations only trigger when a node currently exceeds thresholds or when the penalty score is high enough to justify migration. Rising trends add a modest penalty (+15 points) but don't trigger recommendations on their own.
+
+**Proposed:** Add a "Forecast" category of recommendations that triggers when:
+- CPU or memory has been rising steadily for 3+ days and will cross the threshold within the next 24-48 hours at current trajectory
+- IOWait is trending upward, suggesting emerging disk contention
+- Guest resource consumption is growing faster than node headroom
+
+```json
+{
+  "type": "forecast",
+  "urgency": "low",
+  "primary_reason": "trend_crossing",
+  "primary_label": "CPU approaching threshold",
+  "summary": "pve1 CPU has risen from 42% to 57% over the past 5 days. At this rate, it will exceed the 60% threshold in approximately 2 days. Consider migrating VM 100 (web-app-1) to pve3 preemptively.",
+  "forecast": {
+    "metric": "cpu",
+    "current_value": 57.2,
+    "threshold": 60.0,
+    "trend_direction": "rising",
+    "trend_rate_per_day": 3.0,
+    "estimated_crossing": "2026-02-10T14:00:00Z",
+    "confidence": "medium"
+  }
+}
+```
+
+**Implementation:** Extend `calculate_target_node_score()` to perform linear regression on 7-day RRD data points and project future values. Add a `forecast_penalties` section to the penalty breakdown.
+
+**Files affected:**
+- `proxbalance/scoring.py` — Trend projection using 7-day data points
+- `proxbalance/recommendations.py` — New forecast recommendation type
+- `src/components/DashboardPage.jsx` — Forecast cards with distinct styling
+
+#### F2. Workload Pattern Recognition
+
+Identify recurring load patterns (daily cycles, weekly cycles) and use them to time migration recommendations.
+
+**Current:** The scoring system blends current, 24-hour, and 7-day metrics but treats them as flat averages. A node that spikes to 90% CPU every night at 2 AM but sits at 30% during the day gets averaged to ~45%, masking the pattern.
+
+**Proposed:** Analyze RRD data to detect periodic patterns:
+- **Daily cycles** — Business-hours vs. off-hours load
+- **Weekly cycles** — Weekday vs. weekend patterns
+- **Burst detection** — Regular, predictable spikes vs. random noise
+
+Use these patterns to:
+1. Time recommendations for when they'll have maximum impact (e.g., "migrate before the nightly batch job")
+2. Reduce false positives from predictable spikes (don't recommend migration for a VM that spikes every night but recovers)
+3. Identify guests whose patterns conflict with their current node (e.g., two guests that both spike at the same time on the same node)
+
+```json
+{
+  "workload_pattern": {
+    "cycle_type": "daily",
+    "peak_hours": [2, 3, 4],
+    "peak_avg_cpu": 87.5,
+    "trough_avg_cpu": 28.3,
+    "pattern_confidence": "high",
+    "recommendation_timing": "Migrate during 10:00-16:00 window when load is minimal"
+  }
+}
+```
+
+**Files affected:**
+- `proxbalance/scoring.py` — New `analyze_workload_patterns()` function
+- `collector_api.py` — Store hourly RRD data points with timestamps (not just averages)
+- `proxbalance/recommendations.py` — Factor patterns into recommendation urgency and timing
+- `src/components/DashboardPage.jsx` — Pattern visualization (mini heatmap or sparkline)
+
+#### F3. Capacity Planning Insights
+
+Extend recommendations beyond "move this guest" to include capacity planning advice.
+
+**Current:** Recommendations focus exclusively on migration actions. There's no guidance on when the cluster itself is approaching saturation.
+
+**Proposed:** Add cluster-level recommendations:
+- "Your cluster is 78% utilized. Consider adding a node before deploying additional workloads."
+- "pve2 has 85% memory used with no viable migration targets. All other nodes are similarly loaded. Consider adding RAM to pve2 or adding a new node."
+- "3 of your 4 nodes are above 70% CPU. Migration can redistribute but won't reduce total load."
+
+These are advisory only — no migration action — but help administrators plan infrastructure changes.
+
+```json
+{
+  "type": "capacity_advisory",
+  "severity": "warning",
+  "message": "Cluster-wide CPU utilization is 72% with limited headroom for migration. Rebalancing can improve individual node health but overall capacity is constrained.",
+  "metrics": {
+    "cluster_cpu_avg": 72.1,
+    "cluster_mem_avg": 64.8,
+    "nodes_above_cpu_threshold": 3,
+    "nodes_above_mem_threshold": 1,
+    "migration_headroom": "limited"
+  },
+  "suggestions": [
+    "Add a new node to increase cluster capacity",
+    "Review guest resource allocations for over-provisioning",
+    "Consider offloading low-priority workloads"
+  ]
+}
+```
+
+**Files affected:**
+- `proxbalance/recommendations.py` — New `generate_capacity_advisories()` function
+- `proxbalance/routes/recommendations.py` — Include advisories in recommendation response
+- `src/components/DashboardPage.jsx` — Advisory banner above recommendations
+
+---
+
+### G. Multi-Migration Optimization
+
+#### G1. Migration Conflict Detection
+
+Detect when two or more recommended migrations conflict with each other.
+
+**Current:** Each migration is evaluated independently. If VM A and VM B are both recommended to move to pve3, the system doesn't account for the combined load impact. The `pending_target_guests` parameter exists in `calculate_target_node_score()` but is only used within a single recommendation cycle's iteration — it doesn't fully simulate the combined effect of all recommendations.
+
+**Proposed:** After generating individual recommendations, run a validation pass:
+1. Group recommendations by target node
+2. For each target, simulate the combined post-migration load of all incoming guests
+3. If the combined load would push the target above thresholds, flag the conflict
+4. Suggest resolution: re-route one guest to an alternative target, or defer lower-priority migrations
+
+```json
+{
+  "conflicts": [
+    {
+      "target_node": "pve3",
+      "incoming_guests": [
+        {"vmid": 100, "name": "web-app-1", "predicted_cpu_impact": 12.5},
+        {"vmid": 200, "name": "api-server", "predicted_cpu_impact": 18.3}
+      ],
+      "combined_predicted_cpu": 78.8,
+      "threshold": 60.0,
+      "resolution": "Consider moving VM 200 to pve4 instead (score: 72 vs. 68 on pve3)"
+    }
+  ]
+}
+```
+
+**Files affected:**
+- `proxbalance/recommendations.py` — Post-generation conflict validation pass
+- `proxbalance/scoring.py` — Multi-guest prediction function
+- `src/components/DashboardPage.jsx` — Conflict warnings on recommendation cards
+
+#### G2. Migration Ordering & Dependencies
+
+Determine the optimal order for executing multiple migrations.
+
+**Current:** Batch migrations execute in the order they appear in the recommendation list. There's no analysis of whether order matters.
+
+**Proposed:** Analyze migration dependencies:
+- **Resource sequencing** — If pve1 is overloaded and pve2 needs to send a guest to pve1's current target (pve3), the pve1 migration should execute first to free capacity
+- **Affinity chain ordering** — When affinity companions need to move together, determine which should go first to maintain service availability
+- **Risk minimization** — Execute highest-confidence migrations first so that if the process is interrupted, the most impactful changes are already complete
+
+```json
+{
+  "execution_plan": {
+    "ordered_migrations": [
+      {"step": 1, "vmid": 100, "source": "pve1", "target": "pve3", "reason": "Frees capacity on pve1 for step 3"},
+      {"step": 2, "vmid": 300, "source": "pve2", "target": "pve4", "reason": "Independent, high confidence"},
+      {"step": 3, "vmid": 200, "source": "pve3", "target": "pve1", "reason": "Depends on step 1 completing"}
+    ],
+    "parallel_groups": [[1, 2], [3]],
+    "estimated_total_downtime": "minimal (online migrations)"
+  }
+}
+```
+
+**Files affected:**
+- `proxbalance/recommendations.py` — Migration ordering algorithm
+- `automigrate.py` — Respect execution order during automated runs
+- `src/components/DashboardPage.jsx` — Display execution plan with step numbers
+
+#### G3. Batch Migration Impact Assessment
+
+Show the cumulative impact of executing all recommendations as a batch.
+
+**Current:** Each recommendation shows its individual score improvement. There's no view of the aggregate cluster impact.
+
+**Proposed:** Extend the summary with a full before/after cluster snapshot:
+
+```json
+{
+  "batch_impact": {
+    "before": {
+      "cluster_health": 62,
+      "node_scores": {"pve1": 45, "pve2": 78, "pve3": 32, "pve4": 55},
+      "score_variance": 18.7,
+      "worst_node": "pve2"
+    },
+    "after": {
+      "cluster_health": 81,
+      "node_scores": {"pve1": 38, "pve2": 42, "pve3": 45, "pve4": 48},
+      "score_variance": 4.1,
+      "worst_node": "pve4"
+    },
+    "improvement": {
+      "health_delta": "+19 points",
+      "variance_reduction": "78%",
+      "all_nodes_below_threshold": true
+    }
+  }
+}
+```
+
+This ties into the **B4 (Predicted Impact Preview)** item from Phase 1 but focuses on the aggregate rather than individual predictions.
+
+**Files affected:**
+- `proxbalance/recommendations.py` — `calculate_batch_impact()` function
+- `proxbalance/scoring.py` — Multi-migration cluster simulation
+- `src/components/DashboardPage.jsx` — Before/after comparison visualization
+
+---
+
+### H. Risk Assessment & Migration Safety
+
+#### H1. Migration Risk Scoring
+
+Assign a risk level to each migration based on guest characteristics and cluster state.
+
+**Current:** Confidence score captures "how beneficial is this migration?" but doesn't explicitly model "what could go wrong?" Large VMs with many disks, high I/O, or network-sensitive workloads carry more migration risk than small, idle containers — but this isn't surfaced.
+
+**Proposed:** Add a `risk_score` (0-100, lower is safer) to each recommendation:
+
+```python
+risk_score = weighted_average(
+    guest_size_risk,        # 30% — Larger memory = longer migration, more downtime risk
+    io_activity_risk,       # 25% — High disk I/O during migration increases failure chance
+    storage_complexity,     # 20% — Multi-disk, mixed storage types, snapshots
+    network_sensitivity,    # 15% — High network I/O suggests latency-sensitive workload
+    cluster_health_risk,    # 10% — If cluster is already stressed, migration adds load
+)
+```
+
+Risk levels:
+- **0-25: Low risk** — Small guest, low activity, simple storage. Safe for automated migration.
+- **26-50: Moderate risk** — Medium guest or moderate activity. Suitable for scheduled windows.
+- **51-75: High risk** — Large guest, high I/O, or complex storage. Recommend manual oversight.
+- **76-100: Very high risk** — Very large guest, extreme I/O, or cluster under stress. Recommend manual migration with monitoring.
+
+```json
+{
+  "risk_score": 42,
+  "risk_level": "moderate",
+  "risk_factors": [
+    {"factor": "guest_memory", "value": "16 GB", "risk": "medium", "detail": "Migration will transfer 16 GB of memory"},
+    {"factor": "disk_io", "value": "45 MB/s", "risk": "medium", "detail": "Active disk I/O may extend migration time"},
+    {"factor": "storage", "value": "2 disks (ceph-rbd)", "risk": "low", "detail": "Shared storage, no data copy needed"}
+  ]
+}
+```
+
+**Files affected:**
+- `proxbalance/scoring.py` — New `calculate_migration_risk()` function
+- `proxbalance/recommendations.py` — Include risk in recommendation output
+- `automigrate.py` — Respect risk thresholds (skip high-risk in automated mode)
+- `src/components/DashboardPage.jsx` — Risk badge on recommendation cards
+
+#### H2. Pre-Migration Validation Checks
+
+Run automated checks before migration execution to catch issues early.
+
+**Current:** The automation system runs safety checks (cluster health, quorum, node resource limits) before a batch, but doesn't validate individual migrations. A guest might have acquired a new passthrough device, new snapshot, or changed storage since the recommendation was generated.
+
+**Proposed:** Before executing any migration (manual or automated), run a validation suite:
+
+1. **Staleness check** — Is the recommendation still valid? (re-score with current data)
+2. **Storage re-verification** — Does the target still have the required storage volumes?
+3. **Resource availability** — Does the target node still have sufficient CPU/memory headroom?
+4. **Guest state check** — Is the guest still running? Has it moved since the recommendation?
+5. **Lock/snapshot check** — Does the guest have active snapshots or locks that would block migration?
+6. **Affinity validation** — Would this migration violate any affinity or anti-affinity rules?
+
+```json
+{
+  "validation": {
+    "passed": true,
+    "checks": [
+      {"check": "staleness", "passed": true, "detail": "Recommendation generated 4 minutes ago"},
+      {"check": "storage", "passed": true, "detail": "Target has ceph-rbd storage available"},
+      {"check": "resources", "passed": true, "detail": "Target has 45% CPU and 52% memory headroom"},
+      {"check": "guest_state", "passed": true, "detail": "Guest is running on pve1"},
+      {"check": "locks", "passed": true, "detail": "No active locks or running snapshots"},
+      {"check": "affinity", "passed": true, "detail": "No affinity conflicts on target"}
+    ],
+    "warnings": [
+      {"check": "score_drift", "detail": "Score improvement dropped from 55 to 48 since generation (still above minimum)"}
+    ]
+  }
+}
+```
+
+**Files affected:**
+- `proxbalance/migrations.py` — `validate_migration()` function
+- `proxbalance/routes/migrations.py` — Validation endpoint `POST /api/migrate/validate`
+- `automigrate.py` — Call validation before each migration in automated runs
+- `src/components/DashboardPage.jsx` — Validation status on migrate button
+
+#### H3. Rollback Awareness
+
+Surface information about migration reversibility.
+
+**Current:** Users can manually migrate a guest back to its original node, but there's no tracking or UI support for rollbacks.
+
+**Proposed:** After a migration completes, track the "return path" and make it easy to reverse:
+
+- Store the source node in the migration history entry
+- Add a "Rollback" button to recently migrated guests (within a configurable window, e.g., 2 hours)
+- Before rollback, validate that the original node still has capacity
+- Show whether conditions have changed since the migration (e.g., "pve1 load has decreased since this guest left — rollback is safe")
+
+```json
+{
+  "rollback_info": {
+    "original_node": "pve1",
+    "migration_timestamp": "2026-02-08T10:30:00Z",
+    "time_since_migration": "45 minutes",
+    "rollback_available": true,
+    "original_node_current_load": {"cpu": 52.1, "mem": 48.3},
+    "rollback_safe": true,
+    "detail": "pve1 has sufficient capacity for this guest"
+  }
+}
+```
+
+**Files affected:**
+- `proxbalance/migrations.py` — Track source node in history, add rollback function
+- `proxbalance/routes/migrations.py` — `POST /api/migrate/rollback` endpoint
+- `src/components/DashboardPage.jsx` — Rollback button in migration history
+
+---
+
+### I. Observability & Diagnostics
+
+#### I1. Recommendation Engine Diagnostics
+
+Provide a diagnostic view showing the recommendation engine's internal state.
+
+**Current:** Debugging recommendation behavior requires reading server logs or manually calling API endpoints. Users can't see why the engine is making its decisions at a systemic level.
+
+**Proposed:** A diagnostics panel (accessible from Settings or a debug menu) showing:
+
+```
+┌─ Recommendation Engine Diagnostics ──────────────────────────┐
+│                                                               │
+│  Last generation:  2026-02-08 10:30:00 UTC (5 min ago)       │
+│  Generation time:  1.2 seconds                               │
+│  Guests evaluated: 47                                        │
+│  Guests recommended: 3                                       │
+│  Guests skipped: 44                                          │
+│                                                               │
+│  Skip reason breakdown:                                      │
+│    insufficient_improvement: 28 (64%)                        │
+│    stopped:                  8  (18%)                        │
+│    ha_managed:               4  (9%)                         │
+│    has_ignore_tag:           2  (5%)                         │
+│    no_suitable_target:       1  (2%)                         │
+│    passthrough_disk:         1  (2%)                         │
+│                                                               │
+│  Scoring config:                                             │
+│    Min score improvement: 15                                  │
+│    CPU threshold: 60% | Mem threshold: 70%                   │
+│    Time weights: 50% current, 30% 24h, 20% 7d               │
+│                                                               │
+│  AI enhancement: Enabled (Anthropic Claude)                  │
+│    Last AI call: 2026-02-08 10:30:01 UTC                     │
+│    AI response time: 2.3 seconds                             │
+│    Insights added: 3/3                                       │
+│                                                               │
+│  Cache status:                                               │
+│    cluster_cache.json: 2026-02-08 10:15:00 UTC (20 min old)  │
+│    recommendations_cache.json: 2026-02-08 10:30:02 UTC       │
+│                                                               │
+│  [Regenerate Now]  [Export Debug Log]                         │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**Files affected:**
+- `proxbalance/routes/recommendations.py` — `GET /api/recommendations/diagnostics` endpoint
+- `proxbalance/recommendations.py` — Timing and diagnostic metadata collection
+- `src/components/SettingsPage.jsx` — Diagnostics panel
+
+#### I2. Score History & Trend Tracking
+
+Track node scores over time to show scoring trends.
+
+**Current:** Node scores are computed fresh on each recommendation cycle. There's no historical record, so users can't see whether a node's health is improving or degrading over time.
+
+**Proposed:** After each recommendation generation, persist a snapshot of all node scores:
+
+```json
+{
+  "score_history": [
+    {
+      "timestamp": "2026-02-08T10:30:00Z",
+      "nodes": {
+        "pve1": {"score": 45.2, "suitability": 54.8, "cpu": 62.1, "mem": 48.3},
+        "pve2": {"score": 78.1, "suitability": 21.9, "cpu": 81.5, "mem": 72.0},
+        "pve3": {"score": 32.4, "suitability": 67.6, "cpu": 38.2, "mem": 45.1}
+      },
+      "cluster_health": 62
+    }
+  ]
+}
+```
+
+Retain data for up to 30 days with hourly granularity (720 entries per node). Display as a line chart on the dashboard showing node health over time, making trends visible at a glance.
+
+**Files affected:**
+- `proxbalance/recommendations.py` — Append score snapshot after generation
+- New data file — `score_history.json`
+- `proxbalance/routes/recommendations.py` — `GET /api/score-history` endpoint with time range filtering
+- `src/components/DashboardPage.jsx` — Score history chart (Chart.js line chart)
+
+#### I3. Recommendation Change Log
+
+Track what changed between recommendation cycles.
+
+**Current:** Each recommendation generation replaces the cache entirely. If a recommendation appears or disappears, users have no way to know what changed or why.
+
+**Proposed:** Before overwriting the cache, diff the new recommendations against the old:
+
+```json
+{
+  "changes_since_last": {
+    "timestamp": "2026-02-08T10:30:00Z",
+    "previous_timestamp": "2026-02-08T10:20:00Z",
+    "new_recommendations": [
+      {"vmid": 400, "reason": "pve2 CPU rose from 58% to 67%, crossing threshold"}
+    ],
+    "removed_recommendations": [
+      {"vmid": 100, "reason": "pve1 CPU dropped from 72% to 55% after load decrease"}
+    ],
+    "changed_targets": [
+      {"vmid": 200, "old_target": "pve3", "new_target": "pve4", "reason": "pve3 load increased"}
+    ],
+    "unchanged": 2
+  }
+}
+```
+
+**Files affected:**
+- `proxbalance/recommendations.py` — Diff logic before cache overwrite
+- `proxbalance/routes/recommendations.py` — Include `changes_since_last` in response
+- `src/components/DashboardPage.jsx` — Change indicators on recommendation cards (new/changed badges)
+
+---
+
+### J. API & Integration Enhancements
+
+#### J1. Webhook Events for Recommendation Lifecycle
+
+Emit webhook events for recommendation-related actions.
+
+**Current:** The notification system supports migration events, but there's no notification for recommendation changes. Users relying on external monitoring (Slack, Discord, etc.) only learn about migrations after they happen.
+
+**Proposed:** New webhook event types:
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `recommendations.generated` | New recommendations generated | Count, summary, urgency |
+| `recommendations.urgent` | High-urgency recommendation detected | Recommendation details, node metrics |
+| `recommendations.cleared` | All recommendations resolved | Previous count, resolution method |
+| `recommendation.feedback` | User submitted feedback | VMID, rating, reason |
+| `capacity.warning` | Cluster approaching saturation | Cluster metrics, advisory |
+
+```json
+{
+  "event": "recommendations.urgent",
+  "timestamp": "2026-02-08T10:30:00Z",
+  "data": {
+    "count": 1,
+    "urgency": "high",
+    "recommendation": {
+      "vmid": 200,
+      "name": "database-primary",
+      "source_node": "pve2",
+      "target_node": "pve3",
+      "score_improvement": 62,
+      "reason": "pve2 CPU at 92% with rising trend"
+    },
+    "cluster_health": 45
+  }
+}
+```
+
+**Files affected:**
+- `notifications.py` — New event type handlers
+- `proxbalance/recommendations.py` — Emit events after generation
+- `proxbalance/routes/config.py` — Webhook event type configuration
+
+#### J2. Recommendation API Filtering & Pagination
+
+Add filtering and pagination to the recommendation API for larger clusters.
+
+**Current:** The API returns all recommendations and all skipped guests in a single response. For clusters with hundreds of guests, this can be a large payload.
+
+**Proposed:** Add query parameters to the GET endpoint:
+
+```
+GET /api/recommendations?filter=urgent&limit=10&offset=0
+GET /api/recommendations?min_confidence=80&target_node=pve3
+GET /api/recommendations?type=forecast&sort=score_improvement
+GET /api/recommendations/skipped?reason=insufficient_improvement&limit=20
+```
+
+**Files affected:**
+- `proxbalance/routes/recommendations.py` — Filtering and pagination logic
+- `src/api/client.js` — Updated API calls with filter support
+- `src/components/DashboardPage.jsx` — Filter controls in the recommendation UI
+
+#### J3. Export & Reporting
+
+Allow users to export recommendations and migration history in standard formats.
+
+**Current:** Data is only viewable in the web UI. Administrators who need to report to management or audit migrations have no export capability.
+
+**Proposed:** Export endpoints:
+
+```
+GET /api/recommendations/export?format=csv
+GET /api/recommendations/export?format=json
+GET /api/automigrate/history/export?format=csv&from=2026-01-01&to=2026-02-08
+```
+
+CSV format for recommendations:
+```csv
+VMID,Name,Type,Source,Target,Score Improvement,Confidence,Risk,Reason
+100,web-app-1,VM,pve1,pve3,55,82,low,High CPU on source (78% trending up)
+200,api-server,VM,pve2,pve4,38,71,moderate,Memory pressure on source (85%)
+```
+
+**Files affected:**
+- `proxbalance/routes/recommendations.py` — Export endpoint with format selection
+- `proxbalance/routes/automation.py` — History export endpoint
+- `src/components/DashboardPage.jsx` — Export button in recommendation header
+- `src/components/AutomationPage.jsx` — Export button in history section
+
+---
+
+## Next-Phase Implementation Priority
+
+### Phase 4 — High-Impact Remaining Items (from original plan)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| D1 | Penalty config presets + sliders | Medium | Most impactful UX change remaining. Reduces barrier for new users. |
+| C3 | Score legend & education panel | Low | Frontend-only, builds understanding. Pairs well with D1. |
+| B4 | Predicted impact preview | Medium | Backend data mostly exists. Needs cluster-wide simulation + toggle UI. |
+| A3 | Penalty contribution visualization | Medium | API data ready (`penalty_categories`). Needs chart component. |
+
+### Phase 5 — Predictive & Safety (new items)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| H1 | Migration risk scoring | Medium | Directly improves automation safety. Informs min_confidence filtering. |
+| H2 | Pre-migration validation | Medium | Prevents stale-recommendation failures. Critical for automation trust. |
+| G1 | Migration conflict detection | Medium | Catches multi-migration issues that individual scoring misses. |
+| F3 | Capacity planning insights | Low-Medium | Advisory-only, no migration action. High value for cluster planning. |
+
+### Phase 6 — Observability & Trends (new items)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| I2 | Score history & trend tracking | Medium | Enables understanding of cluster evolution. Foundation for F1. |
+| I3 | Recommendation change log | Low | Diff logic is straightforward. High user value for understanding changes. |
+| I1 | Recommendation engine diagnostics | Low-Medium | Debugging aid. Reduces support burden. |
+| J1 | Webhook events for recommendations | Low | Extends existing notification infrastructure. |
+
+### Phase 7 — Advanced Features (new items)
+| Item | Description | Effort | Rationale |
+|------|-------------|--------|-----------|
+| F1 | Proactive recommendation alerts | High | Requires trend projection + new recommendation type. |
+| F2 | Workload pattern recognition | High | Requires RRD data analysis, pattern detection algorithms. |
+| G2 | Migration ordering & dependencies | High | Complex dependency analysis. Most value for automated migrations. |
+| G3 | Batch migration impact assessment | Medium | Builds on existing prediction functions. |
+| H3 | Rollback awareness | Medium | Migration history extension + validation. |
+| C2 | Interactive cluster map arrows | High | SVG rendering, interaction complexity. |
+| C4 | Recommendation history timeline | High | Requires long-term data storage and timeline UI. |
+| E1 | Migration outcome tracking | High | Background metric collection + comparison logic. |
+| J2 | API filtering & pagination | Low | Standard API improvement. |
+| J3 | Export & reporting | Low-Medium | CSV/JSON export logic + UI buttons. |
+
+---
+
+## Technical Architecture Notes
+
+### Data Flow for New Features
+
+Several proposed features share data dependencies. This section maps those dependencies to avoid redundant implementation.
+
+#### Score History as Foundation
+
+Many features depend on historical score data. Implementing **I2 (Score History)** first unlocks:
+- **F1 (Proactive Alerts)** — Needs historical scores to compute trend projections
+- **C4 (Recommendation History)** — Needs historical snapshots to show timeline
+- **E1 (Outcome Tracking)** — Needs pre-migration scores to compare against post-migration
+- **I3 (Change Log)** — Needs previous recommendation state for diffing
+
+**Recommended data structure:**
+
+```python
+# score_history.json — append-only, pruned to 30 days
+{
+    "snapshots": [
+        {
+            "timestamp": "ISO8601",
+            "nodes": {
+                "node_name": {
+                    "score": float,
+                    "suitability": float,
+                    "cpu": float,
+                    "mem": float,
+                    "iowait": float,
+                    "guest_count": int
+                }
+            },
+            "cluster_health": float,
+            "recommendation_count": int,
+            "recommendation_vmids": [int]
+        }
+    ]
+}
+```
+
+**Pruning strategy:** Keep all snapshots from the last 24 hours, then one per hour for 7 days, then one per 6 hours for 30 days. This gives fine-grained recent data and coarser long-term trends without unbounded growth.
+
+#### Penalty Config Presets (D1) — Mapping Strategy
+
+Presets should map to penalty config values using a multiplier approach rather than hardcoded values, so they scale with any future penalty additions:
+
+```python
+PRESET_MULTIPLIERS = {
+    "conservative": {
+        "penalty_multiplier": 0.6,       # Lower penalties = fewer recommendations
+        "min_score_improvement": 25,      # Higher bar for recommending
+        "weight_current": 0.3,            # Less reactive to current spikes
+        "weight_7d": 0.4,                 # Heavier long-term weighting
+    },
+    "balanced": {
+        "penalty_multiplier": 1.0,        # Default penalties
+        "min_score_improvement": 15,
+        "weight_current": 0.5,
+        "weight_7d": 0.2,
+    },
+    "aggressive": {
+        "penalty_multiplier": 1.5,        # Higher penalties = more recommendations
+        "min_score_improvement": 10,       # Lower bar
+        "weight_current": 0.7,            # Very reactive to current state
+        "weight_7d": 0.1,                 # Less historical consideration
+    }
+}
+```
+
+Slider groups then adjust the multiplier within a range. "CPU Sensitivity" controls all CPU-related penalties proportionally. This avoids the problem of individual slider → individual penalty mappings becoming brittle.
+
+#### Risk Scoring (H1) — Integration with Automation
+
+Risk scores should feed directly into the automation system's decision-making:
+
+```python
+# In automigrate.py
+def should_execute_migration(recommendation, config):
+    risk = recommendation.get("risk_score", 50)
+    confidence = recommendation.get("confidence_score", 0)
+
+    # High risk migrations require higher confidence
+    if risk > 75:
+        return False  # Never auto-migrate very high risk
+    if risk > 50:
+        return confidence >= 90  # High risk needs very high confidence
+    if risk > 25:
+        return confidence >= config["min_confidence_score"]  # Normal threshold
+    return confidence >= max(50, config["min_confidence_score"] - 10)  # Low risk, lower bar
+```
+
+This creates a 2D decision matrix (risk × confidence) that's more nuanced than a single confidence threshold.
+
+### Storage Considerations
+
+All new data files should follow existing patterns:
+- JSON format, stored in `BASE_PATH`
+- File-level atomic writes (write to temp file, then rename)
+- Size caps with pruning (e.g., score_history: 30 days, feedback: 500 entries)
+- Graceful degradation if files are missing or corrupt
+
+**Estimated storage impact of new features:**
+
+| Feature | Data File | Estimated Size | Growth Rate |
+|---------|-----------|----------------|-------------|
+| I2 Score History | `score_history.json` | ~500 KB | ~15 KB/day (4 nodes, 10-min intervals) |
+| I3 Change Log | embedded in `recommendations_cache.json` | ~5 KB | Per generation, overwritten |
+| E1 Outcome Tracking | embedded in `migration_history.json` | ~2 KB per migration | Per migration event |
+| H3 Rollback | embedded in `migration_history.json` | ~0.5 KB per migration | Per migration event |
+
+Total additional storage is negligible (< 1 MB/month for a typical cluster).
+
+---
+
+## Success Metrics
+
+How to measure whether these improvements are effective.
+
+### User Experience Metrics
+
+| Metric | Measurement | Target |
+|--------|-------------|--------|
+| **Recommendation acceptance rate** | Migrations executed / recommendations generated | > 40% (up from unmeasured) |
+| **Feedback positivity** | Helpful ratings / total ratings | > 75% |
+| **Time to action** | Time from recommendation generation to user decision | < 5 minutes for urgent items |
+| **Configuration confidence** | Users who change penalty settings from default | > 30% (indicates understanding) |
+| **"Why Not?" usage** | Expansion rate of skipped guests section | > 20% of sessions |
+
+### System Quality Metrics
+
+| Metric | Measurement | Target |
+|--------|-------------|--------|
+| **Prediction accuracy** | Actual post-migration score vs. predicted score | > 80% within ±10 points |
+| **False positive rate** | Recommendations rated "not helpful" / total | < 15% |
+| **Conflict rate** | Migrations that fail or cause target overload | < 5% |
+| **Stale recommendation rate** | Recommendations invalid by execution time | < 10% |
+| **Score improvement realization** | Actual improvement / predicted improvement | > 70% |
+
+### Cluster Health Metrics
+
+| Metric | Measurement | Target |
+|--------|-------------|--------|
+| **Score variance reduction** | Std. dev. of node scores after migrations | < 15 points across nodes |
+| **Threshold violations** | Nodes above CPU/memory thresholds | 0 sustained (transient spikes acceptable) |
+| **Migration churn** | Guests migrated back within 24 hours | < 5% of migrations |
+| **Cluster health trend** | 7-day moving average of cluster health score | Stable or improving |
+
+### How to Collect
+
+Most of these can be derived from data that will exist once **I2 (Score History)** and **E1 (Outcome Tracking)** are implemented:
+- Acceptance rate: compare recommendation cache timestamps with migration history
+- Prediction accuracy: compare score_details at generation time with score at generation + 30 minutes
+- Score variance: calculated from score history snapshots
+- Migration churn: check migration history for same VMID migrating back within 24h
+
+A monthly health report could aggregate these metrics and surface them in the dashboard or via webhook notification.
