@@ -103,6 +103,28 @@ export default function DashboardPage({
   const [migrationOutcomes, setMigrationOutcomes] = useState(null);
   const [loadingOutcomes, setLoadingOutcomes] = useState(false);
 
+  // C4: Recommendation history timeline state
+  const [historyData, setHistoryData] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyHours, setHistoryHours] = useState(24);
+
+  // F2: Workload patterns state
+  const [workloadPatterns, setWorkloadPatterns] = useState(null);
+  const [patternsLoading, setPatternsLoading] = useState(false);
+
+  // C4: Fetch score history when hours change or section is opened
+  React.useEffect(() => {
+    if (collapsedSections.recHistory) return; // Don't fetch if collapsed
+    let cancelled = false;
+    setHistoryLoading(true);
+    fetch(`${API_BASE}/score-history?hours=${historyHours}`)
+      .then(r => r.json())
+      .then(res => { if (!cancelled) setHistoryData(res.history || []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [historyHours, collapsedSections.recHistory]);
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -4270,78 +4292,75 @@ export default function DashboardPage({
 
           {/* F2: Workload Patterns Panel */}
           {!loadingRecommendations && recommendationData?.generated_at && (
-            <details className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <details className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+              onToggle={(e) => {
+                if (e.target.open && !workloadPatterns && !patternsLoading) {
+                  setPatternsLoading(true);
+                  fetch(`${API_BASE}/workload-patterns?hours=168`)
+                    .then(r => r.json())
+                    .then(res => { if (res.success) setWorkloadPatterns(res.patterns || []); })
+                    .catch(() => {})
+                    .finally(() => setPatternsLoading(false));
+                }
+              }}
+            >
               <summary className="cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg">
                 <Activity size={16} />
                 Workload Patterns
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">Daily/weekly cycle analysis</span>
               </summary>
               <div className="px-3 pb-3">
-                {(() => {
-                  const [patterns, setPatterns] = useState(null);
-                  const [patternsLoading, setPatternsLoading] = useState(false);
-                  React.useEffect(() => {
-                    let cancelled = false;
-                    setPatternsLoading(true);
-                    fetch(`${API_BASE}/workload-patterns?hours=168`)
-                      .then(r => r.json())
-                      .then(res => { if (!cancelled && res.success) setPatterns(res.patterns || []); })
-                      .catch(() => {})
-                      .finally(() => { if (!cancelled) setPatternsLoading(false); });
-                    return () => { cancelled = true; };
-                  }, []);
-
-                  if (patternsLoading) return <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Analyzing patterns...</div>;
-                  if (!patterns || patterns.length === 0) return <div className="text-xs text-gray-400 dark:text-gray-500 py-2">Insufficient history data for pattern analysis. Patterns emerge after several days of data collection.</div>;
-
-                  return (
-                    <div className="space-y-3">
-                      {patterns.map((p, idx) => (
-                        <div key={idx} className="bg-white dark:bg-gray-900/50 rounded p-2.5 border border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <Server size={12} className="text-blue-500" />
-                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{p.node}</span>
-                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{p.data_points} data points</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
-                            {p.daily_pattern ? (
-                              <div className="p-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                                <div className="font-medium text-blue-700 dark:text-blue-300 mb-0.5">Daily Cycle <span className="text-blue-500">({p.daily_pattern.pattern_confidence})</span></div>
-                                <div className="text-gray-600 dark:text-gray-400">Peak: {p.daily_pattern.peak_avg_cpu}% | Trough: {p.daily_pattern.trough_avg_cpu}%</div>
-                                <div className="text-gray-500 dark:text-gray-500">Biz hrs: {p.daily_pattern.business_hours_avg}% | Off hrs: {p.daily_pattern.off_hours_avg}%</div>
-                              </div>
-                            ) : (
-                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No daily cycle detected</div>
-                            )}
-                            {p.weekly_pattern ? (
-                              <div className="p-1.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-0.5">Weekly Cycle <span className="text-purple-500">({p.weekly_pattern.pattern_confidence})</span></div>
-                                <div className="text-gray-600 dark:text-gray-400">Weekday: {p.weekly_pattern.weekday_avg}% | Weekend: {p.weekly_pattern.weekend_avg}%</div>
-                                <div className="text-gray-500 dark:text-gray-500">Peak days: {p.weekly_pattern.peak_days?.join(', ')}</div>
-                              </div>
-                            ) : (
-                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No weekly cycle detected</div>
-                            )}
-                            {p.burst_detection?.detected ? (
-                              <div className="p-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                                <div className="font-medium text-amber-700 dark:text-amber-300 mb-0.5">Burst Detection</div>
-                                <div className="text-gray-600 dark:text-gray-400">{p.burst_detection.recurring_bursts} recurring burst hour(s)</div>
-                                <div className="text-gray-500 dark:text-gray-500">Avg burst: {p.burst_detection.avg_burst_cpu}% at hours {p.burst_detection.burst_hours?.join(', ')}</div>
-                              </div>
-                            ) : (
-                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No recurring bursts</div>
-                            )}
-                          </div>
-                          {p.recommendation_timing && (
-                            <div className="mt-1.5 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
-                              <Clock size={10} /> {p.recommendation_timing}
+                {patternsLoading ? (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Analyzing patterns...</div>
+                ) : !workloadPatterns || workloadPatterns.length === 0 ? (
+                  <div className="text-xs text-gray-400 dark:text-gray-500 py-2">Insufficient history data for pattern analysis. Patterns emerge after several days of data collection.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {workloadPatterns.map((p, idx) => (
+                      <div key={idx} className="bg-white dark:bg-gray-900/50 rounded p-2.5 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Server size={12} className="text-blue-500" />
+                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{p.node}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{p.data_points} data points</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                          {p.daily_pattern ? (
+                            <div className="p-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                              <div className="font-medium text-blue-700 dark:text-blue-300 mb-0.5">Daily Cycle <span className="text-blue-500">({p.daily_pattern.pattern_confidence})</span></div>
+                              <div className="text-gray-600 dark:text-gray-400">Peak: {p.daily_pattern.peak_avg_cpu}% | Trough: {p.daily_pattern.trough_avg_cpu}%</div>
+                              <div className="text-gray-500 dark:text-gray-500">Biz hrs: {p.daily_pattern.business_hours_avg}% | Off hrs: {p.daily_pattern.off_hours_avg}%</div>
                             </div>
+                          ) : (
+                            <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No daily cycle detected</div>
+                          )}
+                          {p.weekly_pattern ? (
+                            <div className="p-1.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                              <div className="font-medium text-purple-700 dark:text-purple-300 mb-0.5">Weekly Cycle <span className="text-purple-500">({p.weekly_pattern.pattern_confidence})</span></div>
+                              <div className="text-gray-600 dark:text-gray-400">Weekday: {p.weekly_pattern.weekday_avg}% | Weekend: {p.weekly_pattern.weekend_avg}%</div>
+                              <div className="text-gray-500 dark:text-gray-500">Peak days: {p.weekly_pattern.peak_days?.join(', ')}</div>
+                            </div>
+                          ) : (
+                            <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No weekly cycle detected</div>
+                          )}
+                          {p.burst_detection?.detected ? (
+                            <div className="p-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                              <div className="font-medium text-amber-700 dark:text-amber-300 mb-0.5">Burst Detection</div>
+                              <div className="text-gray-600 dark:text-gray-400">{p.burst_detection.recurring_bursts} recurring burst hour(s)</div>
+                              <div className="text-gray-500 dark:text-gray-500">Avg burst: {p.burst_detection.avg_burst_cpu}% at hours {p.burst_detection.burst_hours?.join(', ')}</div>
+                            </div>
+                          ) : (
+                            <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No recurring bursts</div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                        {p.recommendation_timing && (
+                          <div className="mt-1.5 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <Clock size={10} /> {p.recommendation_timing}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </details>
           )}
@@ -5463,31 +5482,15 @@ export default function DashboardPage({
               </button>
               {!collapsedSections.recHistory && (
                 <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                  {(() => {
-                    const [historyData, setHistoryData] = useState(null);
-                    const [historyLoading, setHistoryLoading] = useState(false);
-                    const [historyHours, setHistoryHours] = useState(24);
-                    React.useEffect(() => {
-                      let cancelled = false;
-                      setHistoryLoading(true);
-                      fetch(`${API_BASE}/score-history?hours=${historyHours}`)
-                        .then(r => r.json())
-                        .then(res => { if (!cancelled) setHistoryData(res.history || []); })
-                        .catch(() => {})
-                        .finally(() => { if (!cancelled) setHistoryLoading(false); });
-                      return () => { cancelled = true; };
-                    }, [historyHours]);
-
-                    if (historyLoading) return <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Loading history...</div>;
-                    if (!historyData || historyData.length === 0) return <div className="text-xs text-gray-400 dark:text-gray-500 py-2">No score history data yet. History is recorded automatically every time recommendations are generated.</div>;
-
-                    // Build mini sparkline-style timeline
-                    const entries = historyData.slice(-48); // Last 48 data points
+                  {historyLoading ? (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Loading history...</div>
+                  ) : !historyData || historyData.length === 0 ? (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 py-2">No score history data yet. History is recorded automatically every time recommendations are generated.</div>
+                  ) : (() => {
+                    const entries = historyData.slice(-48);
                     const healthValues = entries.map(e => e.cluster_health || 0);
                     const recCounts = entries.map(e => e.recommendation_count || 0);
-                    const maxHealth = Math.max(...healthValues, 1);
                     const maxRec = Math.max(...recCounts, 1);
-
                     return (
                       <div>
                         <div className="flex items-center justify-between mb-2">
