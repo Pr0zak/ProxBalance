@@ -1,20 +1,16 @@
 import {
-  AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, Info,
-  Settings, Shield, Save, Edit, Check, X, Power, Zap, Play, RefreshCw
+  AlertTriangle, Activity, ChevronDown, Settings, Shield, X, Power
 } from '../Icons.jsx';
 
 const { useState } = React;
 
-export default function MainSettingsSection({
-  automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections,
-  confirmEnableAutomation, setConfirmEnableAutomation,
-  confirmDisableDryRun, setConfirmDisableDryRun,
-  editingPreset, setEditingPreset,
-  confirmApplyPreset, setConfirmApplyPreset,
-  penaltyConfig
-}) {
-  return (<>
-        {/* Main Settings */}
+export default function MainSettingsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
+  const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
+  const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
+  const [editingPreset, setEditingPreset] = useState(null);
+  const [confirmApplyPreset, setConfirmApplyPreset] = useState(null);
+
+  return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, mainSettings: !prev.mainSettings }))}
@@ -349,6 +345,5 @@ export default function MainSettingsSection({
             </div>
           </div>)}
         </div>
-
-  </>);
+  );
 }

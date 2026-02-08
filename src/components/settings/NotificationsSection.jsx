@@ -1,13 +1,11 @@
-import { Bell, CheckCircle, AlertTriangle, ChevronDown, Save, RefreshCw, HelpCircle } from '../Icons.jsx';
+import {
+  Bell, CheckCircle
+} from '../Icons.jsx';
 
 const API_BASE = `/api`;
-const { useState } = React;
 
-export default function NotificationsSection({
-  automationConfig, saveAutomationConfig
-}) {
-  return (<>
-                    {/* Notifications */}
+export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
+  return (
                     <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/30">
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -521,5 +519,5 @@ export default function NotificationsSection({
                       </div>
                       )}
                     </div>
-  </>);
+  );
 }
