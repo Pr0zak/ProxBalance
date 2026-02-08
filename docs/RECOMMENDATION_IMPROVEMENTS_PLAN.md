@@ -675,19 +675,20 @@ This section tracks the implementation progress of each proposed improvement aga
 | **D2** | Configuration Simulator | `POST /api/penalty-config/simulate` compares current vs. proposed penalty config. Returns recommendation count changes, per-guest additions/removals with improvement deltas, and per-node score comparisons. | "What-If Simulator" panel in SettingsPage penalty section. Shows current vs. proposed recommendation counts, per-guest additions/removals with source→target details, and per-node score deltas. Live simulation on demand via "Simulate" button. |
 | **D3** | Threshold Suggestions | `GET /api/recommendations/threshold-suggestions` returns suggestions with confidence, reasoning, cluster stats, and adjustment factors. Also included in recommendation POST response as `threshold_suggestions`. | Actionable banner in Dashboard recommendations section showing suggested CPU/Memory/IOWait thresholds with current→suggested comparison. Confidence badge. "Apply All" button updates thresholds in state. Only shown when suggestions differ by ≥3% from current values. |
 | **C3** | Score Legend & Education Panel | Scoring system documented in static info section. Penalty weights configurable. | Enhanced "Penalty-Based Scoring System" collapsible panel in Dashboard with: color-coded suitability scale (0-30 Poor, 30-50 Fair, 50-70 Good, 70-100 Excellent), live "Your Configuration" summary showing time weights and min improvement, link to Settings for tuning. |
+| **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` per node. | Stacked bar on collapsed node cards showing CPU/Memory/IOWait/Trends/Spikes penalty breakdown with color-coded segments and legend. Total penalty points displayed. |
+| **C1** | Recommendation Card Enhancements | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, migration commands. | Visual score improvement progress bar (0-80pt scale), confidence as 5-dot indicator with color coding, inline source/target CPU% metrics in FROM/TO badges. |
+| **B4** | Predicted Impact Preview | `batch_impact` summary with per-node before/after data from `_build_summary()`. | "Show Predicted" toggle on Node Status section. When active, overlays predicted CPU/Memory values on collapsed node cards with strikethrough current values, color-coded deltas, and guest count changes. |
 
 ### Partially Implemented
 
 | Item | Description | Current State | Remaining Work |
 |------|-------------|---------------|----------------|
-| **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` (cpu, memory, iowait, trends, spikes) and full `penalty_breakdown` per node. Data is ready for chart rendering. | No ring chart, stacked bar, or any visual penalty breakdown on node cards. Cluster map shows CPU/Memory bars but not penalty composition. Frontend chart component needs building. |
-| **C1** | Recommendation Card Redesign | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, and migration commands. Substantial content parity with the mockup. | Missing visual elements from proposed mockup: source→target flow with inline metrics, visual progress bar for score improvement, confidence as dots/bar, overall layout restructure. Current layout is functional but text-heavy. |
+| (none) | All original plan items are now at least partially complete | — | — |
 
 ### Not Started
 
 | Item | Description | Notes |
 |------|-------------|-------|
-| **B4** | Predicted Impact Preview | `predict_post_migration_load()` exists in `scoring.py` and is used per-recommendation. `pending_target_guests` tracks cumulative impact within a generation cycle. However: no full-cluster prediction endpoint for all recommendations combined, no toggle overlay on cluster map showing before/after. |
 | **C2** | Interactive Cluster Map Arrows | Cluster map renders nodes and guests as visual elements (`DashboardPage.jsx:2136-2500+`) but no SVG arrows, animation, or migration flow visualization between nodes. |
 | **C4** | Recommendation History Timeline | No historical recommendation storage beyond current cache cycle. `recommendations_cache.json` is overwritten each generation. No before/after tracking for executed migrations. |
 | **E1** | Migration Outcome Tracking | Migration history (`migration_history.json`) records events with status (completed/failed/timeout) and duration. Does **not** capture pre/post node metrics or compare predicted vs. actual score improvement. |
@@ -1285,13 +1286,13 @@ Based on the updated status assessment, phases are re-ordered to maximize levera
 | G3 | Batch impact: add full before/after cluster snapshot | Low-Medium | ✓ Per-node before/after in summary + Dashboard visualization |
 | J1 | Expand recommendation webhook events | Low | ✓ Four event types: standard, urgent, cleared, capacity_warning |
 
-### Phase 5 — Core Remaining Items (from original plan) — Partially Complete
+### Phase 5 — Core Remaining Items (from original plan) ✓ COMPLETED
 | Item | Description | Effort | Status |
 |------|-------------|--------|--------|
-| A3 | Penalty contribution visualization | Medium | Pending — API returns `penalty_categories`. Build Chart.js ring/bar component. |
+| A3 | Penalty contribution visualization | Medium | ✓ Stacked penalty bar on node cards with color-coded segments |
 | C3 | Score legend & education panel | Low | ✓ Color-coded suitability scale, live config summary, link to Settings |
-| B4 | Predicted impact preview | Medium | Pending — Per-recommendation prediction exists. Add cluster-wide toggle overlay. |
-| C1 | Recommendation card full redesign | Medium | Pending — Content is complete. Restructure layout per mockup (flow, bars, dots). |
+| B4 | Predicted impact preview | Medium | ✓ "Show Predicted" toggle overlaying predicted metrics on node cards |
+| C1 | Recommendation card enhancements | Medium | ✓ Progress bar, confidence dots, inline source/target CPU metrics |
 
 ### Phase 6 — Safety & Validation (complete existing foundations)
 | Item | Description | Effort | Rationale |

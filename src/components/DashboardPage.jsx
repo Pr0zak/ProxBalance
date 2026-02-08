@@ -11,6 +11,8 @@ import {
 
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
 
+const { useState } = React;
+
 export default function DashboardPage({
   // Data & loading
   data, setData, loading, error, setError, config,
@@ -87,6 +89,7 @@ export default function DashboardPage({
   API_BASE
 }) {
   // Dashboard Page - data is guaranteed to be available here
+  const [showPredicted, setShowPredicted] = useState(false);
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -3652,6 +3655,21 @@ export default function DashboardPage({
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              {/* B4: Predicted Impact Toggle */}
+              {recommendationData?.summary?.batch_impact && recommendations.length > 0 && (
+                <button
+                  onClick={() => setShowPredicted(!showPredicted)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    showPredicted
+                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300 dark:ring-indigo-700'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
+                  }`}
+                  title="Show predicted node metrics after all recommended migrations"
+                >
+                  <Eye size={14} />
+                  {showPredicted ? 'Showing Predicted' : 'Show Predicted'}
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
@@ -3692,20 +3710,48 @@ export default function DashboardPage({
 
           {collapsedSections.nodeStatus ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {Object.values(data.nodes).map(node => (
-                <div key={node.name} className="border border-gray-200 dark:border-gray-700 rounded p-3 hover:shadow-md transition-shadow">
+              {Object.values(data.nodes).map(node => {
+                const predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name];
+                const before = showPredicted && recommendationData?.summary?.batch_impact?.before?.node_scores?.[node.name];
+                return (
+                <div key={node.name} className={`border rounded p-3 hover:shadow-md transition-shadow ${
+                  showPredicted && predicted ? 'border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800' : 'border-gray-200 dark:border-gray-700'
+                }`}>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{node.name}</h3>
-                    <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status}></span>
+                    <div className="flex items-center gap-1">
+                      {showPredicted && predicted && before && (
+                        <span className={`text-[9px] font-medium px-1 py-0.5 rounded ${
+                          predicted.cpu < before.cpu - 0.5 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                          predicted.cpu > before.cpu + 0.5 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
+                          'bg-gray-100 dark:bg-gray-700 text-gray-500'
+                        }`}>
+                          {predicted.guest_count !== before.guest_count
+                            ? `${predicted.guest_count > before.guest_count ? '+' : ''}${predicted.guest_count - before.guest_count} guest${Math.abs(predicted.guest_count - before.guest_count) !== 1 ? 's' : ''}`
+                            : 'no change'
+                          }
+                        </span>
+                      )}
+                      <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status}></span>
+                    </div>
                   </div>
                   <div className="space-y-1.5 text-xs">
                     {/* CPU with sparkline */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
                         <span className="text-gray-600 dark:text-gray-400">CPU:</span>
-                        <span className="font-semibold text-blue-600 dark:text-blue-400">
-                          {(node.cpu_percent || 0).toFixed(1)}%
-                        </span>
+                        {showPredicted && predicted ? (
+                          <span className="font-semibold">
+                            <span className="text-gray-400 line-through mr-1">{(node.cpu_percent || 0).toFixed(0)}%</span>
+                            <span className={`${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? 'text-green-600 dark:text-green-400' : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                              {predicted.cpu.toFixed(1)}%
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            {(node.cpu_percent || 0).toFixed(1)}%
+                          </span>
+                        )}
                       </div>
                       <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
                         <polyline
@@ -3722,9 +3768,18 @@ export default function DashboardPage({
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
                         <span className="text-gray-600 dark:text-gray-400">Memory:</span>
+                        {showPredicted && predicted ? (
+                          <span className="font-semibold">
+                            <span className="text-gray-400 line-through mr-1">{(node.mem_percent || 0).toFixed(0)}%</span>
+                            <span className={`${predicted.mem < (node.mem_percent || 0) - 0.5 ? 'text-green-600 dark:text-green-400' : predicted.mem > (node.mem_percent || 0) + 0.5 ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                              {predicted.mem.toFixed(1)}%
+                            </span>
+                          </span>
+                        ) : (
                         <span className="font-semibold text-purple-600 dark:text-purple-400">
                           {(node.mem_percent || 0).toFixed(1)}%
                         </span>
+                        )}
                       </div>
                       <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
                         <polyline
@@ -3808,7 +3863,8 @@ export default function DashboardPage({
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
           <div className={`grid gap-4 transition-all duration-300 ease-in-out ${
@@ -4258,23 +4314,39 @@ export default function DashboardPage({
                               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold">
                                 <span className="text-xs">FROM:</span>
                                 <span>{rec.source_node}</span>
+                                {rec.score_details?.source?.metrics && (
+                                  <span className="text-[10px] font-normal opacity-75 ml-0.5">
+                                    ({rec.score_details.source.metrics.current_cpu?.toFixed(0) || '?'}% CPU)
+                                  </span>
+                                )}
                               </span>
                               <ArrowRight size={16} className="text-gray-400 dark:text-gray-500" />
                               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold">
                                 <span className="text-xs">TO:</span>
                                 <span>{rec.target_node}</span>
+                                {rec.score_details?.target?.metrics && (
+                                  <span className="text-[10px] font-normal opacity-75 ml-0.5">
+                                    ({rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || '?'}% CPU)
+                                  </span>
+                                )}
                               </span>
-                              {rec.score_improvement !== undefined && (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
-                                  rec.score_improvement >= 50 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
-                                  rec.score_improvement >= 30 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
-                                  rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
-                                  'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                                }`} title="How much better the target node is (penalty point reduction)">
-                                  <span className="text-xs">Improvement:</span>
-                                  <span className="text-sm">+{rec.score_improvement.toFixed(1)}</span>
-                                </span>
-                              )}
+                              {/* Score Improvement Progress Bar */}
+                              {rec.score_improvement !== undefined && (() => {
+                                const maxImprovement = 80;
+                                const pct = Math.min(100, (rec.score_improvement / maxImprovement) * 100);
+                                const barColor = rec.score_improvement >= 50 ? 'bg-green-500' :
+                                  rec.score_improvement >= 30 ? 'bg-yellow-500' :
+                                  rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? 'bg-orange-500' :
+                                  'bg-red-500';
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 min-w-[120px]" title={`Score improvement: +${rec.score_improvement.toFixed(1)} penalty points`}>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">+{rec.score_improvement.toFixed(0)}</span>
+                                    <span className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]">
+                                      <span className={`block h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                                    </span>
+                                  </span>
+                                );
+                              })()}
                             </>
                           )}
                         </div>
@@ -4291,9 +4363,20 @@ export default function DashboardPage({
                                 </span>
                               )}
                               <span className="ml-2">| <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB</span>
+                              {/* Confidence Dot Indicator */}
                               {rec.confidence_score !== undefined && (
-                                <span className="ml-2">| <span className="font-medium">Confidence:</span>{' '}
-                                  <span className={`font-semibold ${
+                                <span className="ml-2 inline-flex items-center gap-1" title={`Confidence: ${rec.confidence_score}%`}>
+                                  <span className="text-gray-500 dark:text-gray-400">|</span>
+                                  <span className="inline-flex gap-0.5">
+                                    {[20, 40, 60, 80, 100].map((threshold) => (
+                                      <span key={threshold} className={`w-1.5 h-1.5 rounded-full ${
+                                        rec.confidence_score >= threshold
+                                          ? rec.confidence_score >= 70 ? 'bg-green-500' : rec.confidence_score >= 40 ? 'bg-yellow-500' : 'bg-orange-500'
+                                          : 'bg-gray-300 dark:bg-gray-600'
+                                      }`} />
+                                    ))}
+                                  </span>
+                                  <span className={`font-semibold text-[10px] ${
                                     rec.confidence_score >= 70 ? 'text-green-600 dark:text-green-400' :
                                     rec.confidence_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' :
                                     'text-orange-600 dark:text-orange-400'
