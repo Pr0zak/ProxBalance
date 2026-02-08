@@ -321,6 +321,14 @@ class UpdateManager:
         except FileNotFoundError:
             pass
 
+    def clear_testing_mode(self) -> Dict:
+        """Clear the previous branch tracking to exit testing mode."""
+        previous = self._load_previous_branch()
+        if not previous:
+            return {'success': True, 'message': 'Not in testing mode'}
+        self._clear_previous_branch()
+        return {'success': True, 'message': f'Cleared testing mode (was tracking {previous})'}
+
     # ------------------------------------------------------------------
     # Operation lock (prevents concurrent updates/switches)
     # ------------------------------------------------------------------

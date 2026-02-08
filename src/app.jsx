@@ -1386,6 +1386,21 @@ const ProxBalanceLogo = ({ size = 32 }) => (
             setRollingBack(false);
           };
 
+          const clearTestingMode = async () => {
+            try {
+              const response = await fetch(`${API_BASE}/system/clear-testing-mode`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              const result = await response.json();
+              if (result.success) {
+                await fetchSystemInfo();
+              }
+            } catch (err) {
+              setError(`Error clearing testing mode: ${err.message}`);
+            }
+          };
+
           const cancelMigration = async (vmid, targetNode) => {
             const key = `${vmid}-${targetNode}`;
             const migration = activeMigrations[key];
@@ -11156,13 +11171,23 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                                   Testing a branch? Return to <span className="font-mono font-semibold">{systemInfo.previous_branch}</span>
                                 </span>
                               </div>
-                              <button
-                                onClick={rollbackBranch}
-                                disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                                className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={clearTestingMode}
+                                  disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
+                                  className="px-3 py-1.5 text-amber-700 dark:text-amber-300 text-sm rounded border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Stay on current branch and dismiss this banner"
+                                >
+                                  Dismiss
+                                </button>
+                                <button
+                                  onClick={rollbackBranch}
+                                  disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
+                                  className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -11916,9 +11941,13 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                           title="Click to manage branches"
                         >{systemInfo.branch}</button></span>
                         {systemInfo.previous_branch && systemInfo.previous_branch !== systemInfo.branch && (
-                          <span className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded" title={`Return to ${systemInfo.previous_branch}`}>
-                            testing
-                          </span>
+                          <button
+                            onClick={clearTestingMode}
+                            className="px-1.5 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-200 dark:hover:bg-amber-800/50 cursor-pointer"
+                            title={`Click to dismiss — previously on ${systemInfo.previous_branch}`}
+                          >
+                            testing &times;
+                          </button>
                         )}
                         <span className="text-gray-300 dark:text-gray-700">|</span>
                         <span>Commit: <span className="font-mono text-gray-600 dark:text-gray-400">{systemInfo.commit}</span></span>
