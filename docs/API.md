@@ -101,6 +101,105 @@ curl -X POST http://<host>/api/node-scores \
   -d '{"vmid": 100}'
 ```
 
+### POST /api/guest/{vmid}/migration-options
+
+Returns migration suitability scores for a specific guest across all nodes.
+
+```bash
+curl -X POST http://<host>/api/guest/100/migration-options \
+  -H "Content-Type: application/json" \
+  -d '{"cpu_threshold": 60, "mem_threshold": 70}'
+```
+
+### POST /api/penalty-config/simulate
+
+Simulates recommendations with a proposed penalty config without saving it.
+
+```bash
+curl -X POST http://<host>/api/penalty-config/simulate \
+  -H "Content-Type: application/json" \
+  -d '{"config": {"cpu_high_penalty": 25, "min_score_improvement": 20}, "cpu_threshold": 60}'
+```
+
+### GET /api/recommendations/diagnostics
+
+Returns diagnostic summary of the recommendation engine's state including generation timing, guest counts, skip reasons, scoring config, AI status, cache ages, and conflict/advisory counts.
+
+```bash
+curl http://<host>/api/recommendations/diagnostics
+```
+
+```json
+{
+  "success": true,
+  "diagnostics": {
+    "last_generation": "2026-02-08T10:30:00Z",
+    "generation_time_ms": 1250,
+    "guests_evaluated": 45,
+    "guests_recommended": 3,
+    "guests_skipped": 42,
+    "skip_reason_breakdown": {"insufficient_improvement": 30, "ha_managed": 5},
+    "ai_enhanced": false,
+    "cache_status": {"cluster_cache_age_minutes": 12.5, "recommendations_cache_age_minutes": 2.1},
+    "conflicts_count": 0,
+    "advisories_count": 1
+  }
+}
+```
+
+### GET /api/score-history
+
+Returns historical node score snapshots for trend tracking.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `hours` | int | 24 | Number of hours of history to return |
+| `node` | string | (all) | Filter to a specific node name |
+
+```bash
+curl "http://<host>/api/score-history?hours=48&node=pve1"
+```
+
+### GET /api/recommendations/export
+
+Exports recommendations in CSV or JSON format.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `format` | string | json | `csv` or `json` |
+
+```bash
+curl "http://<host>/api/recommendations/export?format=csv" -o recommendations.csv
+```
+
+### POST /api/recommendations/feedback
+
+Submits feedback on a recommendation (helpful/not helpful).
+
+```bash
+curl -X POST http://<host>/api/recommendations/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"vmid": 100, "rating": "helpful"}'
+```
+
+### GET /api/recommendations/feedback
+
+Returns recommendation feedback summary with stats and recent entries.
+
+### GET /api/automigrate/history/export
+
+Exports migration history in CSV or JSON format with optional date range filtering.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `format` | string | json | `csv` or `json` |
+| `from` | ISO 8601 | (none) | Start date filter |
+| `to` | ISO 8601 | (none) | End date filter |
+
+```bash
+curl "http://<host>/api/automigrate/history/export?format=csv&from=2026-02-01T00:00:00Z" -o history.csv
+```
+
 ---
 
 ## Migrations
@@ -133,6 +232,39 @@ curl -X POST http://<host>/api/migrate/batch \
       {"vmid": 101, "source_node": "pve1", "target_node": "pve3", "guest_type": "CT"}
     ]
   }'
+```
+
+### POST /api/migrate/validate
+
+Validates a proposed migration before execution. Runs 6 checks: data staleness, guest state, target resources, storage compatibility, active locks, and affinity rules.
+
+```bash
+curl -X POST http://<host>/api/migrate/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmid": 100,
+    "source_node": "pve1",
+    "target_node": "pve2",
+    "guest_type": "VM"
+  }'
+```
+
+```json
+{
+  "success": true,
+  "validation": {
+    "passed": true,
+    "checks": [
+      {"name": "staleness", "passed": true, "detail": "Data is 5 minutes old"},
+      {"name": "guest_state", "passed": true, "detail": "Guest running on pve1"},
+      {"name": "resources", "passed": true, "detail": "Target has sufficient capacity"},
+      {"name": "storage", "passed": true, "detail": "Storage compatible"},
+      {"name": "locks", "passed": true, "detail": "No active locks"},
+      {"name": "affinity", "passed": true, "detail": "No anti-affinity conflicts"}
+    ],
+    "warnings": []
+  }
+}
 ```
 
 ### POST /api/migrations/{task_id}/cancel
@@ -375,6 +507,14 @@ Updates penalty scoring weights.
 
 Resets penalty scoring to defaults.
 
+### POST /api/penalty-config/presets/{name}
+
+Applies a named penalty configuration preset. Available presets: `conservative`, `balanced`, `aggressive`, `cpu_focus`, `memory_focus`.
+
+```bash
+curl -X POST http://<host>/api/penalty-config/presets/aggressive
+```
+
 ### GET /api/permissions
 
 Returns current API token permissions.
@@ -470,6 +610,82 @@ Downloads service logs as a file. Supports query parameters for filtering by ser
 ```bash
 curl http://<host>/api/logs/download?service=proxmox-balance&lines=200
 ```
+
+---
+
+## Phase 8 Advanced Features
+
+### GET /api/recommendations (with filtering)
+
+Supports filtering and pagination via query parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | int | Max recommendations to return |
+| `offset` | int | Skip first N recommendations |
+| `min_confidence` | int | Minimum confidence score (0-100) |
+| `target_node` | string | Filter by target node name |
+| `source_node` | string | Filter by source node name |
+| `sort` | string | Sort by: `score_improvement`, `confidence_score`, `risk_score`, `priority` |
+| `sort_dir` | string | `asc` or `desc` (default: `desc`) |
+
+Response includes `total_count`, `filtered_count`, and `count` pagination metadata.
+
+### GET /api/recommendations/skipped
+
+Returns skipped guests with optional filtering.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `reason` | string | Filter by skip reason (e.g., `insufficient_improvement`, `ha_managed`) |
+| `limit` | int | Max results |
+| `offset` | int | Pagination offset |
+
+### GET /api/recommendations/forecasts
+
+Returns proactive trend-based forecast alerts.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `severity` | string | Filter: `critical`, `warning`, `info` |
+| `node` | string | Filter by node name |
+| `metric` | string | Filter: `cpu`, `memory` |
+
+### GET /api/migrate/rollback-info/{vmid}
+
+Returns rollback availability information for a guest, including original node, time since migration, and safety assessment.
+
+### POST /api/migrate/rollback
+
+Executes a rollback migration — moves a guest back to its original node.
+
+```json
+{ "vmid": 100 }
+```
+
+### GET /api/migrate/outcomes
+
+Returns migration outcome tracking data with predicted vs. actual metrics.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `vmid` | int | Filter by VM/CT ID |
+| `limit` | int | Max results (default: 20) |
+
+### POST /api/migrate/outcomes/refresh
+
+Triggers post-migration metric capture for pending outcomes.
+
+### GET /api/workload-patterns
+
+Analyzes workload patterns using score history data.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `node` | string | Analyze only this node |
+| `hours` | int | Hours of history to analyze (default: 168 = 7 days) |
+
+Returns per-node pattern analysis with daily cycles, weekly cycles, burst detection, and recommended migration timing windows.
 
 ---
 

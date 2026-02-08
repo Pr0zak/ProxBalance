@@ -29,6 +29,8 @@ from proxbalance.scoring import (
     predict_post_migration_load,
     calculate_target_node_score,
     calculate_migration_risk,
+    project_trend,
+    analyze_workload_patterns,
 )
 from proxbalance.recommendations import (
     select_guests_to_migrate,
@@ -37,4 +39,10 @@ from proxbalance.recommendations import (
     calculate_node_guest_counts,
     find_distribution_candidates,
     generate_recommendations,
+)
+from proxbalance.migrations import (
+    get_rollback_info,
+    capture_pre_migration_snapshot,
+    record_migration_outcome,
+    update_post_migration_metrics,
 )

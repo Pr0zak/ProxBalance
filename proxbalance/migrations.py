@@ -6,16 +6,249 @@ via the Proxmox API, as well as migration task cancellation and
 pre-migration validation checks.
 """
 
+import os
 import sys
 import json
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import requests
 
-from proxbalance.config_manager import trigger_collection, BASE_PATH, DISK_PREFIXES
+from proxbalance.config_manager import (
+    trigger_collection, BASE_PATH, CACHE_FILE, DISK_PREFIXES,
+    load_config, read_cache_file,
+)
+
+
+# ---------------------------------------------------------------------------
+# Migration outcome tracking
+# ---------------------------------------------------------------------------
+
+OUTCOMES_FILE = os.path.join(BASE_PATH, "migration_outcomes.json")
+MAX_OUTCOME_ENTRIES = 100
+POST_CAPTURE_DELAY_SECONDS = 300  # 5 minutes
+
+
+def _load_migration_outcomes() -> List[Dict]:
+    """Load migration outcomes from disk.
+
+    Returns:
+        list of outcome dicts (may be empty).
+    """
+    try:
+        if os.path.exists(OUTCOMES_FILE):
+            with open(OUTCOMES_FILE, "r") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+    except Exception as e:
+        print(f"Error reading migration outcomes: {e}", file=sys.stderr)
+    return []
+
+
+def _save_migration_outcomes(outcomes: List[Dict]) -> bool:
+    """Persist migration outcomes to disk, enforcing max entries (FIFO).
+
+    Returns:
+        True on success, False on failure.
+    """
+    try:
+        # Enforce max entries — keep the most recent
+        if len(outcomes) > MAX_OUTCOME_ENTRIES:
+            outcomes = outcomes[-MAX_OUTCOME_ENTRIES:]
+        with open(OUTCOMES_FILE, "w") as f:
+            json.dump(outcomes, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving migration outcomes: {e}", file=sys.stderr)
+        return False
+
+
+def capture_pre_migration_snapshot(vmid, source_node, target_node) -> Optional[Dict]:
+    """Capture pre-migration node metrics from the cluster cache.
+
+    Reads cluster_cache.json and extracts current CPU, memory, IOWait,
+    and guest count for the source and target nodes.
+
+    Args:
+        vmid: The VM/CT ID being migrated.
+        source_node: Name of the source node.
+        target_node: Name of the target node.
+
+    Returns:
+        A snapshot dict, or None if cache data is unavailable.
+    """
+    cache_data = read_cache_file()
+    if cache_data is None:
+        print("Cannot capture pre-migration snapshot: no cache data", file=sys.stderr)
+        return None
+
+    nodes = cache_data.get("nodes", {})
+
+    def _extract_node_metrics(node_name):
+        node = nodes.get(node_name, {})
+        metrics = node.get("metrics", {})
+        guests = node.get("guests", [])
+        return {
+            "cpu": round(metrics.get("current_cpu", node.get("cpu_percent", 0)), 2),
+            "mem": round(metrics.get("current_mem", node.get("mem_percent", 0)), 2),
+            "iowait": round(metrics.get("current_iowait", 0), 2),
+            "guest_count": len(guests) if isinstance(guests, list) else 0,
+        }
+
+    return {
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "source_node": _extract_node_metrics(source_node),
+        "target_node": _extract_node_metrics(target_node),
+    }
+
+
+def record_migration_outcome(vmid, source_node, target_node, guest_type,
+                             pre_snapshot, predicted_improvement=None) -> bool:
+    """Save a pre-migration snapshot to the outcomes file.
+
+    Creates an entry keyed by ``{vmid}_{timestamp}`` with status
+    ``pending_post_capture``.  Post-migration metrics are captured later
+    by :func:`update_post_migration_metrics`.
+
+    Args:
+        vmid: The VM/CT ID.
+        source_node: Name of the source node.
+        target_node: Name of the target node.
+        guest_type: 'VM' or 'CT'.
+        pre_snapshot: Dict returned by :func:`capture_pre_migration_snapshot`.
+        predicted_improvement: Optional predicted improvement value.
+
+    Returns:
+        True on success, False on failure.
+    """
+    if pre_snapshot is None:
+        return False
+
+    outcomes = _load_migration_outcomes()
+
+    ts = pre_snapshot.get("timestamp", datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+    outcome_key = f"{vmid}_{ts}"
+
+    entry = {
+        "key": outcome_key,
+        "vmid": vmid,
+        "source_node": source_node,
+        "target_node": target_node,
+        "guest_type": guest_type,
+        "status": "pending_post_capture",
+        "pre_migration": pre_snapshot,
+        "post_migration": None,
+        "predicted_improvement": predicted_improvement,
+        "actual_improvement": None,
+        "accuracy_pct": None,
+    }
+
+    outcomes.append(entry)
+    return _save_migration_outcomes(outcomes)
+
+
+def update_post_migration_metrics(vmid=None) -> Dict:
+    """Capture post-migration metrics for pending outcomes.
+
+    For each outcome entry with status ``pending_post_capture`` that is at
+    least 5 minutes old, reads the current cluster cache, calculates actual
+    improvement vs predicted, and marks the entry as ``completed``.
+
+    Args:
+        vmid: If provided, only update outcomes for this specific guest.
+
+    Returns:
+        A summary dict with counts of updated and skipped entries.
+    """
+    outcomes = _load_migration_outcomes()
+    cache_data = read_cache_file()
+
+    if cache_data is None:
+        return {"updated": 0, "skipped": 0, "error": "No cache data available"}
+
+    nodes = cache_data.get("nodes", {})
+    now = datetime.utcnow()
+    updated = 0
+    skipped = 0
+
+    for entry in outcomes:
+        if entry.get("status") != "pending_post_capture":
+            continue
+
+        # Optional vmid filter
+        if vmid is not None and entry.get("vmid") != vmid:
+            continue
+
+        # Check if enough time has passed (5 minutes)
+        pre = entry.get("pre_migration", {})
+        try:
+            ts_str = pre.get("timestamp", "")
+            entry_time = datetime.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ")
+        except (ValueError, TypeError):
+            skipped += 1
+            continue
+
+        elapsed = (now - entry_time).total_seconds()
+        if elapsed < POST_CAPTURE_DELAY_SECONDS:
+            skipped += 1
+            continue
+
+        # Capture post-migration metrics
+        source_name = entry.get("source_node", "")
+        target_name = entry.get("target_node", "")
+
+        def _extract_node_metrics(node_name):
+            node = nodes.get(node_name, {})
+            metrics = node.get("metrics", {})
+            guests = node.get("guests", [])
+            return {
+                "cpu": round(metrics.get("current_cpu", node.get("cpu_percent", 0)), 2),
+                "mem": round(metrics.get("current_mem", node.get("mem_percent", 0)), 2),
+                "iowait": round(metrics.get("current_iowait", 0), 2),
+                "guest_count": len(guests) if isinstance(guests, list) else 0,
+            }
+
+        post_snapshot = {
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "source_node": _extract_node_metrics(source_name),
+            "target_node": _extract_node_metrics(target_name),
+        }
+
+        entry["post_migration"] = post_snapshot
+
+        # Calculate actual improvement (source CPU reduction)
+        pre_source_cpu = pre.get("source_node", {}).get("cpu", 0)
+        post_source_cpu = post_snapshot["source_node"]["cpu"]
+        actual_cpu_delta = pre_source_cpu - post_source_cpu  # positive = improved
+
+        pre_source_mem = pre.get("source_node", {}).get("mem", 0)
+        post_source_mem = post_snapshot["source_node"]["mem"]
+        actual_mem_delta = pre_source_mem - post_source_mem
+
+        entry["actual_improvement"] = {
+            "source_cpu_delta": round(actual_cpu_delta, 2),
+            "source_mem_delta": round(actual_mem_delta, 2),
+        }
+
+        # Calculate accuracy if prediction was provided
+        predicted = entry.get("predicted_improvement")
+        if predicted is not None and predicted != 0:
+            try:
+                predicted_val = float(predicted)
+                if predicted_val != 0:
+                    accuracy = max(0, 100 - abs(actual_cpu_delta - predicted_val) / abs(predicted_val) * 100)
+                    entry["accuracy_pct"] = round(accuracy, 1)
+            except (ValueError, TypeError):
+                pass
+
+        entry["status"] = "completed"
+        updated += 1
+
+    _save_migration_outcomes(outcomes)
+    return {"updated": updated, "skipped": skipped}
 
 
 def execute_migration(proxmox, vmid, target, source, guest_type):
@@ -441,3 +674,187 @@ def validate_migration(proxmox, vmid: int, source_node: str, target_node: str,
         "checks": checks,
         "warnings": warnings,
     }
+
+
+# ---------------------------------------------------------------------------
+# Rollback awareness
+# ---------------------------------------------------------------------------
+
+def _load_migration_history() -> Dict:
+    """Load migration history from disk.
+
+    Returns:
+        dict with 'migrations' list (may be empty).
+    """
+    history_file = os.path.join(BASE_PATH, "migration_history.json")
+    try:
+        if os.path.exists(history_file):
+            with open(history_file, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error reading migration history: {e}", file=sys.stderr)
+    return {"migrations": [], "state": {}}
+
+
+def _save_migration_history(history: Dict) -> bool:
+    """Persist migration history to disk.
+
+    Returns:
+        True on success, False on failure.
+    """
+    history_file = os.path.join(BASE_PATH, "migration_history.json")
+    try:
+        with open(history_file, "w") as f:
+            json.dump(history, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving migration history: {e}", file=sys.stderr)
+        return False
+
+
+def get_rollback_info(vmid: int, config: Optional[Dict] = None) -> Dict:
+    """Return rollback availability information for a guest.
+
+    Checks migration history for the most recent successful migration of
+    *vmid* and determines whether a rollback (reverse migration) is safe
+    to perform.
+
+    Args:
+        vmid: The VM/CT ID to look up.
+        config: Application config dict.  If *None* it will be loaded from
+            disk via :func:`load_config`.
+
+    Returns:
+        A dict describing rollback availability::
+
+            {
+                "available": bool,
+                "original_node": str or None,
+                "current_node": str or None,
+                "migration_timestamp": str or None,
+                "time_since_migration_minutes": float or None,
+                "original_node_online": bool,
+                "rollback_safe": bool,
+                "detail": str,
+            }
+    """
+    if config is None:
+        config = load_config()
+
+    rollback_window_hours = config.get("rollback_window_hours", 2)
+
+    # Default response — rollback not available
+    info: Dict = {
+        "available": False,
+        "original_node": None,
+        "current_node": None,
+        "migration_timestamp": None,
+        "time_since_migration_minutes": None,
+        "original_node_online": False,
+        "rollback_safe": False,
+        "detail": "",
+    }
+
+    # --- find the most recent successful migration for this vmid ----------
+    history = _load_migration_history()
+    migrations = history.get("migrations", [])
+
+    last_migration = None
+    for migration in reversed(migrations):
+        if migration.get("vmid") == vmid and migration.get("status") == "success":
+            last_migration = migration
+            break
+
+    if last_migration is None:
+        info["detail"] = f"No successful migration found for guest {vmid}"
+        return info
+
+    # --- check whether migration is within the rollback window ------------
+    try:
+        ts_str = last_migration.get("timestamp", "")
+        # Handle both ISO formats with and without trailing 'Z'
+        migration_time = datetime.fromisoformat(ts_str.rstrip("Z"))
+    except (ValueError, TypeError):
+        info["detail"] = "Could not parse migration timestamp"
+        return info
+
+    now = datetime.utcnow()
+    elapsed = now - migration_time
+    elapsed_minutes = elapsed.total_seconds() / 60.0
+
+    if elapsed_minutes > rollback_window_hours * 60:
+        info["detail"] = (
+            f"Migration occurred {elapsed_minutes:.0f} minutes ago, "
+            f"outside the {rollback_window_hours}h rollback window"
+        )
+        return info
+
+    original_node = last_migration.get("source_node")
+    current_node = last_migration.get("target_node")
+
+    if not original_node or not current_node:
+        info["detail"] = "Migration record missing source or target node"
+        return info
+
+    info["original_node"] = original_node
+    info["current_node"] = current_node
+    info["migration_timestamp"] = ts_str
+    info["time_since_migration_minutes"] = round(elapsed_minutes, 1)
+
+    # --- check that the original node is online ---------------------------
+    cache_data = read_cache_file()
+    if cache_data is None:
+        info["detail"] = "Cluster cache unavailable — cannot verify original node"
+        return info
+
+    nodes = cache_data.get("nodes", {})
+    original_node_data = nodes.get(original_node)
+
+    if original_node_data is None:
+        info["detail"] = f"Original node '{original_node}' not found in cluster"
+        return info
+
+    node_status = original_node_data.get("status", "unknown")
+    is_online = node_status == "online"
+    info["original_node_online"] = is_online
+
+    if not is_online:
+        info["detail"] = f"Original node '{original_node}' is {node_status}"
+        return info
+
+    # --- basic capacity check on the original node ------------------------
+    try:
+        cpu_pct = original_node_data.get("cpu_percent", 0)
+        mem_pct = original_node_data.get("memory_percent", 0)
+
+        if cpu_pct > 90 or mem_pct > 95:
+            info["available"] = True
+            info["rollback_safe"] = False
+            info["detail"] = (
+                f"Original node '{original_node}' is critically loaded: "
+                f"CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}%"
+            )
+            return info
+
+        if cpu_pct > 80 or mem_pct > 85:
+            info["available"] = True
+            info["rollback_safe"] = True
+            info["detail"] = (
+                f"Original node '{original_node}' is moderately loaded: "
+                f"CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}% — rollback possible but monitor closely"
+            )
+            return info
+
+        info["available"] = True
+        info["rollback_safe"] = True
+        info["detail"] = (
+            f"Original node '{original_node}' has sufficient capacity: "
+            f"CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}%"
+        )
+    except Exception as e:
+        # If we can't check capacity, still allow rollback but note it
+        info["available"] = True
+        info["rollback_safe"] = True
+        info["detail"] = f"Could not verify capacity on '{original_node}': {e}"
+
+    return info

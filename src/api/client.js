@@ -318,6 +318,154 @@ export async function fetchAiRecommendations(params) {
   }
 }
 
+/**
+ * Fetch cached recommendations with optional filtering and pagination.
+ * @param {Object} params - Filter parameters
+ * @param {number} [params.limit] - Max recommendations to return
+ * @param {number} [params.offset] - Skip first N recommendations
+ * @param {number} [params.min_confidence] - Minimum confidence score
+ * @param {string} [params.target_node] - Filter by target node
+ * @param {string} [params.source_node] - Filter by source node
+ * @param {string} [params.sort] - Sort field (score_improvement, confidence_score, risk_score, priority)
+ * @param {string} [params.sort_dir] - Sort direction (asc or desc)
+ */
+export async function fetchFilteredRecommendations(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    }
+    const qs = query.toString();
+    const url = `${API_BASE}/recommendations${qs ? '?' + qs : ''}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error fetching filtered recommendations:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+/**
+ * Fetch skipped guests from cached recommendations with optional filtering.
+ * @param {Object} params - Filter parameters
+ * @param {string} [params.reason] - Filter by skip reason
+ * @param {number} [params.limit] - Max results to return
+ * @param {number} [params.offset] - Skip first N results
+ */
+export async function fetchSkippedGuests(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    }
+    const qs = query.toString();
+    const url = `${API_BASE}/recommendations/skipped${qs ? '?' + qs : ''}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error fetching skipped guests:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Execution Plan (Migration Ordering & Dependencies)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the execution plan from cached recommendations.
+ * Extracts just the execution_plan field which contains ordered migrations
+ * with dependency information and parallel grouping.
+ *
+ * Returns:
+ *   { ordered_recommendations, parallel_groups, total_steps, can_parallelize }
+ * or { error: true, message: "..." } on failure.
+ */
+export async function fetchExecutionPlan() {
+  try {
+    const response = await fetch(`${API_BASE}/recommendations`);
+    const result = await response.json();
+    if (result.error) {
+      return { error: true, message: result.message || result.error };
+    }
+    return result.execution_plan || {
+      ordered_recommendations: [],
+      parallel_groups: [],
+      total_steps: 0,
+      can_parallelize: false,
+    };
+  } catch (err) {
+    console.error('Error fetching execution plan:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Forecasts (Proactive Trend Alerts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch forecast recommendations (proactive trend-based threshold alerts).
+ * @param {Object} [params] - Optional filter parameters
+ * @param {string} [params.severity] - Filter by severity: critical, warning, info
+ * @param {string} [params.node] - Filter by node name
+ * @param {string} [params.metric] - Filter by metric: cpu, memory
+ */
+export async function fetchForecasts(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    }
+    const qs = query.toString();
+    const url = `${API_BASE}/recommendations/forecasts${qs ? '?' + qs : ''}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error fetching forecasts:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// F2: Workload Pattern Recognition
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch workload patterns for cluster nodes.
+ * Analyzes score history data for daily/weekly cycles and burst detection.
+ * @param {Object} [params] - Optional parameters
+ * @param {string} [params.node] - Analyze only this node
+ * @param {number} [params.hours] - Hours of history to analyze (default: 168 = 7 days)
+ */
+export async function fetchWorkloadPatterns(params = {}) {
+  try {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    }
+    const qs = query.toString();
+    const url = `${API_BASE}/workload-patterns${qs ? '?' + qs : ''}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error fetching workload patterns:', err);
+    return { error: true, message: err.message };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Node Scores
 // ---------------------------------------------------------------------------
@@ -589,6 +737,69 @@ export async function runAutomationNow() {
     return result;
   } catch (err) {
     console.error('Failed to run automation:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rollback
+// ---------------------------------------------------------------------------
+
+export async function fetchRollbackInfo(vmid) {
+  try {
+    const response = await fetch(`${API_BASE}/migrate/rollback-info/${vmid}`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to fetch rollback info:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function executeRollback(vmid) {
+  try {
+    const response = await fetch(`${API_BASE}/migrate/rollback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vmid })
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to execute rollback:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Migration Outcome Tracking
+// ---------------------------------------------------------------------------
+
+export async function fetchMigrationOutcomes(vmid = null, limit = 20) {
+  try {
+    const params = new URLSearchParams();
+    if (vmid !== null && vmid !== undefined) params.append('vmid', vmid);
+    if (limit) params.append('limit', limit);
+    const qs = params.toString();
+    const url = `${API_BASE}/migrate/outcomes${qs ? '?' + qs : ''}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to fetch migration outcomes:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function refreshMigrationOutcomes() {
+  try {
+    const response = await fetch(`${API_BASE}/migrate/outcomes/refresh`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to refresh migration outcomes:', err);
     return { error: true, message: err.message };
   }
 }

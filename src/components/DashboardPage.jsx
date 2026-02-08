@@ -90,6 +90,19 @@ export default function DashboardPage({
 }) {
   // Dashboard Page - data is guaranteed to be available here
   const [showPredicted, setShowPredicted] = useState(false);
+
+  // J2: Recommendation filter state
+  const [recFilterConfidence, setRecFilterConfidence] = useState('');
+  const [recFilterTargetNode, setRecFilterTargetNode] = useState('');
+  const [recFilterSourceNode, setRecFilterSourceNode] = useState('');
+  const [recSortBy, setRecSortBy] = useState('');
+  const [recSortDir, setRecSortDir] = useState('desc');
+  const [showRecFilters, setShowRecFilters] = useState(false);
+
+  // E1: Migration outcomes state
+  const [migrationOutcomes, setMigrationOutcomes] = useState(null);
+  const [loadingOutcomes, setLoadingOutcomes] = useState(false);
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -2138,6 +2151,48 @@ export default function DashboardPage({
 
             {!collapsedSections.clusterMap && (
               <div className="relative" style={{minHeight: '400px'}}>
+                {/* C2: Migration Flow Arrows — visual summary of proposed migrations */}
+                {recommendations.length > 0 && (
+                  <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MoveRight size={14} className="text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Proposed Migration Flows</span>
+                      <span className="text-[10px] text-blue-500 dark:text-blue-400">({recommendations.length} migration{recommendations.length !== 1 ? 's' : ''})</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        // Group migrations by source->target pairs
+                        const flows = {};
+                        recommendations.forEach(rec => {
+                          const flowKey = `${rec.source_node}→${rec.target_node}`;
+                          if (!flows[flowKey]) flows[flowKey] = { source: rec.source_node, target: rec.target_node, guests: [], totalImprovement: 0 };
+                          flows[flowKey].guests.push({ vmid: rec.vmid, name: rec.name, type: rec.type });
+                          flows[flowKey].totalImprovement += rec.score_improvement || 0;
+                        });
+                        return Object.values(flows).map((flow, idx) => {
+                          const confColor = flow.totalImprovement > 40 ? 'bg-green-500' : flow.totalImprovement > 20 ? 'bg-yellow-500' : 'bg-gray-400';
+                          return (
+                            <div key={idx} className="flex items-center gap-1.5 px-2 py-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-[11px] group relative" title={flow.guests.map(g => `${g.type} ${g.vmid} (${g.name})`).join(', ')}>
+                              <span className="font-semibold text-gray-700 dark:text-gray-300">{flow.source}</span>
+                              <div className="flex items-center gap-0.5">
+                                <div className={`w-8 h-0.5 ${confColor} rounded`}></div>
+                                <ArrowRight size={10} className="text-gray-500 dark:text-gray-400 -ml-0.5" />
+                              </div>
+                              <span className="font-semibold text-gray-700 dark:text-gray-300">{flow.target}</span>
+                              <span className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9px] font-medium">{flow.guests.length}×</span>
+                              <div className="hidden group-hover:block absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[180px]">
+                                {flow.guests.map((g, i) => (
+                                  <div key={i} className="text-[10px] text-gray-600 dark:text-gray-400 py-0.5">[{g.type} {g.vmid}] {g.name}</div>
+                                ))}
+                                <div className="text-[10px] text-green-600 dark:text-green-400 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">Total improvement: +{flow.totalImprovement.toFixed(0)} pts</div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
                   {Object.values(data.nodes).map(node => {
                     const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
@@ -4213,6 +4268,84 @@ export default function DashboardPage({
             </details>
           )}
 
+          {/* F2: Workload Patterns Panel */}
+          {!loadingRecommendations && recommendationData?.generated_at && (
+            <details className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <summary className="cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg">
+                <Activity size={16} />
+                Workload Patterns
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">Daily/weekly cycle analysis</span>
+              </summary>
+              <div className="px-3 pb-3">
+                {(() => {
+                  const [patterns, setPatterns] = useState(null);
+                  const [patternsLoading, setPatternsLoading] = useState(false);
+                  React.useEffect(() => {
+                    let cancelled = false;
+                    setPatternsLoading(true);
+                    fetch(`${API_BASE}/workload-patterns?hours=168`)
+                      .then(r => r.json())
+                      .then(res => { if (!cancelled && res.success) setPatterns(res.patterns || []); })
+                      .catch(() => {})
+                      .finally(() => { if (!cancelled) setPatternsLoading(false); });
+                    return () => { cancelled = true; };
+                  }, []);
+
+                  if (patternsLoading) return <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Analyzing patterns...</div>;
+                  if (!patterns || patterns.length === 0) return <div className="text-xs text-gray-400 dark:text-gray-500 py-2">Insufficient history data for pattern analysis. Patterns emerge after several days of data collection.</div>;
+
+                  return (
+                    <div className="space-y-3">
+                      {patterns.map((p, idx) => (
+                        <div key={idx} className="bg-white dark:bg-gray-900/50 rounded p-2.5 border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Server size={12} className="text-blue-500" />
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{p.node}</span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{p.data_points} data points</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
+                            {p.daily_pattern ? (
+                              <div className="p-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                                <div className="font-medium text-blue-700 dark:text-blue-300 mb-0.5">Daily Cycle <span className="text-blue-500">({p.daily_pattern.pattern_confidence})</span></div>
+                                <div className="text-gray-600 dark:text-gray-400">Peak: {p.daily_pattern.peak_avg_cpu}% | Trough: {p.daily_pattern.trough_avg_cpu}%</div>
+                                <div className="text-gray-500 dark:text-gray-500">Biz hrs: {p.daily_pattern.business_hours_avg}% | Off hrs: {p.daily_pattern.off_hours_avg}%</div>
+                              </div>
+                            ) : (
+                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No daily cycle detected</div>
+                            )}
+                            {p.weekly_pattern ? (
+                              <div className="p-1.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-0.5">Weekly Cycle <span className="text-purple-500">({p.weekly_pattern.pattern_confidence})</span></div>
+                                <div className="text-gray-600 dark:text-gray-400">Weekday: {p.weekly_pattern.weekday_avg}% | Weekend: {p.weekly_pattern.weekend_avg}%</div>
+                                <div className="text-gray-500 dark:text-gray-500">Peak days: {p.weekly_pattern.peak_days?.join(', ')}</div>
+                              </div>
+                            ) : (
+                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No weekly cycle detected</div>
+                            )}
+                            {p.burst_detection?.detected ? (
+                              <div className="p-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                <div className="font-medium text-amber-700 dark:text-amber-300 mb-0.5">Burst Detection</div>
+                                <div className="text-gray-600 dark:text-gray-400">{p.burst_detection.recurring_bursts} recurring burst hour(s)</div>
+                                <div className="text-gray-500 dark:text-gray-500">Avg burst: {p.burst_detection.avg_burst_cpu}% at hours {p.burst_detection.burst_hours?.join(', ')}</div>
+                              </div>
+                            ) : (
+                              <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">No recurring bursts</div>
+                            )}
+                          </div>
+                          {p.recommendation_timing && (
+                            <div className="mt-1.5 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                              <Clock size={10} /> {p.recommendation_timing}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </details>
+          )}
+
           {/* Recommendation Summary Digest */}
           {!loadingRecommendations && recommendationData?.summary && (
             <div className={`mb-4 rounded-lg border p-4 ${
@@ -4484,6 +4617,134 @@ export default function DashboardPage({
             </div>
           )}
 
+          {/* F1: Forecast Alerts — Proactive Trend-Based Threshold Warnings */}
+          {!loadingRecommendations && recommendationData?.forecasts?.length > 0 && (
+            <div className="mb-4">
+              <button
+                onClick={() => setCollapsedSections(prev => ({ ...prev, forecastAlerts: !prev.forecastAlerts }))}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
+              >
+                <ChevronDown size={16} className={`transition-transform ${collapsedSections.forecastAlerts ? '' : 'rotate-180'}`} />
+                <Zap size={14} className="text-amber-500" />
+                Trend Forecasts ({recommendationData.forecasts.length})
+                <span className="text-xs text-gray-400 dark:text-gray-500">— Projected threshold crossings</span>
+              </button>
+              {!collapsedSections.forecastAlerts && (
+                <div className="space-y-2">
+                  {recommendationData.forecasts.map((fc, idx) => (
+                    <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border ${
+                      fc.severity === 'critical' ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                      : fc.severity === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                    }`}>
+                      <div className={`shrink-0 p-1.5 rounded-full ${
+                        fc.severity === 'critical' ? 'bg-red-100 dark:bg-red-800' : fc.severity === 'warning' ? 'bg-amber-100 dark:bg-amber-800' : 'bg-blue-100 dark:bg-blue-800'
+                      }`}>
+                        <AlertTriangle size={14} className={
+                          fc.severity === 'critical' ? 'text-red-600 dark:text-red-400' : fc.severity === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                        } />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-white">{fc.node}</span>
+                          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${
+                            fc.severity === 'critical' ? 'bg-red-600 text-white' : fc.severity === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
+                          }`}>{fc.severity}</span>
+                          <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 uppercase">{fc.metric}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{fc.message}</p>
+                        <div className="flex flex-wrap gap-3 text-[10px] text-gray-500 dark:text-gray-500">
+                          <span>Current: <strong className="text-gray-700 dark:text-gray-300">{fc.current_value?.toFixed(1)}%</strong></span>
+                          <span>Threshold: <strong className="text-gray-700 dark:text-gray-300">{fc.threshold}%</strong></span>
+                          <span>Projected: <strong className="text-gray-700 dark:text-gray-300">{fc.projected_value?.toFixed(1)}%</strong></span>
+                          {fc.estimated_hours_to_crossing && <span>ETA: <strong className="text-gray-700 dark:text-gray-300">~{fc.estimated_hours_to_crossing < 24 ? `${fc.estimated_hours_to_crossing.toFixed(0)}h` : `${(fc.estimated_hours_to_crossing / 24).toFixed(1)}d`}</strong></span>}
+                          <span>Rate: <strong className="text-gray-700 dark:text-gray-300">{fc.trend_rate_per_day > 0 ? '+' : ''}{fc.trend_rate_per_day?.toFixed(1)}%/day</strong></span>
+                          <span>Confidence: <strong className="text-gray-700 dark:text-gray-300">{fc.confidence}</strong> (R²={fc.r_squared?.toFixed(2)})</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* J2: Recommendation Filter Controls */}
+          {!loadingRecommendations && recommendations.length > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowRecFilters(prev => !prev)}
+                className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors mb-2"
+              >
+                <Filter size={12} />
+                {showRecFilters ? 'Hide Filters' : 'Filter & Sort'}
+                {(recFilterConfidence || recFilterTargetNode || recFilterSourceNode || recSortBy) && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 rounded text-[10px] font-medium">Active</span>
+                )}
+              </button>
+              {showRecFilters && (
+                <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-2">
+                  <select
+                    value={recFilterConfidence}
+                    onChange={e => setRecFilterConfidence(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">Min Confidence: Any</option>
+                    <option value="80">≥ 80%</option>
+                    <option value="60">≥ 60%</option>
+                    <option value="40">≥ 40%</option>
+                    <option value="20">≥ 20%</option>
+                  </select>
+                  <select
+                    value={recFilterSourceNode}
+                    onChange={e => setRecFilterSourceNode(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">Source: All Nodes</option>
+                    {[...new Set(recommendations.map(r => r.source_node))].sort().map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={recFilterTargetNode}
+                    onChange={e => setRecFilterTargetNode(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">Target: All Nodes</option>
+                    {[...new Set(recommendations.map(r => r.target_node))].sort().map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={recSortBy}
+                    onChange={e => setRecSortBy(e.target.value)}
+                    className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">Sort: Default</option>
+                    <option value="score_improvement">Score Improvement</option>
+                    <option value="confidence_score">Confidence</option>
+                    <option value="risk_score">Risk Score</option>
+                  </select>
+                  <button
+                    onClick={() => setRecSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                    className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                    title={`Sort direction: ${recSortDir}`}
+                  >
+                    {recSortDir === 'desc' ? '↓ Desc' : '↑ Asc'}
+                  </button>
+                  {(recFilterConfidence || recFilterTargetNode || recFilterSourceNode || recSortBy) && (
+                    <button
+                      onClick={() => { setRecFilterConfidence(''); setRecFilterTargetNode(''); setRecFilterSourceNode(''); setRecSortBy(''); }}
+                      className="text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {loadingRecommendations ? (
             <div className="text-center py-8">
               <RefreshCw size={48} className="mx-auto mb-3 text-blue-500 dark:text-blue-400 animate-spin" />
@@ -4500,7 +4761,28 @@ export default function DashboardPage({
             </div>
           ) : (
             <div className="space-y-3">
-              {recommendations.map((rec, idx) => {
+              {(() => {
+                // J2: Apply client-side filters and sorting
+                let filtered = [...recommendations];
+                if (recFilterConfidence) {
+                  const minConf = parseInt(recFilterConfidence);
+                  filtered = filtered.filter(r => (r.confidence_score || 0) >= minConf);
+                }
+                if (recFilterSourceNode) {
+                  filtered = filtered.filter(r => r.source_node === recFilterSourceNode);
+                }
+                if (recFilterTargetNode) {
+                  filtered = filtered.filter(r => r.target_node === recFilterTargetNode);
+                }
+                if (recSortBy) {
+                  filtered.sort((a, b) => {
+                    const va = a[recSortBy] || 0;
+                    const vb = b[recSortBy] || 0;
+                    return recSortDir === 'asc' ? va - vb : vb - va;
+                  });
+                }
+                return filtered;
+              })().map((rec, idx) => {
                 const key = `${rec.vmid}-${rec.target_node}`;
                 const status = migrationStatus[key];
                 const completed = completedMigrations[rec.vmid];
@@ -4849,12 +5131,58 @@ export default function DashboardPage({
                       </div>
                       <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                         {(() => {
-                          // If migration is completed, show "Migrated" badge
+                          // If migration is completed, show "Migrated" badge + rollback button
                           if (isCompleted) {
                             return (
-                              <div className="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded flex items-center gap-2">
-                                <CheckCircle size={16} />
-                                Migrated
+                              <div className="flex items-center gap-2">
+                                <div className="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded flex items-center gap-2">
+                                  <CheckCircle size={16} />
+                                  Migrated
+                                </div>
+                                {canMigrate && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const { fetchRollbackInfo, executeRollback } = await import('../api/client.js');
+                                        const infoRes = await fetchRollbackInfo(rec.vmid);
+                                        if (infoRes.error || !infoRes.success) {
+                                          setMigrationStatus(prev => ({ ...prev, [`rollback-${rec.vmid}`]: 'unavailable' }));
+                                          return;
+                                        }
+                                        const info = infoRes.rollback_info;
+                                        if (!info.available) {
+                                          alert(`Rollback unavailable: ${info.detail}`);
+                                          return;
+                                        }
+                                        if (!info.rollback_safe) {
+                                          if (!confirm(`Rollback may be risky: ${info.detail}\n\nProceed anyway?`)) return;
+                                        }
+                                        if (!confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) back to ${info.original_node}?`)) return;
+                                        setMigrationStatus(prev => ({ ...prev, [`rollback-${rec.vmid}`]: 'running' }));
+                                        const result = await executeRollback(rec.vmid);
+                                        if (result.success) {
+                                          setMigrationStatus(prev => ({ ...prev, [`rollback-${rec.vmid}`]: 'done' }));
+                                        } else {
+                                          alert(`Rollback failed: ${result.error || 'Unknown error'}`);
+                                          setMigrationStatus(prev => ({ ...prev, [`rollback-${rec.vmid}`]: 'failed' }));
+                                        }
+                                      } catch (err) {
+                                        alert(`Rollback error: ${err.message}`);
+                                      }
+                                    }}
+                                    disabled={migrationStatus[`rollback-${rec.vmid}`] === 'running'}
+                                    className="px-3 py-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                                    title="Rollback: migrate back to original node"
+                                  >
+                                    {migrationStatus[`rollback-${rec.vmid}`] === 'running' ? (
+                                      <><RefreshCw size={12} className="animate-spin" /> Rolling back...</>
+                                    ) : migrationStatus[`rollback-${rec.vmid}`] === 'done' ? (
+                                      <><CheckCircle size={12} /> Rolled back</>
+                                    ) : (
+                                      <><RotateCcw size={12} /> Rollback</>
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             );
                           }
@@ -4984,6 +5312,222 @@ export default function DashboardPage({
                       ...and {recommendationData.skipped_guests.length - 20} more
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* G2: Execution Plan — Migration Ordering & Dependencies */}
+          {!loadingRecommendations && recommendationData?.execution_plan?.ordered_recommendations?.length > 1 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setCollapsedSections(prev => ({ ...prev, executionPlan: !prev.executionPlan }))}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
+              >
+                <ChevronDown size={16} className={`transition-transform ${collapsedSections.executionPlan ? '' : 'rotate-180'}`} />
+                <List size={14} className="text-indigo-500" />
+                Execution Plan ({recommendationData.execution_plan.total_steps} steps)
+                {recommendationData.execution_plan.can_parallelize && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400">Parallel groups available</span>
+                )}
+              </button>
+              {!collapsedSections.executionPlan && (
+                <div className="space-y-1.5">
+                  {recommendationData.execution_plan.ordered_recommendations.map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700">
+                      <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-bold text-[11px]">
+                        {step.step}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          [{step.vmid}] {step.name}
+                        </span>
+                        <span className="text-gray-400 dark:text-gray-500 mx-1">{step.source_node}</span>
+                        <ArrowRight size={10} className="inline text-gray-400" />
+                        <span className="text-gray-400 dark:text-gray-500 mx-1">{step.target_node}</span>
+                      </div>
+                      {step.parallel_group !== undefined && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                          Group {step.parallel_group + 1}
+                        </span>
+                      )}
+                      {step.reason_for_order && (
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 max-w-[200px] truncate" title={step.reason_for_order}>
+                          {step.reason_for_order}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {recommendationData.execution_plan.can_parallelize && recommendationData.execution_plan.parallel_groups?.length > 0 && (
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 px-2">
+                      Steps within the same group can run in parallel. Groups must execute sequentially.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* E1: Migration Outcome Tracking */}
+          {!loadingRecommendations && (
+            <div className="mt-4">
+              <button
+                onClick={async () => {
+                  setCollapsedSections(prev => ({ ...prev, migrationOutcomes: !prev.migrationOutcomes }));
+                  if (!migrationOutcomes && !loadingOutcomes) {
+                    setLoadingOutcomes(true);
+                    try {
+                      const { fetchMigrationOutcomes, refreshMigrationOutcomes } = await import('../api/client.js');
+                      await refreshMigrationOutcomes();
+                      const res = await fetchMigrationOutcomes(null, 10);
+                      if (res.success) setMigrationOutcomes(res.outcomes || []);
+                    } catch (e) { console.error('Error loading outcomes:', e); }
+                    setLoadingOutcomes(false);
+                  }
+                }}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
+              >
+                <ChevronDown size={16} className={`transition-transform ${collapsedSections.migrationOutcomes ? '' : 'rotate-180'}`} />
+                <BarChart2 size={14} className="text-green-500" />
+                Migration Outcomes
+                <span className="text-xs text-gray-400 dark:text-gray-500">— Predicted vs. actual results</span>
+              </button>
+              {!collapsedSections.migrationOutcomes && (
+                <div className="space-y-2">
+                  {loadingOutcomes ? (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2">
+                      <RefreshCw size={12} className="animate-spin" /> Loading outcomes...
+                    </div>
+                  ) : !migrationOutcomes || migrationOutcomes.length === 0 ? (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 py-2">
+                      No migration outcomes tracked yet. Outcomes are recorded automatically when migrations are executed.
+                    </div>
+                  ) : (
+                    migrationOutcomes.map((outcome, idx) => {
+                      const pre = outcome.pre_migration || {};
+                      const post = outcome.post_migration || {};
+                      const isPending = outcome.status === 'pending_post_capture';
+                      return (
+                        <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'}`}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                              [{outcome.guest_type} {outcome.vmid}] {outcome.source_node} → {outcome.target_node}
+                            </span>
+                            <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? 'bg-amber-500 text-white' : outcome.accuracy_pct >= 70 ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
+                              {isPending ? 'PENDING' : outcome.accuracy_pct != null ? `${outcome.accuracy_pct}% accurate` : 'COMPLETED'}
+                            </span>
+                          </div>
+                          {!isPending && post && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">Source CPU</div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-600 dark:text-gray-400">{pre.source_node?.cpu}%</span>
+                                  <ArrowRight size={8} className="text-gray-400" />
+                                  <span className={`font-medium ${(pre.source_node?.cpu || 0) > (post.source_node?.cpu || 0) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{post.source_node?.cpu}%</span>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">Source Memory</div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-600 dark:text-gray-400">{pre.source_node?.mem}%</span>
+                                  <ArrowRight size={8} className="text-gray-400" />
+                                  <span className={`font-medium ${(pre.source_node?.mem || 0) > (post.source_node?.mem || 0) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{post.source_node?.mem}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {isPending && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400">Post-migration metrics pending (captured after 5 minute cooldown)</div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* C4: Recommendation History — Score Trend Timeline */}
+          {!loadingRecommendations && (
+            <div className="mt-4">
+              <button
+                onClick={() => setCollapsedSections(prev => ({ ...prev, recHistory: !prev.recHistory }))}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
+              >
+                <ChevronDown size={16} className={`transition-transform ${collapsedSections.recHistory ? '' : 'rotate-180'}`} />
+                <Calendar size={14} className="text-purple-500" />
+                Recommendation History
+                <span className="text-xs text-gray-400 dark:text-gray-500">— Score trends over time</span>
+              </button>
+              {!collapsedSections.recHistory && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {(() => {
+                    const [historyData, setHistoryData] = useState(null);
+                    const [historyLoading, setHistoryLoading] = useState(false);
+                    const [historyHours, setHistoryHours] = useState(24);
+                    React.useEffect(() => {
+                      let cancelled = false;
+                      setHistoryLoading(true);
+                      fetch(`${API_BASE}/score-history?hours=${historyHours}`)
+                        .then(r => r.json())
+                        .then(res => { if (!cancelled) setHistoryData(res.history || []); })
+                        .catch(() => {})
+                        .finally(() => { if (!cancelled) setHistoryLoading(false); });
+                      return () => { cancelled = true; };
+                    }, [historyHours]);
+
+                    if (historyLoading) return <div className="text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Loading history...</div>;
+                    if (!historyData || historyData.length === 0) return <div className="text-xs text-gray-400 dark:text-gray-500 py-2">No score history data yet. History is recorded automatically every time recommendations are generated.</div>;
+
+                    // Build mini sparkline-style timeline
+                    const entries = historyData.slice(-48); // Last 48 data points
+                    const healthValues = entries.map(e => e.cluster_health || 0);
+                    const recCounts = entries.map(e => e.recommendation_count || 0);
+                    const maxHealth = Math.max(...healthValues, 1);
+                    const maxRec = Math.max(...recCounts, 1);
+
+                    return (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3 text-[10px]">
+                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span> Cluster Health</span>
+                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded-full inline-block"></span> Rec Count</span>
+                          </div>
+                          <select value={historyHours} onChange={e => setHistoryHours(Number(e.target.value))} className="text-[10px] px-1.5 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                            <option value={6}>6h</option>
+                            <option value={24}>24h</option>
+                            <option value={72}>3 days</option>
+                            <option value={168}>7 days</option>
+                          </select>
+                        </div>
+                        <div className="flex items-end gap-px h-16">
+                          {entries.map((entry, i) => {
+                            const healthPct = (healthValues[i] / 100) * 100;
+                            const recPct = recCounts[i] > 0 ? Math.max(10, (recCounts[i] / maxRec) * 100) : 0;
+                            const ts = new Date(entry.timestamp);
+                            const timeLabel = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative" title={`${timeLabel}\nHealth: ${healthValues[i].toFixed(0)}%\nRecs: ${recCounts[i]}`}>
+                                <div className="w-full flex flex-col justify-end h-16">
+                                  <div className="w-full bg-green-400 dark:bg-green-500 rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity" style={{ height: `${healthPct}%`, minHeight: healthPct > 0 ? '1px' : '0' }}></div>
+                                </div>
+                                {recPct > 0 && <div className="absolute bottom-0 w-1 bg-orange-500 rounded-t-sm opacity-70" style={{ height: `${recPct * 0.6}%`, minHeight: '2px' }}></div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between mt-1 text-[9px] text-gray-400 dark:text-gray-500">
+                          <span>{entries.length > 0 ? new Date(entries[0].timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          <span>{entries.length > 0 ? new Date(entries[entries.length - 1].timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        </div>
+                        <div className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">
+                          {entries.length} snapshots over last {historyHours}h — Latest health: <strong className="text-gray-700 dark:text-gray-300">{healthValues[healthValues.length - 1]?.toFixed(0)}%</strong>, Recs: <strong className="text-gray-700 dark:text-gray-300">{recCounts[recCounts.length - 1]}</strong>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

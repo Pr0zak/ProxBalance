@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request, current_app, make_response
 import json, os, sys, time, csv, io
 from datetime import datetime
 from proxbalance.config_manager import load_config, load_penalty_config, BASE_PATH
-from proxbalance.scoring import calculate_intelligent_thresholds, calculate_target_node_score, DEFAULT_PENALTY_CONFIG
+from proxbalance.scoring import calculate_intelligent_thresholds, calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 
 recommendations_bp = Blueprint('recommendations', __name__)
@@ -99,9 +99,11 @@ def get_recommendations():
                 print(f"Warning: AI enhancement failed (continuing with algorithm-only): {str(e)}", file=sys.stderr)
                 # Continue without AI enhancement - graceful degradation
 
-        # Extract conflict and advisory data from result
+        # Extract conflict, advisory, forecast, and execution plan data from result
         conflicts = result.get("conflicts", [])
         capacity_advisories = result.get("capacity_advisories", [])
+        forecasts = result.get("forecasts", [])
+        execution_plan = result.get("execution_plan", {})
 
         # Cache the recommendations result
         recommendations_cache = {
@@ -111,6 +113,8 @@ def get_recommendations():
             "summary": rec_summary,
             "conflicts": conflicts,
             "capacity_advisories": capacity_advisories,
+            "forecasts": forecasts,
+            "execution_plan": execution_plan,
             "count": len(recommendations),
             "threshold_suggestions": threshold_suggestions,
             "ai_enhanced": ai_enhanced,
@@ -213,7 +217,18 @@ def get_recommendations():
 
 @recommendations_bp.route("/api/recommendations", methods=["GET"])
 def get_cached_recommendations():
-    """Get cached recommendations without regenerating"""
+    """Get cached recommendations without regenerating.
+
+    Query parameters for filtering and pagination:
+      - limit (int, default: all) - Limit the number of recommendations returned
+      - offset (int, default: 0) - Skip first N recommendations
+      - min_confidence (int, optional) - Only return recs with confidence >= value
+      - target_node (string, optional) - Filter by target node
+      - source_node (string, optional) - Filter by source node
+      - sort (string, optional) - Sort by score_improvement, confidence_score,
+        risk_score, or priority. Default: original order
+      - sort_dir (string, optional) - asc or desc. Default: desc
+    """
     try:
         recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
 
@@ -229,8 +244,6 @@ def get_cached_recommendations():
         try:
             with open(recommendations_cache_file, 'r') as f:
                 cached_data = json.load(f)
-
-            return jsonify(cached_data)
         except Exception as read_err:
             print(f"Error reading recommendations cache: {read_err}", file=sys.stderr)
             return jsonify({
@@ -239,8 +252,234 @@ def get_cached_recommendations():
                 "cache_error": True
             }), 500
 
+        # Extract query parameters
+        param_limit = request.args.get("limit")
+        param_offset = request.args.get("offset", "0")
+        param_min_confidence = request.args.get("min_confidence")
+        param_target_node = request.args.get("target_node")
+        param_source_node = request.args.get("source_node")
+        param_sort = request.args.get("sort")
+        param_sort_dir = request.args.get("sort_dir", "desc").lower()
+
+        recommendations = cached_data.get("recommendations", [])
+        total_count = len(recommendations)
+
+        # Apply filters
+        if param_min_confidence is not None:
+            try:
+                min_conf = int(param_min_confidence)
+                recommendations = [
+                    r for r in recommendations
+                    if r.get("confidence_score", 0) >= min_conf
+                ]
+            except (ValueError, TypeError):
+                pass
+
+        if param_target_node:
+            recommendations = [
+                r for r in recommendations
+                if r.get("target_node") == param_target_node
+            ]
+
+        if param_source_node:
+            recommendations = [
+                r for r in recommendations
+                if r.get("source_node") == param_source_node
+            ]
+
+        filtered_count = len(recommendations)
+
+        # Apply sorting
+        valid_sort_fields = {"score_improvement", "confidence_score", "risk_score", "priority"}
+        if param_sort and param_sort in valid_sort_fields:
+            reverse = param_sort_dir != "asc"
+            # For priority, sort alphabetically (critical > high > medium > low)
+            if param_sort == "priority":
+                priority_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+                recommendations.sort(
+                    key=lambda r: priority_order.get(str(r.get("priority", "")).lower(), 0),
+                    reverse=reverse
+                )
+            else:
+                recommendations.sort(
+                    key=lambda r: r.get(param_sort, 0) or 0,
+                    reverse=reverse
+                )
+
+        # Apply pagination
+        try:
+            offset = max(0, int(param_offset))
+        except (ValueError, TypeError):
+            offset = 0
+
+        if param_limit is not None:
+            try:
+                limit = max(0, int(param_limit))
+                recommendations = recommendations[offset:offset + limit]
+            except (ValueError, TypeError):
+                recommendations = recommendations[offset:]
+        else:
+            recommendations = recommendations[offset:]
+
+        # Return modified response with pagination metadata
+        cached_data["recommendations"] = recommendations
+        cached_data["total_count"] = total_count
+        cached_data["filtered_count"] = filtered_count
+        cached_data["count"] = len(recommendations)
+
+        return jsonify(cached_data)
+
     except Exception as e:
         print(f"Error in get_cached_recommendations: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@recommendations_bp.route("/api/recommendations/skipped", methods=["GET"])
+def get_skipped_guests():
+    """Get skipped guests from cached recommendations with optional filtering.
+
+    Query parameters:
+      - reason (string, optional) - Filter by skip reason
+        (e.g. insufficient_improvement, ha_managed, stopped)
+      - limit (int, default: all) - Limit the number of results
+      - offset (int, default: 0) - Skip first N results
+    """
+    try:
+        recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
+
+        if not os.path.exists(recommendations_cache_file):
+            return jsonify({
+                "success": False,
+                "error": "No cached recommendations available. Please generate recommendations first.",
+                "cache_missing": True
+            }), 404
+
+        try:
+            with open(recommendations_cache_file, 'r') as f:
+                cached_data = json.load(f)
+        except Exception as read_err:
+            print(f"Error reading recommendations cache: {read_err}", file=sys.stderr)
+            return jsonify({
+                "success": False,
+                "error": "Failed to read cached recommendations",
+                "cache_error": True
+            }), 500
+
+        skipped = cached_data.get("skipped_guests", [])
+        total_count = len(skipped)
+
+        # Filter by reason
+        param_reason = request.args.get("reason")
+        if param_reason:
+            skipped = [
+                s for s in skipped
+                if s.get("reason") == param_reason
+                or s.get("skip_reason") == param_reason
+            ]
+
+        filtered_count = len(skipped)
+
+        # Apply pagination
+        param_offset = request.args.get("offset", "0")
+        param_limit = request.args.get("limit")
+
+        try:
+            offset = max(0, int(param_offset))
+        except (ValueError, TypeError):
+            offset = 0
+
+        if param_limit is not None:
+            try:
+                limit = max(0, int(param_limit))
+                skipped = skipped[offset:offset + limit]
+            except (ValueError, TypeError):
+                skipped = skipped[offset:]
+        else:
+            skipped = skipped[offset:]
+
+        # Collect distinct skip reasons for discovery
+        all_skipped = cached_data.get("skipped_guests", [])
+        reason_counts = {}
+        for s in all_skipped:
+            r = s.get("reason") or s.get("skip_reason") or "unknown"
+            reason_counts[r] = reason_counts.get(r, 0) + 1
+
+        return jsonify({
+            "success": True,
+            "skipped_guests": skipped,
+            "total_count": total_count,
+            "filtered_count": filtered_count,
+            "count": len(skipped),
+            "reason_counts": reason_counts,
+            "generated_at": cached_data.get("generated_at"),
+        })
+
+    except Exception as e:
+        print(f"Error in get_skipped_guests: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@recommendations_bp.route("/api/recommendations/forecasts", methods=["GET"])
+def get_forecasts():
+    """Get forecast recommendations from cached data.
+
+    Returns proactive trend-based alerts that warn about threshold crossings
+    before they happen, using linear regression on score history data.
+
+    Query parameters:
+      - severity (string, optional) - Filter by severity: critical, warning, info
+      - node (string, optional) - Filter by node name
+      - metric (string, optional) - Filter by metric: cpu, memory
+    """
+    try:
+        recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
+
+        if not os.path.exists(recommendations_cache_file):
+            return jsonify({
+                "success": False,
+                "error": "No cached recommendations available. Please generate recommendations first.",
+                "cache_missing": True
+            }), 404
+
+        try:
+            with open(recommendations_cache_file, 'r') as f:
+                cached_data = json.load(f)
+        except Exception as read_err:
+            print(f"Error reading recommendations cache: {read_err}", file=sys.stderr)
+            return jsonify({
+                "success": False,
+                "error": "Failed to read cached recommendations",
+                "cache_error": True
+            }), 500
+
+        forecasts = cached_data.get("forecasts", [])
+
+        # Apply filters
+        param_severity = request.args.get("severity")
+        if param_severity:
+            forecasts = [f for f in forecasts if f.get("severity") == param_severity]
+
+        param_node = request.args.get("node")
+        if param_node:
+            forecasts = [f for f in forecasts if f.get("node") == param_node]
+
+        param_metric = request.args.get("metric")
+        if param_metric:
+            forecasts = [f for f in forecasts if f.get("metric") == param_metric]
+
+        return jsonify({
+            "success": True,
+            "forecasts": forecasts,
+            "count": len(forecasts),
+            "generated_at": cached_data.get("generated_at"),
+        })
+
+    except Exception as e:
+        print(f"Error in get_forecasts: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1093,6 +1332,104 @@ def export_migration_history():
 
     except Exception as e:
         print(f"Error in export_migration_history: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# F2: Workload Pattern Recognition
+# ---------------------------------------------------------------------------
+
+@recommendations_bp.route("/api/workload-patterns", methods=["GET"])
+def get_workload_patterns():
+    """Analyze workload patterns for cluster nodes using score history data.
+
+    Detects daily cycles (business-hours vs off-hours), weekly patterns,
+    and recurring bursts by analyzing historical score snapshots.
+
+    Query parameters:
+      - node (string, optional) - Analyze only this node. If omitted, all nodes.
+      - hours (int, default: 168) - How many hours of history to analyze (default 7 days).
+
+    Returns per-node pattern analysis with daily/weekly cycles, burst detection,
+    and recommended migration timing windows.
+    """
+    try:
+        hours = request.args.get("hours", 168, type=int)
+        target_node = request.args.get("node")
+
+        # Load score history
+        score_history_file = os.path.join(BASE_PATH, "score_history.json")
+        if not os.path.exists(score_history_file):
+            return jsonify({
+                "success": False,
+                "error": "No score history available. History is built over time as recommendations run.",
+                "patterns": [],
+            }), 404
+
+        try:
+            with open(score_history_file, "r") as f:
+                score_history = json.load(f)
+        except Exception as read_err:
+            return jsonify({"success": False, "error": f"Failed to read score history: {read_err}"}), 500
+
+        if not isinstance(score_history, list):
+            return jsonify({"success": False, "error": "Invalid score history format"}), 500
+
+        # Filter by time range
+        cutoff = None
+        if hours > 0:
+            from datetime import timezone, timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        filtered_history = []
+        for entry in score_history:
+            if cutoff:
+                ts_str = entry.get("timestamp", "")
+                try:
+                    if ts_str.endswith("Z"):
+                        ts_str = ts_str[:-1] + "+00:00"
+                    ts = datetime.fromisoformat(ts_str)
+                    if ts.tzinfo is None:
+                        from datetime import timezone as tz
+                        ts = ts.replace(tzinfo=tz.utc)
+                    if ts < cutoff:
+                        continue
+                except (ValueError, TypeError):
+                    continue
+            filtered_history.append(entry)
+
+        # Determine which nodes to analyze
+        node_names = set()
+        for entry in filtered_history:
+            for n in entry.get("nodes", {}).keys():
+                node_names.add(n)
+
+        if target_node:
+            if target_node not in node_names:
+                return jsonify({
+                    "success": True,
+                    "patterns": [],
+                    "message": f"Node '{target_node}' not found in history data",
+                })
+            node_names = {target_node}
+
+        patterns = []
+        for node_name in sorted(node_names):
+            pattern = analyze_workload_patterns(filtered_history, node_name)
+            if pattern.get("data_points", 0) > 0:
+                patterns.append(pattern)
+
+        return jsonify({
+            "success": True,
+            "patterns": patterns,
+            "history_entries": len(filtered_history),
+            "hours_analyzed": hours,
+        })
+
+    except Exception as e:
+        print(f"Error in get_workload_patterns: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500

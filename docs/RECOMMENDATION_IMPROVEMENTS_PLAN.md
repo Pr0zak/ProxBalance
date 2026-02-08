@@ -1259,23 +1259,23 @@ Before prioritizing, here is the current implementation status of next-phase ite
 | Item | Description | Backend | Frontend | Overall Status |
 |------|-------------|---------|----------|----------------|
 | **G1** | Migration conflict detection | **Complete** — `_detect_migration_conflicts()` post-generation pass groups by target node, simulates combined load, flags threshold exceedances, suggests resolution. Tags recs with `has_conflict`. | **Complete** — Conflict warning banner + per-rec "Target Conflict" badge. | Complete. |
-| **G2** | Migration ordering | **Partial** — Recommendations sorted by maintenance priority then improvement descending. `automigrate.py` picks highest-improvement first. | Not started | Basic ordering exists. Missing: dependency analysis, resource sequencing, parallel group identification. |
+| **G2** | Migration ordering | **Complete** — `_compute_execution_order()` builds dependency graph, detects cycles, performs topological sort with Kahn's algorithm, groups independent migrations for parallel execution. | **Complete** — Execution Plan panel in Dashboard showing step numbers, parallel groups, and ordering reasons. | Complete. |
 | **G3** | Batch impact assessment | **Complete** — `_build_summary()` includes `batch_impact` with per-node before/after CPU%, Mem%, guest count, variance calculation, and improvement metrics (health_delta, variance_reduction_pct, all_nodes_improved). | **Complete** — Collapsible "Batch Migration Impact" panel in DashboardPage showing per-node before→after metrics with color-coded deltas and aggregate stats. | Complete. |
 | **H2** | Pre-migration validation | **Complete** — `validate_migration()` in `migrations.py` runs 6 checks (staleness, guest state, resources, storage, locks, affinity). `POST /api/migrate/validate` endpoint. | **Complete** — `validateMigration()` in `client.js`. | Complete. |
-| **H3** | Rollback awareness | **Partial** — `automigrate.py:734-782` has `is_rollback_migration()` that detects reverse migrations within `rollback_window_hours`. | Not started | Detection exists. Missing: UI rollback button, return-path tracking in migration history, capacity check before rollback. |
+| **H3** | Rollback awareness | **Complete** — `get_rollback_info()` checks history for recent migrations, validates original node capacity. `POST /api/migrate/rollback` endpoint executes reverse migration with history recording. | **Complete** — Rollback button on completed migration cards with safety confirmation dialogs. | Complete. |
 | **J1** | Webhook events | **Complete** — `notifications.py` supports four event types: `recommendations` (standard), `recommendations_urgent` (high-urgency with priority=high), `recommendations_cleared` (when all resolved), `capacity_warning` (cluster health <50). `generate_recommendations.py` sends all four event types conditionally based on urgency, count transitions, and cluster health. Default notification toggles added. | N/A | Complete. |
-| **F1** | Proactive alerts | **Minimal** — `scoring.py` detects "rising"/"stable" trend direction and applies +15 penalty. No projection or forecasting. | Not started | Trend detection only. Missing: linear regression, threshold crossing projection, forecast recommendation type. |
-| **F2** | Workload patterns | Not started | Not started | — |
+| **F1** | Proactive alerts | **Complete** — `_generate_forecast_recommendations()` uses `project_trend()` linear regression on 7-day score history. Projects CPU/memory 48h ahead, estimates hours until threshold crossing, assigns severity. | **Complete** — Forecast alert cards in Dashboard with severity badges, current/threshold/projected values, ETA, trend rate, and R² confidence. | Complete. |
+| **F2** | Workload patterns | **Complete** — `analyze_workload_patterns()` in `scoring.py` analyzes score history by hour-of-day and day-of-week. Detects daily cycles (business vs off-hours), weekly patterns (weekday vs weekend), and recurring bursts. `GET /api/workload-patterns` endpoint. | **Complete** — Collapsible "Workload Patterns" panel in Dashboard diagnostics showing daily/weekly cycles, burst detection, and recommended migration timing. | Complete. |
 | **F3** | Capacity planning | **Complete** — `_generate_capacity_advisories()` detects saturation, limited headroom, bottlenecks, small clusters. Returns severity, message, metrics, suggestions. | **Complete** — Capacity advisory banners in Dashboard with severity-coded styling and suggestion lists. | Complete. |
 | **H1** | Migration risk scoring | **Complete** — `calculate_migration_risk()` in `scoring.py` with 5 weighted factors. Integrated into recommendation generation. | **Complete** — Risk badge per recommendation card. | Complete. |
 | **I1** | Engine diagnostics | **Complete** — `GET /api/recommendations/diagnostics` endpoint returns generation timing, guest counts, skip reasons, scoring config, AI status, cache ages, conflict/advisory counts. | **Complete** — Collapsible "Engine Diagnostics" panel in Dashboard showing generation time, guest counts, AI status, conflicts/advisories, thresholds, skip reason breakdown. | Complete. |
 | **I2** | Score history | **Complete** — `_save_score_snapshot()` in `recommendations.py` persists per-node scores to `score_history.json` (max 720 entries). `GET /api/score-history` endpoint with `hours` and `node` query params. | **Complete** — `fetchScoreHistory()` in `client.js`. | Complete. |
 | **I3** | Recommendation change log | **Complete** — POST handler in `routes/recommendations.py` compares new vs old recommendations by vmid before overwriting cache. Computes `new_recommendations`, `removed_recommendations`, `changed_targets`, `unchanged`. | **Complete** — "Changes Since Last Generation" collapsible banner with +new/-removed/changed badges. Per-card "NEW" and "TARGET CHANGED" badges. | Complete. |
-| **J2** | API filtering | Not started | Not started | — |
+| **J2** | API filtering | **Complete** — `GET /api/recommendations` supports `limit`, `offset`, `min_confidence`, `target_node`, `source_node`, `sort`, `sort_dir` query params. `GET /api/recommendations/skipped` with reason filtering. Pagination metadata in response. | **Complete** — Filter bar in Dashboard with confidence, source/target node, sort controls, and clear-all button. Client-side filtering. | Complete. |
 | **J3** | Export & reporting | **Complete** — `GET /api/recommendations/export` (CSV/JSON) and `GET /api/automigrate/history/export` (CSV/JSON with date range filtering). | **Complete** — Export dropdown in Dashboard with CSV/JSON options for recommendations and migration history. | Complete. |
-| **C2** | Cluster map arrows | Not started | Not started | — |
-| **C4** | History timeline | Not started | Not started | — |
-| **E1** | Outcome tracking | Not started | Not started | — |
+| **C2** | Cluster map arrows | N/A (frontend only) | **Complete** — Migration flow visualization above cluster map showing source→target node pairs with guest counts, color-coded improvement arrows, and hover popover with guest details. | Complete. |
+| **C4** | History timeline | **Complete** — Leverages `score_history.json` (I2) and `GET /api/score-history` endpoint with configurable time range. | **Complete** — Score trend sparkline timeline in Dashboard with health + recommendation count overlay, configurable from 6h to 7d. | Complete. |
+| **E1** | Outcome tracking | **Complete** — `capture_pre_migration_snapshot()`, `record_migration_outcome()`, `update_post_migration_metrics()` in `migrations.py`. `GET /api/migrate/outcomes` and `POST /api/migrate/outcomes/refresh` endpoints. | **Complete** — Migration Outcomes panel in Dashboard showing pre/post CPU/memory deltas, accuracy percentage, and pending status. | Complete. |
 
 ### Revised Phasing
 
@@ -1314,17 +1314,17 @@ Based on the updated status assessment, phases are re-ordered to maximize levera
 | I1 | Recommendation engine diagnostics | Low-Medium | ✓ `GET /api/recommendations/diagnostics` endpoint. Collapsible "Engine Diagnostics" panel in Dashboard. |
 | J3 | Export & reporting (CSV/JSON) | Low-Medium | ✓ `GET /api/recommendations/export` + `GET /api/automigrate/history/export`. Export dropdown in Dashboard. |
 
-### Phase 8 — Advanced Features
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| F1 | Proactive recommendation alerts | High | Requires trend projection (regression) + forecast recommendation type. Depends on I2. |
-| F2 | Workload pattern recognition | High | RRD data analysis, cycle detection. Most complex new feature. |
-| G2 | Migration ordering & dependencies | High | Extend existing sort with dependency graph analysis. |
-| H3 | Rollback awareness: UI + capacity check | Medium | Detection exists. Add UI button and return-path tracking. |
-| C2 | Interactive cluster map arrows | High | SVG rendering, interaction. High visual impact but complex. |
-| C4 | Recommendation history timeline | High | Depends on I2 for historical data. Timeline UI component. |
-| E1 | Migration outcome tracking | High | Pre/post metric capture + comparison logic. Depends on I2. |
-| J2 | API filtering & pagination | Low | Standard API improvement for larger clusters. |
+### Phase 8 — Advanced Features ✓ COMPLETED
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| J2 | API filtering & pagination | Low | ✓ Query params for limit, offset, min_confidence, target_node, source_node, sort, sort_dir. Frontend filter controls. Skipped guests endpoint with reason filtering. |
+| H3 | Rollback awareness: UI + capacity check | Medium | ✓ `get_rollback_info()` with capacity check + `POST /api/migrate/rollback` endpoint. Rollback button on completed migration cards in Dashboard. |
+| G2 | Migration ordering & dependencies | High | ✓ `_compute_execution_order()` with dependency graph, cycle breaking, topological sort, parallel grouping. Execution Plan panel in Dashboard. |
+| F1 | Proactive recommendation alerts | High | ✓ `_generate_forecast_recommendations()` with linear regression via `project_trend()`. Forecast cards with severity, ETA, trend rate, R² confidence in Dashboard. |
+| E1 | Migration outcome tracking | High | ✓ `capture_pre_migration_snapshot()` + `record_migration_outcome()` + `update_post_migration_metrics()`. Outcomes panel in Dashboard with predicted vs actual comparison. |
+| C4 | Recommendation history timeline | High | ✓ Score history sparkline timeline with configurable time range (6h-7d). Health trend + recommendation count overlay. |
+| F2 | Workload pattern recognition | High | ✓ `analyze_workload_patterns()` with daily cycle, weekly cycle, and burst detection. `GET /api/workload-patterns` endpoint. Patterns panel in Dashboard diagnostics. |
+| C2 | Interactive cluster map arrows | High | ✓ Migration flow visualization above cluster map showing source→target flows grouped by node pair with guest counts and hover details. |
 
 ---
 
