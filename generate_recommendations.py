@@ -167,6 +167,25 @@ def generate_recommendations():
             ai_enhanced = result.get('ai_enhanced', False)
             logger.info(f"✓ Successfully generated {count} recommendations in {generation_time:.1f}s" + (" (AI Enhanced)" if ai_enhanced else ""))
 
+            # Send notification if there are actionable recommendations
+            if count > 0:
+                try:
+                    from notifications import send_notification
+                    recs = result.get('recommendations', [])
+                    top = recs[0] if recs else {}
+                    send_notification(config, "recommendations", {
+                        "count": count,
+                        "ai_enhanced": ai_enhanced,
+                        "top_recommendation": {
+                            "vmid": top.get("vmid"),
+                            "name": top.get("name"),
+                            "type": top.get("type", "VM"),
+                            "target_node": top.get("target_node"),
+                        } if top else None,
+                    })
+                except Exception as e:
+                    logger.warning(f"Could not send recommendations notification: {e}")
+
             # Dynamically adjust timer interval based on cluster size
             optimal_interval = calculate_optimal_interval(num_guests, num_nodes, generation_time)
             logger.info(f"Optimal interval for {num_guests} guests: {optimal_interval} minutes")

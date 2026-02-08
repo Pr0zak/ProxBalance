@@ -275,7 +275,9 @@ def system_info():
     try:
         update_manager = current_app.config['update_manager']
         version_info = update_manager.get_version_info()
-        update_info = update_manager.check_for_updates()
+        # Pass config for update-available notifications
+        config = load_config()
+        update_info = update_manager.check_for_updates(config=config if not config.get('error') else None)
 
         # Combine version and update information
         system_data = {
@@ -308,7 +310,8 @@ def check_update():
     """Check if updates are available"""
     try:
         update_manager = current_app.config['update_manager']
-        update_info = update_manager.check_for_updates()
+        config = load_config()
+        update_info = update_manager.check_for_updates(config=config if not config.get('error') else None)
         return jsonify(update_info)
     except Exception as e:
         return jsonify({
