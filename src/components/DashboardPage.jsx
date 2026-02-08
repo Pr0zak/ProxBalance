@@ -4301,61 +4301,61 @@ export default function DashboardPage({
                             </div>
                           </div>
                         )}
-                        <div className="mt-1 flex flex-wrap items-center gap-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const commandKey = `command-${idx}`;
-                              setCollapsedSections(prev => ({
-                                ...prev,
-                                [commandKey]: !prev[commandKey]
-                              }));
-                            }}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                          >
-                            <Terminal size={12} />
-                            {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
-                          </button>
+                        <div className="mt-1">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const commandKey = `command-${idx}`;
+                                setCollapsedSections(prev => ({
+                                  ...prev,
+                                  [commandKey]: !prev[commandKey]
+                                }));
+                              }}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <Terminal size={12} />
+                              {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
+                            </button>
 
-                          {/* Recommendation Feedback Widget */}
-                          {!isCompleted && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <span className="text-gray-400 dark:text-gray-500">Helpful?</span>
-                              {feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? (
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                                  feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                }`}>
-                                  {feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful' ? 'Thanks!' : 'Noted'}
-                                </span>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'helpful'); }}
-                                    className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                                    title="This recommendation is helpful"
-                                  >
-                                    <ThumbsUp size={12} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'not_helpful'); }}
-                                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                    title="This recommendation is not helpful"
-                                  >
-                                    <ThumbsDown size={12} />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                            {/* Recommendation Feedback Widget */}
+                            {!isCompleted && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-gray-400 dark:text-gray-500">Helpful?</span>
+                                {feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                    feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful'
+                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                  }`}>
+                                    {feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful' ? 'Thanks!' : 'Noted'}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'helpful'); }}
+                                      className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                                      title="This recommendation is helpful"
+                                    >
+                                      <ThumbsUp size={12} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'not_helpful'); }}
+                                      className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                      title="This recommendation is not helpful"
+                                    >
+                                      <ThumbsDown size={12} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           {collapsedSections[`command-${idx}`] && (
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(rec.command);
-                                // Show tooltip or feedback
                                 const btn = e.currentTarget;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copied!';
@@ -4375,6 +4375,7 @@ export default function DashboardPage({
                               {rec.command}
                             </div>
                           )}
+                        </div>
                       </div>
                       <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                         {(() => {
