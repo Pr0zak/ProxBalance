@@ -363,9 +363,14 @@ class NotificationManager:
         Initialize from the full application config.
 
         Supports both the new multi-provider config format and the legacy
-        webhook-only format for backward compatibility.
+        webhook-only format for backward compatibility. Checks both
+        ``automated_migrations.notifications`` and a top-level
+        ``notifications`` key (merged, with top-level taking precedence
+        for shared keys).
         """
-        self.notifications_config = config.get("automated_migrations", {}).get("notifications", {})
+        # Primary config from automated_migrations.notifications
+        am_notif = config.get("automated_migrations", {}).get("notifications", {})
+        self.notifications_config = am_notif
         self.enabled = self.notifications_config.get("enabled", False)
         self.providers: List[NotificationProvider] = []
 
@@ -394,21 +399,39 @@ class NotificationManager:
             if webhook_url:
                 self.providers.append(WebhookProvider({"url": webhook_url}))
 
-    def should_notify(self, event_type: str) -> bool:
-        """Check whether notifications should fire for this event type."""
+    def should_notify(self, event_type: str, data: Dict[str, Any] = None) -> bool:
+        """Check whether notifications should fire for this event type.
+
+        For 'action' events, also checks on_action_success / on_action_failure
+        sub-filters when on_action is enabled.
+        """
         if not self.enabled or not self.providers:
             return False
-        return self.notifications_config.get(f"on_{event_type}", True)
+
+        if not self.notifications_config.get(f"on_{event_type}", True):
+            return False
+
+        # Sub-filtering for action events by success/failure status
+        if event_type == "action" and data:
+            status = data.get("status", "")
+            if status == "success":
+                return self.notifications_config.get("on_action_success", True)
+            elif status == "failed":
+                return self.notifications_config.get("on_action_failure", True)
+
+        return True
 
     def notify(self, event_type: str, data: Dict[str, Any]):
         """
-        Send notification for a migration event.
+        Send notification for an event.
 
         Args:
-            event_type: "start", "complete", or "failure"
+            event_type: Event type (e.g. "start", "complete", "failure", "action",
+                        "node_status", "resource_threshold", "recommendations",
+                        "evacuation", "collector_status", "update_available")
             data: Event-specific data dict
         """
-        if not self.should_notify(event_type):
+        if not self.should_notify(event_type, data):
             return
 
         title, message, priority = self._format_event(event_type, data)
@@ -533,6 +556,124 @@ class NotificationManager:
             message = f"Reason: {data.get('reason', 'Unknown')}"
             priority = "high"
 
+        elif event_type == "node_status":
+            node = data.get("node", "?")
+            status = data.get("status", "unknown")
+            previous = data.get("previous_status", "")
+
+            if status == "offline":
+                title = f"Node Offline: {node}"
+                lines = [f"Node {node} is no longer reachable."]
+                if previous:
+                    lines.append(f"Previous status: {previous}")
+                priority = "emergency"
+            elif status == "online":
+                title = f"Node Back Online: {node}"
+                lines = [f"Node {node} is back online."]
+                if data.get("downtime"):
+                    lines.append(f"Was offline for: {data['downtime']}")
+                priority = "normal"
+            else:
+                title = f"Node Status Change: {node}"
+                lines = [f"Node {node} status: {status}"]
+                priority = "normal"
+            message = "\n".join(lines)
+
+        elif event_type == "resource_threshold":
+            node = data.get("node", "?")
+            resource = data.get("resource", "?")
+            value = data.get("value", 0)
+            threshold = data.get("threshold", 0)
+            title = f"Resource Alert: {node} {resource} at {value:.1f}%"
+            lines = [
+                f"Node: {node}",
+                f"Resource: {resource}",
+                f"Current: {value:.1f}%",
+                f"Threshold: {threshold:.1f}%",
+            ]
+            message = "\n".join(lines)
+            priority = "high" if value > threshold * 1.1 else "normal"
+
+        elif event_type == "recommendations":
+            count = data.get("count", 0)
+            ai_enhanced = data.get("ai_enhanced", False)
+            title = "New Migration Recommendations"
+            lines = [f"Recommendations generated: {count}"]
+            if ai_enhanced:
+                lines.append("AI-enhanced analysis included")
+            if data.get("top_recommendation"):
+                top = data["top_recommendation"]
+                lines.append(f"Top: {top.get('type', 'VM')} {top.get('vmid', '?')} ({top.get('name', '?')}) → {top.get('target_node', '?')}")
+            message = "\n".join(lines)
+            priority = "normal"
+
+        elif event_type == "evacuation":
+            node = data.get("node", "?")
+            evac_status = data.get("status", "started")
+            if evac_status == "started":
+                title = f"Evacuation Started: {node}"
+                lines = [
+                    f"Node: {node}",
+                    f"Guests to evacuate: {data.get('guest_count', '?')}",
+                ]
+                priority = "high"
+            elif evac_status == "completed":
+                title = f"Evacuation Completed: {node}"
+                lines = [
+                    f"Node: {node}",
+                    f"Guests migrated: {data.get('migrated', 0)}",
+                    f"Failed: {data.get('failed', 0)}",
+                ]
+                priority = "high" if data.get("failed", 0) > 0 else "normal"
+            elif evac_status == "failed":
+                title = f"Evacuation Failed: {node}"
+                lines = [
+                    f"Node: {node}",
+                    f"Error: {data.get('error', 'Unknown')}",
+                ]
+                priority = "emergency"
+            else:
+                title = f"Evacuation Update: {node}"
+                lines = [f"Status: {evac_status}"]
+                priority = "normal"
+            message = "\n".join(lines)
+
+        elif event_type == "collector_status":
+            status = data.get("status", "unknown")
+            if status == "failure":
+                title = "Data Collection Failed"
+                lines = [f"Error: {data.get('error', 'Unknown')}"]
+                if data.get("nodes"):
+                    lines.append(f"Nodes affected: {data['nodes']}")
+                priority = "high"
+            elif status == "success":
+                title = "Data Collection Completed"
+                lines = [
+                    f"Nodes: {data.get('node_count', '?')}",
+                    f"Guests: {data.get('guest_count', '?')}",
+                ]
+                if data.get("duration"):
+                    lines.append(f"Duration: {data['duration']}s")
+                priority = "low"
+            else:
+                title = f"Collection Status: {status}"
+                lines = [json.dumps(data, indent=2)]
+                priority = "normal"
+            message = "\n".join(lines)
+
+        elif event_type == "update_available":
+            current = data.get("current_version", "?")
+            latest = data.get("latest_version", "?")
+            title = f"Update Available: {latest}"
+            lines = [
+                f"Current version: {current}",
+                f"Available version: {latest}",
+            ]
+            if data.get("commits_behind"):
+                lines.append(f"Commits behind: {data['commits_behind']}")
+            message = "\n".join(lines)
+            priority = "normal"
+
         else:
             title = f"ProxBalance Event: {event_type}"
             message = json.dumps(data, indent=2)
@@ -547,14 +688,16 @@ class NotificationManager:
 
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
     """
-    Send notification for a migration event.
+    Send notification for an event.
 
     Drop-in replacement for the old send_notification() in automigrate.py.
     Supports both legacy webhook config and new multi-provider config.
 
     Args:
         config: Full application configuration dict
-        event_type: "start", "complete", or "failure"
+        event_type: Event type (e.g. "start", "complete", "failure", "action",
+                    "node_status", "resource_threshold", "recommendations",
+                    "evacuation", "collector_status", "update_available")
         data: Event-specific data
     """
     try:
@@ -572,6 +715,14 @@ def get_default_notifications_config() -> Dict[str, Any]:
         "on_complete": True,
         "on_failure": True,
         "on_action": True,
+        "on_action_success": True,
+        "on_action_failure": True,
+        "on_node_status": True,
+        "on_resource_threshold": False,
+        "on_recommendations": False,
+        "on_evacuation": True,
+        "on_collector_status": False,
+        "on_update_available": True,
         "providers": {
             "pushover": {
                 "enabled": False,

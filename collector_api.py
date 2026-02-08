@@ -787,37 +787,151 @@ class ProxmoxAPICollector:
         }
 
 
+def _load_previous_node_statuses():
+    """Load previous node statuses from cache for change detection."""
+    try:
+        if not os.path.exists(CACHE_FILE):
+            return {}
+        with open(CACHE_FILE, 'r') as f:
+            old_data = json.load(f)
+        return {
+            name: node.get("status", "unknown")
+            for name, node in old_data.get("nodes", {}).items()
+        }
+    except Exception:
+        return {}
+
+
+def _check_node_status_changes(config, old_statuses, new_data):
+    """Detect node status changes and send notifications."""
+    try:
+        from notifications import send_notification
+        new_nodes = new_data.get("nodes", {})
+        for name, node in new_nodes.items():
+            new_status = node.get("status", "unknown")
+            old_status = old_statuses.get(name)
+            if old_status is None:
+                # New node discovered — no notification needed
+                continue
+            if old_status != new_status:
+                if new_status != "online":
+                    send_notification(config, "node_status", {
+                        "node": name,
+                        "status": "offline",
+                        "previous_status": old_status,
+                    })
+                elif old_status != "online":
+                    send_notification(config, "node_status", {
+                        "node": name,
+                        "status": "online",
+                        "previous_status": old_status,
+                    })
+    except Exception as e:
+        print(f"Warning: Failed to check node status changes: {e}", file=sys.stderr)
+
+
+def _check_resource_thresholds(config, new_data):
+    """Check if any node exceeds configured resource thresholds and notify."""
+    try:
+        from notifications import send_notification
+        safety = config.get("automated_migrations", {}).get("safety_checks", {})
+        cpu_threshold = safety.get("max_node_cpu_percent", 85)
+        mem_threshold = safety.get("max_node_memory_percent", 90)
+
+        for name, node in new_data.get("nodes", {}).items():
+            cpu_pct = node.get("cpu_percent", 0)
+            mem_pct = node.get("mem_percent", 0)
+            # Use metrics values if top-level not available
+            if not cpu_pct and "metrics" in node:
+                cpu_pct = node["metrics"].get("current_cpu", 0)
+            if not mem_pct and "metrics" in node:
+                mem_pct = node["metrics"].get("current_mem", 0)
+
+            if cpu_pct > cpu_threshold:
+                send_notification(config, "resource_threshold", {
+                    "node": name,
+                    "resource": "CPU",
+                    "value": cpu_pct,
+                    "threshold": cpu_threshold,
+                })
+            if mem_pct > mem_threshold:
+                send_notification(config, "resource_threshold", {
+                    "node": name,
+                    "resource": "Memory",
+                    "value": mem_pct,
+                    "threshold": mem_threshold,
+                })
+    except Exception as e:
+        print(f"Warning: Failed to check resource thresholds: {e}", file=sys.stderr)
+
+
 def collect_data():
     """Collect cluster data and save to cache"""
     try:
         print(f"[{datetime.utcnow()}] Starting cluster data collection...")
         config = load_config()
-        
+
         print(f"[{datetime.utcnow()}] Using Proxmox host: {config['proxmox_host']}")
         print(f"[{datetime.utcnow()}] Authentication method: {config.get('proxmox_auth_method', 'api_token')}")
-        
+
+        # Capture previous node statuses before collecting new data
+        old_statuses = _load_previous_node_statuses()
+
         collector = ProxmoxAPICollector(config)
         data = collector.analyze_cluster()
-        
+
         # Write to cache file atomically
         temp_file = CACHE_FILE + '.tmp'
         with open(temp_file, 'w') as f:
             json.dump(data, f, indent=2)
-        
+
         # Atomic rename
         os.rename(temp_file, CACHE_FILE)
-        
+
         print(f"[{datetime.utcnow()}] Data collection complete. Cache updated.")
         print(f"[{datetime.utcnow()}] Collected data for {data['summary']['total_nodes']} nodes and {data['summary']['total_guests']} guests")
+
+        # --- Notifications ---
+        # Node status changes
+        _check_node_status_changes(config, old_statuses, data)
+
+        # Resource threshold breaches
+        _check_resource_thresholds(config, data)
+
+        # Collector success notification (off by default — on_collector_status is False)
+        try:
+            from notifications import send_notification
+            perf = data.get("performance", {})
+            send_notification(config, "collector_status", {
+                "status": "success",
+                "node_count": data["summary"]["total_nodes"],
+                "guest_count": data["summary"]["total_guests"],
+                "duration": perf.get("total_time", 0),
+            })
+        except Exception:
+            pass
+
         return True
-        
+
     except (FileNotFoundError, ValueError) as e:
         print(f"\n{'='*70}", file=sys.stderr)
         print(f"CONFIGURATION ERROR", file=sys.stderr)
         print(f"{'='*70}", file=sys.stderr)
         print(f"\n{str(e)}\n", file=sys.stderr)
+
+        # Send collector failure notification
+        try:
+            _cfg = load_config() if 'config' not in dir() else config
+            from notifications import send_notification
+            send_notification(_cfg, "collector_status", {
+                "status": "failure",
+                "error": str(e),
+            })
+        except Exception:
+            pass
+
         return False
-        
+
     except Exception as e:
         print(f"\n{'='*70}", file=sys.stderr)
         print(f"RUNTIME ERROR", file=sys.stderr)
@@ -826,6 +940,18 @@ def collect_data():
         import traceback
         traceback.print_exc()
         print(f"\n{'='*70}\n", file=sys.stderr)
+
+        # Send collector failure notification
+        try:
+            _cfg = load_config() if 'config' not in dir() else config
+            from notifications import send_notification
+            send_notification(_cfg, "collector_status", {
+                "status": "failure",
+                "error": str(e),
+            })
+        except Exception:
+            pass
+
         return False
 
 
