@@ -108,6 +108,11 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           const [loadingRecommendations, setLoadingRecommendations] = useState(false);
           const [aiRecommendations, setAiRecommendations] = useState(null);
           const [loadingAi, setLoadingAi] = useState(false);
+          const [feedbackGiven, setFeedbackGiven] = useState({});  // Track feedback per recommendation
+          const [guestMigrationOptions, setGuestMigrationOptions] = useState(null);
+          const [loadingGuestOptions, setLoadingGuestOptions] = useState(false);
+          const [simulating, setSimulating] = useState(false);
+          const [simulationResult, setSimulationResult] = useState(null);
           const [loading, setLoading] = useState(false);
           const [error, setError] = useState(null);
           const [cpuThreshold, setCpuThreshold] = useState(() => {
@@ -982,6 +987,54 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
           // Legacy alias for backwards compatibility
           const fetchRecommendations = fetchCachedRecommendations;
+
+          // Recommendation feedback handler
+          const onFeedback = async (rec, rating) => {
+            const key = `${rec.vmid}-${rec.target_node}`;
+            try {
+              const response = await fetch(`${API_BASE}/recommendations/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  vmid: rec.vmid,
+                  rating: rating,
+                  source_node: rec.source_node,
+                  target_node: rec.target_node,
+                  score_improvement: rec.score_improvement,
+                })
+              });
+              if (response.ok) {
+                setFeedbackGiven(prev => ({ ...prev, [key]: rating }));
+              }
+            } catch (err) {
+              console.error('Failed to submit feedback:', err);
+            }
+          };
+
+          // Guest migration options fetcher
+          const fetchGuestMigrationOptions = async (vmid) => {
+            setLoadingGuestOptions(true);
+            setGuestMigrationOptions(null);
+            try {
+              const response = await fetch(`${API_BASE}/guest/${vmid}/migration-options`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  cpu_threshold: cpuThreshold,
+                  mem_threshold: memThreshold,
+                  maintenance_nodes: [...(maintenanceNodes || [])],
+                })
+              });
+              const result = await response.json();
+              if (result.success) {
+                setGuestMigrationOptions(result);
+              }
+            } catch (err) {
+              console.error('Failed to fetch guest migration options:', err);
+            } finally {
+              setLoadingGuestOptions(false);
+            }
+          };
 
           const fetchAiRecommendations = async () => {
             if (!data) return;
@@ -3605,6 +3658,126 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                             </div>{/* end advanced details inner div */}
                           </details>{/* end advanced details */}
+
+                          {/* What If Simulator */}
+                          <details className="group mt-4">
+                            <summary className="cursor-pointer text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 flex items-center gap-1 list-none">
+                              <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                              What If? — Preview impact of current settings
+                            </summary>
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                Simulate how the current (unsaved) penalty configuration would affect recommendations compared to the active saved config.
+                              </p>
+                              <button
+                                onClick={async () => {
+                                  setSimulating(true);
+                                  setSimulationResult(null);
+                                  try {
+                                    const response = await fetch(`${API_BASE}/penalty-config/simulate`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        config: penaltyConfig,
+                                        cpu_threshold: cpuThreshold,
+                                        mem_threshold: memThreshold,
+                                        iowait_threshold: iowaitThreshold,
+                                        maintenance_nodes: [...(maintenanceNodes || [])],
+                                      })
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      setSimulationResult(result);
+                                    }
+                                  } catch (err) {
+                                    console.error('Simulation failed:', err);
+                                  } finally {
+                                    setSimulating(false);
+                                  }
+                                }}
+                                disabled={simulating}
+                                className="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+                              >
+                                {simulating ? <><RefreshCw size={14} className="animate-spin" /> Simulating...</> : <><Activity size={14} /> Run Simulation</>}
+                              </button>
+
+                              {simulationResult && (
+                                <div className="mt-3 p-4 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded-lg space-y-3">
+                                  {/* Recommendation Count Change */}
+                                  <div className="flex items-center gap-4">
+                                    <div className="text-center">
+                                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{simulationResult.current_count}</div>
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400">Current</div>
+                                    </div>
+                                    <ArrowRight size={20} className="text-purple-500" />
+                                    <div className="text-center">
+                                      <div className={`text-2xl font-bold ${
+                                        simulationResult.proposed_count > simulationResult.current_count ? 'text-orange-600 dark:text-orange-400' :
+                                        simulationResult.proposed_count < simulationResult.current_count ? 'text-green-600 dark:text-green-400' :
+                                        'text-gray-900 dark:text-white'
+                                      }`}>{simulationResult.proposed_count}</div>
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400">Proposed</div>
+                                    </div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {simulationResult.proposed_count === simulationResult.current_count ? 'No change in recommendation count' :
+                                       simulationResult.proposed_count > simulationResult.current_count ?
+                                         `+${simulationResult.proposed_count - simulationResult.current_count} more recommendations` :
+                                         `${simulationResult.current_count - simulationResult.proposed_count} fewer recommendations`}
+                                    </div>
+                                  </div>
+
+                                  {/* Changes List */}
+                                  {simulationResult.changes?.length > 0 && (
+                                    <div>
+                                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Changes:</div>
+                                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                                        {simulationResult.changes.map((change, i) => (
+                                          <div key={i} className={`text-xs flex items-center gap-2 p-1.5 rounded ${
+                                            change.action === 'added'
+                                              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                                              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                          }`}>
+                                            <span className="font-semibold">{change.action === 'added' ? '+' : '-'}</span>
+                                            <span>[{change.type} {change.vmid}] {change.name}</span>
+                                            <span className="text-gray-500 dark:text-gray-400">
+                                              {change.source_node} → {change.target_node}
+                                            </span>
+                                            <span className="ml-auto font-mono text-[10px]">
+                                              {change.current_improvement.toFixed(0)} → {change.proposed_improvement.toFixed(0)} pts
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Node Score Comparison */}
+                                  {simulationResult.node_score_comparison && (
+                                    <div>
+                                      <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Node Score Impact:</div>
+                                      <div className="space-y-1">
+                                        {Object.entries(simulationResult.node_score_comparison).map(([node, scores]) => (
+                                          <div key={node} className="flex items-center gap-2 text-xs">
+                                            <span className="font-medium text-gray-900 dark:text-white w-24 truncate">{node}</span>
+                                            <span className="text-gray-500 dark:text-gray-400 w-16 text-right">{scores.current}</span>
+                                            <span className="text-gray-400">→</span>
+                                            <span className="text-gray-500 dark:text-gray-400 w-16">{scores.proposed}</span>
+                                            <span className={`font-mono text-[10px] ${
+                                              scores.delta > 0 ? 'text-red-500' :
+                                              scores.delta < 0 ? 'text-green-500' :
+                                              'text-gray-400'
+                                            }`}>
+                                              {scores.delta > 0 ? '+' : ''}{scores.delta}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </details>
                         </div>
                       )}
                     </div>

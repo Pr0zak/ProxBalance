@@ -2435,6 +2435,12 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             checkAffinityViolations={checkAffinityViolations}
             generateSparkline={generateSparkline}
             fetchGuestLocations={fetchGuestLocations}
+            feedbackGiven={feedbackGiven}
+            onFeedback={onFeedback}
+            guestMigrationOptions={guestMigrationOptions}
+            loadingGuestOptions={loadingGuestOptions}
+            fetchGuestMigrationOptions={fetchGuestMigrationOptions}
+            setGuestMigrationOptions={setGuestMigrationOptions}
             API_BASE={API_BASE}
           />
           {isMobile && (

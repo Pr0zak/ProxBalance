@@ -6,7 +6,7 @@ import {
   ArrowRight, Pause, Package, MinusCircle, Folder, Minus, ProxBalanceLogo,
   Edit, Trash, Check, ChevronLeft, ChevronsLeft, ChevronsRight, RotateCcw,
   Cpu, MemoryStick, Globe, Zap, Database, Copy, Save, Calendar, HelpCircle,
-  Eye, Search, Filter, Upload, Power, Square
+  Eye, Search, Filter, Upload, Power, Square, ThumbsUp, ThumbsDown, BarChart2
 } from './Icons.jsx';
 
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
@@ -79,6 +79,10 @@ export default function DashboardPage({
   guestModalCollapsed, setGuestModalCollapsed,
   // Helper functions
   checkAffinityViolations, generateSparkline, fetchGuestLocations,
+  // Feedback
+  feedbackGiven, onFeedback,
+  // Guest migration options
+  guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions, setGuestMigrationOptions,
   // API base
   API_BASE
 }) {
@@ -2649,6 +2653,43 @@ export default function DashboardPage({
                             </div>
                           </div>
                         </div>
+
+                        {/* Detailed Penalty Breakdown */}
+                        {nodeScores[selectedNode.name].penalty_categories && (() => {
+                          const cats = nodeScores[selectedNode.name].penalty_categories;
+                          const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
+                          if (total === 0) return (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <div className="text-xs text-green-600 dark:text-green-400">No active penalties</div>
+                            </div>
+                          );
+                          const segments = [
+                            { key: 'cpu', value: cats.cpu, color: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400', label: 'CPU' },
+                            { key: 'memory', value: cats.memory, color: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', label: 'Memory' },
+                            { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', textColor: 'text-orange-600 dark:text-orange-400', label: 'IOWait' },
+                            { key: 'trends', value: cats.trends, color: 'bg-yellow-500', textColor: 'text-yellow-600 dark:text-yellow-400', label: 'Trends' },
+                            { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', textColor: 'text-purple-600 dark:text-purple-400', label: 'Spikes' },
+                          ].filter(s => s.value > 0);
+                          return (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Penalty Breakdown ({total} pts total)</div>
+                              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                                {segments.map(s => (
+                                  <div key={s.key} className={`${s.color} transition-all`} style={{ width: `${(s.value / total * 100)}%` }} title={`${s.label}: ${s.value} pts`} />
+                                ))}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1 mt-1.5">
+                                {segments.map(s => (
+                                  <div key={s.key} className="flex items-center gap-1 text-[10px]">
+                                    <span className={`inline-block w-2 h-2 rounded-full ${s.color}`}></span>
+                                    <span className="text-gray-600 dark:text-gray-400">{s.label}</span>
+                                    <span className={`font-semibold ${s.textColor}`}>{s.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -3194,6 +3235,94 @@ export default function DashboardPage({
                     )}
                   </div>
                 )}
+                {/* Migration Options - Node Score Comparison */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
+                  <button
+                    onClick={() => {
+                      setGuestModalCollapsed(prev => ({ ...prev, migrationOptions: !prev.migrationOptions }));
+                      if (!guestMigrationOptions && fetchGuestMigrationOptions) {
+                        fetchGuestMigrationOptions(selectedGuestDetails.vmid);
+                      }
+                    }}
+                    className="flex items-center justify-between w-full mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <BarChart2 size={16} className="text-blue-600 dark:text-blue-400" />
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Migration Options
+                      </h4>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Score comparison across all nodes</span>
+                    </div>
+                    {guestModalCollapsed.migrationOptions ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                  </button>
+
+                  {guestModalCollapsed.migrationOptions && (
+                    <div className="space-y-2">
+                      {loadingGuestOptions ? (
+                        <div className="flex items-center justify-center p-4 text-gray-500 dark:text-gray-400">
+                          <RefreshCw size={16} className="animate-spin mr-2" /> Loading migration options...
+                        </div>
+                      ) : guestMigrationOptions?.options ? (
+                        <>
+                          {guestMigrationOptions.options.map((opt) => {
+                            const maxScore = Math.max(...guestMigrationOptions.options.filter(o => !o.disqualified).map(o => o.score), 1);
+                            const barWidth = opt.disqualified ? 100 : Math.min(100, (opt.score / maxScore) * 100);
+                            return (
+                              <div key={opt.node} className={`p-2 rounded border text-xs ${
+                                opt.is_current
+                                  ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                  : opt.disqualified
+                                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                                  : opt.suitable
+                                  ? 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
+                                  : 'border-gray-200 dark:border-gray-700'
+                              }`}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-900 dark:text-white">{opt.node}</span>
+                                    {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">CURRENT</span>}
+                                    {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
+                                    {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
+                                      <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                                        opt.improvement >= 30 ? 'bg-green-500 text-white' :
+                                        opt.improvement >= 15 ? 'bg-yellow-500 text-white' :
+                                        'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                      }`}>+{opt.improvement.toFixed(0)} pts</span>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    {opt.disqualified ? (
+                                      <span className="text-gray-500 dark:text-gray-400">{opt.reason}</span>
+                                    ) : (
+                                      <span className={`font-semibold ${
+                                        opt.suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
+                                        opt.suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                        opt.suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                                        'text-red-600 dark:text-red-400'
+                                      }`}>{opt.suitability_rating}%</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!opt.disqualified && (
+                                  <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                                    <div className={`rounded-full transition-all ${
+                                      opt.suitability_rating >= 70 ? 'bg-green-500' :
+                                      opt.suitability_rating >= 50 ? 'bg-yellow-500' :
+                                      opt.suitability_rating >= 30 ? 'bg-orange-500' :
+                                      'bg-red-500'
+                                    }`} style={{ width: `${opt.suitability_rating}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 p-2">No migration data available</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Modal Footer */}
@@ -3640,6 +3769,39 @@ export default function DashboardPage({
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
                       </span>
                     </div>
+
+                    {/* Penalty Breakdown Bar */}
+                    {nodeScores && nodeScores[node.name] && nodeScores[node.name].penalty_categories && (() => {
+                      const cats = nodeScores[node.name].penalty_categories;
+                      const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
+                      if (total === 0) return null;
+                      const segments = [
+                        { key: 'cpu', value: cats.cpu, color: 'bg-red-500', label: 'CPU' },
+                        { key: 'memory', value: cats.memory, color: 'bg-blue-500', label: 'Memory' },
+                        { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', label: 'IOWait' },
+                        { key: 'trends', value: cats.trends, color: 'bg-yellow-500', label: 'Trends' },
+                        { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', label: 'Spikes' },
+                      ].filter(s => s.value > 0);
+                      return (
+                        <div className="mt-1">
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Penalty Sources ({total} pts)</div>
+                          <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600" title={segments.map(s => `${s.label}: ${s.value}`).join(', ')}>
+                            {segments.map(s => (
+                              <div key={s.key} className={`${s.color}`} style={{ width: `${(s.value / total * 100)}%` }} />
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-x-2 mt-0.5">
+                            {segments.map(s => (
+                              <span key={s.key} className="text-[9px] text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.color}`}></span>
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Guests:</span>
                       <span className="font-semibold text-gray-900 dark:text-white">{node.guests?.length || 0}</span>
@@ -4139,7 +4301,7 @@ export default function DashboardPage({
                             </div>
                           </div>
                         )}
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap items-center gap-3">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -4154,6 +4316,40 @@ export default function DashboardPage({
                             <Terminal size={12} />
                             {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
                           </button>
+
+                          {/* Recommendation Feedback Widget */}
+                          {!isCompleted && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <span className="text-gray-400 dark:text-gray-500">Helpful?</span>
+                              {feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? (
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                  feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful'
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                }`}>
+                                  {feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful' ? 'Thanks!' : 'Noted'}
+                                </span>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'helpful'); }}
+                                    className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                                    title="This recommendation is helpful"
+                                  >
+                                    <ThumbsUp size={12} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'not_helpful'); }}
+                                    className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                    title="This recommendation is not helpful"
+                                  >
+                                    <ThumbsDown size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
                           {collapsedSections[`command-${idx}`] && (
                             <div
                               onClick={(e) => {
@@ -4179,7 +4375,6 @@ export default function DashboardPage({
                               {rec.command}
                             </div>
                           )}
-                        </div>
                       </div>
                       <div className="sm:ml-4 flex items-center gap-2 shrink-0">
                         {(() => {
