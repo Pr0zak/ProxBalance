@@ -1298,6 +1298,21 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             setRollingBack(false);
           };
 
+          const clearTestingMode = async () => {
+            try {
+              const response = await fetch(`${API_BASE}/system/clear-testing-mode`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              const result = await response.json();
+              if (result.success) {
+                await fetchSystemInfo();
+              }
+            } catch (err) {
+              setError(`Error clearing testing mode: ${err.message}`);
+            }
+          };
+
           const cancelMigration = async (vmid, targetNode) => {
             const key = `${vmid}-${targetNode}`;
             const migration = activeMigrations[key];
@@ -2354,7 +2369,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             loadingPreview={loadingPreview} switchingBranch={switchingBranch}
             rollingBack={rollingBack}
             fetchBranches={fetchBranches} switchBranch={switchBranch}
-            rollbackBranch={rollbackBranch} fetchBranchPreview={fetchBranchPreview}
+            rollbackBranch={rollbackBranch} clearTestingMode={clearTestingMode} fetchBranchPreview={fetchBranchPreview}
             automationStatus={automationStatus} automationConfig={automationConfig}
             fetchAutomationStatus={fetchAutomationStatus}
             runAutomationNow={runAutomationNow} runningAutomation={runningAutomation}

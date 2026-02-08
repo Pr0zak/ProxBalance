@@ -365,6 +365,13 @@ def rollback_branch():
     status_code = 200 if result.get('success', False) else 400
     return jsonify(result), status_code
 
+@system_bp.route("/api/system/clear-testing-mode", methods=["POST"])
+def clear_testing_mode():
+    """Clear the previous branch tracking to exit testing mode"""
+    update_manager = current_app.config['update_manager']
+    result = update_manager.clear_testing_mode()
+    return jsonify(result), 200
+
 @system_bp.route("/api/system/restart-service", methods=["POST"])
 def restart_service():
     """Restart a ProxBalance service"""
