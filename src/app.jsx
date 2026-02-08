@@ -360,6 +360,8 @@ const ProxBalanceLogo = ({ size = 32 }) => (
           // Penalty Configuration state
           const [penaltyConfig, setPenaltyConfig] = useState(null);
           const [penaltyDefaults, setPenaltyDefaults] = useState(null);
+          const [penaltyPresets, setPenaltyPresets] = useState(null);
+          const [activePreset, setActivePreset] = useState('custom');
           const [showPenaltyConfig, setShowPenaltyConfig] = useState(false);
           const [savingPenaltyConfig, setSavingPenaltyConfig] = useState(false);
           const [penaltyConfigSaved, setPenaltyConfigSaved] = useState(false);
@@ -601,9 +603,29 @@ const ProxBalanceLogo = ({ size = 32 }) => (
               if (result.success) {
                 setPenaltyConfig(result.config);
                 setPenaltyDefaults(result.defaults);
+                if (result.presets) setPenaltyPresets(result.presets);
+                if (result.active_preset) setActivePreset(result.active_preset);
               }
             } catch (err) {
               console.error('Failed to load penalty config:', err);
+            }
+          };
+
+          const applyPenaltyPreset = async (presetName) => {
+            try {
+              setSavingPenaltyConfig(true);
+              const response = await fetch(`${API_BASE}/penalty-config/presets/${presetName}`, { method: 'POST' });
+              const result = await response.json();
+              if (result.success) {
+                setPenaltyConfig(result.config);
+                setActivePreset(result.active_preset || presetName);
+                setPenaltyConfigSaved(true);
+                setTimeout(() => setPenaltyConfigSaved(false), 3000);
+              }
+            } catch (err) {
+              console.error('Failed to apply preset:', err);
+            } finally {
+              setSavingPenaltyConfig(false);
             }
           };
 
@@ -3282,6 +3304,58 @@ const ProxBalanceLogo = ({ size = 32 }) => (
 
                       {showPenaltyConfig && penaltyConfig && penaltyDefaults && (
                         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded mt-4">
+
+                          {/* Scoring Profile Presets */}
+                          <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <h4 className="font-medium text-gray-900 dark:text-white mb-1">Scoring Profile</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                              Choose a preset to quickly configure all penalty weights, or customize individual values below.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {['conservative', 'balanced', 'aggressive'].map((preset) => {
+                                const info = penaltyPresets?.[preset] || { label: preset.charAt(0).toUpperCase() + preset.slice(1) };
+                                const isActive = activePreset === preset;
+                                return (
+                                  <button
+                                    key={preset}
+                                    onClick={() => applyPenaltyPreset(preset)}
+                                    disabled={savingPenaltyConfig}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                      isActive
+                                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 dark:ring-blue-700'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
+                                    }`}
+                                  >
+                                    {info.label}
+                                    {isActive && <span className="ml-1.5 text-xs opacity-80">(active)</span>}
+                                  </button>
+                                );
+                              })}
+                              {activePreset === 'custom' && (
+                                <span className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-600">
+                                  Custom
+                                </span>
+                              )}
+                            </div>
+                            {penaltyPresets?.[activePreset]?.description && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                {penaltyPresets[activePreset].description}
+                              </p>
+                            )}
+                            {activePreset === 'custom' && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                You have customized penalty weights. Select a preset above to reset to a standard profile.
+                              </p>
+                            )}
+                          </div>
+
+                          <details className="group">
+                            <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
+                              <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                              Advanced: Customize individual penalty weights
+                            </summary>
+                            <div className="mt-3 space-y-4">
+
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                             Configure penalty weights used by the scoring algorithm when evaluating migration targets. Lower penalties favor that condition.
                           </p>
@@ -3528,6 +3602,9 @@ const ProxBalanceLogo = ({ size = 32 }) => (
                               <RotateCcw size={14} /> Reset to Defaults
                             </button>
                           </div>
+
+                            </div>{/* end advanced details inner div */}
+                          </details>{/* end advanced details */}
                         </div>
                       )}
                     </div>

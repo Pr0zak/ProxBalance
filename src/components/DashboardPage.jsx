@@ -35,6 +35,9 @@ export default function DashboardPage({
   runNowMessage, setRunNowMessage, runHistory, expandedRun, setExpandedRun,
   // Recommendations
   recommendations, loadingRecommendations, generateRecommendations, recommendationData, penaltyConfig,
+  // Threshold suggestions
+  thresholdSuggestions,
+  cpuThreshold, setCpuThreshold, memThreshold, setMemThreshold, iowaitThreshold, setIowaitThreshold,
   // AI recommendations
   aiEnabled, aiRecommendations, loadingAi, aiAnalysisPeriod, setAiAnalysisPeriod, fetchAiRecommendations,
   // Migrations
@@ -3788,6 +3791,66 @@ export default function DashboardPage({
 
           {!collapsedSections.recommendations && (
           <div className="transition-all duration-300 ease-in-out">
+
+          {/* Threshold Suggestions Banner */}
+          {thresholdSuggestions && thresholdSuggestions.confidence && (
+            (() => {
+              const hasDiff = (
+                Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 ||
+                Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3
+              );
+              if (!hasDiff) return null;
+              return (
+                <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                          Threshold Suggestions
+                        </span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          thresholdSuggestions.confidence === 'high'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                        }`}>
+                          {thresholdSuggestions.confidence} confidence
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
+                        {thresholdSuggestions.summary}
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          CPU: <span className="font-mono">{cpuThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_cpu_threshold}%</span>
+                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Memory: <span className="font-mono">{memThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_mem_threshold}%</span>
+                        </span>
+                        {thresholdSuggestions.suggested_iowait_threshold && (
+                          <span className="text-gray-600 dark:text-gray-400">
+                            IOWait: <span className="font-mono">{iowaitThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_iowait_threshold}%</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold);
+                        setMemThreshold(thresholdSuggestions.suggested_mem_threshold);
+                        if (thresholdSuggestions.suggested_iowait_threshold) {
+                          setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold);
+                        }
+                      }}
+                      className="shrink-0 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+                    >
+                      Apply All
+                    </button>
+                  </div>
+                </div>
+              );
+            })()
+          )}
 
           {/* Recommendation Summary Digest */}
           {!loadingRecommendations && recommendationData?.summary && (

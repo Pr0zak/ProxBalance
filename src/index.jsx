@@ -2378,6 +2378,10 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             recommendations={recommendations} loadingRecommendations={loadingRecommendations}
             generateRecommendations={generateRecommendations}
             recommendationData={recommendationData} penaltyConfig={penaltyConfig}
+            thresholdSuggestions={thresholdSuggestions}
+            cpuThreshold={cpuThreshold} setCpuThreshold={setCpuThreshold}
+            memThreshold={memThreshold} setMemThreshold={setMemThreshold}
+            iowaitThreshold={iowaitThreshold} setIowaitThreshold={setIowaitThreshold}
             aiEnabled={aiEnabled} aiRecommendations={aiRecommendations}
             loadingAi={loadingAi}
             aiAnalysisPeriod={aiAnalysisPeriod} setAiAnalysisPeriod={setAiAnalysisPeriod}

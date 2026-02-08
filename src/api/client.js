@@ -96,6 +96,19 @@ export async function resetPenaltyConfig() {
   }
 }
 
+export async function applyPenaltyPreset(presetName) {
+  try {
+    const response = await fetch(`${API_BASE}/penalty-config/presets/${presetName}`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to apply penalty preset:', err);
+    return { error: true, message: err.message };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token Validation
 // ---------------------------------------------------------------------------
