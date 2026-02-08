@@ -7,16 +7,117 @@ from proxbalance.scoring import DEFAULT_PENALTY_CONFIG
 penalty_bp = Blueprint("penalty", __name__, url_prefix=None)
 
 
+# Scoring profile presets — map high-level intent to concrete penalty values
+SCORING_PRESETS = {
+    "conservative": {
+        "label": "Conservative",
+        "description": "High bar for migrations. Only recommends moves with clear, significant benefit. Best for production clusters where stability is paramount.",
+        "config": {
+            **DEFAULT_PENALTY_CONFIG,
+            "cpu_high_penalty": 15,
+            "cpu_very_high_penalty": 40,
+            "cpu_extreme_penalty": 80,
+            "mem_high_penalty": 15,
+            "mem_very_high_penalty": 40,
+            "mem_extreme_penalty": 80,
+            "min_score_improvement": 25,
+            "weight_current": 0.4,
+            "weight_24h": 0.35,
+            "weight_7d": 0.25,
+        },
+    },
+    "balanced": {
+        "label": "Balanced",
+        "description": "Moderate sensitivity. Recommends migrations when there is a clear benefit without being overly aggressive. Suitable for most clusters.",
+        "config": {**DEFAULT_PENALTY_CONFIG},  # Defaults are the balanced preset
+    },
+    "aggressive": {
+        "label": "Aggressive",
+        "description": "Low bar for migrations. Recommends moves for even modest improvements. Best for clusters that benefit from frequent rebalancing.",
+        "config": {
+            **DEFAULT_PENALTY_CONFIG,
+            "cpu_high_penalty": 30,
+            "cpu_very_high_penalty": 65,
+            "cpu_extreme_penalty": 130,
+            "mem_high_penalty": 30,
+            "mem_very_high_penalty": 65,
+            "mem_extreme_penalty": 130,
+            "min_score_improvement": 8,
+            "weight_current": 0.6,
+            "weight_24h": 0.3,
+            "weight_7d": 0.1,
+        },
+    },
+}
+
+
 @penalty_bp.route("/api/penalty-config", methods=["GET"])
 def get_penalty_config():
-    """Get penalty scoring configuration with defaults"""
+    """Get penalty scoring configuration with defaults and presets"""
     try:
         penalty_config = load_penalty_config()
+
+        # Detect which preset the current config matches (if any)
+        active_preset = "custom"
+        for preset_key, preset in SCORING_PRESETS.items():
+            if all(penalty_config.get(k) == v for k, v in preset["config"].items()):
+                active_preset = preset_key
+                break
+
         return jsonify({
             "success": True,
             "config": penalty_config,
-            "defaults": DEFAULT_PENALTY_CONFIG
+            "defaults": DEFAULT_PENALTY_CONFIG,
+            "presets": {k: {"label": v["label"], "description": v["description"]} for k, v in SCORING_PRESETS.items()},
+            "active_preset": active_preset,
         })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@penalty_bp.route("/api/penalty-config/presets", methods=["GET"])
+def get_penalty_presets():
+    """Get available scoring profile presets"""
+    try:
+        penalty_config = load_penalty_config()
+
+        # Detect active preset
+        active_preset = "custom"
+        for preset_key, preset in SCORING_PRESETS.items():
+            if all(penalty_config.get(k) == v for k, v in preset["config"].items()):
+                active_preset = preset_key
+                break
+
+        return jsonify({
+            "success": True,
+            "presets": {k: {"label": v["label"], "description": v["description"], "config": v["config"]} for k, v in SCORING_PRESETS.items()},
+            "active_preset": active_preset,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@penalty_bp.route("/api/penalty-config/presets/<preset_name>", methods=["POST"])
+def apply_penalty_preset(preset_name):
+    """Apply a scoring profile preset"""
+    try:
+        if preset_name not in SCORING_PRESETS:
+            return jsonify({
+                "success": False,
+                "error": f"Unknown preset '{preset_name}'. Available: {', '.join(SCORING_PRESETS.keys())}"
+            }), 400
+
+        preset_config = SCORING_PRESETS[preset_name]["config"]
+
+        if save_penalty_config(preset_config):
+            return jsonify({
+                "success": True,
+                "message": f"Applied '{SCORING_PRESETS[preset_name]['label']}' scoring profile",
+                "config": preset_config,
+                "active_preset": preset_name,
+            })
+        else:
+            return jsonify({"success": False, "error": "Failed to save preset configuration"}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

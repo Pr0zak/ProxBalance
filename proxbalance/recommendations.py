@@ -378,9 +378,292 @@ def find_distribution_candidates(
 # Main recommendation engine
 # ---------------------------------------------------------------------------
 
-def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> List[Dict]:
+def _calculate_confidence(score_improvement: float, target_details: Dict, guest: Dict, penalty_cfg: Dict) -> float:
     """
-    Generate intelligent migration recommendations using pure score-based analysis
+    Calculate multi-factor confidence score (0-100) for a migration recommendation.
+
+    Factors:
+    - Score improvement (40%): How much the penalty score improves
+    - Target headroom (25%): How much capacity the target has after migration
+    - Migration complexity (20%): Guest size and storage complexity
+    - Stability signal (15%): Whether trends are favorable
+    """
+    min_improvement = penalty_cfg.get("min_score_improvement", 15)
+
+    # Factor 1: Score improvement (40%) — maps improvement to 0-100
+    if score_improvement >= 60:
+        improvement_factor = 100
+    elif score_improvement >= 40:
+        improvement_factor = 75
+    elif score_improvement >= 25:
+        improvement_factor = 55
+    elif score_improvement >= min_improvement:
+        improvement_factor = 30 + ((score_improvement - min_improvement) / max(1, 25 - min_improvement)) * 25
+    else:
+        improvement_factor = max(0, (score_improvement / max(1, min_improvement)) * 30)
+
+    # Factor 2: Target headroom (25%) — more room = higher confidence
+    target_metrics = target_details.get("metrics", {}) if target_details else {}
+    cpu_headroom = target_metrics.get("cpu_headroom", 50)
+    mem_headroom = target_metrics.get("mem_headroom", 50)
+    avg_headroom = (cpu_headroom + mem_headroom) / 2
+    headroom_factor = min(100, avg_headroom * 1.5)  # 67% headroom = 100
+
+    # Factor 3: Migration complexity (20%) — smaller/simpler = higher confidence
+    guest_mem_gb = guest.get("mem_max_gb", 0)
+    guest_cores = guest.get("cpu_cores", 1)
+    has_bind_mounts = guest.get("mount_points", {}).get("has_unshared_bind_mount", False)
+
+    if has_bind_mounts:
+        complexity_factor = 20  # Bind mounts add significant risk
+    elif guest_mem_gb > 32 or guest_cores > 8:
+        complexity_factor = 40  # Large VM
+    elif guest_mem_gb > 16 or guest_cores > 4:
+        complexity_factor = 60  # Medium VM
+    elif guest_mem_gb > 4:
+        complexity_factor = 80  # Small-medium VM
+    else:
+        complexity_factor = 100  # Small VM, easy migration
+
+    # Factor 4: Stability signal (15%) — favorable trends = higher confidence
+    if target_details:
+        cpu_trend = target_metrics.get("cpu_trend", "stable")
+        mem_trend = target_metrics.get("mem_trend", "stable")
+        total_penalties = target_details.get("total_penalties", 0)
+
+        if cpu_trend == "rising" or mem_trend == "rising":
+            stability_factor = 30  # Target has rising trends
+        elif total_penalties > 50:
+            stability_factor = 50  # Target already has significant penalties
+        elif total_penalties > 20:
+            stability_factor = 70
+        else:
+            stability_factor = 100  # Clean target
+    else:
+        stability_factor = 60
+
+    # Weighted combination
+    confidence = (
+        improvement_factor * 0.40 +
+        headroom_factor * 0.25 +
+        complexity_factor * 0.20 +
+        stability_factor * 0.15
+    )
+
+    return round(min(100, max(0, confidence)), 1)
+
+
+def _build_structured_reason(guest: Dict, src_node: Dict, tgt_node: Dict, src_details: Dict, tgt_details: Dict, is_maintenance: bool, penalty_cfg: Dict) -> Dict:
+    """
+    Build a structured, multi-factor reason for a migration recommendation.
+
+    Returns a dict with:
+    - primary_reason: machine-readable reason key
+    - primary_label: human-readable short label
+    - contributing_factors: list of factor dicts
+    - summary: one-sentence human-readable explanation
+    """
+    if is_maintenance:
+        return {
+            "primary_reason": "maintenance_evacuation",
+            "primary_label": "Maintenance evacuation",
+            "contributing_factors": [
+                {"factor": "maintenance", "label": f"Source node {src_node.get('name')} is in maintenance mode"}
+            ],
+            "summary": f"{guest.get('name')} must be evacuated because {src_node.get('name')} is entering maintenance."
+        }
+
+    src_metrics = src_node.get("metrics", {})
+    tgt_metrics = tgt_node.get("metrics", {})
+    factors = []
+
+    # Get penalty config weights
+    weight_current = penalty_cfg.get("weight_current", 0.5)
+    weight_24h = penalty_cfg.get("weight_24h", 0.3)
+    weight_7d = penalty_cfg.get("weight_7d", 0.2)
+
+    # Calculate weighted metrics
+    def _weighted(m, key_current, key_24h, key_7d):
+        if m.get("has_historical"):
+            return (m.get(key_current, 0) * weight_current +
+                    m.get(key_24h, 0) * weight_24h +
+                    m.get(key_7d, 0) * weight_7d)
+        return m.get(key_current, 0)
+
+    src_cpu = _weighted(src_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
+    src_mem = _weighted(src_metrics, "current_mem", "avg_mem", "avg_mem_week")
+    tgt_cpu = _weighted(tgt_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
+    tgt_mem = _weighted(tgt_metrics, "current_mem", "avg_mem", "avg_mem_week")
+
+    # Identify dominant factor
+    cpu_diff = src_cpu - tgt_cpu
+    mem_diff = src_mem - tgt_mem
+
+    # Source CPU high
+    if src_cpu > 60:
+        factors.append({
+            "factor": "source_cpu",
+            "value": round(src_cpu, 1),
+            "severity": "high" if src_cpu > 80 else "medium",
+            "label": f"Source CPU at {src_cpu:.0f}%"
+        })
+
+    # Source memory high
+    if src_mem > 65:
+        factors.append({
+            "factor": "source_mem",
+            "value": round(src_mem, 1),
+            "severity": "high" if src_mem > 85 else "medium",
+            "label": f"Source memory at {src_mem:.0f}%"
+        })
+
+    # Target has headroom
+    if tgt_details:
+        tgt_det_metrics = tgt_details.get("metrics", {})
+        cpu_headroom = tgt_det_metrics.get("cpu_headroom", 50)
+        mem_headroom = tgt_det_metrics.get("mem_headroom", 50)
+        if cpu_headroom > 30:
+            factors.append({
+                "factor": "target_cpu_headroom",
+                "value": round(cpu_headroom, 1),
+                "severity": "positive",
+                "label": f"Target has {cpu_headroom:.0f}% CPU headroom"
+            })
+        if mem_headroom > 30:
+            factors.append({
+                "factor": "target_mem_headroom",
+                "value": round(mem_headroom, 1),
+                "severity": "positive",
+                "label": f"Target has {mem_headroom:.0f}% memory headroom"
+            })
+
+    # Trends
+    if src_metrics.get("cpu_trend") == "rising":
+        factors.append({"factor": "source_cpu_trend", "severity": "medium", "label": "Source CPU trending upward"})
+    if src_metrics.get("mem_trend") == "rising":
+        factors.append({"factor": "source_mem_trend", "severity": "medium", "label": "Source memory trending upward"})
+
+    # IOWait
+    src_iowait = src_metrics.get("current_iowait", 0)
+    if src_iowait > 15:
+        factors.append({
+            "factor": "source_iowait",
+            "value": round(src_iowait, 1),
+            "severity": "high" if src_iowait > 25 else "medium",
+            "label": f"Source IOWait at {src_iowait:.0f}%"
+        })
+
+    # Primary reason
+    if cpu_diff > mem_diff:
+        primary_reason = "cpu_imbalance"
+        primary_label = "Balance CPU load"
+    else:
+        primary_reason = "mem_imbalance"
+        primary_label = "Balance memory load"
+
+    # Build human-readable summary
+    src_name = src_node.get("name", "source")
+    tgt_name = tgt_node.get("name", "target")
+    guest_name = guest.get("name", "guest")
+
+    dominant = "CPU" if cpu_diff > mem_diff else "memory"
+    trend_note = ""
+    if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
+        trend_note = " with an upward trend"
+
+    summary = (
+        f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
+        f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
+        f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
+    )
+
+    return {
+        "primary_reason": primary_reason,
+        "primary_label": primary_label,
+        "contributing_factors": factors,
+        "summary": summary
+    }
+
+
+def _build_summary(recommendations: List[Dict], skipped_guests: List[Dict], nodes: Dict, penalty_cfg: Dict) -> Dict:
+    """
+    Build a recommendation digest / summary for the UI.
+    """
+    total_improvement = sum(r.get("score_improvement", 0) for r in recommendations)
+    maintenance_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "maintenance_evacuation")
+    cpu_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "cpu_imbalance")
+    mem_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "mem_imbalance")
+    other_count = len(recommendations) - maintenance_count - cpu_count - mem_count
+
+    # Calculate average cluster health
+    online_nodes = [n for n in nodes.values() if n.get("status") == "online"]
+    if online_nodes:
+        avg_cpu = sum(n.get("metrics", {}).get("current_cpu", 0) for n in online_nodes) / len(online_nodes)
+        avg_mem = sum(n.get("metrics", {}).get("current_mem", 0) for n in online_nodes) / len(online_nodes)
+        # Simple health score: 100 - weighted average of resource usage
+        cluster_health = round(max(0, 100 - (avg_cpu * 0.5 + avg_mem * 0.5)), 1)
+    else:
+        avg_cpu = 0
+        avg_mem = 0
+        cluster_health = 0
+
+    # Estimate post-migration health
+    predicted_health = round(min(100, cluster_health + (total_improvement * 0.3 / max(1, len(online_nodes)))), 1)
+
+    # Build breakdown of reasons
+    reasons_breakdown = []
+    if cpu_count > 0:
+        reasons_breakdown.append(f"{cpu_count} to balance CPU")
+    if mem_count > 0:
+        reasons_breakdown.append(f"{mem_count} to balance memory")
+    if maintenance_count > 0:
+        reasons_breakdown.append(f"{maintenance_count} for maintenance evacuation")
+    if other_count > 0:
+        reasons_breakdown.append(f"{other_count} for other reasons")
+
+    # Skipped breakdown
+    skip_reasons = {}
+    for s in skipped_guests:
+        reason = s.get("reason", "unknown")
+        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+
+    # Urgency assessment
+    if maintenance_count > 0:
+        urgency = "high"
+        urgency_label = "Maintenance evacuations pending"
+    elif any(r.get("score_improvement", 0) >= 50 for r in recommendations):
+        urgency = "medium"
+        urgency_label = "Significant imbalance detected"
+    elif len(recommendations) > 0:
+        urgency = "low"
+        urgency_label = "Minor optimizations available"
+    else:
+        urgency = "none"
+        urgency_label = "Cluster is balanced"
+
+    return {
+        "total_recommendations": len(recommendations),
+        "total_skipped": len(skipped_guests),
+        "total_improvement": round(total_improvement, 1),
+        "reasons_breakdown": reasons_breakdown,
+        "cluster_health": cluster_health,
+        "predicted_health": predicted_health,
+        "avg_cpu": round(avg_cpu, 1),
+        "avg_mem": round(avg_mem, 1),
+        "urgency": urgency,
+        "urgency_label": urgency_label,
+        "skip_reasons": skip_reasons,
+    }
+
+
+def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> Dict:
+    """
+    Generate intelligent migration recommendations using pure score-based analysis.
+
+    Returns a dict with:
+    - recommendations: List of recommendation dicts
+    - skipped_guests: List of evaluated-but-skipped guests with reasons
+    - summary: Cluster health summary and recommendation digest
 
     Pure score-based approach:
     - Calculates suitability score for each guest on its current node
@@ -403,6 +686,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
         maintenance_nodes = set()
 
     recommendations = []
+    skipped_guests = []
     pending_target_guests = {}
 
     # Get Proxmox client for storage compatibility checks
@@ -449,22 +733,49 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             if src_node.get("status") != "online":
                 continue
 
+            guest_name = guest.get("name", str(vmid_key))
+            guest_type = guest.get("type", "VM")
+
             # Skip guests with ignore tag (unless on maintenance node)
             if guest.get("tags", {}).get("has_ignore", False) and src_node_name not in maintenance_nodes:
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "has_ignore_tag",
+                    "detail": "Guest has the 'proxbalance_ignore' tag and will not be considered for migration."
+                })
                 continue
 
             # Skip HA-managed guests (unless on maintenance node)
             if guest.get("ha_managed", False) and src_node_name not in maintenance_nodes:
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "ha_managed",
+                    "detail": "Guest is HA-managed. Proxmox HA controls its placement."
+                })
                 continue
 
             # Skip stopped guests (unless on maintenance node)
             if guest.get("status") != "running" and src_node_name not in maintenance_nodes:
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "stopped",
+                    "detail": f"Guest is not running (status: {guest.get('status', 'unknown')})."
+                })
                 continue
 
             # Skip guests with passthrough disks (hardware-bound, cannot migrate)
             local_disk_info = guest.get("local_disks", {})
             if local_disk_info.get("is_pinned", False):
                 # Passthrough disks cannot be migrated even for maintenance
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "passthrough_disk",
+                    "detail": "Guest has passthrough/local disk hardware that prevents migration."
+                })
                 continue
 
             # Check for bind mounts on containers
@@ -484,6 +795,12 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
 
                     # Skip CTs with unshared bind mounts (unless on maintenance node where evacuation is priority)
                     if src_node_name not in maintenance_nodes:
+                        skipped_guests.append({
+                            "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                            "name": guest_name, "type": guest_type, "node": src_node_name,
+                            "reason": "unshared_bind_mount",
+                            "detail": bind_mount_warning
+                        })
                         continue
 
                 # For shared bind mounts, add informational note but allow migration
@@ -495,7 +812,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                         bind_mount_warning = f"Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure paths exist on target node."
 
             # Calculate current score (how well current node suits this guest)
-            current_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold)
+            current_score, src_details = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True)
 
             # For maintenance nodes, artificially inflate current score to prioritize evacuation
             if src_node_name in maintenance_nodes:
@@ -504,6 +821,8 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             # Find best alternative target
             best_target = None
             best_target_score = 999999
+            best_target_details = None
+            skip_reasons_per_target = []
 
             for tgt_name, tgt_node in nodes.items():
                 try:
@@ -537,18 +856,21 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                                     break
 
                     if conflict:
+                        skip_reasons_per_target.append(f"{tgt_name}: anti-affinity conflict")
                         continue
 
                     # Check storage compatibility (skip target if storage is incompatible)
                     if proxmox and not check_storage_compatibility(guest, src_node_name, tgt_name, proxmox, storage_cache):
+                        skip_reasons_per_target.append(f"{tgt_name}: storage incompatible")
                         continue
 
-                    # Calculate target suitability score
-                    score = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold)
+                    # Calculate target suitability score with details
+                    score, tgt_details = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True)
 
                     if score < best_target_score:
                         best_target_score = score
                         best_target = tgt_name
+                        best_target_details = tgt_details
 
                 except Exception as e:
                     print(f"Error evaluating target {tgt_name} for guest {vmid_key}: {str(e)}", file=sys.stderr)
@@ -556,7 +878,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                     continue
 
             # Calculate score improvement
-            score_improvement = current_score - best_target_score
+            score_improvement = current_score - best_target_score if best_target else 0
 
             # Only recommend if improvement is significant
             if best_target and score_improvement >= MIN_SCORE_IMPROVEMENT:
@@ -568,13 +890,36 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                     "current_score": current_score,
                     "target_score": best_target_score,
                     "improvement": score_improvement,
-                    "is_maintenance": src_node_name in maintenance_nodes
+                    "is_maintenance": src_node_name in maintenance_nodes,
+                    "source_details": src_details,
+                    "target_details": best_target_details,
                 })
 
                 # Track pending migration IMMEDIATELY so next guest evaluation considers it
                 if best_target not in pending_target_guests:
                     pending_target_guests[best_target] = []
                 pending_target_guests[best_target].append(guest)
+
+            elif best_target:
+                # Tracked as skipped — insufficient improvement
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "insufficient_improvement",
+                    "detail": f"Best target ({best_target}) would improve score by only {score_improvement:.1f} points (minimum required: {MIN_SCORE_IMPROVEMENT}).",
+                    "best_target": best_target,
+                    "score_improvement": round(score_improvement, 1),
+                    "current_score": round(current_score, 1),
+                    "best_target_score": round(best_target_score, 1),
+                })
+            elif not best_target and skip_reasons_per_target:
+                # All targets disqualified
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "no_suitable_target",
+                    "detail": f"No suitable target node found. Reasons: {'; '.join(skip_reasons_per_target[:3])}{'...' if len(skip_reasons_per_target) > 3 else ''}",
+                })
 
         except Exception as e:
             print(f"Error analyzing guest {vmid_key}: {str(e)}", file=sys.stderr)
@@ -593,48 +938,29 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             best_target = candidate["target_node"]
             best_score = candidate["target_score"]
             score_improvement = candidate["improvement"]
+            src_details = candidate.get("source_details", {})
+            tgt_details = candidate.get("target_details", {})
 
             cmd_type = "qm" if guest.get("type") == "VM" else "pct"
             cmd_flag = "--online" if guest.get("type") == "VM" else "--restart"
             vmid_int = int(vmid_key) if isinstance(vmid_key, str) else vmid_key
 
-            # Generate reason based on primary benefit
-            if candidate["is_maintenance"]:
-                reason = f"Node maintenance - evacuating {src_node_name}"
-            else:
-                src_metrics = nodes[src_node_name].get("metrics", {})
-                tgt_metrics = nodes[best_target].get("metrics", {})
+            # Build structured reason
+            structured_reason = _build_structured_reason(
+                guest, nodes[src_node_name], nodes[best_target],
+                src_details, tgt_details, candidate["is_maintenance"], penalty_cfg
+            )
 
-                # Use configured weights for metrics
-                config = load_config()
-                weight_current = config.get('automated_migrations', {}).get('weight_config', {}).get('weight_current', 1)
-                weight_24h = config.get('automated_migrations', {}).get('weight_config', {}).get('weight_24h', 0)
-                weight_7d = config.get('automated_migrations', {}).get('weight_config', {}).get('weight_7d', 0)
-
-                # Normalize weights to sum to 1
-                total_weight = weight_current + weight_24h + weight_7d
-                if total_weight > 0:
-                    w_current = weight_current / total_weight
-                    w_24h = weight_24h / total_weight
-                    w_7d = weight_7d / total_weight
-                else:
-                    w_current, w_24h, w_7d = 1, 0, 0
-
-                # Weighted metrics for reason
-                src_cpu = (src_metrics.get("current_cpu", 0) * w_current + src_metrics.get("avg_cpu", 0) * w_24h + src_metrics.get("avg_cpu_week", 0) * w_7d)
-                src_mem = (src_metrics.get("current_mem", 0) * w_current + src_metrics.get("avg_mem", 0) * w_24h + src_metrics.get("avg_mem_week", 0) * w_7d)
-                tgt_cpu = (tgt_metrics.get("current_cpu", 0) * w_current + tgt_metrics.get("avg_cpu", 0) * w_24h + tgt_metrics.get("avg_cpu_week", 0) * w_7d)
-                tgt_mem = (tgt_metrics.get("current_mem", 0) * w_current + tgt_metrics.get("avg_mem", 0) * w_24h + tgt_metrics.get("avg_mem_week", 0) * w_7d)
-
-                if src_cpu > src_mem:
-                    reason = f"Balance CPU load (src: {src_cpu:.1f}%, target: {tgt_cpu:.1f}%)"
-                else:
-                    reason = f"Balance Memory load (src: {src_mem:.1f}%, target: {tgt_mem:.1f}%)"
+            # Keep backward-compatible reason string from structured data
+            reason = structured_reason["summary"] if structured_reason.get("summary") else structured_reason.get("primary_label", "Score improvement")
 
             # Convert raw score to suitability rating (0-100, higher is better)
             # Raw scores are penalties (lower = better), so invert them
             # Cap at 100 for the conversion formula
             suitability_rating = round(max(0, 100 - min(best_score, 100)), 1)
+
+            # Calculate multi-factor confidence score
+            confidence = _calculate_confidence(score_improvement, tgt_details, guest, penalty_cfg)
 
             # Check for mount points and prepare warnings/metadata
             bind_mount_warning = None
@@ -675,10 +1001,15 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                 "target_node_score": round(best_score, 2),  # Raw penalty score (internal use)
                 "suitability_rating": suitability_rating,  # 0-100, higher is better (user-facing)
                 "score_improvement": round(score_improvement, 2),  # How much better
-                "reason": reason,
+                "reason": reason,  # Backward-compatible string (now the full summary sentence)
+                "structured_reason": structured_reason,  # New: detailed structured reason
+                "score_details": {
+                    "source": src_details,
+                    "target": tgt_details,
+                },
                 "mem_gb": guest.get("mem_max_gb", 0),
                 "command": "{} migrate {} {} {}".format(cmd_type, vmid_int, best_target, cmd_flag),
-                "confidence_score": round(min(100, score_improvement * 2), 1)  # Convert improvement to confidence
+                "confidence_score": confidence,  # New: multi-factor confidence
             }
 
             # Add mount point metadata and warnings if present
@@ -932,4 +1263,11 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
         print(f"Error in affinity rules processing: {str(e)}", file=sys.stderr)
         traceback.print_exc()
 
-    return recommendations
+    # Build recommendation summary / digest
+    summary = _build_summary(recommendations, skipped_guests, nodes, penalty_cfg)
+
+    return {
+        "recommendations": recommendations,
+        "skipped_guests": skipped_guests,
+        "summary": summary,
+    }

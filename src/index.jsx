@@ -20,6 +20,9 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           const [loadingRecommendations, setLoadingRecommendations] = useState(false);
           const [aiRecommendations, setAiRecommendations] = useState(null);
           const [loadingAi, setLoadingAi] = useState(false);
+          const [feedbackGiven, setFeedbackGiven] = useState({});  // Track feedback per recommendation
+          const [guestMigrationOptions, setGuestMigrationOptions] = useState(null);
+          const [loadingGuestOptions, setLoadingGuestOptions] = useState(false);
           const [loading, setLoading] = useState(false);
           const [error, setError] = useState(null);
           const [cpuThreshold, setCpuThreshold] = useState(() => {
@@ -871,6 +874,54 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
           // Legacy alias for backwards compatibility
           const fetchRecommendations = fetchCachedRecommendations;
+
+          // Recommendation feedback handler
+          const onFeedback = async (rec, rating) => {
+            const key = `${rec.vmid}-${rec.target_node}`;
+            try {
+              const response = await fetch(`${API_BASE}/recommendations/feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  vmid: rec.vmid,
+                  rating: rating,
+                  source_node: rec.source_node,
+                  target_node: rec.target_node,
+                  score_improvement: rec.score_improvement,
+                })
+              });
+              if (response.ok) {
+                setFeedbackGiven(prev => ({ ...prev, [key]: rating }));
+              }
+            } catch (err) {
+              console.error('Failed to submit feedback:', err);
+            }
+          };
+
+          // Guest migration options fetcher
+          const fetchGuestMigrationOptions = async (vmid) => {
+            setLoadingGuestOptions(true);
+            setGuestMigrationOptions(null);
+            try {
+              const response = await fetch(`${API_BASE}/guest/${vmid}/migration-options`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  cpu_threshold: cpuThreshold,
+                  mem_threshold: memThreshold,
+                  maintenance_nodes: [...(maintenanceNodes || [])],
+                })
+              });
+              const result = await response.json();
+              if (result.success) {
+                setGuestMigrationOptions(result);
+              }
+            } catch (err) {
+              console.error('Failed to fetch guest migration options:', err);
+            } finally {
+              setLoadingGuestOptions(false);
+            }
+          };
 
           const fetchAiRecommendations = async () => {
             if (!data) return;
@@ -2378,6 +2429,10 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             recommendations={recommendations} loadingRecommendations={loadingRecommendations}
             generateRecommendations={generateRecommendations}
             recommendationData={recommendationData} penaltyConfig={penaltyConfig}
+            thresholdSuggestions={thresholdSuggestions}
+            cpuThreshold={cpuThreshold} setCpuThreshold={setCpuThreshold}
+            memThreshold={memThreshold} setMemThreshold={setMemThreshold}
+            iowaitThreshold={iowaitThreshold} setIowaitThreshold={setIowaitThreshold}
             aiEnabled={aiEnabled} aiRecommendations={aiRecommendations}
             loadingAi={loadingAi}
             aiAnalysisPeriod={aiAnalysisPeriod} setAiAnalysisPeriod={setAiAnalysisPeriod}
@@ -2431,6 +2486,12 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
             checkAffinityViolations={checkAffinityViolations}
             generateSparkline={generateSparkline}
             fetchGuestLocations={fetchGuestLocations}
+            feedbackGiven={feedbackGiven}
+            onFeedback={onFeedback}
+            guestMigrationOptions={guestMigrationOptions}
+            loadingGuestOptions={loadingGuestOptions}
+            fetchGuestMigrationOptions={fetchGuestMigrationOptions}
+            setGuestMigrationOptions={setGuestMigrationOptions}
             API_BASE={API_BASE}
           />
           {isMobile && (

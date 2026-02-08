@@ -6,7 +6,7 @@ import {
   ArrowRight, Pause, Package, MinusCircle, Folder, Minus, ProxBalanceLogo,
   Edit, Trash, Check, ChevronLeft, ChevronsLeft, ChevronsRight, RotateCcw,
   Cpu, MemoryStick, Globe, Zap, Database, Copy, Save, Calendar, HelpCircle,
-  Eye, Search, Filter, Upload, Power, Square
+  Eye, Search, Filter, Upload, Power, Square, ThumbsUp, ThumbsDown, BarChart2
 } from './Icons.jsx';
 
 import { formatLocalTime, getTimezoneAbbr } from '../utils/formatters.js';
@@ -35,6 +35,9 @@ export default function DashboardPage({
   runNowMessage, setRunNowMessage, runHistory, expandedRun, setExpandedRun,
   // Recommendations
   recommendations, loadingRecommendations, generateRecommendations, recommendationData, penaltyConfig,
+  // Threshold suggestions
+  thresholdSuggestions,
+  cpuThreshold, setCpuThreshold, memThreshold, setMemThreshold, iowaitThreshold, setIowaitThreshold,
   // AI recommendations
   aiEnabled, aiRecommendations, loadingAi, aiAnalysisPeriod, setAiAnalysisPeriod, fetchAiRecommendations,
   // Migrations
@@ -76,6 +79,10 @@ export default function DashboardPage({
   guestModalCollapsed, setGuestModalCollapsed,
   // Helper functions
   checkAffinityViolations, generateSparkline, fetchGuestLocations,
+  // Feedback
+  feedbackGiven, onFeedback,
+  // Guest migration options
+  guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions, setGuestMigrationOptions,
   // API base
   API_BASE
 }) {
@@ -2646,6 +2653,43 @@ export default function DashboardPage({
                             </div>
                           </div>
                         </div>
+
+                        {/* Detailed Penalty Breakdown */}
+                        {nodeScores[selectedNode.name].penalty_categories && (() => {
+                          const cats = nodeScores[selectedNode.name].penalty_categories;
+                          const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
+                          if (total === 0) return (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <div className="text-xs text-green-600 dark:text-green-400">No active penalties</div>
+                            </div>
+                          );
+                          const segments = [
+                            { key: 'cpu', value: cats.cpu, color: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400', label: 'CPU' },
+                            { key: 'memory', value: cats.memory, color: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', label: 'Memory' },
+                            { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', textColor: 'text-orange-600 dark:text-orange-400', label: 'IOWait' },
+                            { key: 'trends', value: cats.trends, color: 'bg-yellow-500', textColor: 'text-yellow-600 dark:text-yellow-400', label: 'Trends' },
+                            { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', textColor: 'text-purple-600 dark:text-purple-400', label: 'Spikes' },
+                          ].filter(s => s.value > 0);
+                          return (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Penalty Breakdown ({total} pts total)</div>
+                              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                                {segments.map(s => (
+                                  <div key={s.key} className={`${s.color} transition-all`} style={{ width: `${(s.value / total * 100)}%` }} title={`${s.label}: ${s.value} pts`} />
+                                ))}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1 mt-1.5">
+                                {segments.map(s => (
+                                  <div key={s.key} className="flex items-center gap-1 text-[10px]">
+                                    <span className={`inline-block w-2 h-2 rounded-full ${s.color}`}></span>
+                                    <span className="text-gray-600 dark:text-gray-400">{s.label}</span>
+                                    <span className={`font-semibold ${s.textColor}`}>{s.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -3191,6 +3235,94 @@ export default function DashboardPage({
                     )}
                   </div>
                 )}
+                {/* Migration Options - Node Score Comparison */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
+                  <button
+                    onClick={() => {
+                      setGuestModalCollapsed(prev => ({ ...prev, migrationOptions: !prev.migrationOptions }));
+                      if (!guestMigrationOptions && fetchGuestMigrationOptions) {
+                        fetchGuestMigrationOptions(selectedGuestDetails.vmid);
+                      }
+                    }}
+                    className="flex items-center justify-between w-full mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <BarChart2 size={16} className="text-blue-600 dark:text-blue-400" />
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Migration Options
+                      </h4>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Score comparison across all nodes</span>
+                    </div>
+                    {guestModalCollapsed.migrationOptions ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                  </button>
+
+                  {guestModalCollapsed.migrationOptions && (
+                    <div className="space-y-2">
+                      {loadingGuestOptions ? (
+                        <div className="flex items-center justify-center p-4 text-gray-500 dark:text-gray-400">
+                          <RefreshCw size={16} className="animate-spin mr-2" /> Loading migration options...
+                        </div>
+                      ) : guestMigrationOptions?.options ? (
+                        <>
+                          {guestMigrationOptions.options.map((opt) => {
+                            const maxScore = Math.max(...guestMigrationOptions.options.filter(o => !o.disqualified).map(o => o.score), 1);
+                            const barWidth = opt.disqualified ? 100 : Math.min(100, (opt.score / maxScore) * 100);
+                            return (
+                              <div key={opt.node} className={`p-2 rounded border text-xs ${
+                                opt.is_current
+                                  ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                                  : opt.disqualified
+                                  ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                                  : opt.suitable
+                                  ? 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
+                                  : 'border-gray-200 dark:border-gray-700'
+                              }`}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-900 dark:text-white">{opt.node}</span>
+                                    {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">CURRENT</span>}
+                                    {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
+                                    {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
+                                      <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
+                                        opt.improvement >= 30 ? 'bg-green-500 text-white' :
+                                        opt.improvement >= 15 ? 'bg-yellow-500 text-white' :
+                                        'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                      }`}>+{opt.improvement.toFixed(0)} pts</span>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    {opt.disqualified ? (
+                                      <span className="text-gray-500 dark:text-gray-400">{opt.reason}</span>
+                                    ) : (
+                                      <span className={`font-semibold ${
+                                        opt.suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
+                                        opt.suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                        opt.suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                                        'text-red-600 dark:text-red-400'
+                                      }`}>{opt.suitability_rating}%</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!opt.disqualified && (
+                                  <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600">
+                                    <div className={`rounded-full transition-all ${
+                                      opt.suitability_rating >= 70 ? 'bg-green-500' :
+                                      opt.suitability_rating >= 50 ? 'bg-yellow-500' :
+                                      opt.suitability_rating >= 30 ? 'bg-orange-500' :
+                                      'bg-red-500'
+                                    }`} style={{ width: `${opt.suitability_rating}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 p-2">No migration data available</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Modal Footer */}
@@ -3637,6 +3769,39 @@ export default function DashboardPage({
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
                       </span>
                     </div>
+
+                    {/* Penalty Breakdown Bar */}
+                    {nodeScores && nodeScores[node.name] && nodeScores[node.name].penalty_categories && (() => {
+                      const cats = nodeScores[node.name].penalty_categories;
+                      const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
+                      if (total === 0) return null;
+                      const segments = [
+                        { key: 'cpu', value: cats.cpu, color: 'bg-red-500', label: 'CPU' },
+                        { key: 'memory', value: cats.memory, color: 'bg-blue-500', label: 'Memory' },
+                        { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', label: 'IOWait' },
+                        { key: 'trends', value: cats.trends, color: 'bg-yellow-500', label: 'Trends' },
+                        { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', label: 'Spikes' },
+                      ].filter(s => s.value > 0);
+                      return (
+                        <div className="mt-1">
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Penalty Sources ({total} pts)</div>
+                          <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600" title={segments.map(s => `${s.label}: ${s.value}`).join(', ')}>
+                            {segments.map(s => (
+                              <div key={s.key} className={`${s.color}`} style={{ width: `${(s.value / total * 100)}%` }} />
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-x-2 mt-0.5">
+                            {segments.map(s => (
+                              <span key={s.key} className="text-[9px] text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.color}`}></span>
+                                {s.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Guests:</span>
                       <span className="font-semibold text-gray-900 dark:text-white">{node.guests?.length || 0}</span>
@@ -3788,6 +3953,133 @@ export default function DashboardPage({
 
           {!collapsedSections.recommendations && (
           <div className="transition-all duration-300 ease-in-out">
+
+          {/* Threshold Suggestions Banner */}
+          {thresholdSuggestions && thresholdSuggestions.confidence && (
+            (() => {
+              const hasDiff = (
+                Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 ||
+                Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3
+              );
+              if (!hasDiff) return null;
+              return (
+                <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span className="font-semibold text-sm text-blue-900 dark:text-blue-100">
+                          Threshold Suggestions
+                        </span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          thresholdSuggestions.confidence === 'high'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                        }`}>
+                          {thresholdSuggestions.confidence} confidence
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
+                        {thresholdSuggestions.summary}
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          CPU: <span className="font-mono">{cpuThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_cpu_threshold}%</span>
+                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Memory: <span className="font-mono">{memThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_mem_threshold}%</span>
+                        </span>
+                        {thresholdSuggestions.suggested_iowait_threshold && (
+                          <span className="text-gray-600 dark:text-gray-400">
+                            IOWait: <span className="font-mono">{iowaitThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_iowait_threshold}%</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold);
+                        setMemThreshold(thresholdSuggestions.suggested_mem_threshold);
+                        if (thresholdSuggestions.suggested_iowait_threshold) {
+                          setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold);
+                        }
+                      }}
+                      className="shrink-0 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+                    >
+                      Apply All
+                    </button>
+                  </div>
+                </div>
+              );
+            })()
+          )}
+
+          {/* Recommendation Summary Digest */}
+          {!loadingRecommendations && recommendationData?.summary && (
+            <div className={`mb-4 rounded-lg border p-4 ${
+              recommendationData.summary.urgency === 'high'
+                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+                : recommendationData.summary.urgency === 'medium'
+                ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700'
+                : recommendationData.summary.urgency === 'none'
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Activity size={18} className={
+                    recommendationData.summary.urgency === 'high' ? 'text-yellow-600 dark:text-yellow-400' :
+                    recommendationData.summary.urgency === 'medium' ? 'text-orange-600 dark:text-orange-400' :
+                    recommendationData.summary.urgency === 'none' ? 'text-green-600 dark:text-green-400' :
+                    'text-blue-600 dark:text-blue-400'
+                  } />
+                  <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                    Cluster Health: {recommendationData.summary.cluster_health}/100
+                  </span>
+                </div>
+                {recommendationData.summary.urgency !== 'none' && (
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                    recommendationData.summary.urgency === 'high'
+                      ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'
+                      : recommendationData.summary.urgency === 'medium'
+                      ? 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200'
+                      : 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                  }`}>
+                    {recommendationData.summary.urgency_label}
+                  </span>
+                )}
+              </div>
+              {/* Health bar */}
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    recommendationData.summary.cluster_health >= 70 ? 'bg-green-500' :
+                    recommendationData.summary.cluster_health >= 50 ? 'bg-yellow-500' :
+                    recommendationData.summary.cluster_health >= 30 ? 'bg-orange-500' :
+                    'bg-red-500'
+                  }`}
+                  style={{ width: `${recommendationData.summary.cluster_health}%` }}
+                />
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <span>{recommendationData.summary.total_recommendations} migration{recommendationData.summary.total_recommendations !== 1 ? 's' : ''} recommended</span>
+                {recommendationData.summary.reasons_breakdown?.length > 0 && (
+                  <span>({recommendationData.summary.reasons_breakdown.join(', ')})</span>
+                )}
+                {recommendationData.summary.total_improvement > 0 && (
+                  <span className="text-green-600 dark:text-green-400 font-medium">
+                    +{recommendationData.summary.total_improvement.toFixed(0)} pts total improvement
+                  </span>
+                )}
+                {recommendationData.summary.predicted_health > recommendationData.summary.cluster_health && (
+                  <span className="text-green-600 dark:text-green-400">
+                    Predicted health after: {recommendationData.summary.predicted_health}/100
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {loadingRecommendations ? (
             <div className="text-center py-8">
               <RefreshCw size={48} className="mx-auto mb-3 text-blue-500 dark:text-blue-400 animate-spin" />
@@ -3874,8 +4166,34 @@ export default function DashboardPage({
                             </>
                           )}
                         </div>
-                        <div className={`text-xs mt-1 ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-500'}`}>
-                          <span className="font-medium">Reason:</span> <span className={isMaintenance ? 'font-bold text-yellow-600 dark:text-yellow-400' : ''}>{rec.reason}</span> | <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB
+                        <div className={`text-xs mt-1 ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                          {/* Structured reason with contributing factors */}
+                          {rec.structured_reason ? (
+                            <div>
+                              <span className={`font-medium ${isMaintenance ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                                {rec.structured_reason.primary_label}
+                              </span>
+                              {rec.structured_reason.contributing_factors?.length > 0 && (
+                                <span className="ml-1 text-gray-500 dark:text-gray-500">
+                                  — {rec.structured_reason.contributing_factors.slice(0, 3).map(f => f.label).join('; ')}
+                                </span>
+                              )}
+                              <span className="ml-2">| <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB</span>
+                              {rec.confidence_score !== undefined && (
+                                <span className="ml-2">| <span className="font-medium">Confidence:</span>{' '}
+                                  <span className={`font-semibold ${
+                                    rec.confidence_score >= 70 ? 'text-green-600 dark:text-green-400' :
+                                    rec.confidence_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' :
+                                    'text-orange-600 dark:text-orange-400'
+                                  }`}>{rec.confidence_score}%</span>
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="font-medium">Reason:</span> <span className={isMaintenance ? 'font-bold text-yellow-600 dark:text-yellow-400' : ''}>{rec.reason}</span> | <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB
+                            </div>
+                          )}
                           {rec.ai_confidence_adjustment && rec.ai_confidence_adjustment !== 0 && (
                             <span className="ml-2" title="AI-adjusted confidence modification">
                               | <span className="font-medium">AI Adjustment:</span>{' '}
@@ -3887,6 +4205,78 @@ export default function DashboardPage({
                             </span>
                           )}
                         </div>
+
+                        {/* Score Breakdown (expandable) */}
+                        {rec.score_details && !isCompleted && (
+                          <div className="mt-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const breakdownKey = `breakdown-${idx}`;
+                                setCollapsedSections(prev => ({
+                                  ...prev,
+                                  [breakdownKey]: !prev[breakdownKey]
+                                }));
+                              }}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <Info size={12} />
+                              {collapsedSections[`breakdown-${idx}`] ? 'Hide score breakdown' : 'Show score breakdown'}
+                            </button>
+                            {collapsedSections[`breakdown-${idx}`] && (
+                              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs">
+                                <div className="grid grid-cols-2 gap-4">
+                                  {/* Source node breakdown */}
+                                  <div>
+                                    <div className="font-semibold text-red-600 dark:text-red-400 mb-1">Source: {rec.source_node}</div>
+                                    <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                                      <div>Score: {rec.score_details.source?.total_score?.toFixed(1) || 'N/A'}</div>
+                                      <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
+                                      {Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
+                                        <div key={key} className="flex justify-between">
+                                          <span>{key.replace(/_/g, ' ')}</span>
+                                          <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
+                                        </div>
+                                      ))}
+                                      {Object.values(rec.score_details.source?.penalties || {}).every(v => v === 0) && (
+                                        <div className="text-green-600 dark:text-green-400">No penalties</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Target node breakdown */}
+                                  <div>
+                                    <div className="font-semibold text-green-600 dark:text-green-400 mb-1">Target: {rec.target_node}</div>
+                                    <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                                      <div>Score: {rec.score_details.target?.total_score?.toFixed(1) || 'N/A'}</div>
+                                      <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
+                                      {Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
+                                        <div key={key} className="flex justify-between">
+                                          <span>{key.replace(/_/g, ' ')}</span>
+                                          <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
+                                        </div>
+                                      ))}
+                                      {Object.values(rec.score_details.target?.penalties || {}).every(v => v === 0) && (
+                                        <div className="text-green-600 dark:text-green-400">No penalties</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {/* Predicted metrics */}
+                                {rec.score_details.target?.metrics && (
+                                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
+                                    <div className="flex gap-4 text-gray-600 dark:text-gray-400">
+                                      <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
+                                      <span>Memory: {rec.score_details.target.metrics.predicted_mem}%</span>
+                                      <span>Headroom: {rec.score_details.target.metrics.cpu_headroom}% CPU, {rec.score_details.target.metrics.mem_headroom}% mem</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {rec.ai_insight && (
                           <div className="mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs">
                             <div className="flex items-start gap-2">
@@ -3912,26 +4302,60 @@ export default function DashboardPage({
                           </div>
                         )}
                         <div className="mt-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const commandKey = `command-${idx}`;
-                              setCollapsedSections(prev => ({
-                                ...prev,
-                                [commandKey]: !prev[commandKey]
-                              }));
-                            }}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                          >
-                            <Terminal size={12} />
-                            {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
-                          </button>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const commandKey = `command-${idx}`;
+                                setCollapsedSections(prev => ({
+                                  ...prev,
+                                  [commandKey]: !prev[commandKey]
+                                }));
+                              }}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            >
+                              <Terminal size={12} />
+                              {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
+                            </button>
+
+                            {/* Recommendation Feedback Widget */}
+                            {!isCompleted && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-gray-400 dark:text-gray-500">Helpful?</span>
+                                {feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                    feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful'
+                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                      : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                  }`}>
+                                    {feedbackGiven[`${rec.vmid}-${rec.target_node}`] === 'helpful' ? 'Thanks!' : 'Noted'}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'helpful'); }}
+                                      className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                                      title="This recommendation is helpful"
+                                    >
+                                      <ThumbsUp size={12} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onFeedback(rec, 'not_helpful'); }}
+                                      className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                      title="This recommendation is not helpful"
+                                    >
+                                      <ThumbsDown size={12} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           {collapsedSections[`command-${idx}`] && (
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(rec.command);
-                                // Show tooltip or feedback
                                 const btn = e.currentTarget;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copied!';
@@ -4035,6 +4459,66 @@ export default function DashboardPage({
               })}
             </div>
           )}
+
+          {/* Skipped Guests — "Why Not?" Section */}
+          {!loadingRecommendations && recommendationData?.skipped_guests?.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setCollapsedSections(prev => ({ ...prev, skippedGuests: !prev.skippedGuests }))}
+                className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${collapsedSections.skippedGuests ? '' : 'rotate-180'}`}
+                />
+                <span className="font-medium">Not Recommended ({recommendationData.skipped_guests.length} guests evaluated)</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">— Why weren't these guests recommended?</span>
+              </button>
+              {!collapsedSections.skippedGuests && (
+                <div className="mt-2 space-y-1">
+                  {recommendationData.skipped_guests.slice(0, 20).map((skipped, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700">
+                      <span className={`shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${
+                        skipped.reason === 'insufficient_improvement'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
+                          : skipped.reason === 'ha_managed'
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
+                          : skipped.reason === 'no_suitable_target'
+                          ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {skipped.reason === 'insufficient_improvement' ? '~' :
+                         skipped.reason === 'ha_managed' ? 'H' :
+                         skipped.reason === 'no_suitable_target' ? '!' :
+                         skipped.reason === 'stopped' ? 'S' :
+                         skipped.reason === 'passthrough_disk' ? 'P' :
+                         skipped.reason === 'has_ignore_tag' ? 'I' :
+                         skipped.reason === 'unshared_bind_mount' ? 'B' : '?'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          [{skipped.type} {skipped.vmid}] {skipped.name}
+                        </span>
+                        <span className="text-gray-400 dark:text-gray-500 ml-1">on {skipped.node}</span>
+                        <span className="text-gray-500 dark:text-gray-400 ml-2">— {skipped.detail}</span>
+                        {skipped.score_improvement !== undefined && (
+                          <span className="ml-1 text-yellow-600 dark:text-yellow-400 font-mono">
+                            (+{skipped.score_improvement} pts, need {penaltyConfig?.min_score_improvement || 15})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {recommendationData.skipped_guests.length > 20 && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 text-center py-1">
+                      ...and {recommendationData.skipped_guests.length - 20} more
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           </div>
           )}
         </div>

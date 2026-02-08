@@ -96,6 +96,19 @@ export async function resetPenaltyConfig() {
   }
 }
 
+export async function applyPenaltyPreset(presetName) {
+  try {
+    const response = await fetch(`${API_BASE}/penalty-config/presets/${presetName}`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to apply penalty preset:', err);
+    return { error: true, message: err.message };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Token Validation
 // ---------------------------------------------------------------------------
@@ -297,6 +310,63 @@ export async function fetchNodeScores(params) {
     return result;
   } catch (err) {
     console.error('Error fetching node scores:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Guest Migration Options
+// ---------------------------------------------------------------------------
+
+export async function fetchGuestMigrationOptions(vmid, params) {
+  try {
+    const response = await fetch(`${API_BASE}/guest/${vmid}/migration-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params || {})
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error fetching guest migration options:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Configuration Simulator
+// ---------------------------------------------------------------------------
+
+export async function simulatePenaltyConfig(config, params) {
+  try {
+    const response = await fetch(`${API_BASE}/penalty-config/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config, ...params })
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error simulating penalty config:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation Feedback
+// ---------------------------------------------------------------------------
+
+export async function submitRecommendationFeedback(feedbackData) {
+  try {
+    const response = await fetch(`${API_BASE}/recommendations/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(feedbackData)
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Error submitting recommendation feedback:', err);
     return { error: true, message: err.message };
   }
 }

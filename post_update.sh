@@ -41,18 +41,30 @@ else
 fi
 
 if [ "$NEEDS_BUILD" = "true" ]; then
-  # Bundle the frontend using esbuild (handles all imports from src/index.jsx)
-  echo "  → Bundling frontend with esbuild..."
-  mkdir -p assets/js
+  # Ensure tailwindcss is installed for CSS build
+  if [ ! -f "node_modules/.bin/tailwindcss" ]; then
+    echo "  → Installing tailwindcss..."
+    npm install tailwindcss@3 >/dev/null 2>&1
+  fi
+
+  # Bundle the frontend using build.sh (Tailwind CSS + esbuild)
+  echo "  → Building frontend (Tailwind CSS + esbuild)..."
+  mkdir -p assets/js assets/css
   if [ -f build.sh ]; then
     bash build.sh
   else
-    # Fallback: direct esbuild call matching build.sh
+    # Fallback: direct build commands matching build.sh
+    if [ -f "node_modules/.bin/tailwindcss" ]; then
+      TAILWIND="node_modules/.bin/tailwindcss"
+    else
+      TAILWIND="npx tailwindcss"
+    fi
     if [ -f "node_modules/.bin/esbuild" ]; then
       ESBUILD="node_modules/.bin/esbuild"
     else
       ESBUILD="npx esbuild"
     fi
+    $TAILWIND -i src/input.css -o assets/css/tailwind.css --minify
     $ESBUILD src/index.jsx \
       --bundle \
       --outfile=assets/js/app.js \
@@ -64,8 +76,9 @@ if [ "$NEEDS_BUILD" = "true" ]; then
 
   # Deploy built files to web root
   echo "  → Deploying to web root..."
-  mkdir -p /var/www/html/assets/js
+  mkdir -p /var/www/html/assets/js /var/www/html/assets/css
   cp assets/js/app.js /var/www/html/assets/js/app.js
+  cp assets/css/tailwind.css /var/www/html/assets/css/tailwind.css
 
   # Download React libraries if not present
   if [ ! -f /var/www/html/assets/js/react.production.min.js ]; then

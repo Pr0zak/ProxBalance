@@ -23,61 +23,9 @@
     <!-- Local React libraries for faster loading -->
     <script crossorigin src="/assets/js/react.production.min.js"></script>
     <script crossorigin src="/assets/js/react-dom.production.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (production build) -->
+    <link rel="stylesheet" href="/assets/css/tailwind.css">
     <!-- Chart.js loaded lazily when Node Status section is expanded -->
-    <script>
-      tailwind.config = {
-        darkMode: 'class'
-      }
-    </script>
-    <style>
-      @keyframes dashFlow {
-        from { stroke-dashoffset: 0; }
-        to { stroke-dashoffset: 10; }
-      }
-      .animated-arrow {
-        animation: dashFlow 1s linear infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-      .pulse-animation {
-        animation: pulse 2s ease-in-out infinite;
-      }
-      @keyframes balance {
-        0% { transform: rotate(0deg) scale(1); }
-        15% { transform: rotate(-8deg) scale(1.05); }
-        30% { transform: rotate(8deg) scale(1.1); }
-        45% { transform: rotate(-6deg) scale(1.05); }
-        60% { transform: rotate(6deg) scale(1.08); }
-        75% { transform: rotate(-3deg) scale(1.03); }
-        85% { transform: rotate(2deg) scale(1.02); }
-        95% { transform: rotate(-1deg) scale(1.01); }
-        100% { transform: rotate(0deg) scale(1); }
-      }
-      .logo-balancing {
-        animation: balance 2s ease-in-out;
-      }
-
-      /* Skeleton loader styles */
-      @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
-      }
-
-      .skeleton {
-        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-        background-size: 1000px 100%;
-        animation: shimmer 2s infinite;
-        border-radius: 0.5rem;
-      }
-
-      .dark .skeleton {
-        background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
-        background-size: 1000px 100%;
-      }
-    </style>
 </head>
 <body>
     <!-- Simple centered loading screen -->
