@@ -277,6 +277,8 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
           const [showPenaltyConfig, setShowPenaltyConfig] = useState(false);
           const [savingPenaltyConfig, setSavingPenaltyConfig] = useState(false);
           const [penaltyConfigSaved, setPenaltyConfigSaved] = useState(false);
+          const [penaltyPresets, setPenaltyPresets] = useState(null);
+          const [activePreset, setActivePreset] = useState('custom');
           const [openPenaltyConfigOnSettings, setOpenPenaltyConfigOnSettings] = useState(false);
 
           // Unified Time Windows form state
@@ -515,9 +517,29 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               if (result.success) {
                 setPenaltyConfig(result.config);
                 setPenaltyDefaults(result.defaults);
+                if (result.presets) setPenaltyPresets(result.presets);
+                if (result.active_preset) setActivePreset(result.active_preset);
               }
             } catch (err) {
               console.error('Failed to load penalty config:', err);
+            }
+          };
+
+          const applyPenaltyPreset = async (presetName) => {
+            try {
+              setSavingPenaltyConfig(true);
+              const response = await fetch(`${API_BASE}/penalty-config/presets/${presetName}`, { method: 'POST' });
+              const result = await response.json();
+              if (result.success) {
+                setPenaltyConfig(result.config);
+                setActivePreset(result.active_preset || presetName);
+                setPenaltyConfigSaved(true);
+                setTimeout(() => setPenaltyConfigSaved(false), 3000);
+              }
+            } catch (err) {
+              console.error('Failed to apply preset:', err);
+            } finally {
+              setSavingPenaltyConfig(false);
             }
           };
 
@@ -2192,6 +2214,12 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
               penaltyDefaults={penaltyDefaults}
               savingPenaltyConfig={savingPenaltyConfig}
               penaltyConfigSaved={penaltyConfigSaved}
+              penaltyPresets={penaltyPresets}
+              activePreset={activePreset}
+              applyPenaltyPreset={applyPenaltyPreset}
+              cpuThreshold={cpuThreshold}
+              memThreshold={memThreshold}
+              iowaitThreshold={iowaitThreshold}
               savePenaltyConfig={savePenaltyConfig}
               resetPenaltyConfig={resetPenaltyConfig}
               showAdvancedSettings={showAdvancedSettings} setShowAdvancedSettings={setShowAdvancedSettings}

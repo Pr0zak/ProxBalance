@@ -607,6 +607,43 @@ class NotificationManager:
             message = "\n".join(lines)
             priority = "normal"
 
+        elif event_type == "recommendations_urgent":
+            count = data.get("count", 0)
+            urgency = data.get("urgency", "high")
+            title = "Urgent Migration Recommendations"
+            lines = [f"Urgent recommendations: {count}"]
+            if data.get("top_recommendation"):
+                top = data["top_recommendation"]
+                lines.append(f"Highest priority: {top.get('type', 'VM')} {top.get('vmid', '?')} ({top.get('name', '?')}) → {top.get('target_node', '?')}")
+            if data.get("reason"):
+                lines.append(f"Reason: {data['reason']}")
+            message = "\n".join(lines)
+            priority = "high"
+
+        elif event_type == "recommendations_cleared":
+            title = "Cluster Balanced - No Migrations Needed"
+            previous_count = data.get("previous_count", 0)
+            lines = [f"All {previous_count} previous recommendation(s) have been resolved."]
+            lines.append("The cluster is currently balanced.")
+            if data.get("cluster_health"):
+                lines.append(f"Cluster health: {data['cluster_health']}/100")
+            message = "\n".join(lines)
+            priority = "low"
+
+        elif event_type == "capacity_warning":
+            title = "Cluster Capacity Warning"
+            lines = []
+            if data.get("cluster_cpu_avg"):
+                lines.append(f"Cluster CPU: {data['cluster_cpu_avg']:.1f}%")
+            if data.get("cluster_mem_avg"):
+                lines.append(f"Cluster Memory: {data['cluster_mem_avg']:.1f}%")
+            if data.get("nodes_above_threshold"):
+                lines.append(f"Nodes above threshold: {data['nodes_above_threshold']}")
+            if data.get("message"):
+                lines.append(data["message"])
+            message = "\n".join(lines) if lines else "Cluster capacity is constrained"
+            priority = "high"
+
         elif event_type == "evacuation":
             node = data.get("node", "?")
             evac_status = data.get("status", "started")
@@ -720,6 +757,9 @@ def get_default_notifications_config() -> Dict[str, Any]:
         "on_node_status": True,
         "on_resource_threshold": False,
         "on_recommendations": False,
+        "on_recommendations_urgent": True,
+        "on_recommendations_cleared": False,
+        "on_capacity_warning": True,
         "on_evacuation": True,
         "on_collector_status": False,
         "on_update_available": True,

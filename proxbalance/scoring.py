@@ -15,7 +15,7 @@ Scoring philosophy:
 """
 
 import sys
-from typing import Dict
+from typing import Dict, List
 
 
 # ---------------------------------------------------------------------------
@@ -687,3 +687,461 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     }
 
     return total_score, details
+
+
+# ---------------------------------------------------------------------------
+# Migration risk scoring
+# ---------------------------------------------------------------------------
+
+def calculate_migration_risk(guest: Dict, source_node: Dict, target_node: Dict, cluster_health: float = 100.0) -> Dict:
+    """
+    Calculate a risk score (0-100, lower is safer) for a migration.
+
+    Evaluates risk factors:
+    - Guest size (30%): Larger memory = longer migration, more downtime risk
+    - I/O activity (25%): High disk I/O during migration increases failure chance
+    - Storage complexity (20%): Multi-disk, snapshot presence
+    - Network sensitivity (15%): High network I/O suggests latency-sensitive workload
+    - Cluster health (10%): If cluster is stressed, migration adds load
+
+    Returns a dict with risk_score, risk_level, and risk_factors.
+    """
+    risk_factors = []
+
+    # Factor 1: Guest size risk (30%) — based on allocated memory
+    guest_mem_gb = guest.get("mem_max_gb", 0)
+    if guest_mem_gb >= 64:
+        size_risk = 100
+        size_detail = f"Very large guest ({guest_mem_gb:.0f} GB RAM) — long migration time"
+    elif guest_mem_gb >= 32:
+        size_risk = 75
+        size_detail = f"Large guest ({guest_mem_gb:.0f} GB RAM) — extended migration time"
+    elif guest_mem_gb >= 16:
+        size_risk = 50
+        size_detail = f"Medium guest ({guest_mem_gb:.0f} GB RAM)"
+    elif guest_mem_gb >= 4:
+        size_risk = 25
+        size_detail = f"Small-medium guest ({guest_mem_gb:.1f} GB RAM)"
+    else:
+        size_risk = 10
+        size_detail = f"Small guest ({guest_mem_gb:.1f} GB RAM) — quick migration"
+
+    risk_factors.append({
+        "factor": "guest_memory",
+        "value": f"{guest_mem_gb:.1f} GB",
+        "risk": _risk_label(size_risk),
+        "risk_score": size_risk,
+        "detail": size_detail,
+    })
+
+    # Factor 2: I/O activity risk (25%) — disk read/write rates
+    disk_read = guest.get("disk_read_bps", 0) / (1024 ** 2)  # MB/s
+    disk_write = guest.get("disk_write_bps", 0) / (1024 ** 2)  # MB/s
+    total_disk_io = disk_read + disk_write
+
+    if total_disk_io >= 100:
+        io_risk = 100
+        io_detail = f"Very high disk I/O ({total_disk_io:.0f} MB/s) — migration may stall"
+    elif total_disk_io >= 50:
+        io_risk = 75
+        io_detail = f"High disk I/O ({total_disk_io:.0f} MB/s) — may extend migration"
+    elif total_disk_io >= 20:
+        io_risk = 50
+        io_detail = f"Moderate disk I/O ({total_disk_io:.0f} MB/s)"
+    elif total_disk_io >= 5:
+        io_risk = 25
+        io_detail = f"Low disk I/O ({total_disk_io:.1f} MB/s)"
+    else:
+        io_risk = 5
+        io_detail = f"Minimal disk I/O ({total_disk_io:.1f} MB/s)"
+
+    risk_factors.append({
+        "factor": "disk_io",
+        "value": f"{total_disk_io:.1f} MB/s",
+        "risk": _risk_label(io_risk),
+        "risk_score": io_risk,
+        "detail": io_detail,
+    })
+
+    # Factor 3: Storage complexity (20%) — disk count, local disks, snapshots
+    local_disks = guest.get("local_disks", {})
+    disk_count = local_disks.get("disk_count", 1)
+    has_snapshots = guest.get("snapshots", 0) > 0
+    guest_type = guest.get("type", "VM")
+    has_bind_mounts = guest.get("mount_points", {}).get("has_shared_mount", False)
+
+    storage_risk = 10  # base
+    storage_details = []
+
+    if disk_count > 4:
+        storage_risk = max(storage_risk, 80)
+        storage_details.append(f"{disk_count} disks")
+    elif disk_count > 2:
+        storage_risk = max(storage_risk, 50)
+        storage_details.append(f"{disk_count} disks")
+    elif disk_count > 1:
+        storage_risk = max(storage_risk, 30)
+        storage_details.append(f"{disk_count} disks")
+
+    if has_snapshots:
+        storage_risk = min(100, storage_risk + 20)
+        storage_details.append("has snapshots")
+
+    if has_bind_mounts:
+        storage_risk = min(100, storage_risk + 15)
+        storage_details.append("bind mounts")
+
+    storage_value = f"{disk_count} disk(s)"
+    if storage_details:
+        storage_value = ", ".join(storage_details)
+
+    risk_factors.append({
+        "factor": "storage",
+        "value": storage_value,
+        "risk": _risk_label(storage_risk),
+        "risk_score": storage_risk,
+        "detail": f"Storage complexity: {storage_value}",
+    })
+
+    # Factor 4: Network sensitivity (15%) — based on network I/O rates
+    net_in = guest.get("net_in_bps", 0) / (1024 ** 2)  # MB/s
+    net_out = guest.get("net_out_bps", 0) / (1024 ** 2)  # MB/s
+    total_net = net_in + net_out
+
+    if total_net >= 100:
+        net_risk = 90
+        net_detail = f"Very high network I/O ({total_net:.0f} MB/s) — latency-sensitive"
+    elif total_net >= 50:
+        net_risk = 65
+        net_detail = f"High network I/O ({total_net:.0f} MB/s)"
+    elif total_net >= 10:
+        net_risk = 35
+        net_detail = f"Moderate network I/O ({total_net:.1f} MB/s)"
+    else:
+        net_risk = 10
+        net_detail = f"Low network I/O ({total_net:.1f} MB/s)"
+
+    risk_factors.append({
+        "factor": "network_io",
+        "value": f"{total_net:.1f} MB/s",
+        "risk": _risk_label(net_risk),
+        "risk_score": net_risk,
+        "detail": net_detail,
+    })
+
+    # Factor 5: Cluster health risk (10%) — stressed cluster = riskier migration
+    if cluster_health < 30:
+        cluster_risk = 90
+        cluster_detail = "Cluster under heavy stress — migration adds load"
+    elif cluster_health < 50:
+        cluster_risk = 60
+        cluster_detail = "Cluster moderately stressed"
+    elif cluster_health < 70:
+        cluster_risk = 30
+        cluster_detail = "Cluster in fair health"
+    else:
+        cluster_risk = 10
+        cluster_detail = "Cluster healthy — safe to migrate"
+
+    risk_factors.append({
+        "factor": "cluster_health",
+        "value": f"{cluster_health:.0f}/100",
+        "risk": _risk_label(cluster_risk),
+        "risk_score": cluster_risk,
+        "detail": cluster_detail,
+    })
+
+    # Weighted combination
+    risk_score = round(
+        size_risk * 0.30 +
+        io_risk * 0.25 +
+        storage_risk * 0.20 +
+        net_risk * 0.15 +
+        cluster_risk * 0.10,
+        1,
+    )
+
+    # Determine risk level
+    if risk_score <= 25:
+        risk_level = "low"
+    elif risk_score <= 50:
+        risk_level = "moderate"
+    elif risk_score <= 75:
+        risk_level = "high"
+    else:
+        risk_level = "very_high"
+
+    return {
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "risk_factors": risk_factors,
+    }
+
+
+def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict:
+    """
+    Project a metric trend into the future using simple linear regression.
+
+    Args:
+        values: List of numeric metric values (e.g. CPU %, memory %).
+        timestamps: List of corresponding Unix timestamps (seconds).
+        hours_ahead: How many hours to project into the future (default 48).
+
+    Returns a dict with:
+        - current_value: Most recent value in the series.
+        - projected_value: Predicted value at hours_ahead from now.
+        - trend_rate_per_day: Units of change per day (positive = rising).
+        - confidence: "high" | "medium" | "low" based on R² goodness of fit.
+        - r_squared: Coefficient of determination (0-1).
+    """
+    n = len(values)
+    if n < 2 or len(timestamps) < 2:
+        last = values[-1] if values else 0.0
+        return {
+            "current_value": round(last, 2),
+            "projected_value": round(last, 2),
+            "trend_rate_per_day": 0.0,
+            "confidence": "low",
+            "r_squared": 0.0,
+        }
+
+    # Convert timestamps to hours relative to the first timestamp for numerical stability
+    t0 = timestamps[0]
+    x = [(t - t0) / 3600.0 for t in timestamps]  # hours since start
+    y = list(values)
+
+    # Simple linear regression: y = a + b*x
+    sum_x = sum(x)
+    sum_y = sum(y)
+    sum_xy = sum(xi * yi for xi, yi in zip(x, y))
+    sum_x2 = sum(xi * xi for xi in x)
+
+    denominator = n * sum_x2 - sum_x * sum_x
+    if abs(denominator) < 1e-12:
+        # All x values are effectively the same — no trend determinable
+        last = y[-1]
+        return {
+            "current_value": round(last, 2),
+            "projected_value": round(last, 2),
+            "trend_rate_per_day": 0.0,
+            "confidence": "low",
+            "r_squared": 0.0,
+        }
+
+    b = (n * sum_xy - sum_x * sum_y) / denominator  # slope (units per hour)
+    a = (sum_y - b * sum_x) / n  # intercept
+
+    # R² (coefficient of determination)
+    y_mean = sum_y / n
+    ss_tot = sum((yi - y_mean) ** 2 for yi in y)
+    ss_res = sum((yi - (a + b * xi)) ** 2 for xi, yi in zip(x, y))
+
+    if ss_tot < 1e-12:
+        r_squared = 0.0  # All values are essentially the same
+    else:
+        r_squared = max(0.0, 1.0 - ss_res / ss_tot)
+
+    # Confidence based on R²
+    if r_squared >= 0.7:
+        confidence = "high"
+    elif r_squared >= 0.4:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    # Current value (most recent data point)
+    current_value = y[-1]
+
+    # Projected value: extrapolate from the last timestamp by hours_ahead
+    last_x = x[-1]
+    projected_x = last_x + hours_ahead
+    projected_value = a + b * projected_x
+
+    # Trend rate per day (slope * 24 hours)
+    trend_rate_per_day = b * 24.0
+
+    return {
+        "current_value": round(current_value, 2),
+        "projected_value": round(projected_value, 2),
+        "trend_rate_per_day": round(trend_rate_per_day, 2),
+        "confidence": confidence,
+        "r_squared": round(r_squared, 4),
+    }
+
+
+def _risk_label(score: int) -> str:
+    """Map a numeric risk score to a label."""
+    if score <= 25:
+        return "low"
+    elif score <= 50:
+        return "medium"
+    elif score <= 75:
+        return "high"
+    return "very_high"
+
+
+# ---------------------------------------------------------------------------
+# F2: Workload Pattern Recognition
+# ---------------------------------------------------------------------------
+
+def analyze_workload_patterns(score_history: List[Dict], node_name: str) -> Dict:
+    """Analyze historical score data to detect recurring workload patterns.
+
+    Identifies daily cycles (business-hours vs off-hours), weekly patterns,
+    and burst detection using hour-of-day and day-of-week bucketing on
+    historical score snapshots.
+
+    Args:
+        score_history: List of score snapshot dicts from score_history.json,
+            each with 'timestamp' and 'nodes' dict.
+        node_name: The node to analyze.
+
+    Returns:
+        A dict describing detected patterns::
+
+            {
+                "node": str,
+                "data_points": int,
+                "daily_pattern": { ... } or None,
+                "weekly_pattern": { ... } or None,
+                "burst_detection": { ... },
+                "recommendation_timing": str or None,
+            }
+    """
+    from datetime import datetime, timezone
+
+    result: Dict = {
+        "node": node_name,
+        "data_points": 0,
+        "daily_pattern": None,
+        "weekly_pattern": None,
+        "burst_detection": {
+            "detected": False,
+            "recurring_bursts": 0,
+            "burst_hours": [],
+        },
+        "recommendation_timing": None,
+    }
+
+    if not score_history or len(score_history) < 12:
+        return result
+
+    # Extract per-hour-of-day and per-day-of-week CPU values
+    hourly_buckets: Dict[int, List[float]] = {h: [] for h in range(24)}
+    daily_buckets: Dict[int, List[float]] = {d: [] for d in range(7)}
+
+    for snapshot in score_history:
+        node_data = snapshot.get("nodes", {}).get(node_name)
+        if node_data is None:
+            continue
+
+        cpu = node_data.get("cpu", 0)
+
+        ts_str = snapshot.get("timestamp", "")
+        try:
+            if ts_str.endswith("Z"):
+                ts_str = ts_str[:-1] + "+00:00"
+            ts = datetime.fromisoformat(ts_str)
+        except (ValueError, TypeError):
+            continue
+
+        result["data_points"] += 1
+        hourly_buckets[ts.hour].append(cpu)
+        daily_buckets[ts.weekday()].append(cpu)
+
+    if result["data_points"] < 12:
+        return result
+
+    # Compute hourly averages
+    hourly_avgs = {}
+    for h, vals in hourly_buckets.items():
+        if vals:
+            hourly_avgs[h] = sum(vals) / len(vals)
+
+    if len(hourly_avgs) < 6:
+        return result
+
+    all_avgs = list(hourly_avgs.values())
+    overall_avg = sum(all_avgs) / len(all_avgs)
+
+    # Detect daily pattern: business hours (8-18) vs off-hours
+    business_hours = [hourly_avgs.get(h) for h in range(8, 18) if h in hourly_avgs]
+    off_hours = [hourly_avgs.get(h) for h in list(range(0, 8)) + list(range(18, 24)) if h in hourly_avgs]
+
+    if business_hours and off_hours:
+        biz_avg = sum(business_hours) / len(business_hours)
+        off_avg = sum(off_hours) / len(off_hours)
+        spread = abs(biz_avg - off_avg)
+
+        if spread > 8:  # Significant difference between business and off hours
+            peak_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h], reverse=True)[:5]
+            trough_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h])[:5]
+
+            confidence = "high" if spread > 20 else "medium" if spread > 12 else "low"
+
+            result["daily_pattern"] = {
+                "cycle_type": "daily",
+                "peak_hours": sorted(peak_hours),
+                "trough_hours": sorted(trough_hours),
+                "peak_avg_cpu": round(max(biz_avg, off_avg), 1),
+                "trough_avg_cpu": round(min(biz_avg, off_avg), 1),
+                "business_hours_avg": round(biz_avg, 1),
+                "off_hours_avg": round(off_avg, 1),
+                "spread": round(spread, 1),
+                "pattern_confidence": confidence,
+            }
+
+    # Detect weekly pattern
+    daily_avgs = {}
+    for d, vals in daily_buckets.items():
+        if vals:
+            daily_avgs[d] = sum(vals) / len(vals)
+
+    if len(daily_avgs) >= 5:
+        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        weekday_vals = [daily_avgs.get(d) for d in range(5) if d in daily_avgs]
+        weekend_vals = [daily_avgs.get(d) for d in range(5, 7) if d in daily_avgs]
+
+        if weekday_vals and weekend_vals:
+            wd_avg = sum(weekday_vals) / len(weekday_vals)
+            we_avg = sum(weekend_vals) / len(weekend_vals)
+            weekly_spread = abs(wd_avg - we_avg)
+
+            if weekly_spread > 5:
+                peak_days = sorted(daily_avgs.keys(), key=lambda d: daily_avgs[d], reverse=True)[:3]
+                result["weekly_pattern"] = {
+                    "cycle_type": "weekly",
+                    "peak_days": [day_names[d] for d in sorted(peak_days)],
+                    "weekday_avg": round(wd_avg, 1),
+                    "weekend_avg": round(we_avg, 1),
+                    "spread": round(weekly_spread, 1),
+                    "pattern_confidence": "high" if weekly_spread > 15 else "medium",
+                }
+
+    # Burst detection: identify hours with consistently high CPU
+    burst_threshold = overall_avg + 20
+    burst_hours = []
+    for h, avg in hourly_avgs.items():
+        if avg > burst_threshold and len(hourly_buckets[h]) >= 3:
+            burst_hours.append(h)
+
+    if burst_hours:
+        result["burst_detection"] = {
+            "detected": True,
+            "recurring_bursts": len(burst_hours),
+            "burst_hours": sorted(burst_hours),
+            "avg_burst_cpu": round(sum(hourly_avgs[h] for h in burst_hours) / len(burst_hours), 1),
+            "threshold_used": round(burst_threshold, 1),
+        }
+
+    # Recommendation timing: suggest best window for migrations
+    if hourly_avgs:
+        best_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h])[:4]
+        best_start = min(best_hours)
+        best_end = max(best_hours) + 1
+        result["recommendation_timing"] = (
+            f"Migrate during {best_start:02d}:00-{best_end:02d}:00 "
+            f"when load is minimal (avg {hourly_avgs[best_hours[0]]:.0f}%)"
+        )
+
+    return result
