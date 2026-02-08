@@ -29,9 +29,14 @@ from proxbalance.scoring import (
     predict_post_migration_load,
     calculate_target_node_score,
     calculate_migration_risk,
-    project_trend,
-    analyze_workload_patterns,
 )
+from proxbalance.forecasting import (
+    project_trend,
+    generate_forecast_recommendations,
+    save_score_snapshot,
+    SCORE_HISTORY_FILE,
+)
+from proxbalance.patterns import analyze_workload_patterns
 from proxbalance.recommendations import (
     select_guests_to_migrate,
     build_storage_cache,
@@ -40,9 +45,12 @@ from proxbalance.recommendations import (
     find_distribution_candidates,
     generate_recommendations,
 )
-from proxbalance.migrations import (
-    get_rollback_info,
+from proxbalance.outcomes import (
     capture_pre_migration_snapshot,
     record_migration_outcome,
     update_post_migration_metrics,
+    get_migration_outcomes,
 )
+from proxbalance.migrations import get_rollback_info
+from proxbalance.execution_planner import compute_execution_order
+from proxbalance.reporting import build_summary, generate_capacity_advisories
