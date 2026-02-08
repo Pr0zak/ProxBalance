@@ -3940,6 +3940,37 @@ export default function DashboardPage({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* J3: Export Dropdown */}
+                {recommendations.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setCollapsedSections(prev => ({ ...prev, exportDropdown: !prev.exportDropdown }))}
+                      className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200"
+                      title="Export recommendations"
+                    >
+                      <Download size={16} />
+                      Export
+                      <ChevronDown size={14} />
+                    </button>
+                    {collapsedSections.exportDropdown && (
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px]">
+                        <a href="/api/recommendations/export?format=csv" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                          <ClipboardList size={14} /> Recommendations CSV
+                        </a>
+                        <a href="/api/recommendations/export?format=json" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                          <ClipboardList size={14} /> Recommendations JSON
+                        </a>
+                        <hr className="my-1 border-gray-200 dark:border-gray-700" />
+                        <a href="/api/automigrate/history/export?format=csv" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                          <Activity size={14} /> Migration History CSV
+                        </a>
+                        <a href="/api/automigrate/history/export?format=json" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                          <Activity size={14} /> Migration History JSON
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button
                   onClick={generateRecommendations}
                   disabled={loadingRecommendations || !data}
@@ -4101,6 +4132,87 @@ export default function DashboardPage({
             })()
           )}
 
+          {/* I1: Engine Diagnostics Panel */}
+          {!loadingRecommendations && recommendationData?.generated_at && (
+            <details className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <summary className="cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg">
+                <Terminal size={16} />
+                Engine Diagnostics
+                {recommendationData.generation_time_ms && (
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2">
+                    Generated in {recommendationData.generation_time_ms}ms
+                  </span>
+                )}
+              </summary>
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Generation Time</div>
+                    <div className="font-mono font-semibold text-gray-900 dark:text-white">
+                      {recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Recommendations</div>
+                    <div className="font-mono font-semibold text-gray-900 dark:text-white">
+                      {recommendationData.count || recommendations.length}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Guests Evaluated</div>
+                    <div className="font-mono font-semibold text-gray-900 dark:text-white">
+                      {(recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0)}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Skipped</div>
+                    <div className="font-mono font-semibold text-gray-900 dark:text-white">
+                      {recommendationData.skipped_guests?.length || 0}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">AI Enhanced</div>
+                    <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                      {recommendationData.ai_enhanced ? 'Yes' : 'No'}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700">
+                    <div className="text-gray-500 dark:text-gray-400 mb-0.5">Conflicts / Advisories</div>
+                    <div className="font-mono font-semibold text-gray-900 dark:text-white">
+                      {recommendationData.conflicts?.length || 0} / {recommendationData.capacity_advisories?.length || 0}
+                    </div>
+                  </div>
+                </div>
+                {recommendationData.parameters && (
+                  <div className="mt-2 p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs">
+                    <span className="text-gray-500 dark:text-gray-400">Thresholds: </span>
+                    <span className="font-mono text-gray-700 dark:text-gray-300">
+                      CPU {recommendationData.parameters.cpu_threshold}% | Mem {recommendationData.parameters.mem_threshold}% | IOWait {recommendationData.parameters.iowait_threshold}%
+                    </span>
+                    {recommendationData.parameters.maintenance_nodes?.length > 0 && (
+                      <span className="ml-2 text-yellow-600 dark:text-yellow-400">
+                        | Maintenance: {recommendationData.parameters.maintenance_nodes.join(', ')}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* Skip reason breakdown from summary */}
+                {recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && (
+                  <div className="mt-2 p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs">
+                    <span className="text-gray-500 dark:text-gray-400 block mb-1">Skip Reasons:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => (
+                        <span key={reason} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300 font-mono">
+                          {reason}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
           {/* Recommendation Summary Digest */}
           {!loadingRecommendations && recommendationData?.summary && (
             <div className={`mb-4 rounded-lg border p-4 ${
@@ -4248,6 +4360,70 @@ export default function DashboardPage({
             </details>
           )}
 
+          {/* I3: Recommendation Change Log Summary */}
+          {!loadingRecommendations && recommendationData?.changes_since_last && (
+            (() => {
+              const changes = recommendationData.changes_since_last;
+              const hasChanges = changes.new_recommendations?.length > 0 ||
+                changes.removed_recommendations?.length > 0 ||
+                changes.changed_targets?.length > 0;
+              if (!hasChanges) return null;
+              return (
+                <details className="mb-4 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20">
+                  <summary className="cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-indigo-800 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors rounded-lg">
+                    <RefreshCw size={16} />
+                    Changes Since Last Generation
+                    <div className="flex gap-1.5 ml-2">
+                      {changes.new_recommendations?.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">
+                          +{changes.new_recommendations.length} new
+                        </span>
+                      )}
+                      {changes.removed_recommendations?.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">
+                          -{changes.removed_recommendations.length} removed
+                        </span>
+                      )}
+                      {changes.changed_targets?.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">
+                          {changes.changed_targets.length} changed
+                        </span>
+                      )}
+                      {changes.unchanged > 0 && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                          {changes.unchanged} unchanged
+                        </span>
+                      )}
+                    </div>
+                  </summary>
+                  <div className="px-3 pb-3 space-y-2 text-xs">
+                    {changes.new_recommendations?.map((r, i) => (
+                      <div key={`new-${i}`} className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                        <Plus size={12} />
+                        <span className="font-medium">[{r.vmid}] {r.name}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{r.source_node} → {r.target_node}</span>
+                      </div>
+                    ))}
+                    {changes.removed_recommendations?.map((r, i) => (
+                      <div key={`rem-${i}`} className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                        <Minus size={12} />
+                        <span className="font-medium">[{r.vmid}] {r.name}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{r.source_node} → {r.target_node} (no longer needed)</span>
+                      </div>
+                    ))}
+                    {changes.changed_targets?.map((r, i) => (
+                      <div key={`chg-${i}`} className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                        <ArrowRight size={12} />
+                        <span className="font-medium">[{r.vmid}] {r.name}</span>
+                        <span className="text-gray-500 dark:text-gray-400">target changed: {r.old_target} → {r.new_target}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              );
+            })()
+          )}
+
           {/* F3: Capacity Planning Advisories */}
           {!loadingRecommendations && recommendationData?.capacity_advisories?.length > 0 && (
             <div className="mb-4 space-y-2">
@@ -4330,6 +4506,10 @@ export default function DashboardPage({
                 const completed = completedMigrations[rec.vmid];
                 const isCompleted = completed !== undefined;
                 const isMaintenance = rec.reason && rec.reason.toLowerCase().includes('maintenance');
+                // I3: Check if this recommendation is new or changed
+                const changeLog = recommendationData?.changes_since_last;
+                const isNewRec = changeLog?.new_recommendations?.some(r => String(r.vmid) === String(rec.vmid));
+                const changedTarget = changeLog?.changed_targets?.find(r => String(r.vmid) === String(rec.vmid));
 
                 return (
                   <div key={idx} className={`border rounded p-4 transition-all duration-300 ${
@@ -4359,6 +4539,16 @@ export default function DashboardPage({
                           {isMaintenance && !isCompleted && (
                             <span className="px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded">
                               MAINTENANCE
+                            </span>
+                          )}
+                          {/* I3: Change status badges */}
+                          {isNewRec && !isCompleted && (
+                            <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded">NEW</span>
+                          )}
+                          {changedTarget && !isCompleted && (
+                            <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded"
+                              title={`Target changed from ${changedTarget.old_target} → ${changedTarget.new_target}`}>
+                              TARGET CHANGED
                             </span>
                           )}
                           {isCompleted && <CheckCircle size={18} className="text-green-600 dark:text-green-400" />}

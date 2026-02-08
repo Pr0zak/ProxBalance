@@ -5,8 +5,8 @@ Handles recommendation generation, caching, threshold suggestions,
 node suitability scoring, per-guest migration options, and recommendation feedback.
 """
 
-from flask import Blueprint, jsonify, request, current_app
-import json, os, sys
+from flask import Blueprint, jsonify, request, current_app, make_response
+import json, os, sys, time, csv, io
 from datetime import datetime
 from proxbalance.config_manager import load_config, load_penalty_config, BASE_PATH
 from proxbalance.scoring import calculate_intelligent_thresholds, calculate_target_node_score, DEFAULT_PENALTY_CONFIG
@@ -23,6 +23,7 @@ def read_cache():
 def get_recommendations():
     """Generate recommendations from cached data"""
     try:
+        start_time = time.time()
         data = request.json or {}
         cpu_threshold = float(data.get("cpu_threshold", 60.0))
         mem_threshold = float(data.get("mem_threshold", 70.0))
@@ -113,6 +114,7 @@ def get_recommendations():
             "count": len(recommendations),
             "threshold_suggestions": threshold_suggestions,
             "ai_enhanced": ai_enhanced,
+            "generation_time_ms": round((time.time() - start_time) * 1000),
             "generated_at": datetime.utcnow().isoformat() + 'Z',
             "parameters": {
                 "cpu_threshold": cpu_threshold,
@@ -122,8 +124,79 @@ def get_recommendations():
             }
         }
 
-        # Save to cache file
+        # Compute change log by comparing with previous recommendations
         recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
+        try:
+            if os.path.exists(recommendations_cache_file):
+                with open(recommendations_cache_file, 'r') as f:
+                    previous_cache = json.load(f)
+
+                old_recs = previous_cache.get("recommendations", [])
+                new_recs = recommendations
+
+                # Index recommendations by vmid for comparison
+                old_by_vmid = {str(r["vmid"]): r for r in old_recs}
+                new_by_vmid = {str(r["vmid"]): r for r in new_recs}
+
+                old_vmids = set(old_by_vmid.keys())
+                new_vmids = set(new_by_vmid.keys())
+
+                added_vmids = new_vmids - old_vmids
+                removed_vmids = old_vmids - new_vmids
+                common_vmids = old_vmids & new_vmids
+
+                new_recommendations_list = [
+                    {
+                        "vmid": new_by_vmid[v]["vmid"],
+                        "name": new_by_vmid[v].get("name", ""),
+                        "source_node": new_by_vmid[v].get("source_node", ""),
+                        "target_node": new_by_vmid[v].get("target_node", ""),
+                    }
+                    for v in sorted(added_vmids)
+                ]
+
+                removed_recommendations_list = [
+                    {
+                        "vmid": old_by_vmid[v]["vmid"],
+                        "name": old_by_vmid[v].get("name", ""),
+                        "source_node": old_by_vmid[v].get("source_node", ""),
+                        "target_node": old_by_vmid[v].get("target_node", ""),
+                    }
+                    for v in sorted(removed_vmids)
+                ]
+
+                changed_targets_list = []
+                unchanged_count = 0
+                for v in sorted(common_vmids):
+                    old_target = old_by_vmid[v].get("target_node", "")
+                    new_target = new_by_vmid[v].get("target_node", "")
+                    if old_target != new_target:
+                        changed_targets_list.append({
+                            "vmid": new_by_vmid[v]["vmid"],
+                            "name": new_by_vmid[v].get("name", ""),
+                            "source_node": new_by_vmid[v].get("source_node", ""),
+                            "target_node": new_target,
+                            "old_target": old_target,
+                            "new_target": new_target,
+                        })
+                    else:
+                        unchanged_count += 1
+
+                recommendations_cache["changes_since_last"] = {
+                    "timestamp": recommendations_cache["generated_at"],
+                    "previous_timestamp": previous_cache.get("generated_at", ""),
+                    "new_recommendations": new_recommendations_list,
+                    "removed_recommendations": removed_recommendations_list,
+                    "changed_targets": changed_targets_list,
+                    "unchanged": unchanged_count,
+                }
+            else:
+                recommendations_cache["changes_since_last"] = None
+        except Exception as changelog_err:
+            print(f"Warning: Failed to compute recommendation change log: {changelog_err}", file=sys.stderr)
+            recommendations_cache["changes_since_last"] = None
+
+        # Save to cache file
         try:
             with open(recommendations_cache_file, 'w') as f:
                 json.dump(recommendations_cache, f, indent=2)
@@ -168,6 +241,94 @@ def get_cached_recommendations():
 
     except Exception as e:
         print(f"Error in get_cached_recommendations: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@recommendations_bp.route("/api/recommendations/diagnostics", methods=["GET"])
+def get_recommendations_diagnostics():
+    """Get diagnostic summary of the recommendation engine's state"""
+    try:
+        recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
+        cluster_cache_file = os.path.join(BASE_PATH, 'cluster_cache.json')
+
+        diagnostics = {}
+
+        # Read recommendations cache
+        cached_data = None
+        if os.path.exists(recommendations_cache_file):
+            try:
+                with open(recommendations_cache_file, 'r') as f:
+                    cached_data = json.load(f)
+            except Exception:
+                cached_data = None
+
+        if not cached_data:
+            return jsonify({
+                "success": False,
+                "error": "No cached recommendations available. Generate recommendations first."
+            }), 404
+
+        # Basic generation info
+        diagnostics["last_generation"] = cached_data.get("generated_at")
+        diagnostics["generation_time_ms"] = cached_data.get("generation_time_ms")
+
+        # Guest counts
+        recommendations = cached_data.get("recommendations", [])
+        skipped_guests = cached_data.get("skipped_guests", [])
+        guests_recommended = len(recommendations)
+        guests_skipped = len(skipped_guests)
+        diagnostics["guests_evaluated"] = guests_recommended + guests_skipped
+        diagnostics["guests_recommended"] = guests_recommended
+        diagnostics["guests_skipped"] = guests_skipped
+
+        # Skip reason breakdown from summary
+        summary = cached_data.get("summary", {})
+        diagnostics["skip_reason_breakdown"] = summary.get("skip_reasons", {})
+
+        # Scoring config from penalty config and cache parameters
+        penalty_cfg = load_penalty_config()
+        parameters = cached_data.get("parameters", {})
+        diagnostics["scoring_config"] = {
+            "min_score_improvement": penalty_cfg.get("min_score_improvement", 15),
+            "cpu_threshold": parameters.get("cpu_threshold", penalty_cfg.get("cpu_threshold", 60)),
+            "mem_threshold": parameters.get("mem_threshold", penalty_cfg.get("mem_threshold", 70)),
+            "weight_current": penalty_cfg.get("weight_current", 0.5),
+            "weight_24h": penalty_cfg.get("weight_24h", 0.3),
+            "weight_7d": penalty_cfg.get("weight_7d", 0.2),
+        }
+
+        # AI enhancement status
+        diagnostics["ai_enhanced"] = cached_data.get("ai_enhanced", False)
+
+        # Cache file ages
+        now = time.time()
+        cache_status = {}
+        if os.path.exists(cluster_cache_file):
+            cluster_mtime = os.path.getmtime(cluster_cache_file)
+            cache_status["cluster_cache_age_minutes"] = round((now - cluster_mtime) / 60, 1)
+        else:
+            cache_status["cluster_cache_age_minutes"] = None
+
+        if os.path.exists(recommendations_cache_file):
+            rec_mtime = os.path.getmtime(recommendations_cache_file)
+            cache_status["recommendations_cache_age_minutes"] = round((now - rec_mtime) / 60, 1)
+        else:
+            cache_status["recommendations_cache_age_minutes"] = None
+
+        diagnostics["cache_status"] = cache_status
+
+        # Conflict and advisory counts
+        diagnostics["conflicts_count"] = len(cached_data.get("conflicts", []))
+        diagnostics["advisories_count"] = len(cached_data.get("capacity_advisories", []))
+
+        return jsonify({
+            "success": True,
+            "diagnostics": diagnostics
+        })
+    except Exception as e:
+        print(f"Error in get_recommendations_diagnostics: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -647,6 +808,55 @@ def simulate_penalty_config():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@recommendations_bp.route("/api/score-history", methods=["GET"])
+def get_score_history():
+    """Return historical score snapshots, optionally filtered by hours and node."""
+    try:
+        score_history_file = os.path.join(BASE_PATH, 'score_history.json')
+
+        if not os.path.exists(score_history_file):
+            return jsonify({"success": True, "history": []})
+
+        with open(score_history_file, 'r') as f:
+            history = json.load(f)
+
+        if not isinstance(history, list):
+            history = []
+
+        # Filter by time range
+        hours = int(request.args.get("hours", 24))
+        cutoff = datetime.utcnow().timestamp() - (hours * 3600)
+
+        filtered = []
+        for entry in history:
+            ts = entry.get("timestamp", "")
+            try:
+                # Parse ISO format timestamp
+                entry_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if entry_dt.timestamp() < cutoff:
+                    continue
+            except (ValueError, TypeError):
+                continue
+            filtered.append(entry)
+
+        # Filter to a single node if requested
+        node = request.args.get("node")
+        if node:
+            for entry in filtered:
+                nodes_data = entry.get("nodes", {})
+                if node in nodes_data:
+                    entry["nodes"] = {node: nodes_data[node]}
+                else:
+                    entry["nodes"] = {}
+
+        return jsonify({"success": True, "history": filtered})
+    except Exception as e:
+        print(f"Error in get_score_history: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 FEEDBACK_FILE = os.path.join(BASE_PATH, 'recommendation_feedback.json')
 
 
@@ -746,4 +956,143 @@ def get_recommendation_feedback():
         })
     except Exception as e:
         print(f"Error in get_recommendation_feedback: {str(e)}", file=sys.stderr)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@recommendations_bp.route("/api/recommendations/export", methods=["GET"])
+def export_recommendations():
+    """Export recommendations in CSV or JSON format"""
+    try:
+        export_format = request.args.get("format", "json").lower()
+        if export_format not in ("json", "csv"):
+            return jsonify({"success": False, "error": "Invalid format. Use 'json' or 'csv'."}), 400
+
+        recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
+
+        if not os.path.exists(recommendations_cache_file):
+            return jsonify({"success": False, "error": "No cached recommendations available."}), 404
+
+        with open(recommendations_cache_file, 'r') as f:
+            cached_data = json.load(f)
+
+        recommendations = cached_data.get("recommendations", [])
+
+        if export_format == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                "vmid", "name", "type", "source_node", "target_node",
+                "reason", "score_improvement", "confidence_score",
+                "priority", "risk_level", "risk_score", "mem_gb"
+            ])
+            for rec in recommendations:
+                writer.writerow([
+                    rec.get("vmid", ""),
+                    rec.get("name", ""),
+                    rec.get("type", ""),
+                    rec.get("source_node", ""),
+                    rec.get("target_node", ""),
+                    rec.get("reason", ""),
+                    rec.get("score_improvement", ""),
+                    rec.get("confidence_score", ""),
+                    rec.get("priority", ""),
+                    rec.get("risk_level", ""),
+                    rec.get("risk_score", ""),
+                    rec.get("mem_gb", ""),
+                ])
+
+            response = make_response(output.getvalue())
+            response.headers["Content-Type"] = "text/csv"
+            response.headers["Content-Disposition"] = 'attachment; filename="recommendations.csv"'
+            return response
+        else:
+            response = make_response(json.dumps(recommendations, indent=2))
+            response.headers["Content-Type"] = "application/json"
+            response.headers["Content-Disposition"] = 'attachment; filename="recommendations.json"'
+            return response
+
+    except Exception as e:
+        print(f"Error in export_recommendations: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@recommendations_bp.route("/api/automigrate/history/export", methods=["GET"])
+def export_migration_history():
+    """Export migration history in CSV or JSON format"""
+    try:
+        export_format = request.args.get("format", "json").lower()
+        if export_format not in ("json", "csv"):
+            return jsonify({"success": False, "error": "Invalid format. Use 'json' or 'csv'."}), 400
+
+        history_file = os.path.join(BASE_PATH, 'migration_history.json')
+
+        if not os.path.exists(history_file):
+            return jsonify({"success": False, "error": "No migration history available."}), 404
+
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+
+        if not isinstance(history, list):
+            history = []
+
+        # Apply date range filters if provided
+        date_from = request.args.get("from")
+        date_to = request.args.get("to")
+
+        if date_from:
+            try:
+                from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+                history = [
+                    m for m in history
+                    if datetime.fromisoformat(m.get("timestamp", "1970-01-01T00:00:00").replace("Z", "+00:00")) >= from_dt
+                ]
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": "Invalid 'from' date format. Use ISO 8601."}), 400
+
+        if date_to:
+            try:
+                to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+                history = [
+                    m for m in history
+                    if datetime.fromisoformat(m.get("timestamp", "9999-12-31T23:59:59").replace("Z", "+00:00")) <= to_dt
+                ]
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": "Invalid 'to' date format. Use ISO 8601."}), 400
+
+        if export_format == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                "timestamp", "vmid", "name", "type", "source_node",
+                "target_node", "status", "score_improvement", "initiated_by"
+            ])
+            for m in history:
+                writer.writerow([
+                    m.get("timestamp", ""),
+                    m.get("vmid", ""),
+                    m.get("name", ""),
+                    m.get("type", ""),
+                    m.get("source_node", ""),
+                    m.get("target_node", ""),
+                    m.get("status", ""),
+                    m.get("score_improvement", ""),
+                    m.get("initiated_by", ""),
+                ])
+
+            response = make_response(output.getvalue())
+            response.headers["Content-Type"] = "text/csv"
+            response.headers["Content-Disposition"] = 'attachment; filename="migration_history.csv"'
+            return response
+        else:
+            response = make_response(json.dumps(history, indent=2))
+            response.headers["Content-Type"] = "application/json"
+            response.headers["Content-Disposition"] = 'attachment; filename="migration_history.json"'
+            return response
+
+    except Exception as e:
+        print(f"Error in export_migration_history: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500

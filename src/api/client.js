@@ -597,6 +597,35 @@ export async function runAutomationNow() {
 // Tasks (Migration Cancellation)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Recommendation Diagnostics & Export
+// ---------------------------------------------------------------------------
+
+export async function fetchRecommendationDiagnostics() {
+  try {
+    const response = await fetch(`${API_BASE}/recommendations/diagnostics`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to fetch recommendation diagnostics:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function fetchScoreHistory(hours = 24, node = null) {
+  try {
+    let url = `${API_BASE}/score-history?hours=${hours}`;
+    if (node) url += `&node=${encodeURIComponent(node)}`;
+    const response = await fetch(url);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to fetch score history:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+
 export async function stopTask(sourceNode, taskId) {
   try {
     const response = await fetch(`${API_BASE}/tasks/${sourceNode}/${taskId}/stop`, {

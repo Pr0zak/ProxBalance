@@ -658,7 +658,7 @@ This gives administrators a quick executive summary without having to parse indi
 
 ## Implementation Status
 
-This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08 (Phase 4 + Phase 5 + Phase 6 complete).
+This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08 (Phase 4 + Phase 5 + Phase 6 + Phase 7 complete).
 
 ### Completed (Backend + Frontend)
 
@@ -1268,11 +1268,11 @@ Before prioritizing, here is the current implementation status of next-phase ite
 | **F2** | Workload patterns | Not started | Not started | — |
 | **F3** | Capacity planning | **Complete** — `_generate_capacity_advisories()` detects saturation, limited headroom, bottlenecks, small clusters. Returns severity, message, metrics, suggestions. | **Complete** — Capacity advisory banners in Dashboard with severity-coded styling and suggestion lists. | Complete. |
 | **H1** | Migration risk scoring | **Complete** — `calculate_migration_risk()` in `scoring.py` with 5 weighted factors. Integrated into recommendation generation. | **Complete** — Risk badge per recommendation card. | Complete. |
-| **I1** | Engine diagnostics | Not started | Not started | — |
-| **I2** | Score history | Not started | Not started | — |
-| **I3** | Recommendation change log | Not started | Not started | — |
+| **I1** | Engine diagnostics | **Complete** — `GET /api/recommendations/diagnostics` endpoint returns generation timing, guest counts, skip reasons, scoring config, AI status, cache ages, conflict/advisory counts. | **Complete** — Collapsible "Engine Diagnostics" panel in Dashboard showing generation time, guest counts, AI status, conflicts/advisories, thresholds, skip reason breakdown. | Complete. |
+| **I2** | Score history | **Complete** — `_save_score_snapshot()` in `recommendations.py` persists per-node scores to `score_history.json` (max 720 entries). `GET /api/score-history` endpoint with `hours` and `node` query params. | **Complete** — `fetchScoreHistory()` in `client.js`. | Complete. |
+| **I3** | Recommendation change log | **Complete** — POST handler in `routes/recommendations.py` compares new vs old recommendations by vmid before overwriting cache. Computes `new_recommendations`, `removed_recommendations`, `changed_targets`, `unchanged`. | **Complete** — "Changes Since Last Generation" collapsible banner with +new/-removed/changed badges. Per-card "NEW" and "TARGET CHANGED" badges. | Complete. |
 | **J2** | API filtering | Not started | Not started | — |
-| **J3** | Export & reporting | **Minimal** — `AutomationPage.jsx` has log export as `.txt` file. No CSV/JSON migration history or recommendation export. | Log export only | Missing: CSV/JSON formats, history export, recommendation export. |
+| **J3** | Export & reporting | **Complete** — `GET /api/recommendations/export` (CSV/JSON) and `GET /api/automigrate/history/export` (CSV/JSON with date range filtering). | **Complete** — Export dropdown in Dashboard with CSV/JSON options for recommendations and migration history. | Complete. |
 | **C2** | Cluster map arrows | Not started | Not started | — |
 | **C4** | History timeline | Not started | Not started | — |
 | **E1** | Outcome tracking | Not started | Not started | — |
@@ -1306,13 +1306,13 @@ Based on the updated status assessment, phases are re-ordered to maximize levera
 | G1 | Migration conflict detection | Medium | ✓ `_detect_migration_conflicts()` post-generation pass. Conflict banners + per-rec badges. |
 | F3 | Capacity planning insights | Low-Medium | ✓ `_generate_capacity_advisories()` with 4 advisory types. Severity-coded banners in Dashboard. |
 
-### Phase 7 — Observability & Trends
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| I2 | Score history & trend tracking | Medium | Foundation for F1, C4, E1. Must be built first. |
-| I3 | Recommendation change log | Low | Diff against previous cache before overwrite. |
-| I1 | Recommendation engine diagnostics | Low-Medium | Timing metadata + debug panel. |
-| J3 | Export & reporting (CSV/JSON) | Low-Medium | Add recommendation and history export. Log export already exists. |
+### Phase 7 — Observability & Trends ✓ COMPLETED
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| I2 | Score history & trend tracking | Medium | ✓ `_save_score_snapshot()` in `recommendations.py` + `GET /api/score-history` endpoint. `fetchScoreHistory()` in `client.js`. |
+| I3 | Recommendation change log | Low | ✓ Diff computation in POST handler. "Changes Since Last Generation" banner + per-card NEW/TARGET CHANGED badges. |
+| I1 | Recommendation engine diagnostics | Low-Medium | ✓ `GET /api/recommendations/diagnostics` endpoint. Collapsible "Engine Diagnostics" panel in Dashboard. |
+| J3 | Export & reporting (CSV/JSON) | Low-Medium | ✓ `GET /api/recommendations/export` + `GET /api/automigrate/history/export`. Export dropdown in Dashboard. |
 
 ### Phase 8 — Advanced Features
 | Item | Description | Effort | Rationale |

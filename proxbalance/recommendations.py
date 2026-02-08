@@ -7,10 +7,12 @@ predicted post-migration load, storage compatibility, anti-affinity rules,
 maintenance mode evacuation, and distribution balancing.
 """
 
+import os
 import sys
 import json
 import traceback
 from typing import Dict, List
+from datetime import datetime, timezone
 
 from proxbalance.scoring import (
     calculate_node_health_score,
@@ -25,6 +27,7 @@ from proxbalance.config_manager import (
     load_config,
     get_proxmox_client,
     DISK_PREFIXES,
+    BASE_PATH,
 )
 
 
@@ -1000,6 +1003,76 @@ def _detect_migration_conflicts(recommendations: List[Dict], nodes: Dict, guests
     return conflicts
 
 
+SCORE_HISTORY_FILE = os.path.join(BASE_PATH, 'score_history.json')
+SCORE_HISTORY_MAX_ENTRIES = 720  # ~30 days at hourly snapshots
+
+
+def _save_score_snapshot(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict):
+    """
+    Save a point-in-time snapshot of per-node scores to score_history.json.
+
+    Each snapshot records score, suitability, CPU%, and memory% for every
+    online node, plus the cluster health and recommendation count.
+    Keeps at most SCORE_HISTORY_MAX_ENTRIES entries (oldest trimmed first).
+    """
+    try:
+        node_snapshots = {}
+        online_scores = []
+
+        for node_name, node in nodes.items():
+            if node.get("status") != "online":
+                continue
+            metrics = node.get("metrics", {})
+            score = calculate_node_health_score(node, metrics, penalty_config=penalty_cfg)
+            suitability = round(max(0, 100 - min(score, 100)), 1)
+            cpu = round(metrics.get("current_cpu", 0), 1)
+            mem = round(metrics.get("current_mem", 0), 1)
+
+            node_snapshots[node_name] = {
+                "score": round(score, 2),
+                "suitability": suitability,
+                "cpu": cpu,
+                "mem": mem,
+            }
+            online_scores.append(score)
+
+        # Cluster health: average suitability across online nodes
+        cluster_health = 0.0
+        if online_scores:
+            avg_score = sum(online_scores) / len(online_scores)
+            cluster_health = round(max(0, 100 - avg_score), 1)
+
+        snapshot = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "nodes": node_snapshots,
+            "cluster_health": cluster_health,
+            "recommendation_count": len(recommendations),
+        }
+
+        # Load existing history
+        history = []
+        if os.path.exists(SCORE_HISTORY_FILE):
+            try:
+                with open(SCORE_HISTORY_FILE, 'r') as f:
+                    history = json.load(f)
+                if not isinstance(history, list):
+                    history = []
+            except (json.JSONDecodeError, IOError):
+                history = []
+
+        history.append(snapshot)
+
+        # Trim to max entries
+        if len(history) > SCORE_HISTORY_MAX_ENTRIES:
+            history = history[-SCORE_HISTORY_MAX_ENTRIES:]
+
+        with open(SCORE_HISTORY_FILE, 'w') as f:
+            json.dump(history, f)
+
+    except Exception as e:
+        print(f"Warning: Failed to save score snapshot: {e}", file=sys.stderr)
+
+
 def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> Dict:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
@@ -1628,6 +1701,9 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
 
     # Build recommendation summary / digest
     summary = _build_summary(recommendations, skipped_guests, nodes, penalty_cfg)
+
+    # Save score history snapshot
+    _save_score_snapshot(nodes, recommendations, penalty_cfg)
 
     return {
         "recommendations": recommendations,
