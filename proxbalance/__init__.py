@@ -28,6 +28,7 @@ from proxbalance.scoring import (
     calculate_node_health_score,
     predict_post_migration_load,
     calculate_target_node_score,
+    calculate_migration_risk,
 )
 from proxbalance.recommendations import (
     select_guests_to_migrate,

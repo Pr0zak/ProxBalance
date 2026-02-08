@@ -2,15 +2,20 @@
 Migration execution logic for ProxBalance.
 
 Provides functions to execute single and batch VM/CT migrations
-via the Proxmox API, as well as migration task cancellation.
+via the Proxmox API, as well as migration task cancellation and
+pre-migration validation checks.
 """
 
 import sys
+import json
 import traceback
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List
 
 import requests
 
-from proxbalance.config_manager import trigger_collection
+from proxbalance.config_manager import trigger_collection, BASE_PATH, DISK_PREFIXES
 
 
 def execute_migration(proxmox, vmid, target, source, guest_type):
@@ -188,3 +193,251 @@ def cancel_migration(config, task_id):
     except Exception as e:
         print(f"Cancel migration error: {str(e)}", file=sys.stderr)
         return {"success": False, "error": str(e)}, 500
+
+
+# ---------------------------------------------------------------------------
+# Pre-migration validation
+# ---------------------------------------------------------------------------
+
+def validate_migration(proxmox, vmid: int, source_node: str, target_node: str,
+                       guest_type: str = "VM", cache_data: Dict = None) -> Dict:
+    """
+    Run pre-migration validation checks before executing a migration.
+
+    Checks:
+    1. Staleness — is cached data still fresh?
+    2. Guest state — is the guest still running on the expected node?
+    3. Resource availability — does the target have headroom?
+    4. Storage re-verification — does target have required storage?
+    5. Lock/snapshot check — any active locks blocking migration?
+    6. Affinity validation — would migration violate anti-affinity rules?
+
+    Returns a dict with 'passed' (bool), 'checks' (list), 'warnings' (list).
+    """
+    checks = []
+    warnings = []
+
+    # 1. Staleness check — is cache data recent?
+    try:
+        cache_file = Path(BASE_PATH) / "cluster_cache.json"
+        if cache_file.exists():
+            import os
+            cache_age_seconds = (datetime.utcnow() - datetime.utcfromtimestamp(os.path.getmtime(cache_file))).total_seconds()
+            cache_age_minutes = cache_age_seconds / 60
+
+            if cache_age_minutes > 30:
+                checks.append({
+                    "check": "staleness",
+                    "passed": False,
+                    "detail": f"Cache data is {cache_age_minutes:.0f} minutes old (>30 min). Re-collect data first."
+                })
+            elif cache_age_minutes > 15:
+                checks.append({
+                    "check": "staleness",
+                    "passed": True,
+                    "detail": f"Cache data is {cache_age_minutes:.0f} minutes old"
+                })
+                warnings.append({
+                    "check": "staleness",
+                    "detail": f"Cache data is {cache_age_minutes:.0f} minutes old — consider refreshing"
+                })
+            else:
+                checks.append({
+                    "check": "staleness",
+                    "passed": True,
+                    "detail": f"Cache data is {cache_age_minutes:.0f} minutes old"
+                })
+        else:
+            checks.append({
+                "check": "staleness",
+                "passed": False,
+                "detail": "No cache file found"
+            })
+    except Exception as e:
+        checks.append({"check": "staleness", "passed": True, "detail": f"Could not check cache age: {e}"})
+
+    # 2. Guest state check — verify guest is running on expected node
+    try:
+        if proxmox:
+            if guest_type == "VM":
+                status_resp = proxmox.nodes(source_node).qemu(vmid).status.current.get()
+            else:
+                status_resp = proxmox.nodes(source_node).lxc(vmid).status.current.get()
+
+            guest_status = status_resp.get("status", "unknown")
+            if guest_status == "running":
+                checks.append({
+                    "check": "guest_state",
+                    "passed": True,
+                    "detail": f"Guest is running on {source_node}"
+                })
+            elif guest_status == "stopped":
+                checks.append({
+                    "check": "guest_state",
+                    "passed": False,
+                    "detail": f"Guest is stopped on {source_node} — cannot live-migrate"
+                })
+            else:
+                checks.append({
+                    "check": "guest_state",
+                    "passed": False,
+                    "detail": f"Guest status is '{guest_status}' on {source_node}"
+                })
+        else:
+            checks.append({"check": "guest_state", "passed": True, "detail": "Proxmox client unavailable — skipped"})
+    except Exception as e:
+        # If we get an error, the guest may have already moved
+        checks.append({
+            "check": "guest_state",
+            "passed": False,
+            "detail": f"Could not verify guest on {source_node}: {e}"
+        })
+
+    # 3. Resource availability on target
+    try:
+        if proxmox:
+            target_status = proxmox.nodes(target_node).status.get()
+            if target_status:
+                cpu_pct = target_status.get("cpu", 0) * 100
+                mem_total = target_status.get("memory", {}).get("total", 1)
+                mem_used = target_status.get("memory", {}).get("used", 0)
+                mem_pct = (mem_used / mem_total * 100) if mem_total > 0 else 0
+
+                if cpu_pct > 90 or mem_pct > 95:
+                    checks.append({
+                        "check": "resources",
+                        "passed": False,
+                        "detail": f"Target {target_node} critically loaded: CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}%"
+                    })
+                elif cpu_pct > 80 or mem_pct > 85:
+                    checks.append({
+                        "check": "resources",
+                        "passed": True,
+                        "detail": f"Target has limited headroom: CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}%"
+                    })
+                    warnings.append({
+                        "check": "resources",
+                        "detail": f"Target {target_node} is moderately loaded — CPU {cpu_pct:.0f}%, Memory {mem_pct:.0f}%"
+                    })
+                else:
+                    cpu_headroom = 100 - cpu_pct
+                    mem_headroom = 100 - mem_pct
+                    checks.append({
+                        "check": "resources",
+                        "passed": True,
+                        "detail": f"Target has {cpu_headroom:.0f}% CPU and {mem_headroom:.0f}% memory headroom"
+                    })
+            else:
+                checks.append({"check": "resources", "passed": True, "detail": "Could not query target status"})
+        else:
+            checks.append({"check": "resources", "passed": True, "detail": "Proxmox client unavailable — skipped"})
+    except Exception as e:
+        checks.append({"check": "resources", "passed": True, "detail": f"Could not check resources: {e}"})
+
+    # 4. Storage re-verification
+    try:
+        if proxmox:
+            # Get guest config to find required storage
+            if guest_type == "VM":
+                guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
+            else:
+                guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
+
+            required_storage = set()
+            for key, value in guest_config.items():
+                if key.startswith(DISK_PREFIXES):
+                    if isinstance(value, str) and ':' in value:
+                        required_storage.add(value.split(':')[0])
+
+            if required_storage:
+                target_storage_list = proxmox.nodes(target_node).storage.get()
+                available = {s.get('storage') for s in target_storage_list
+                            if s.get('enabled', 1) and s.get('active', 0)}
+                missing = required_storage - available
+
+                if missing:
+                    checks.append({
+                        "check": "storage",
+                        "passed": False,
+                        "detail": f"Target missing required storage: {', '.join(missing)}"
+                    })
+                else:
+                    checks.append({
+                        "check": "storage",
+                        "passed": True,
+                        "detail": f"Target has all required storage ({', '.join(required_storage)})"
+                    })
+            else:
+                checks.append({"check": "storage", "passed": True, "detail": "No specific storage requirements"})
+        else:
+            checks.append({"check": "storage", "passed": True, "detail": "Proxmox client unavailable — skipped"})
+    except Exception as e:
+        checks.append({"check": "storage", "passed": True, "detail": f"Could not verify storage: {e}"})
+
+    # 5. Lock check
+    try:
+        if proxmox:
+            if guest_type == "VM":
+                config = proxmox.nodes(source_node).qemu(vmid).config.get()
+            else:
+                config = proxmox.nodes(source_node).lxc(vmid).config.get()
+
+            lock_value = config.get("lock", "")
+            if lock_value:
+                checks.append({
+                    "check": "locks",
+                    "passed": False,
+                    "detail": f"Guest has active lock: '{lock_value}'"
+                })
+            else:
+                checks.append({
+                    "check": "locks",
+                    "passed": True,
+                    "detail": "No active locks"
+                })
+        else:
+            checks.append({"check": "locks", "passed": True, "detail": "Proxmox client unavailable — skipped"})
+    except Exception as e:
+        checks.append({"check": "locks", "passed": True, "detail": f"Could not check locks: {e}"})
+
+    # 6. Affinity validation (using cache_data if provided)
+    try:
+        if cache_data:
+            guests = cache_data.get("guests", {})
+            nodes = cache_data.get("nodes", {})
+            guest_data = guests.get(str(vmid), {})
+            exclude_groups = guest_data.get("tags", {}).get("exclude_groups", [])
+
+            if exclude_groups:
+                target_guests = nodes.get(target_node, {}).get("guests", [])
+                conflict_found = False
+                conflict_detail = ""
+                for other_vmid in target_guests:
+                    other = guests.get(str(other_vmid), {})
+                    other_tags = other.get("tags", {}).get("all_tags", [])
+                    for grp in exclude_groups:
+                        if grp in other_tags:
+                            conflict_found = True
+                            conflict_detail = f"Anti-affinity conflict: {grp} with VM {other_vmid} on {target_node}"
+                            break
+                    if conflict_found:
+                        break
+
+                if conflict_found:
+                    checks.append({"check": "affinity", "passed": False, "detail": conflict_detail})
+                else:
+                    checks.append({"check": "affinity", "passed": True, "detail": "No affinity conflicts"})
+            else:
+                checks.append({"check": "affinity", "passed": True, "detail": "No affinity rules"})
+        else:
+            checks.append({"check": "affinity", "passed": True, "detail": "No cache data — skipped"})
+    except Exception as e:
+        checks.append({"check": "affinity", "passed": True, "detail": f"Could not check affinity: {e}"})
+
+    all_passed = all(c["passed"] for c in checks)
+
+    return {
+        "passed": all_passed,
+        "checks": checks,
+        "warnings": warnings,
+    }

@@ -110,6 +110,29 @@ export async function applyPenaltyPreset(presetName) {
 }
 
 // ---------------------------------------------------------------------------
+// Pre-Migration Validation
+// ---------------------------------------------------------------------------
+
+export async function validateMigration(vmid, sourceNode, targetNode, guestType) {
+  try {
+    const response = await fetch(`${API_BASE}/migrate/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vmid,
+        source_node: sourceNode,
+        target_node: targetNode,
+        type: guestType || 'VM',
+      })
+    });
+    return await response.json();
+  } catch (err) {
+    console.error('Failed to validate migration:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Token Validation
 // ---------------------------------------------------------------------------
 

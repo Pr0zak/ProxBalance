@@ -1,9 +1,13 @@
+import json
+from pathlib import Path
+
 from flask import Blueprint, jsonify, request
-from proxbalance.config_manager import load_config, get_proxmox_client
+from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH
 from proxbalance.migrations import (
     execute_migration as _execute_migration,
     execute_batch_migration as _execute_batch_migration,
     cancel_migration as _cancel_migration,
+    validate_migration as _validate_migration,
 )
 
 migrations_bp = Blueprint("migrations", __name__)
@@ -49,3 +53,43 @@ def cancel_migration(task_id):
     config = load_config()
     result, status = _cancel_migration(config, task_id)
     return jsonify(result), status
+
+
+@migrations_bp.route("/api/migrate/validate", methods=["POST"])
+def validate_migration():
+    """Run pre-migration validation checks before executing a migration"""
+    data = request.json
+    vmid = data.get("vmid")
+    source_node = data.get("source_node")
+    target_node = data.get("target_node")
+    guest_type = data.get("type", "VM")
+
+    if not all([vmid, source_node, target_node]):
+        return jsonify({"success": False, "error": "Missing vmid, source_node, or target_node"}), 400
+
+    config = load_config()
+    proxmox = None
+    try:
+        proxmox = get_proxmox_client(config)
+    except ValueError:
+        pass
+
+    # Load cache data for affinity checks
+    cache_data = None
+    try:
+        cache_file = Path(BASE_PATH) / "cluster_cache.json"
+        if cache_file.exists():
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+    except Exception:
+        pass
+
+    result = _validate_migration(
+        proxmox, vmid, source_node, target_node,
+        guest_type=guest_type, cache_data=cache_data
+    )
+
+    return jsonify({
+        "success": True,
+        "validation": result,
+    })

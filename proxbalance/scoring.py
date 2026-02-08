@@ -15,7 +15,7 @@ Scoring philosophy:
 """
 
 import sys
-from typing import Dict
+from typing import Dict, List
 
 
 # ---------------------------------------------------------------------------
@@ -687,3 +687,203 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     }
 
     return total_score, details
+
+
+# ---------------------------------------------------------------------------
+# Migration risk scoring
+# ---------------------------------------------------------------------------
+
+def calculate_migration_risk(guest: Dict, source_node: Dict, target_node: Dict, cluster_health: float = 100.0) -> Dict:
+    """
+    Calculate a risk score (0-100, lower is safer) for a migration.
+
+    Evaluates risk factors:
+    - Guest size (30%): Larger memory = longer migration, more downtime risk
+    - I/O activity (25%): High disk I/O during migration increases failure chance
+    - Storage complexity (20%): Multi-disk, snapshot presence
+    - Network sensitivity (15%): High network I/O suggests latency-sensitive workload
+    - Cluster health (10%): If cluster is stressed, migration adds load
+
+    Returns a dict with risk_score, risk_level, and risk_factors.
+    """
+    risk_factors = []
+
+    # Factor 1: Guest size risk (30%) — based on allocated memory
+    guest_mem_gb = guest.get("mem_max_gb", 0)
+    if guest_mem_gb >= 64:
+        size_risk = 100
+        size_detail = f"Very large guest ({guest_mem_gb:.0f} GB RAM) — long migration time"
+    elif guest_mem_gb >= 32:
+        size_risk = 75
+        size_detail = f"Large guest ({guest_mem_gb:.0f} GB RAM) — extended migration time"
+    elif guest_mem_gb >= 16:
+        size_risk = 50
+        size_detail = f"Medium guest ({guest_mem_gb:.0f} GB RAM)"
+    elif guest_mem_gb >= 4:
+        size_risk = 25
+        size_detail = f"Small-medium guest ({guest_mem_gb:.1f} GB RAM)"
+    else:
+        size_risk = 10
+        size_detail = f"Small guest ({guest_mem_gb:.1f} GB RAM) — quick migration"
+
+    risk_factors.append({
+        "factor": "guest_memory",
+        "value": f"{guest_mem_gb:.1f} GB",
+        "risk": _risk_label(size_risk),
+        "risk_score": size_risk,
+        "detail": size_detail,
+    })
+
+    # Factor 2: I/O activity risk (25%) — disk read/write rates
+    disk_read = guest.get("disk_read_bps", 0) / (1024 ** 2)  # MB/s
+    disk_write = guest.get("disk_write_bps", 0) / (1024 ** 2)  # MB/s
+    total_disk_io = disk_read + disk_write
+
+    if total_disk_io >= 100:
+        io_risk = 100
+        io_detail = f"Very high disk I/O ({total_disk_io:.0f} MB/s) — migration may stall"
+    elif total_disk_io >= 50:
+        io_risk = 75
+        io_detail = f"High disk I/O ({total_disk_io:.0f} MB/s) — may extend migration"
+    elif total_disk_io >= 20:
+        io_risk = 50
+        io_detail = f"Moderate disk I/O ({total_disk_io:.0f} MB/s)"
+    elif total_disk_io >= 5:
+        io_risk = 25
+        io_detail = f"Low disk I/O ({total_disk_io:.1f} MB/s)"
+    else:
+        io_risk = 5
+        io_detail = f"Minimal disk I/O ({total_disk_io:.1f} MB/s)"
+
+    risk_factors.append({
+        "factor": "disk_io",
+        "value": f"{total_disk_io:.1f} MB/s",
+        "risk": _risk_label(io_risk),
+        "risk_score": io_risk,
+        "detail": io_detail,
+    })
+
+    # Factor 3: Storage complexity (20%) — disk count, local disks, snapshots
+    local_disks = guest.get("local_disks", {})
+    disk_count = local_disks.get("disk_count", 1)
+    has_snapshots = guest.get("snapshots", 0) > 0
+    guest_type = guest.get("type", "VM")
+    has_bind_mounts = guest.get("mount_points", {}).get("has_shared_mount", False)
+
+    storage_risk = 10  # base
+    storage_details = []
+
+    if disk_count > 4:
+        storage_risk = max(storage_risk, 80)
+        storage_details.append(f"{disk_count} disks")
+    elif disk_count > 2:
+        storage_risk = max(storage_risk, 50)
+        storage_details.append(f"{disk_count} disks")
+    elif disk_count > 1:
+        storage_risk = max(storage_risk, 30)
+        storage_details.append(f"{disk_count} disks")
+
+    if has_snapshots:
+        storage_risk = min(100, storage_risk + 20)
+        storage_details.append("has snapshots")
+
+    if has_bind_mounts:
+        storage_risk = min(100, storage_risk + 15)
+        storage_details.append("bind mounts")
+
+    storage_value = f"{disk_count} disk(s)"
+    if storage_details:
+        storage_value = ", ".join(storage_details)
+
+    risk_factors.append({
+        "factor": "storage",
+        "value": storage_value,
+        "risk": _risk_label(storage_risk),
+        "risk_score": storage_risk,
+        "detail": f"Storage complexity: {storage_value}",
+    })
+
+    # Factor 4: Network sensitivity (15%) — based on network I/O rates
+    net_in = guest.get("net_in_bps", 0) / (1024 ** 2)  # MB/s
+    net_out = guest.get("net_out_bps", 0) / (1024 ** 2)  # MB/s
+    total_net = net_in + net_out
+
+    if total_net >= 100:
+        net_risk = 90
+        net_detail = f"Very high network I/O ({total_net:.0f} MB/s) — latency-sensitive"
+    elif total_net >= 50:
+        net_risk = 65
+        net_detail = f"High network I/O ({total_net:.0f} MB/s)"
+    elif total_net >= 10:
+        net_risk = 35
+        net_detail = f"Moderate network I/O ({total_net:.1f} MB/s)"
+    else:
+        net_risk = 10
+        net_detail = f"Low network I/O ({total_net:.1f} MB/s)"
+
+    risk_factors.append({
+        "factor": "network_io",
+        "value": f"{total_net:.1f} MB/s",
+        "risk": _risk_label(net_risk),
+        "risk_score": net_risk,
+        "detail": net_detail,
+    })
+
+    # Factor 5: Cluster health risk (10%) — stressed cluster = riskier migration
+    if cluster_health < 30:
+        cluster_risk = 90
+        cluster_detail = "Cluster under heavy stress — migration adds load"
+    elif cluster_health < 50:
+        cluster_risk = 60
+        cluster_detail = "Cluster moderately stressed"
+    elif cluster_health < 70:
+        cluster_risk = 30
+        cluster_detail = "Cluster in fair health"
+    else:
+        cluster_risk = 10
+        cluster_detail = "Cluster healthy — safe to migrate"
+
+    risk_factors.append({
+        "factor": "cluster_health",
+        "value": f"{cluster_health:.0f}/100",
+        "risk": _risk_label(cluster_risk),
+        "risk_score": cluster_risk,
+        "detail": cluster_detail,
+    })
+
+    # Weighted combination
+    risk_score = round(
+        size_risk * 0.30 +
+        io_risk * 0.25 +
+        storage_risk * 0.20 +
+        net_risk * 0.15 +
+        cluster_risk * 0.10,
+        1,
+    )
+
+    # Determine risk level
+    if risk_score <= 25:
+        risk_level = "low"
+    elif risk_score <= 50:
+        risk_level = "moderate"
+    elif risk_score <= 75:
+        risk_level = "high"
+    else:
+        risk_level = "very_high"
+
+    return {
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "risk_factors": risk_factors,
+    }
+
+
+def _risk_label(score: int) -> str:
+    """Map a numeric risk score to a label."""
+    if score <= 25:
+        return "low"
+    elif score <= 50:
+        return "medium"
+    elif score <= 75:
+        return "high"
+    return "very_high"

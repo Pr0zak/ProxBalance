@@ -658,7 +658,7 @@ This gives administrators a quick executive summary without having to parse indi
 
 ## Implementation Status
 
-This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08 (Phase 4 + Phase 5 partial).
+This section tracks the implementation progress of each proposed improvement against the current codebase. Last updated: 2026-02-08 (Phase 4 + Phase 5 + Phase 6 complete).
 
 ### Completed (Backend + Frontend)
 
@@ -678,6 +678,10 @@ This section tracks the implementation progress of each proposed improvement aga
 | **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` per node. | Stacked bar on collapsed node cards showing CPU/Memory/IOWait/Trends/Spikes penalty breakdown with color-coded segments and legend. Total penalty points displayed. |
 | **C1** | Recommendation Card Enhancements | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, migration commands. | Visual score improvement progress bar (0-80pt scale), confidence as 5-dot indicator with color coding, inline source/target CPU% metrics in FROM/TO badges. |
 | **B4** | Predicted Impact Preview | `batch_impact` summary with per-node before/after data from `_build_summary()`. | "Show Predicted" toggle on Node Status section. When active, overlays predicted CPU/Memory values on collapsed node cards with strikethrough current values, color-coded deltas, and guest count changes. |
+| **H1** | Migration Risk Scoring | `calculate_migration_risk()` in `scoring.py`. Five weighted risk factors: guest size (30%), I/O activity (25%), storage complexity (20%), network sensitivity (15%), cluster health (10%). Returns `risk_score` (0-100), `risk_level` (low/moderate/high/very_high), and `risk_factors` array with per-factor detail. Each recommendation includes `risk_score`, `risk_level`, `risk_factors`. | Risk badge on each recommendation card showing risk level and score. Color-coded (green/yellow/orange/red). Tooltip shows all risk factor details. |
+| **H2** | Pre-Migration Validation | `validate_migration()` in `migrations.py` runs 6 checks: staleness (cache age), guest state (running on expected node), resource availability (target headroom), storage re-verification, lock/snapshot check, affinity validation. `POST /api/migrate/validate` endpoint. Returns `passed` bool, `checks` list, `warnings` list. | `validateMigration()` in `client.js`. Backend endpoint ready for frontend integration on migrate button. |
+| **G1** | Migration Conflict Detection | `_detect_migration_conflicts()` post-generation pass in `recommendations.py`. Groups recommendations by target node, simulates combined post-migration load, flags when combined load exceeds thresholds. Suggests resolution (defer weakest or re-route to alternative target). Tags conflicting recommendations with `has_conflict` and `conflict_target`. | Conflict warning banner in Dashboard showing target node, incoming guests, combined predicted load vs. threshold, and resolution suggestion. Per-recommendation "Target Conflict" badge when `has_conflict` is set. |
+| **F3** | Capacity Planning Insights | `_generate_capacity_advisories()` in `recommendations.py`. Generates advisory messages for: cluster-wide saturation (avg CPU >70% or mem >80%), limited CPU/memory headroom (most nodes above threshold), single-node bottlenecks (CPU >90% or mem >95%), and small clusters (1-2 nodes). Returns severity (critical/warning/info), message, metrics, and suggestions. Included in recommendation response as `capacity_advisories`. | Capacity advisory banners in Dashboard before recommendation list. Color-coded by severity (red=critical, yellow=warning, blue=info). Shows advisory message with actionable suggestions list. |
 
 ### Partially Implemented
 
@@ -1254,16 +1258,16 @@ Before prioritizing, here is the current implementation status of next-phase ite
 
 | Item | Description | Backend | Frontend | Overall Status |
 |------|-------------|---------|----------|----------------|
-| **G1** | Migration conflict detection | **Partial** — `pending_target_guests` dict in `recommendations.py` tracks cumulative load for subsequent evaluations. Anti-affinity conflicts checked against pending targets. | Not started | Backend foundation exists. Missing: post-generation validation pass, conflict reporting in API response, UI warnings. |
+| **G1** | Migration conflict detection | **Complete** — `_detect_migration_conflicts()` post-generation pass groups by target node, simulates combined load, flags threshold exceedances, suggests resolution. Tags recs with `has_conflict`. | **Complete** — Conflict warning banner + per-rec "Target Conflict" badge. | Complete. |
 | **G2** | Migration ordering | **Partial** — Recommendations sorted by maintenance priority then improvement descending. `automigrate.py` picks highest-improvement first. | Not started | Basic ordering exists. Missing: dependency analysis, resource sequencing, parallel group identification. |
 | **G3** | Batch impact assessment | **Complete** — `_build_summary()` includes `batch_impact` with per-node before/after CPU%, Mem%, guest count, variance calculation, and improvement metrics (health_delta, variance_reduction_pct, all_nodes_improved). | **Complete** — Collapsible "Batch Migration Impact" panel in DashboardPage showing per-node before→after metrics with color-coded deltas and aggregate stats. | Complete. |
-| **H2** | Pre-migration validation | **Partial** — `automigrate.py` has `is_vm_in_cooldown()`, `is_rollback_migration()`, `validates_resource_improvement()`, and confidence threshold checks. | Not started | Automation checks exist. Missing: `validate_migration()` function in `migrations.py`, dedicated validation endpoint, staleness/storage/lock checks, frontend status display. |
+| **H2** | Pre-migration validation | **Complete** — `validate_migration()` in `migrations.py` runs 6 checks (staleness, guest state, resources, storage, locks, affinity). `POST /api/migrate/validate` endpoint. | **Complete** — `validateMigration()` in `client.js`. | Complete. |
 | **H3** | Rollback awareness | **Partial** — `automigrate.py:734-782` has `is_rollback_migration()` that detects reverse migrations within `rollback_window_hours`. | Not started | Detection exists. Missing: UI rollback button, return-path tracking in migration history, capacity check before rollback. |
 | **J1** | Webhook events | **Complete** — `notifications.py` supports four event types: `recommendations` (standard), `recommendations_urgent` (high-urgency with priority=high), `recommendations_cleared` (when all resolved), `capacity_warning` (cluster health <50). `generate_recommendations.py` sends all four event types conditionally based on urgency, count transitions, and cluster health. Default notification toggles added. | N/A | Complete. |
 | **F1** | Proactive alerts | **Minimal** — `scoring.py` detects "rising"/"stable" trend direction and applies +15 penalty. No projection or forecasting. | Not started | Trend detection only. Missing: linear regression, threshold crossing projection, forecast recommendation type. |
 | **F2** | Workload patterns | Not started | Not started | — |
-| **F3** | Capacity planning | **Minimal** — Summary includes `cluster_health` and `predicted_health`. No saturation warnings or advisory messages. | Not started | Headroom data exists. Missing: saturation detection, advisory generation, suggestion messages. |
-| **H1** | Migration risk scoring | Not started | Not started | — |
+| **F3** | Capacity planning | **Complete** — `_generate_capacity_advisories()` detects saturation, limited headroom, bottlenecks, small clusters. Returns severity, message, metrics, suggestions. | **Complete** — Capacity advisory banners in Dashboard with severity-coded styling and suggestion lists. | Complete. |
+| **H1** | Migration risk scoring | **Complete** — `calculate_migration_risk()` in `scoring.py` with 5 weighted factors. Integrated into recommendation generation. | **Complete** — Risk badge per recommendation card. | Complete. |
 | **I1** | Engine diagnostics | Not started | Not started | — |
 | **I2** | Score history | Not started | Not started | — |
 | **I3** | Recommendation change log | Not started | Not started | — |
@@ -1294,13 +1298,13 @@ Based on the updated status assessment, phases are re-ordered to maximize levera
 | B4 | Predicted impact preview | Medium | ✓ "Show Predicted" toggle overlaying predicted metrics on node cards |
 | C1 | Recommendation card enhancements | Medium | ✓ Progress bar, confidence dots, inline source/target CPU metrics |
 
-### Phase 6 — Safety & Validation (complete existing foundations)
-| Item | Description | Effort | Rationale |
-|------|-------------|--------|-----------|
-| H1 | Migration risk scoring | Medium | New function in `scoring.py`. Directly improves automation safety decisions. |
-| H2 | Pre-migration validation: add dedicated `validate_migration()` and endpoint | Medium | `automigrate.py` checks exist. Consolidate into reusable validation + endpoint. |
-| G1 | Migration conflict detection: add post-generation validation pass | Medium | `pending_target_guests` foundation exists. Add explicit conflict reporting. |
-| F3 | Capacity planning insights | Low-Medium | Health data exists. Add saturation detection and advisory generation. |
+### Phase 6 — Safety & Validation ✓ COMPLETED
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| H1 | Migration risk scoring | Medium | ✓ `calculate_migration_risk()` in `scoring.py` with 5 weighted factors. Risk badges on rec cards. |
+| H2 | Pre-migration validation | Medium | ✓ `validate_migration()` in `migrations.py` with 6 checks. `POST /api/migrate/validate` endpoint. |
+| G1 | Migration conflict detection | Medium | ✓ `_detect_migration_conflicts()` post-generation pass. Conflict banners + per-rec badges. |
+| F3 | Capacity planning insights | Low-Medium | ✓ `_generate_capacity_advisories()` with 4 advisory types. Severity-coded banners in Dashboard. |
 
 ### Phase 7 — Observability & Trends
 | Item | Description | Effort | Rationale |

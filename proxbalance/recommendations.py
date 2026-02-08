@@ -17,6 +17,7 @@ from proxbalance.scoring import (
     predict_post_migration_load,
     calculate_target_node_score,
     calculate_intelligent_thresholds,
+    calculate_migration_risk,
     DEFAULT_PENALTY_CONFIG,
 )
 from proxbalance.config_manager import (
@@ -762,6 +763,243 @@ def _build_summary(recommendations: List[Dict], skipped_guests: List[Dict], node
     }
 
 
+def _generate_capacity_advisories(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict) -> List[Dict]:
+    """
+    Generate capacity planning advisories based on cluster-wide resource utilization.
+
+    Returns advisory messages when the cluster is approaching saturation,
+    when migration headroom is limited, or when nodes are uniformly stressed.
+    """
+    advisories = []
+
+    online_nodes = {n: d for n, d in nodes.items() if d.get("status") == "online"}
+    if not online_nodes:
+        return advisories
+
+    node_count = len(online_nodes)
+
+    # Collect metrics
+    cpu_values = []
+    mem_values = []
+    for name, node in online_nodes.items():
+        m = node.get("metrics", {})
+        cpu_values.append(m.get("current_cpu", 0))
+        mem_values.append(m.get("current_mem", 0))
+
+    avg_cpu = sum(cpu_values) / node_count
+    avg_mem = sum(mem_values) / node_count
+    max_cpu = max(cpu_values)
+    max_mem = max(mem_values)
+
+    cpu_threshold = penalty_cfg.get("cpu_threshold", 60)
+    mem_threshold = penalty_cfg.get("mem_threshold", 70)
+
+    nodes_above_cpu = sum(1 for v in cpu_values if v > cpu_threshold)
+    nodes_above_mem = sum(1 for v in mem_values if v > mem_threshold)
+
+    # Advisory 1: Cluster-wide saturation
+    if avg_cpu > 70 or avg_mem > 80:
+        severity = "critical" if (avg_cpu > 85 or avg_mem > 90) else "warning"
+        suggestions = [
+            "Add a new node to increase cluster capacity",
+            "Review guest resource allocations for over-provisioning",
+            "Consider offloading low-priority workloads",
+        ]
+        advisories.append({
+            "type": "capacity_saturation",
+            "severity": severity,
+            "message": f"Cluster-wide utilization is high (avg CPU: {avg_cpu:.0f}%, avg Memory: {avg_mem:.0f}%). "
+                       f"Rebalancing can improve individual node health but overall capacity is constrained.",
+            "metrics": {
+                "cluster_cpu_avg": round(avg_cpu, 1),
+                "cluster_mem_avg": round(avg_mem, 1),
+                "nodes_above_cpu_threshold": nodes_above_cpu,
+                "nodes_above_mem_threshold": nodes_above_mem,
+            },
+            "suggestions": suggestions,
+        })
+
+    # Advisory 2: Limited migration headroom (most nodes above threshold)
+    if nodes_above_cpu >= node_count - 1 and node_count > 1:
+        advisories.append({
+            "type": "limited_cpu_headroom",
+            "severity": "warning",
+            "message": f"{nodes_above_cpu} of {node_count} nodes are above the CPU threshold ({cpu_threshold}%). "
+                       f"Migration can redistribute load but won't reduce total CPU usage.",
+            "metrics": {
+                "nodes_above_cpu_threshold": nodes_above_cpu,
+                "total_nodes": node_count,
+                "cpu_threshold": cpu_threshold,
+            },
+            "suggestions": ["Add compute capacity", "Reduce CPU-intensive workloads"],
+        })
+
+    if nodes_above_mem >= node_count - 1 and node_count > 1:
+        advisories.append({
+            "type": "limited_mem_headroom",
+            "severity": "warning",
+            "message": f"{nodes_above_mem} of {node_count} nodes are above the memory threshold ({mem_threshold}%). "
+                       f"Consider adding RAM or a new node.",
+            "metrics": {
+                "nodes_above_mem_threshold": nodes_above_mem,
+                "total_nodes": node_count,
+                "mem_threshold": mem_threshold,
+            },
+            "suggestions": ["Add memory to constrained nodes", "Add a new node"],
+        })
+
+    # Advisory 3: Single-node bottleneck
+    for name, node in online_nodes.items():
+        m = node.get("metrics", {})
+        cpu = m.get("current_cpu", 0)
+        mem = m.get("current_mem", 0)
+
+        if cpu > 90 or mem > 95:
+            advisories.append({
+                "type": "node_bottleneck",
+                "severity": "critical",
+                "message": f"Node {name} is critically loaded (CPU: {cpu:.0f}%, Memory: {mem:.0f}%). "
+                           f"Immediate action recommended.",
+                "metrics": {
+                    "node": name,
+                    "cpu": round(cpu, 1),
+                    "mem": round(mem, 1),
+                },
+                "suggestions": [
+                    f"Migrate guests off {name} immediately",
+                    f"Check for runaway processes on {name}",
+                ],
+            })
+
+    # Advisory 4: Minimal cluster (only 1-2 nodes)
+    if node_count <= 2 and len(recommendations) > 0:
+        advisories.append({
+            "type": "small_cluster",
+            "severity": "info",
+            "message": f"Cluster has only {node_count} node(s). Migration options are limited. "
+                       f"Adding nodes would improve resilience and balancing options.",
+            "metrics": {"node_count": node_count},
+            "suggestions": ["Add at least one more node for better redundancy"],
+        })
+
+    return advisories
+
+
+def _detect_migration_conflicts(recommendations: List[Dict], nodes: Dict, guests: Dict,
+                                 cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict) -> List[Dict]:
+    """
+    Post-generation validation: detect conflicts among recommended migrations.
+
+    Groups recommendations by target node and simulates the combined
+    post-migration load. If the combined load exceeds thresholds, flags
+    the conflict with a resolution suggestion.
+    """
+    if len(recommendations) < 2:
+        return []
+
+    conflicts = []
+
+    # Group recommendations by target node
+    target_groups = {}
+    for rec in recommendations:
+        target = rec.get("target_node")
+        if not target:
+            continue
+        if target not in target_groups:
+            target_groups[target] = []
+        target_groups[target].append(rec)
+
+    for target_node, recs in target_groups.items():
+        if len(recs) < 2:
+            continue  # No conflict possible with a single migration
+
+        node = nodes.get(target_node, {})
+        if not node or node.get("status") != "online":
+            continue
+
+        metrics = node.get("metrics", {})
+        current_cpu = metrics.get("current_cpu", 0)
+        current_mem = metrics.get("current_mem", 0)
+        node_total_mem = node.get("total_mem_gb", 1) or 1
+        node_cores = node.get("cpu_cores", 1) or 1
+
+        # Simulate combined post-migration load
+        combined_cpu = current_cpu
+        combined_mem = current_mem
+        incoming = []
+
+        for rec in recs:
+            vmid_key = str(rec.get("vmid"))
+            guest = guests.get(vmid_key, {})
+            mem_gb = rec.get("mem_gb", 0) or guest.get("mem_max_gb", 0)
+            mem_impact = (mem_gb / node_total_mem * 100) if node_total_mem > 0 else 0
+
+            # Estimate CPU impact from score_details or rough heuristic
+            cpu_impact = 0
+            score_details = rec.get("score_details") or {}
+            tgt_met = {}
+            if isinstance(score_details, dict):
+                tgt_det = score_details.get("target", {})
+                if isinstance(tgt_det, dict):
+                    tgt_met = tgt_det.get("metrics", {})
+            predicted_cpu = tgt_met.get("predicted_cpu")
+            immediate_cpu = tgt_met.get("immediate_cpu")
+            if predicted_cpu is not None and immediate_cpu is not None:
+                cpu_impact = max(0, predicted_cpu - immediate_cpu)
+            elif mem_gb > 0:
+                cpu_impact = mem_impact * 0.5  # rough fallback
+
+            combined_cpu += cpu_impact
+            combined_mem += mem_impact
+            incoming.append({
+                "vmid": rec.get("vmid"),
+                "name": rec.get("name", "unknown"),
+                "predicted_cpu_impact": round(cpu_impact, 1),
+                "predicted_mem_impact": round(mem_impact, 1),
+            })
+
+        # Check if combined load exceeds thresholds
+        cpu_exceeded = combined_cpu > cpu_threshold
+        mem_exceeded = combined_mem > mem_threshold
+
+        if cpu_exceeded or mem_exceeded:
+            # Find best alternative target for the lowest-improvement recommendation
+            recs_sorted = sorted(recs, key=lambda r: r.get("score_improvement", 0))
+            weakest = recs_sorted[0]
+
+            resolution = f"Consider deferring migration of {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')})"
+
+            # Try to find an alternative target
+            for alt_name, alt_node in nodes.items():
+                if alt_name == target_node or alt_node.get("status") != "online":
+                    continue
+                alt_cpu = alt_node.get("metrics", {}).get("current_cpu", 0)
+                alt_mem = alt_node.get("metrics", {}).get("current_mem", 0)
+                if alt_cpu < cpu_threshold - 10 and alt_mem < mem_threshold - 10:
+                    resolution = f"Consider moving {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')}) to {alt_name} instead"
+                    break
+
+            conflict = {
+                "target_node": target_node,
+                "incoming_guests": incoming,
+                "combined_predicted_cpu": round(combined_cpu, 1),
+                "combined_predicted_mem": round(combined_mem, 1),
+                "cpu_threshold": cpu_threshold,
+                "mem_threshold": mem_threshold,
+                "exceeds_cpu": cpu_exceeded,
+                "exceeds_mem": mem_exceeded,
+                "resolution": resolution,
+            }
+            conflicts.append(conflict)
+
+            # Tag affected recommendations with conflict info
+            for rec in recs:
+                rec["has_conflict"] = True
+                rec["conflict_target"] = target_node
+
+    return conflicts
+
+
 def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> Dict:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
@@ -1068,6 +1306,16 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
             # Calculate multi-factor confidence score
             confidence = _calculate_confidence(score_improvement, tgt_details, guest, penalty_cfg)
 
+            # Calculate migration risk score
+            cluster_health_for_risk = 100 - (sum(
+                calculate_node_health_score(n, n.get("metrics", {}), penalty_config=penalty_cfg)
+                for n in nodes.values() if n.get("status") == "online"
+            ) / max(1, sum(1 for n in nodes.values() if n.get("status") == "online")))
+            risk_info = calculate_migration_risk(
+                guest, nodes[src_node_name], nodes[best_target],
+                cluster_health=max(0, cluster_health_for_risk)
+            )
+
             # Check for mount points and prepare warnings/metadata
             bind_mount_warning = None
             mount_point_info = {}
@@ -1116,6 +1364,9 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                 "mem_gb": guest.get("mem_max_gb", 0),
                 "command": "{} migrate {} {} {}".format(cmd_type, vmid_int, best_target, cmd_flag),
                 "confidence_score": confidence,  # New: multi-factor confidence
+                "risk_score": risk_info["risk_score"],  # 0-100, lower is safer
+                "risk_level": risk_info["risk_level"],  # low/moderate/high/very_high
+                "risk_factors": risk_info["risk_factors"],  # Detailed breakdown
             }
 
             # Add mount point metadata and warnings if present
@@ -1369,6 +1620,12 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
         print(f"Error in affinity rules processing: {str(e)}", file=sys.stderr)
         traceback.print_exc()
 
+    # G1: Post-generation conflict detection
+    conflicts = _detect_migration_conflicts(recommendations, nodes, guests, cpu_threshold, mem_threshold, penalty_cfg)
+
+    # F3: Capacity planning advisories
+    advisories = _generate_capacity_advisories(nodes, recommendations, penalty_cfg)
+
     # Build recommendation summary / digest
     summary = _build_summary(recommendations, skipped_guests, nodes, penalty_cfg)
 
@@ -1376,4 +1633,6 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
         "recommendations": recommendations,
         "skipped_guests": skipped_guests,
         "summary": summary,
+        "conflicts": conflicts,
+        "capacity_advisories": advisories,
     }

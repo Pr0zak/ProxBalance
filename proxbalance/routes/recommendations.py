@@ -98,12 +98,18 @@ def get_recommendations():
                 print(f"Warning: AI enhancement failed (continuing with algorithm-only): {str(e)}", file=sys.stderr)
                 # Continue without AI enhancement - graceful degradation
 
+        # Extract conflict and advisory data from result
+        conflicts = result.get("conflicts", [])
+        capacity_advisories = result.get("capacity_advisories", [])
+
         # Cache the recommendations result
         recommendations_cache = {
             "success": True,
             "recommendations": recommendations,
             "skipped_guests": skipped_guests,
             "summary": rec_summary,
+            "conflicts": conflicts,
+            "capacity_advisories": capacity_advisories,
             "count": len(recommendations),
             "threshold_suggestions": threshold_suggestions,
             "ai_enhanced": ai_enhanced,

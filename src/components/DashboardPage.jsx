@@ -4248,6 +4248,66 @@ export default function DashboardPage({
             </details>
           )}
 
+          {/* F3: Capacity Planning Advisories */}
+          {!loadingRecommendations && recommendationData?.capacity_advisories?.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {recommendationData.capacity_advisories.map((adv, i) => (
+                <div key={i} className={`rounded-lg border p-3 text-sm ${
+                  adv.severity === 'critical'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200'
+                    : adv.severity === 'warning'
+                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={16} className={`shrink-0 mt-0.5 ${
+                      adv.severity === 'critical' ? 'text-red-600 dark:text-red-400' :
+                      adv.severity === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                      'text-blue-600 dark:text-blue-400'
+                    }`} />
+                    <div className="flex-1">
+                      <div className="font-medium text-xs uppercase tracking-wide mb-0.5">
+                        {adv.severity === 'critical' ? 'Critical' : adv.severity === 'warning' ? 'Warning' : 'Info'}: {adv.type.replace(/_/g, ' ')}
+                      </div>
+                      <div>{adv.message}</div>
+                      {adv.suggestions?.length > 0 && (
+                        <ul className="mt-1 text-xs opacity-80 list-disc list-inside">
+                          {adv.suggestions.map((s, j) => <li key={j}>{s}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* G1: Migration Conflict Warnings */}
+          {!loadingRecommendations && recommendationData?.conflicts?.length > 0 && (
+            <div className="mb-4 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400" />
+                <span className="font-semibold text-orange-800 dark:text-orange-200">
+                  Migration Conflicts Detected ({recommendationData.conflicts.length})
+                </span>
+              </div>
+              <div className="space-y-2 text-xs text-orange-700 dark:text-orange-300">
+                {recommendationData.conflicts.map((c, i) => (
+                  <div key={i} className="p-2 bg-white dark:bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800">
+                    <div className="font-medium mb-1">
+                      Target: {c.target_node} — {c.incoming_guests.length} incoming migrations
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-1">
+                      {c.exceeds_cpu && <span className="text-red-600 dark:text-red-400">Combined CPU: {c.combined_predicted_cpu}% (threshold: {c.cpu_threshold}%)</span>}
+                      {c.exceeds_mem && <span className="text-red-600 dark:text-red-400">Combined Memory: {c.combined_predicted_mem}% (threshold: {c.mem_threshold}%)</span>}
+                    </div>
+                    <div className="italic">{c.resolution}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {loadingRecommendations ? (
             <div className="text-center py-8">
               <RefreshCw size={48} className="mx-auto mb-3 text-blue-500 dark:text-blue-400 animate-spin" />
@@ -4400,6 +4460,31 @@ export default function DashboardPage({
                             </span>
                           )}
                         </div>
+
+                        {/* Risk Badge + Conflict Warning */}
+                        {!isCompleted && (rec.risk_level || rec.has_conflict) && (
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {rec.risk_level && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                                rec.risk_level === 'very_high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                                rec.risk_level === 'high' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                                rec.risk_level === 'moderate' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                                'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                              }`} title={rec.risk_factors?.map(f => f.detail).join('\n') || ''}>
+                                <AlertTriangle size={10} />
+                                Risk: {rec.risk_level === 'very_high' ? 'Very High' : rec.risk_level.charAt(0).toUpperCase() + rec.risk_level.slice(1)}
+                                ({rec.risk_score}/100)
+                              </span>
+                            )}
+                            {rec.has_conflict && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                title={`Multiple migrations targeting ${rec.conflict_target} — combined load may exceed thresholds`}>
+                                <XCircle size={10} />
+                                Target Conflict
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Score Breakdown (expandable) */}
                         {rec.score_details && !isCompleted && (
