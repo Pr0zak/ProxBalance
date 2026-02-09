@@ -1,7 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
 > **Last updated**: 2026-02-09
-> **Status**: Phase 1B complete, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS
+> **Status**: Phase 1B complete, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 COMPLETE
 
 ## Progress Summary
 
@@ -54,14 +54,14 @@
 | 3.3 | Type hints for `scoring.py`, `recommendations.py`, `migrations.py` | **Done** |
 | 3.3 | Type hints for Phase 1B modules (forecasting, patterns, outcomes, execution_planner, reporting) | **Done** |
 
-### Phase 4: Deep Decomposition + Route Cleanup — IN PROGRESS
+### Phase 4: Deep Decomposition + Route Cleanup — COMPLETE
 
 | Step | Description | Status |
 |------|-------------|--------|
 | 4.1 | Extract `proxbalance/storage.py` from recommendations.py + evacuation.py (284 lines) | **Done** |
 | 4.2 | Extract `proxbalance/distribution.py` from recommendations.py (133 lines) | **Done** |
 | 4.3 | Extract `proxbalance/recommendation_analysis.py` from recommendations.py (331 lines) | **Done** |
-| 4.4 | Adopt `@api_route` decorator across all 10 route files (~68 handlers) | **In Progress** |
+| 4.4 | Adopt `@api_route` decorator across all 10 route files (~68 handlers) | **Done** |
 | 4.5 | Update CLAUDE.md to reflect current architecture | **Done** |
 
 ---
