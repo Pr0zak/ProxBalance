@@ -1,7 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
 > **Last updated**: 2026-02-09
-> **Status**: Phase 1B complete, Phase 2 ~90% complete, Phase 3 not started
+> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 not started
 
 ## Progress Summary
 
@@ -32,7 +32,7 @@
 | — | Re-exports in original modules for backwards compatibility | Done |
 | — | `proxbalance/__init__.py` updated with new module imports | Done |
 
-### Phase 2: Frontend Componentization — 90% COMPLETE
+### Phase 2: Frontend Componentization — COMPLETE
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -40,8 +40,8 @@
 | 2.7 | Dashboard sub-components → `src/components/dashboard/` (13 files) | **Done** |
 | 2.8 | Settings sub-components → `src/components/settings/` (5 files) | **Done** |
 | 2.9 | Automation sub-components → `src/components/automation/` (6 files) | **Done** |
-| 2.5 | Custom hooks extraction → `src/hooks/` | **Not started** |
-| 2.10 | Slim root component (index.jsx) | **Not started** |
+| 2.5 | Custom hooks extraction → `src/hooks/` (11 hooks) | **Done** |
+| 2.10 | Slim root component (index.jsx: 2,547 → 658 lines, -74%) | **Done** |
 
 ### Phase 3: Shared Improvements — NOT STARTED
 
@@ -79,7 +79,7 @@
 | `src/components/DashboardPage.jsx` | 416 | 7,005 | **-94%** |
 | `src/components/SettingsPage.jsx` | 213 | 2,240 | **-90%** |
 | `src/components/AutomationPage.jsx` | 223 | 2,634 | **-92%** |
-| `src/index.jsx` | 2,547 | 2,547 | Not yet refactored |
+| `src/index.jsx` | 658 | 2,547 | **-74%** |
 
 ### Frontend Sub-Components
 
@@ -122,29 +122,25 @@
 | `DecisionTreeFlowchart.jsx` | 293 | Migration decision tree diagram |
 | `DistributionBalancingSection.jsx` | 229 | Distribution config |
 
+#### `src/hooks/` (11 files, 1,919 lines total)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `useMigrations.js` | 496 | Migration execution, tracking, tags, guest management |
+| `useAutomation.js` | 262 | Automation status/config, run history, time windows |
+| `useClusterData.js` | 248 | Data fetching, node scores, charts, sparklines |
+| `useUpdates.js` | 177 | System info, updates, branch management |
+| `useConfig.js` | 174 | Config loading/saving, penalty config |
+| `useAIRecommendations.js` | 151 | AI provider config, AI analysis |
+| `useRecommendations.js` | 146 | Recommendations, thresholds, feedback |
+| `useUIState.js` | 132 | Page routing, collapsed sections, localStorage |
+| `useAuth.js` | 77 | Permissions, token validation |
+| `useEvacuation.js` | 44 | Maintenance nodes, evacuation state |
+| `useDarkMode.js` | 12 | Dark mode toggle with class management |
+
 ---
 
 ## Remaining Work
-
-### Phase 2.5: Extract Custom Hooks → `src/hooks/` (HIGH PRIORITY)
-
-`index.jsx` has ~102 useState declarations across 10+ domains. Extract into focused hooks:
-
-| Hook | Approx Lines | Description |
-|------|-------------|-------------|
-| `useClusterData.js` | ~200 | Data fetching, refresh, node scores, cluster health |
-| `useRecommendations.js` | ~200 | Recommendations, thresholds, feedback |
-| `useAIRecommendations.js` | ~150 | AI provider config, AI analysis |
-| `useMigrations.js` | ~250 | Migration execution, tracking, batch, cancel |
-| `useAutomation.js` | ~200 | Automation status/config, run history |
-| `useConfig.js` | ~150 | Config loading/saving, penalty config |
-| `useAuth.js` | ~100 | Permissions, token validation |
-| `useEvacuation.js` | ~150 | Evacuation planning, maintenance nodes |
-| `useUpdates.js` | ~200 | System info, updates, branch management |
-| `useDarkMode.js` | ~20 | Dark mode toggle with localStorage |
-| `useUIState.js` | ~150 | Page routing, collapsed sections, modals |
-
-**Result**: `index.jsx` drops from 2,547 to ~300 lines (hook composition + page routing).
 
 ### Phase 3.1: Shared Constants
 
@@ -181,10 +177,10 @@
 
 | Priority | Step | Effort | Impact |
 |----------|------|--------|--------|
-| **1** | 2.5: Extract frontend hooks from index.jsx | High | index.jsx: 2,547 → ~300 lines |
-| **2** | 3.1: Shared constants (deduplicate API_BASE etc.) | Low | Cleaner imports, less duplication |
-| **3** | 3.2: Centralized Flask error handling | Medium | Cleaner route handlers |
-| **4** | 3.3: Type hints completion | Low | Better IDE support, docs |
+| ~~**1**~~ | ~~2.5: Extract frontend hooks from index.jsx~~ | ~~High~~ | **Done** (658 lines) |
+| **1** | 3.1: Shared constants (deduplicate API_BASE etc.) | Low | Cleaner imports, less duplication |
+| **2** | 3.2: Centralized Flask error handling | Medium | Cleaner route handlers |
+| **3** | 3.3: Type hints completion | Low | Better IDE support, docs |
 
 ### Guiding Principles
 
@@ -204,10 +200,10 @@
 | Metric | Original | Current | Target |
 |--------|----------|---------|--------|
 | Largest Python file | 2,165 | 1,385 | ~800 |
-| Largest JSX file | 12,321 | 2,547 (index.jsx) | ~800 |
+| Largest JSX file | 12,321 | 658 (index.jsx) | ~500 |
 | Python domain modules | 6 | 11 | 11 |
-| JSX component files | 3 | 27 | ~38 |
-| Frontend hooks | 0 | 0 | 11 |
+| JSX component files | 3 | 27 | 27 |
+| Frontend hooks | 0 | 11 | 11 |
 | Dead code lines | 12,321 | 0 | 0 |
 
 ### Lines Eliminated from Monolithic Files
@@ -215,10 +211,11 @@
 | File | Original | Current | Removed |
 |------|----------|---------|---------|
 | `src/app.jsx` | 12,321 | deleted | -12,321 |
+| `index.jsx` | 2,547 | 658 | -1,889 |
 | `DashboardPage.jsx` | 7,005 | 416 | -6,589 |
 | `AutomationPage.jsx` | 2,634 | 223 | -2,411 |
 | `SettingsPage.jsx` | 2,240 | 213 | -2,027 |
 | `scoring.py` | 1,147 | 900 | -247 |
 | `recommendations.py` | 2,165 | 1,385 | -780 |
 | `migrations.py` | 860 | 643 | -217 |
-| **Total** | **28,372** | **3,780** | **-24,592 (-87%)** |
+| **Total** | **30,919** | **4,438** | **-26,481 (-86%)** |
