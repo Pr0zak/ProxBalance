@@ -1,12 +1,12 @@
 import {
-  AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Info,
-  Shield, Lock, AlertCircle, Power
+  AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
 
-export default function SafetyRulesSection({
-  automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections,
-  confirmAllowContainerRestarts, setConfirmAllowContainerRestarts
-}) {
+const { useState } = React;
+
+export default function SafetyRulesSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
+  const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
+
   return (<>
         {/* Safety & Rules */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">

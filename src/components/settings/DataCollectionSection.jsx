@@ -1,11 +1,11 @@
-import { RefreshCw, Save, CheckCircle, AlertCircle, Server, HelpCircle, Download } from '../Icons.jsx';
+import { RefreshCw, Save, CheckCircle, Server } from '../Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
 
 const API_BASE = `/api`;
 const { useState } = React;
 
 export default function DataCollectionSection({
-  backendCollected, loading, data, config, handleRefresh, fetchConfig
+  backendCollected, loading, data, config, handleRefresh, fetchConfig, setError
 }) {
   const [savingCollectionSettings, setSavingCollectionSettings] = useState(false);
   const [collectionSettingsSaved, setCollectionSettingsSaved] = useState(false);

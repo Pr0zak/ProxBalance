@@ -1,4 +1,4 @@
-import { ChevronDown, Save, RotateCcw, CheckCircle, AlertTriangle, RefreshCw, HelpCircle, Eye } from '../Icons.jsx';
+import { Settings, ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye } from '../Icons.jsx';
 
 const API_BASE = `/api`;
 const { useState } = React;

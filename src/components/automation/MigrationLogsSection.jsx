@@ -1,8 +1,7 @@
 import {
-  Activity, Bell, CheckCircle, ChevronDown, ChevronUp, Clock, Download, Info,
-  RefreshCw, Settings, X, XCircle, AlertTriangle, Copy, Eye
+  ArrowRight, Bell, CheckCircle, Clock, Download, Info,
+  RefreshCw, Settings, XCircle
 } from '../Icons.jsx';
-import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,
@@ -11,7 +10,7 @@ export default function MigrationLogsSection({
   migrationLogsTab, setMigrationLogsTab,
   setAutomigrateLogs, logRefreshTime, setLogRefreshTime,
   fetchAutomationStatus, setOpenPenaltyConfigOnSettings, setCurrentPage,
-  collapsedSections, setCollapsedSections
+  collapsedSections, setCollapsedSections, automationConfig
 }) {
   return (<>
         {/* Migration Logs & History */}

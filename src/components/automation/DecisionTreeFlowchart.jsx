@@ -1,76 +1,11 @@
 import {
-  AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Info,
-  Settings, Shield, X, XCircle, Clock, ArrowRight, Zap
+  ChevronDown, ChevronUp, Info
 } from '../Icons.jsx';
 
 export default function DecisionTreeFlowchart({
   collapsedSections, setCollapsedSections
 }) {
   return (
-    <>
-        {/* Penalty-Based Scoring Info - Collapsible */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
-          <button
-            onClick={() => setCollapsedSections(prev => ({...prev, howItWorks: !prev.howItWorks}))}
-            className="w-full flex items-center justify-between p-5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors flex-wrap gap-y-3"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Info size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <div className="font-bold text-blue-900 dark:text-blue-200 text-left">How Automated Migrations Work</div>
-            </div>
-            {collapsedSections.howItWorks ? (
-              <ChevronDown size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
-            ) : (
-              <ChevronUp size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
-            )}
-          </button>
-
-          {!collapsedSections.howItWorks && (
-            <div className="px-5 pb-5">
-              <div className="text-sm text-blue-800 dark:text-blue-300 space-y-2">
-                <p>
-                  Automated migrations use a <strong>penalty-based scoring system</strong> to intelligently balance your cluster.
-                  Each node accumulates penalties based on multiple factors - lower scores indicate better migration targets.
-                </p>
-                <div className="mt-3 p-3 bg-white/50 dark:bg-gray-800/50 rounded border border-blue-300 dark:border-blue-600">
-                  <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Penalty Factors:</div>
-                  <ul className="list-disc list-inside ml-2 mt-1 space-y-1 text-sm">
-                    <li><strong>Current Load:</strong> Immediate resource pressure from CPU, Memory, and IOWait (20-100 points each)</li>
-                    <li><strong>Sustained Load:</strong> Long-term resource usage patterns over 7 days (15-150 points)</li>
-                    <li><strong>Rising Trends:</strong> Resources trending upward over time (15 points per metric)</li>
-                    <li><strong>Load Spikes:</strong> Maximum resource peaks detected in recent history (5-30 points)</li>
-                    <li><strong>Predicted Load:</strong> Post-migration resource levels to prevent overloading targets</li>
-                  </ul>
-                  <p className="mt-3 text-sm">
-                    <button
-                      onClick={() => setCurrentPage('dashboard')}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
-                    >
-                      View Migration Recommendations →
-                    </button> to see detailed scoring, confidence levels, and suggested migrations.
-                  </p>
-                  <p className="mt-2 text-xs text-blue-700 dark:text-blue-300 italic">
-                    💡 The system finds optimal migration pairs by comparing source node penalties with target node suitability scores. Only migrations with significant score improvements ({penaltyConfig?.min_score_improvement || 15}+ points by default) are recommended.
-                  </p>
-                  <p className="mt-3 text-sm">
-                    <button
-                      onClick={() => {
-                        // Navigate to Settings page and open penalty config
-                        setCurrentPage('settings');
-                        setOpenPenaltyConfigOnSettings(true);
-                      }}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
-                    >
-                      ⚙️ Configure Penalty Weights →
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Decision Tree - Collapsible */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg mb-6">
           <button
             onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
@@ -354,6 +289,5 @@ export default function DecisionTreeFlowchart({
             </div>
           )}
         </div>
-    </>
   );
 }

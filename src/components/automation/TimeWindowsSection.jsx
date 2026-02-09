@@ -1,16 +1,15 @@
 import {
-  AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Clock, Info,
-  Calendar, Moon, Plus, Edit, Trash, Check, X, Save, Copy, Eye
+  Calendar, Check, ChevronDown, Edit, Info, Moon, Plus, Save, Trash, X
 } from '../Icons.jsx';
 
-export default function TimeWindowsSection({
-  automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections,
-  editingWindowIndex, setEditingWindowIndex,
-  showTimeWindowForm, setShowTimeWindowForm,
-  newWindowData, setNewWindowData,
-  confirmRemoveWindow, setConfirmRemoveWindow,
-  setError
-}) {
+const { useState } = React;
+
+export default function TimeWindowsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, setError }) {
+  const [editingWindowIndex, setEditingWindowIndex] = useState(null);
+  const [showTimeWindowForm, setShowTimeWindowForm] = useState(false);
+  const [newWindowData, setNewWindowData] = useState({ name: '', type: 'migration', days: [], start_time: '00:00', end_time: '00:00' });
+  const [confirmRemoveWindow, setConfirmRemoveWindow] = useState(null);
+
   return (<>
         {/* Time Windows (Unified) */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">

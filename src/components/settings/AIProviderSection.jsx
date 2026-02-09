@@ -1,4 +1,4 @@
-import { ChevronDown, CheckCircle, AlertTriangle, RefreshCw, Eye, EyeOff, HelpCircle } from '../Icons.jsx';
+import { RefreshCw } from '../Icons.jsx';
 
 const API_BASE = `/api`;
 
@@ -8,7 +8,8 @@ export default function AIProviderSection({
   anthropicKey, setAnthropicKey, anthropicModel, setAnthropicModel,
   localUrl, setLocalUrl, localModel, setLocalModel,
   localLoadingModels, setLocalLoadingModels, localAvailableModels, setLocalAvailableModels,
-  collapsedSections, setCollapsedSections
+  collapsedSections, setCollapsedSections,
+  setError
 }) {
   return (<>
                     <div>

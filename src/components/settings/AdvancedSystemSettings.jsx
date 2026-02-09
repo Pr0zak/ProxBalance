@@ -1,7 +1,6 @@
 import {
-  Settings, ChevronDown, Save, CheckCircle, AlertCircle, AlertTriangle,
-  RefreshCw, Download, Upload, Server, Edit, Lock, Eye, EyeOff,
-  Copy, Power, Check, X, Trash, Plus, HelpCircle
+  ChevronDown, Save, CheckCircle, AlertCircle, AlertTriangle,
+  RefreshCw, Download, Upload, Server
 } from '../Icons.jsx';
 
 const API_BASE = `/api`;

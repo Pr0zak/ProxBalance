@@ -1,6 +1,4 @@
-import {
-  AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Info, Shield, Settings
-} from '../Icons.jsx';
+import { ChevronDown } from '../Icons.jsx';
 
 export default function DistributionBalancingSection({
   config, automationConfig, collapsedSections, setCollapsedSections,
