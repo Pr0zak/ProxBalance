@@ -1,7 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
 > **Last updated**: 2026-02-09
-> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 not started
+> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 IN PROGRESS
 
 ## Progress Summary
 
@@ -43,13 +43,15 @@
 | 2.5 | Custom hooks extraction → `src/hooks/` (11 hooks) | **Done** |
 | 2.10 | Slim root component (index.jsx: 2,547 → 658 lines, -74%) | **Done** |
 
-### Phase 3: Shared Improvements — NOT STARTED
+### Phase 3: Shared Improvements — IN PROGRESS
 
 | Step | Description | Status |
 |------|-------------|--------|
-| 3.1 | Shared constants modules | Not started |
-| 3.2 | Centralized error handling | Not started |
-| 3.3 | Type hints completion | Not started |
+| 3.1 | Shared constants modules (`proxbalance/constants.py` + `src/utils/constants.js`) | **Done** |
+| 3.2 | Centralized error handling (`proxbalance/error_handlers.py`) | **Done** |
+| 3.3 | Type hints for `config_manager.py` (9 functions) | **Done** |
+| 3.3 | Type hints for `evacuation.py` (9 functions) | **Done** |
+| 3.3 | Type hints for remaining modules (scoring, recommendations, migrations) | Not started |
 
 ---
 
@@ -59,9 +61,11 @@
 
 | File | Lines | Notes |
 |------|-------|-------|
-| `app.py` | 60 | Thin entry point — on target |
+| `app.py` | 63 | Thin entry point — on target |
 | `proxbalance/cache.py` | 53 | On target |
-| `proxbalance/config_manager.py` | 328 | On target |
+| `proxbalance/constants.py` | 56 | **New** — shared constants, path definitions |
+| `proxbalance/config_manager.py` | 315 | On target, type-hinted, imports from constants.py |
+| `proxbalance/error_handlers.py` | 108 | **New** — centralized error handling |
 | `proxbalance/scoring.py` | 900 | Reduced from 1,147 (-21%) |
 | `proxbalance/recommendations.py` | 1,385 | Reduced from 2,165 (-36%) |
 | `proxbalance/migrations.py` | 643 | Reduced from 860 (-25%) |
@@ -142,34 +146,37 @@
 
 ## Remaining Work
 
-### Phase 3.1: Shared Constants
+### Phase 3.1: Shared Constants — DONE
 
-**Backend** — `proxbalance/constants.py`:
-- `DEFAULT_PENALTY_CONFIG` from `scoring.py`
-- Path constants from `config_manager.py`
-- File path constants from `outcomes.py`, `forecasting.py`
+**Backend** — `proxbalance/constants.py` (56 lines):
+- `BASE_PATH`, `GIT_REPO_PATH` (environment-aware)
+- `CACHE_FILE`, `CONFIG_FILE`, `SESSIONS_DIR`, `OUTCOMES_FILE`, `SCORE_HISTORY_FILE`
+- `DISK_PREFIXES`, `MAX_OUTCOME_ENTRIES`, `POST_CAPTURE_DELAY_SECONDS`, `SCORE_HISTORY_MAX_ENTRIES`
+- `config_manager.py` re-exports for backward compatibility
 
-**Frontend** — `src/utils/constants.js`:
-- `API_BASE` (currently duplicated in multiple components)
-- Default threshold values
-- Refresh interval constants
+**Frontend** — `src/utils/constants.js` (10 lines):
+- `API_BASE` (deduplicated from 8 files)
+- `DEFAULT_CPU_THRESHOLD`, `DEFAULT_MEM_THRESHOLD`, `DEFAULT_IOWAIT_THRESHOLD`
+- `RECOMMENDATIONS_REFRESH_INTERVAL`, `AUTOMATION_STATUS_REFRESH_INTERVAL`
 
-### Phase 3.2: Centralized Error Handling
+### Phase 3.2: Centralized Error Handling — DONE
 
-**Backend**: Flask error handlers in `proxbalance/__init__.py` or dedicated middleware:
-- Standardize response format: `{"success": false, "error": "message"}`
-- Reduce ~328 individual try/except blocks in routes
+**Backend** — `proxbalance/error_handlers.py` (108 lines):
+- `api_success()` / `api_error()` response helpers
+- `@api_route` decorator for automatic exception handling
+- `register_error_handlers(app)` for Flask-level 404/405/500 handlers
+- Registered in `app.py`
 
-### Phase 3.3: Type Hints Completion
+### Phase 3.3: Type Hints Completion — IN PROGRESS
 
-| File | Estimated Coverage | Target |
-|------|-------------------|--------|
-| `scoring.py` | ~87% | 100% |
-| `recommendations.py` | ~79% | 100% |
-| `migrations.py` | ~58% | 100% |
-| `config_manager.py` | ~0% | 100% |
-| `evacuation.py` | ~0% | 100% |
-| New modules (1B) | ~60% | 100% |
+| File | Estimated Coverage | Target | Status |
+|------|-------------------|--------|--------|
+| `config_manager.py` | 100% | 100% | **Done** (9 functions) |
+| `evacuation.py` | 100% | 100% | **Done** (9 functions) |
+| `scoring.py` | ~87% | 100% | Not started |
+| `recommendations.py` | ~79% | 100% | Not started |
+| `migrations.py` | ~58% | 100% | Not started |
+| New modules (1B) | ~60% | 100% | Not started |
 
 ---
 
@@ -178,9 +185,9 @@
 | Priority | Step | Effort | Impact |
 |----------|------|--------|--------|
 | ~~**1**~~ | ~~2.5: Extract frontend hooks from index.jsx~~ | ~~High~~ | **Done** (658 lines) |
-| **1** | 3.1: Shared constants (deduplicate API_BASE etc.) | Low | Cleaner imports, less duplication |
-| **2** | 3.2: Centralized Flask error handling | Medium | Cleaner route handlers |
-| **3** | 3.3: Type hints completion | Low | Better IDE support, docs |
+| ~~**1**~~ | ~~3.1: Shared constants (deduplicate API_BASE etc.)~~ | ~~Low~~ | **Done** (constants.py + constants.js) |
+| ~~**2**~~ | ~~3.2: Centralized Flask error handling~~ | ~~Medium~~ | **Done** (error_handlers.py) |
+| **3** | 3.3: Type hints completion (remaining modules) | Low | Better IDE support, docs |
 
 ### Guiding Principles
 
@@ -201,7 +208,7 @@
 |--------|----------|---------|--------|
 | Largest Python file | 2,165 | 1,385 | ~800 |
 | Largest JSX file | 12,321 | 658 (index.jsx) | ~500 |
-| Python domain modules | 6 | 11 | 11 |
+| Python domain modules | 6 | 13 | 13 |
 | JSX component files | 3 | 27 | 27 |
 | Frontend hooks | 0 | 11 | 11 |
 | Dead code lines | 12,321 | 0 | 0 |

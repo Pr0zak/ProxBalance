@@ -14,6 +14,7 @@ import time
 import threading
 import traceback
 import uuid
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from proxbalance.config_manager import (
     SESSIONS_DIR,
@@ -27,11 +28,11 @@ from proxbalance.config_manager import (
 # Session file helpers
 # ---------------------------------------------------------------------------
 
-def _get_session_file(session_id):
+def _get_session_file(session_id: str) -> str:
     """Get the file path for a session"""
     return os.path.join(SESSIONS_DIR, f"{session_id}.json")
 
-def _read_session(session_id):
+def _read_session(session_id: str) -> Optional[Dict[str, Any]]:
     """Read session from file"""
     session_file = _get_session_file(session_id)
     if os.path.exists(session_file):
@@ -42,7 +43,7 @@ def _read_session(session_id):
             print(f"Error reading session {session_id}: {e}", file=sys.stderr)
     return None
 
-def _write_session(session_id, session_data):
+def _write_session(session_id: str, session_data: Dict[str, Any]) -> None:
     """Write session to file"""
     session_file = _get_session_file(session_id)
     try:
@@ -56,7 +57,7 @@ def _write_session(session_id, session_data):
 # Evacuation progress helpers
 # ---------------------------------------------------------------------------
 
-def _update_evacuation_progress(session_id, processed, successful, failed, result):
+def _update_evacuation_progress(session_id: str, processed: int, successful: int, failed: int, result: Dict[str, Any]) -> None:
     """Helper to update evacuation session progress"""
     session = _read_session(session_id)
     if session:
@@ -71,7 +72,7 @@ def _update_evacuation_progress(session_id, processed, successful, failed, resul
 # Evacuation status query
 # ---------------------------------------------------------------------------
 
-def get_evacuation_status(session_id):
+def get_evacuation_status(session_id: str) -> Tuple[Dict[str, Any], int]:
     """Get the status of an ongoing evacuation.
 
     Args:
@@ -100,7 +101,7 @@ def get_evacuation_status(session_id):
 # Storage verification helpers
 # ---------------------------------------------------------------------------
 
-def get_node_storage(proxmox, node):
+def get_node_storage(proxmox: Any, node: str) -> Tuple[Dict[str, Any], int]:
     """Get all available storage on a specific node.
 
     Args:
@@ -142,7 +143,7 @@ def get_node_storage(proxmox, node):
         return {"success": False, "error": str(e)}, 500
 
 
-def verify_storage_availability(proxmox, source_node, target_nodes, guest_vmids):
+def verify_storage_availability(proxmox: Any, source_node: str, target_nodes: List[str], guest_vmids: List[int]) -> Tuple[Dict[str, Any], int]:
     """Verify that storage volumes are available on target nodes.
 
     Args:
@@ -259,8 +260,8 @@ def verify_storage_availability(proxmox, source_node, target_nodes, guest_vmids)
 # Main evacuation orchestration
 # ---------------------------------------------------------------------------
 
-def evacuate_node(proxmox, source_node, maintenance_nodes=None, confirm=False,
-                  guest_actions=None, target_node=None, guest_targets=None):
+def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[List[str]] = None, confirm: bool = False,
+                  guest_actions: Optional[Dict[str, str]] = None, target_node: Optional[str] = None, guest_targets: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, Any], int]:
     """Plan and optionally execute evacuation of all guests from a node.
 
     When *confirm* is ``False`` (the default), only the migration plan is
@@ -604,7 +605,7 @@ def evacuate_node(proxmox, source_node, maintenance_nodes=None, confirm=False,
 # Background evacuation execution
 # ---------------------------------------------------------------------------
 
-def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox):
+def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int], available_nodes: List[Dict[str, Any]], guest_actions: Dict[str, str], proxmox: Any) -> None:
     """Execute evacuation in background thread.
 
     Iterates over all guests on the source node, determines their type and

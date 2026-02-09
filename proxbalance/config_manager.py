@@ -9,14 +9,14 @@ import json
 import os
 import subprocess
 import sys
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from proxbalance.constants import (
     BASE_PATH, GIT_REPO_PATH, CACHE_FILE, CONFIG_FILE, SESSIONS_DIR, DISK_PREFIXES
 )
 
 
-def load_config(config_file=None):
+def load_config(config_file: Optional[str] = None) -> Dict:
     """Load configuration from config.json
 
     Args:
@@ -63,7 +63,7 @@ def load_config(config_file=None):
     return config
 
 
-def save_config(config, config_file=None):
+def save_config(config: Dict, config_file: Optional[str] = None) -> bool:
     """Save configuration to config.json
 
     Writes the full configuration dictionary to disk as formatted JSON.
@@ -88,7 +88,7 @@ def save_config(config, config_file=None):
         return False
 
 
-def load_penalty_config(default_penalty_config=None, config_file=None):
+def load_penalty_config(default_penalty_config: Optional[Dict] = None, config_file: Optional[str] = None) -> Dict:
     """Load penalty configuration from config.json, merging with defaults
 
     Args:
@@ -118,7 +118,7 @@ def load_penalty_config(default_penalty_config=None, config_file=None):
     return penalty_config
 
 
-def save_penalty_config(penalty_config, config_file=None):
+def save_penalty_config(penalty_config: Dict, config_file: Optional[str] = None) -> bool:
     """Save penalty configuration to config.json
 
     Args:
@@ -149,7 +149,7 @@ def save_penalty_config(penalty_config, config_file=None):
         return False
 
 
-def read_cache(cache_file):
+def read_cache(cache_file: str) -> Optional[Dict]:
     """Read cluster data from cache file on disk
 
     This is the raw file reader. It reads JSON directly from disk
@@ -173,7 +173,7 @@ def read_cache(cache_file):
         return None
 
 
-def read_cache_file():
+def read_cache_file() -> Optional[Dict]:
     """Read cluster data from the default CACHE_FILE on disk
 
     A simple JSON file reader that reads CACHE_FILE directly from disk
@@ -194,7 +194,7 @@ def read_cache_file():
         return None
 
 
-def get_proxmox_client(config=None, **kwargs):
+def get_proxmox_client(config: Optional[Dict] = None, **kwargs: Any) -> Any:
     """Create and return a ProxmoxAPI client from config.
 
     Args:
@@ -233,7 +233,7 @@ def get_proxmox_client(config=None, **kwargs):
     )
 
 
-def validate_config_structure(config_data):
+def validate_config_structure(config_data: Dict) -> Dict:
     """Validate imported configuration structure
 
     Args:
@@ -283,7 +283,7 @@ def validate_config_structure(config_data):
     }
 
 
-def trigger_collection():
+def trigger_collection() -> bool:
     """Trigger background collection process
 
     Spawns the collector_api.py script as a detached subprocess.
