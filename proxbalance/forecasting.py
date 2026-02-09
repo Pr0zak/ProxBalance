@@ -9,14 +9,14 @@ manages score history snapshots for time-series analysis.
 import os
 import sys
 import json
-from typing import Dict, List
+from typing import Any, Dict, List
 from datetime import datetime, timezone
 
 from proxbalance.constants import SCORE_HISTORY_FILE, SCORE_HISTORY_MAX_ENTRIES
 from proxbalance.scoring import calculate_node_health_score
 
 
-def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict:
+def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict[str, Any]:
     """
     Project a metric trend into the future using simple linear regression.
 
@@ -107,7 +107,7 @@ def project_trend(values: List[float], timestamps: List[float], hours_ahead: flo
     }
 
 
-def generate_forecast_recommendations(nodes: Dict, score_history_data: List, cpu_threshold: float, mem_threshold: float) -> List[Dict]:
+def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data: List[Dict[str, Any]], cpu_threshold: float, mem_threshold: float) -> List[Dict[str, Any]]:
     """
     Generate forecast recommendations by projecting metric trends into the future.
 
@@ -266,7 +266,7 @@ def generate_forecast_recommendations(nodes: Dict, score_history_data: List, cpu
     return forecasts
 
 
-def save_score_snapshot(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict):
+def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, Any]], penalty_cfg: Dict[str, Any]) -> None:
     """
     Save a point-in-time snapshot of per-node scores to score_history.json.
 

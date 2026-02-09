@@ -9,7 +9,7 @@ import os
 import sys
 import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from proxbalance.config_manager import read_cache_file
 from proxbalance.constants import BASE_PATH, OUTCOMES_FILE, MAX_OUTCOME_ENTRIES, POST_CAPTURE_DELAY_SECONDS
@@ -19,7 +19,7 @@ from proxbalance.constants import BASE_PATH, OUTCOMES_FILE, MAX_OUTCOME_ENTRIES,
 # Persistence helpers
 # ---------------------------------------------------------------------------
 
-def _load_migration_outcomes() -> List[Dict]:
+def _load_migration_outcomes() -> List[Dict[str, Any]]:
     """Load migration outcomes from disk.
 
     Returns:
@@ -36,7 +36,7 @@ def _load_migration_outcomes() -> List[Dict]:
     return []
 
 
-def _save_migration_outcomes(outcomes: List[Dict]) -> bool:
+def _save_migration_outcomes(outcomes: List[Dict[str, Any]]) -> bool:
     """Persist migration outcomes to disk, enforcing max entries (FIFO).
 
     Returns:
@@ -58,7 +58,7 @@ def _save_migration_outcomes(outcomes: List[Dict]) -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 
-def capture_pre_migration_snapshot(vmid, source_node, target_node) -> Optional[Dict]:
+def capture_pre_migration_snapshot(vmid: Union[int, str], source_node: str, target_node: str) -> Optional[Dict[str, Any]]:
     """Capture pre-migration node metrics from the cluster cache.
 
     Reads cluster_cache.json and extracts current CPU, memory, IOWait,
@@ -79,7 +79,7 @@ def capture_pre_migration_snapshot(vmid, source_node, target_node) -> Optional[D
 
     nodes = cache_data.get("nodes", {})
 
-    def _extract_node_metrics(node_name):
+    def _extract_node_metrics(node_name: str) -> Dict[str, Any]:
         node = nodes.get(node_name, {})
         metrics = node.get("metrics", {})
         guests = node.get("guests", [])
@@ -97,8 +97,8 @@ def capture_pre_migration_snapshot(vmid, source_node, target_node) -> Optional[D
     }
 
 
-def record_migration_outcome(vmid, source_node, target_node, guest_type,
-                             pre_snapshot, predicted_improvement=None) -> bool:
+def record_migration_outcome(vmid: Union[int, str], source_node: str, target_node: str, guest_type: str,
+                             pre_snapshot: Optional[Dict[str, Any]], predicted_improvement: Optional[float] = None) -> bool:
     """Save a pre-migration snapshot to the outcomes file.
 
     Creates an entry keyed by ``{vmid}_{timestamp}`` with status
@@ -142,7 +142,7 @@ def record_migration_outcome(vmid, source_node, target_node, guest_type,
     return _save_migration_outcomes(outcomes)
 
 
-def update_post_migration_metrics(vmid=None) -> Dict:
+def update_post_migration_metrics(vmid: Optional[Union[int, str]] = None) -> Dict[str, Any]:
     """Capture post-migration metrics for pending outcomes.
 
     For each outcome entry with status ``pending_post_capture`` that is at
@@ -192,7 +192,7 @@ def update_post_migration_metrics(vmid=None) -> Dict:
         source_name = entry.get("source_node", "")
         target_name = entry.get("target_node", "")
 
-        def _extract_node_metrics(node_name):
+        def _extract_node_metrics(node_name: str) -> Dict[str, Any]:
             node = nodes.get(node_name, {})
             metrics = node.get("metrics", {})
             guests = node.get("guests", [])
@@ -243,7 +243,7 @@ def update_post_migration_metrics(vmid=None) -> Dict:
     return {"updated": updated, "skipped": skipped}
 
 
-def get_migration_outcomes() -> List[Dict]:
+def get_migration_outcomes() -> List[Dict[str, Any]]:
     """Return all migration outcomes (public accessor).
 
     Returns:

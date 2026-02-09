@@ -6,10 +6,10 @@ urgency classifications, and capacity planning advisories.
 """
 
 import statistics
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
-def build_summary(recommendations: List[Dict], skipped_guests: List[Dict], nodes: Dict, penalty_cfg: Dict) -> Dict:
+def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Dict[str, Any]], nodes: Dict[str, Any], penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build a recommendation digest / summary for the UI.
     """
@@ -128,7 +128,7 @@ def build_summary(recommendations: List[Dict], skipped_guests: List[Dict], nodes
         after_node_scores[target]["guest_count"] += 1
 
     # Compute score variance (combined CPU + memory load spread across nodes)
-    def _calc_variance(node_scores):
+    def _calc_variance(node_scores: Dict[str, Dict[str, Any]]) -> float:
         if len(node_scores) < 2:
             return 0.0
         combined = [(s["cpu"] + s["mem"]) / 2.0 for s in node_scores.values()]
@@ -185,7 +185,7 @@ def build_summary(recommendations: List[Dict], skipped_guests: List[Dict], nodes
     }
 
 
-def generate_capacity_advisories(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict) -> List[Dict]:
+def generate_capacity_advisories(nodes: Dict[str, Any], recommendations: List[Dict[str, Any]], penalty_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Generate capacity planning advisories based on cluster-wide resource utilization.
 

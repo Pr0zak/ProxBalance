@@ -5,10 +5,10 @@ Analyzes historical score data to detect recurring daily and weekly
 workload patterns, burst detection, and optimal migration timing.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 
-def analyze_workload_patterns(score_history: List[Dict], node_name: str) -> Dict:
+def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: str) -> Dict[str, Any]:
     """Analyze historical score data to detect recurring workload patterns.
 
     Identifies daily cycles (business-hours vs off-hours), weekly patterns,

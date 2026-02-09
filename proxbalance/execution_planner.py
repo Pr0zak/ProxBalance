@@ -5,10 +5,10 @@ Determines optimal execution order for multiple migrations using
 dependency graph analysis, topological sorting, and parallel grouping.
 """
 
-from typing import Dict, List
+from typing import Any, Dict, List, Set, Tuple
 
 
-def compute_execution_order(recommendations: List[Dict], nodes: Dict) -> Dict:
+def compute_execution_order(recommendations: List[Dict[str, Any]], nodes: Dict[str, Any]) -> Dict[str, Any]:
     """
     Determine optimal execution order for multiple migrations based on
     dependencies and resource sequencing.
@@ -103,7 +103,7 @@ def compute_execution_order(recommendations: List[Dict], nodes: Dict) -> Dict:
     # --- Step 2: Detect and break circular dependencies ---
     # Use iterative cycle detection: repeatedly try topological sort;
     # if stuck, break the weakest edge in the remaining graph.
-    def _break_cycles(edges, in_degree, recs):
+    def _break_cycles(edges: Dict[int, Set[int]], in_degree: Dict[int, int], recs: List[Dict[str, Any]]) -> None:
         """Break cycles by removing edges from lower-improvement recommendations."""
         working_edges = {i: set(s) for i, s in edges.items()}
         working_in = dict(in_degree)
@@ -179,7 +179,7 @@ def compute_execution_order(recommendations: List[Dict], nodes: Dict) -> Dict:
         group_num += 1
 
         # Sort within group: highest confidence first, then lowest risk, then highest improvement
-        def _sort_key(idx):
+        def _sort_key(idx: int) -> Tuple[float, float, float]:
             rec = recommendations[idx]
             confidence = rec.get("confidence_score", 50)
             risk = rec.get("risk_score", 50)

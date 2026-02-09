@@ -1,7 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
 > **Last updated**: 2026-02-09
-> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 IN PROGRESS
+> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 COMPLETE
 
 ## Progress Summary
 
@@ -43,7 +43,7 @@
 | 2.5 | Custom hooks extraction → `src/hooks/` (11 hooks) | **Done** |
 | 2.10 | Slim root component (index.jsx: 2,547 → 658 lines, -74%) | **Done** |
 
-### Phase 3: Shared Improvements — IN PROGRESS
+### Phase 3: Shared Improvements — COMPLETE
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -51,7 +51,8 @@
 | 3.2 | Centralized error handling (`proxbalance/error_handlers.py`) | **Done** |
 | 3.3 | Type hints for `config_manager.py` (9 functions) | **Done** |
 | 3.3 | Type hints for `evacuation.py` (9 functions) | **Done** |
-| 3.3 | Type hints for remaining modules (scoring, recommendations, migrations) | Not started |
+| 3.3 | Type hints for `scoring.py`, `recommendations.py`, `migrations.py` | **Done** |
+| 3.3 | Type hints for Phase 1B modules (forecasting, patterns, outcomes, execution_planner, reporting) | **Done** |
 
 ---
 
@@ -167,16 +168,20 @@
 - `register_error_handlers(app)` for Flask-level 404/405/500 handlers
 - Registered in `app.py`
 
-### Phase 3.3: Type Hints Completion — IN PROGRESS
+### Phase 3.3: Type Hints Completion — DONE
 
 | File | Estimated Coverage | Target | Status |
 |------|-------------------|--------|--------|
 | `config_manager.py` | 100% | 100% | **Done** (9 functions) |
 | `evacuation.py` | 100% | 100% | **Done** (9 functions) |
-| `scoring.py` | ~87% | 100% | Not started |
-| `recommendations.py` | ~79% | 100% | Not started |
-| `migrations.py` | ~58% | 100% | Not started |
-| New modules (1B) | ~60% | 100% | Not started |
+| `scoring.py` | 100% | 100% | **Done** |
+| `recommendations.py` | 100% | 100% | **Done** |
+| `migrations.py` | 100% | 100% | **Done** |
+| `forecasting.py` | 100% | 100% | **Done** |
+| `patterns.py` | 100% | 100% | **Done** |
+| `outcomes.py` | 100% | 100% | **Done** |
+| `execution_planner.py` | 100% | 100% | **Done** |
+| `reporting.py` | 100% | 100% | **Done** |
 
 ---
 
@@ -187,7 +192,7 @@
 | ~~**1**~~ | ~~2.5: Extract frontend hooks from index.jsx~~ | ~~High~~ | **Done** (658 lines) |
 | ~~**1**~~ | ~~3.1: Shared constants (deduplicate API_BASE etc.)~~ | ~~Low~~ | **Done** (constants.py + constants.js) |
 | ~~**2**~~ | ~~3.2: Centralized Flask error handling~~ | ~~Medium~~ | **Done** (error_handlers.py) |
-| **3** | 3.3: Type hints completion (remaining modules) | Low | Better IDE support, docs |
+| ~~**3**~~ | ~~3.3: Type hints completion (all 10 modules)~~ | ~~Low~~ | **Done** (10 modules, 100% coverage) |
 
 ### Guiding Principles
 
