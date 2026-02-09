@@ -19,11 +19,9 @@ import {
   AlertCircle, RefreshCw, Info, Sun, Moon, Settings, X, ProxBalanceLogo,
   Activity, Clock, HelpCircle
 } from './components/Icons.jsx';
+import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
 
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
-
-const API_BASE = `/api`;
-const RECOMMENDATIONS_REFRESH_INTERVAL = 2 * 60 * 1000;
 
 const ProxmoxBalanceManager = () => {
   const isMobile = useIsMobile(640);
@@ -89,7 +87,7 @@ const ProxmoxBalanceManager = () => {
     const interval = setInterval(() => {
       automation.fetchAutomationStatus();
       automation.fetchRunHistory();
-    }, 10000);
+    }, AUTOMATION_STATUS_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, []);
 

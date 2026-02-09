@@ -2,8 +2,7 @@ import {
   Activity, X, MoveRight, XCircle, Plus, Trash, Play,
   AlertTriangle, Info, List, ArrowRight, Terminal, CheckCircle
 } from '../Icons.jsx';
-
-const API_BASE = '/api';
+import { API_BASE } from '../../utils/constants.js';
 
 export default function MigrationModals({
   showMigrationDialog, setShowMigrationDialog,

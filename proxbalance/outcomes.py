@@ -11,16 +11,8 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from proxbalance.config_manager import BASE_PATH, read_cache_file
-
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-OUTCOMES_FILE = os.path.join(BASE_PATH, "migration_outcomes.json")
-MAX_OUTCOME_ENTRIES = 100
-POST_CAPTURE_DELAY_SECONDS = 300  # 5 minutes
+from proxbalance.config_manager import read_cache_file
+from proxbalance.constants import BASE_PATH, OUTCOMES_FILE, MAX_OUTCOME_ENTRIES, POST_CAPTURE_DELAY_SECONDS
 
 
 # ---------------------------------------------------------------------------

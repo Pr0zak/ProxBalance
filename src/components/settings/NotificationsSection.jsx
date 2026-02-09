@@ -1,8 +1,7 @@
 import {
   Bell, CheckCircle
 } from '../Icons.jsx';
-
-const API_BASE = `/api`;
+import { API_BASE } from '../../utils/constants.js';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   return (

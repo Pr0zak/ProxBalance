@@ -1,7 +1,6 @@
 import { RefreshCw, Save, CheckCircle, Server } from '../Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
-
-const API_BASE = `/api`;
+import { API_BASE } from '../../utils/constants.js';
 const { useState } = React;
 
 export default function DataCollectionSection({

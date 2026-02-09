@@ -12,16 +12,8 @@ import json
 from typing import Dict, List
 from datetime import datetime, timezone
 
-from proxbalance.config_manager import BASE_PATH
+from proxbalance.constants import SCORE_HISTORY_FILE, SCORE_HISTORY_MAX_ENTRIES
 from proxbalance.scoring import calculate_node_health_score
-
-
-# ---------------------------------------------------------------------------
-# Score history persistence
-# ---------------------------------------------------------------------------
-
-SCORE_HISTORY_FILE = os.path.join(BASE_PATH, 'score_history.json')
-SCORE_HISTORY_MAX_ENTRIES = 720  # ~30 days at hourly snapshots
 
 
 def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict:

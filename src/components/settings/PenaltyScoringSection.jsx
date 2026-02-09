@@ -1,6 +1,5 @@
 import { Settings, ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye } from '../Icons.jsx';
-
-const API_BASE = `/api`;
+import { API_BASE } from '../../utils/constants.js';
 const { useState } = React;
 
 export default function PenaltyScoringSection({

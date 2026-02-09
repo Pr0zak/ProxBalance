@@ -6,7 +6,7 @@
  * On failure, functions return { error: true, message: "..." } instead of throwing.
  */
 
-const API_BASE = '/api';
+import { API_BASE } from '../utils/constants.js';
 
 // ---------------------------------------------------------------------------
 // Permissions

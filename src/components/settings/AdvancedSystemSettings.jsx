@@ -2,8 +2,7 @@ import {
   ChevronDown, Save, CheckCircle, AlertCircle, AlertTriangle,
   RefreshCw, Download, Upload, Server
 } from '../Icons.jsx';
-
-const API_BASE = `/api`;
+import { API_BASE } from '../../utils/constants.js';
 const { useState } = React;
 
 export default function AdvancedSystemSettings({

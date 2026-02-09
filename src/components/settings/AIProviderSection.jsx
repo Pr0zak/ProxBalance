@@ -1,6 +1,5 @@
 import { RefreshCw } from '../Icons.jsx';
-
-const API_BASE = `/api`;
+import { API_BASE } from '../../utils/constants.js';
 
 export default function AIProviderSection({
   aiEnabled, setAiEnabled, aiProvider, setAiProvider,

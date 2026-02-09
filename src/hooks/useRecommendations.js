@@ -1,3 +1,5 @@
+import { DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IOWAIT_THRESHOLD } from '../utils/constants.js';
+
 const { useState, useEffect } = React;
 
 export function useRecommendations(API_BASE, deps = {}) {
@@ -11,15 +13,15 @@ export function useRecommendations(API_BASE, deps = {}) {
 
   const [cpuThreshold, setCpuThreshold] = useState(() => {
     const saved = localStorage.getItem('proxbalance_cpu_threshold');
-    return saved ? Number(saved) : 50;
+    return saved ? Number(saved) : DEFAULT_CPU_THRESHOLD;
   });
   const [memThreshold, setMemThreshold] = useState(() => {
     const saved = localStorage.getItem('proxbalance_mem_threshold');
-    return saved ? Number(saved) : 60;
+    return saved ? Number(saved) : DEFAULT_MEM_THRESHOLD;
   });
   const [iowaitThreshold, setIowaitThreshold] = useState(() => {
     const saved = localStorage.getItem('proxbalance_iowait_threshold');
-    return saved ? Number(saved) : 30;
+    return saved ? Number(saved) : DEFAULT_IOWAIT_THRESHOLD;
   });
   const [thresholdMode, setThresholdMode] = useState(() => {
     const saved = localStorage.getItem('proxbalance_threshold_mode');

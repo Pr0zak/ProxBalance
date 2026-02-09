@@ -11,23 +11,9 @@ import subprocess
 import sys
 from typing import Dict, Optional
 
-
-# Disk prefixes for Proxmox storage devices
-DISK_PREFIXES = ('scsi', 'ide', 'virtio', 'sata', 'mp', 'rootfs')
-
-# Determine paths based on environment
-if os.path.exists('/opt/proxmox-balance-manager'):
-    # Production environment
-    BASE_PATH = '/opt/proxmox-balance-manager'
-    GIT_REPO_PATH = '/opt/proxmox-balance-manager'
-else:
-    # Docker dev environment
-    BASE_PATH = '/app/cache'
-    GIT_REPO_PATH = '/app'
-
-CACHE_FILE = os.path.join(BASE_PATH, 'cluster_cache.json')
-CONFIG_FILE = os.path.join(BASE_PATH, 'config.json')
-SESSIONS_DIR = os.path.join(BASE_PATH, 'evacuation_sessions')
+from proxbalance.constants import (
+    BASE_PATH, GIT_REPO_PATH, CACHE_FILE, CONFIG_FILE, SESSIONS_DIR, DISK_PREFIXES
+)
 
 
 def load_config(config_file=None):
