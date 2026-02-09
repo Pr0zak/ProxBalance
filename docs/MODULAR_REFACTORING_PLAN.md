@@ -1,7 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
 > **Last updated**: 2026-02-09
-> **Status**: Phase 1B complete, Phase 2 COMPLETE (incl. hooks), Phase 3 COMPLETE
+> **Status**: Phase 1B complete, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 IN PROGRESS
 
 ## Progress Summary
 
@@ -54,6 +54,16 @@
 | 3.3 | Type hints for `scoring.py`, `recommendations.py`, `migrations.py` | **Done** |
 | 3.3 | Type hints for Phase 1B modules (forecasting, patterns, outcomes, execution_planner, reporting) | **Done** |
 
+### Phase 4: Deep Decomposition + Route Cleanup — IN PROGRESS
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 4.1 | Extract `proxbalance/storage.py` from recommendations.py + evacuation.py (284 lines) | **Done** |
+| 4.2 | Extract `proxbalance/distribution.py` from recommendations.py (133 lines) | **Done** |
+| 4.3 | Extract `proxbalance/recommendation_analysis.py` from recommendations.py (331 lines) | **Done** |
+| 4.4 | Adopt `@api_route` decorator across all 10 route files (~68 handlers) | **In Progress** |
+| 4.5 | Update CLAUDE.md to reflect current architecture | **Done** |
+
 ---
 
 ## Current File Sizes (2026-02-09)
@@ -68,9 +78,12 @@
 | `proxbalance/config_manager.py` | 315 | On target, type-hinted, imports from constants.py |
 | `proxbalance/error_handlers.py` | 108 | **New** — centralized error handling |
 | `proxbalance/scoring.py` | 900 | Reduced from 1,147 (-21%) |
-| `proxbalance/recommendations.py` | 1,385 | Reduced from 2,165 (-36%) |
+| `proxbalance/recommendations.py` | 838 | Reduced from 2,165 (-61%) |
+| `proxbalance/recommendation_analysis.py` | 331 | **New** — confidence, reasons, conflicts |
+| `proxbalance/storage.py` | 284 | **New** — storage compatibility + verification |
+| `proxbalance/distribution.py` | 133 | **New** — guest distribution balancing |
 | `proxbalance/migrations.py` | 643 | Reduced from 860 (-25%) |
-| `proxbalance/evacuation.py` | 975 | Unchanged — could benefit from split |
+| `proxbalance/evacuation.py` | 821 | Reduced from 975 (-16%) |
 | `proxbalance/forecasting.py` | 340 | **New** — trend projection, forecast recs |
 | `proxbalance/patterns.py` | 171 | **New** — workload pattern detection |
 | `proxbalance/outcomes.py` | 260 | **New** — migration outcome tracking |
@@ -211,9 +224,9 @@
 
 | Metric | Original | Current | Target |
 |--------|----------|---------|--------|
-| Largest Python file | 2,165 | 1,385 | ~800 |
+| Largest Python file | 2,165 | 900 (scoring.py) | ~800 |
 | Largest JSX file | 12,321 | 658 (index.jsx) | ~500 |
-| Python domain modules | 6 | 13 | 13 |
+| Python domain modules | 6 | 16 | 16 |
 | JSX component files | 3 | 27 | 27 |
 | Frontend hooks | 0 | 11 | 11 |
 | Dead code lines | 12,321 | 0 | 0 |
@@ -228,6 +241,7 @@
 | `AutomationPage.jsx` | 2,634 | 223 | -2,411 |
 | `SettingsPage.jsx` | 2,240 | 213 | -2,027 |
 | `scoring.py` | 1,147 | 900 | -247 |
-| `recommendations.py` | 2,165 | 1,385 | -780 |
+| `recommendations.py` | 2,165 | 838 | -1,327 |
 | `migrations.py` | 860 | 643 | -217 |
-| **Total** | **30,919** | **4,438** | **-26,481 (-86%)** |
+| `evacuation.py` | 975 | 821 | -154 |
+| **Total** | **31,894** | **3,712** | **-28,182 (-88%)** |

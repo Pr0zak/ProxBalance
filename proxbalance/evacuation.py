@@ -22,6 +22,10 @@ from proxbalance.config_manager import (
     DISK_PREFIXES,
     trigger_collection,
 )
+from proxbalance.storage import (
+    get_node_storage,
+    verify_storage_availability,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -95,165 +99,6 @@ def get_evacuation_status(session_id: str) -> Tuple[Dict[str, Any], int]:
         "error": session.get("error"),
         "completed": session.get("completed", False)
     }, 200
-
-
-# ---------------------------------------------------------------------------
-# Storage verification helpers
-# ---------------------------------------------------------------------------
-
-def get_node_storage(proxmox: Any, node: str) -> Tuple[Dict[str, Any], int]:
-    """Get all available storage on a specific node.
-
-    Args:
-        proxmox: ProxmoxAPI client instance.
-        node: Node name to query.
-
-    Returns:
-        Tuple of (result_dict, http_status_code).
-    """
-    try:
-        # Get all storage for the node
-        storage_list = proxmox.nodes(node).storage.get()
-
-        # Filter for storage that is enabled and available
-        available_storage = []
-        for storage in storage_list:
-            storage_id = storage.get('storage')
-            enabled = storage.get('enabled', 1)
-            active = storage.get('active', 0)
-
-            # Only include enabled and active storage
-            if enabled and active:
-                available_storage.append({
-                    'storage': storage_id,
-                    'type': storage.get('type'),
-                    'content': storage.get('content', '').split(','),
-                    'available': storage.get('avail', 0),
-                    'used': storage.get('used', 0),
-                    'total': storage.get('total', 0),
-                    'shared': storage.get('shared', 0)
-                })
-
-        return {
-            "success": True,
-            "node": node,
-            "storage": available_storage
-        }, 200
-    except Exception as e:
-        return {"success": False, "error": str(e)}, 500
-
-
-def verify_storage_availability(proxmox: Any, source_node: str, target_nodes: List[str], guest_vmids: List[int]) -> Tuple[Dict[str, Any], int]:
-    """Verify that storage volumes are available on target nodes.
-
-    Args:
-        proxmox: ProxmoxAPI client instance.
-        source_node: Name of the source node.
-        target_nodes: List of target node names.
-        guest_vmids: List of VM/CT IDs to check.
-
-    Returns:
-        Tuple of (result_dict, http_status_code).
-    """
-    try:
-        if not source_node or not target_nodes:
-            return {"success": False, "error": "Missing required parameters"}, 400
-
-        # Get storage info for all target nodes
-        target_storage_map = {}
-        for target_node in target_nodes:
-            try:
-                storage_list = proxmox.nodes(target_node).storage.get()
-                # Create set of available storage IDs
-                available = set()
-                for storage in storage_list:
-                    if storage.get('enabled', 1) and storage.get('active', 0):
-                        available.add(storage.get('storage'))
-                target_storage_map[target_node] = available
-            except Exception as e:
-                print(f"Error getting storage for {target_node}: {e}", file=sys.stderr)
-                target_storage_map[target_node] = set()
-
-        # Check each guest's storage requirements
-        guest_storage_info = []
-        for vmid in guest_vmids:
-            try:
-                # Try to get guest config (qemu or lxc)
-                guest_config = None
-                guest_type = None
-                try:
-                    guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
-                    guest_type = "qemu"
-                except:
-                    try:
-                        guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
-                        guest_type = "lxc"
-                    except:
-                        guest_storage_info.append({
-                            "vmid": vmid,
-                            "type": "unknown",
-                            "storage_volumes": [],
-                            "compatible_targets": [],
-                            "incompatible_targets": target_nodes,
-                            "error": "Cannot determine guest type"
-                        })
-                        continue
-
-                # Extract storage from config
-                storage_volumes = set()
-
-                # Check all config keys for storage references
-                for key, value in guest_config.items():
-                    # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-                    if key.startswith(DISK_PREFIXES):
-                        # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
-                        if isinstance(value, str) and ':' in value:
-                            storage_id = value.split(':')[0]
-                            storage_volumes.add(storage_id)
-
-                # Find which targets have all required storage
-                compatible_targets = []
-                incompatible_targets = []
-
-                for target_node in target_nodes:
-                    target_storage = target_storage_map.get(target_node, set())
-                    missing_storage = storage_volumes - target_storage
-
-                    if not missing_storage:
-                        compatible_targets.append(target_node)
-                    else:
-                        incompatible_targets.append({
-                            "node": target_node,
-                            "missing_storage": list(missing_storage)
-                        })
-
-                guest_storage_info.append({
-                    "vmid": vmid,
-                    "type": guest_type,
-                    "storage_volumes": list(storage_volumes),
-                    "compatible_targets": compatible_targets,
-                    "incompatible_targets": incompatible_targets
-                })
-
-            except Exception as e:
-                guest_storage_info.append({
-                    "vmid": vmid,
-                    "type": "unknown",
-                    "storage_volumes": [],
-                    "compatible_targets": [],
-                    "incompatible_targets": target_nodes,
-                    "error": str(e)
-                })
-
-        return {
-            "success": True,
-            "source_node": source_node,
-            "target_storage": {node: list(storage) for node, storage in target_storage_map.items()},
-            "guests": guest_storage_info
-        }, 200
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}, 500
 
 
 # ---------------------------------------------------------------------------
