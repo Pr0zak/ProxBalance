@@ -3,6 +3,7 @@ import json, os, sys, subprocess, re, time
 from datetime import datetime, timedelta
 from pathlib import Path
 from proxbalance.config_manager import load_config, CONFIG_FILE, BASE_PATH
+from proxbalance.error_handlers import api_route
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -12,6 +13,7 @@ def read_cache():
 
 
 @automation_bp.route("/api/automigrate/status", methods=["GET"])
+@api_route
 def get_automigrate_status():
     """Get automation status and next run time"""
     try:
@@ -453,6 +455,7 @@ def get_automigrate_status():
 
 
 @automation_bp.route("/api/automigrate/history", methods=["GET"])
+@api_route
 def get_automigrate_history():
     """Get automation run history with decisions, or individual migration history"""
     try:
@@ -516,6 +519,7 @@ def get_automigrate_history():
 
 
 @automation_bp.route("/api/automigrate/test", methods=["POST"])
+@api_route
 def test_automigrate():
     """Test automation logic without executing migrations"""
     try:
@@ -557,6 +561,7 @@ def test_automigrate():
 
 
 @automation_bp.route("/api/automigrate/run", methods=["POST"])
+@api_route
 def run_automigrate():
     """Manually trigger automation check now"""
     try:
@@ -648,6 +653,7 @@ def run_automigrate():
 
 
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
+@api_route
 def automigrate_config():
     """Get or update automated migration configuration"""
     if request.method == "GET":
@@ -743,6 +749,7 @@ OnUnitActiveSec={interval_minutes}min
 
 
 @automation_bp.route("/api/automigrate/toggle-timer", methods=["POST"])
+@api_route
 def automigrate_toggle_timer():
     """Toggle the automated migration timer on/off"""
     try:
@@ -796,6 +803,7 @@ def automigrate_toggle_timer():
 
 
 @automation_bp.route("/api/automigrate/logs", methods=["GET"])
+@api_route
 def automigrate_logs():
     """Get logs from the automated migration service"""
     try:

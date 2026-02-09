@@ -19,6 +19,7 @@ from proxbalance.config_manager import (
 )
 from proxbalance.cache import CacheManager
 from proxbalance.routes import register_blueprints
+from proxbalance.error_handlers import register_error_handlers
 
 # ---------------------------------------------------------------------------
 # Flask application
@@ -51,6 +52,7 @@ if not os.path.exists(SESSIONS_DIR):
 # ---------------------------------------------------------------------------
 
 register_blueprints(app)
+register_error_handlers(app)
 
 # ---------------------------------------------------------------------------
 # Entry point
