@@ -12,7 +12,7 @@ import json
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
 
@@ -34,7 +34,7 @@ from proxbalance.outcomes import (  # noqa: E402, F401
 )
 
 
-def execute_migration(proxmox, vmid, target, source, guest_type):
+def execute_migration(proxmox: Any, vmid: Union[int, str], target: str, source: str, guest_type: str) -> Tuple[Dict[str, Any], int]:
     """Execute a single migration using Proxmox API.
 
     Args:
@@ -86,7 +86,7 @@ def execute_migration(proxmox, vmid, target, source, guest_type):
         return {"success": False, "error": str(e)}, 500
 
 
-def execute_batch_migration(proxmox, migrations):
+def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], int]:
     """Execute multiple migrations via Proxmox API.
 
     Args:
@@ -169,7 +169,7 @@ def execute_batch_migration(proxmox, migrations):
         return {"success": False, "error": str(e)}, 500
 
 
-def cancel_migration(config, task_id):
+def cancel_migration(config: Dict[str, Any], task_id: str) -> Tuple[Dict[str, Any], int]:
     """Cancel a running migration by stopping the Proxmox task.
 
     Args:
@@ -215,8 +215,8 @@ def cancel_migration(config, task_id):
 # Pre-migration validation
 # ---------------------------------------------------------------------------
 
-def validate_migration(proxmox, vmid: int, source_node: str, target_node: str,
-                       guest_type: str = "VM", cache_data: Dict = None) -> Dict:
+def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: str,
+                       guest_type: str = "VM", cache_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Run pre-migration validation checks before executing a migration.
 
@@ -463,7 +463,7 @@ def validate_migration(proxmox, vmid: int, source_node: str, target_node: str,
 # Rollback awareness
 # ---------------------------------------------------------------------------
 
-def _load_migration_history() -> Dict:
+def _load_migration_history() -> Dict[str, Any]:
     """Load migration history from disk.
 
     Returns:
@@ -479,7 +479,7 @@ def _load_migration_history() -> Dict:
     return {"migrations": [], "state": {}}
 
 
-def _save_migration_history(history: Dict) -> bool:
+def _save_migration_history(history: Dict[str, Any]) -> bool:
     """Persist migration history to disk.
 
     Returns:
@@ -495,7 +495,7 @@ def _save_migration_history(history: Dict) -> bool:
         return False
 
 
-def get_rollback_info(vmid: int, config: Optional[Dict] = None) -> Dict:
+def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Return rollback availability information for a guest.
 
     Checks migration history for the most recent successful migration of
@@ -527,7 +527,7 @@ def get_rollback_info(vmid: int, config: Optional[Dict] = None) -> Dict:
     rollback_window_hours = config.get("rollback_window_hours", 2)
 
     # Default response — rollback not available
-    info: Dict = {
+    info: Dict[str, Any] = {
         "available": False,
         "original_node": None,
         "current_node": None,

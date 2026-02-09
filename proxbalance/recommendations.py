@@ -11,7 +11,7 @@ import os
 import sys
 import json
 import traceback
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime, timezone
 
 from proxbalance.scoring import (
@@ -46,7 +46,7 @@ from proxbalance.reporting import (
 # Guest selection
 # ---------------------------------------------------------------------------
 
-def select_guests_to_migrate(node: Dict, guests: Dict, cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
+def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
     """
     Intelligently select which guests to migrate from an overloaded node
     Uses knapsack-style algorithm to minimize migrations while resolving overload
@@ -154,7 +154,7 @@ def select_guests_to_migrate(node: Dict, guests: Dict, cpu_threshold: float, mem
 # Storage helpers
 # ---------------------------------------------------------------------------
 
-def build_storage_cache(nodes: Dict, proxmox) -> Dict[str, set]:
+def build_storage_cache(nodes: Dict[str, Any], proxmox: Optional[Any]) -> Dict[str, Set[str]]:
     """
     Build a cache of available storage for all nodes.
 
@@ -186,7 +186,7 @@ def build_storage_cache(nodes: Dict, proxmox) -> Dict[str, set]:
     return storage_cache
 
 
-def check_storage_compatibility(guest: Dict, src_node_name: str, tgt_node_name: str, proxmox, storage_cache: Dict[str, set] = None) -> bool:
+def check_storage_compatibility(guest: Dict[str, Any], src_node_name: str, tgt_node_name: str, proxmox: Optional[Any], storage_cache: Optional[Dict[str, Set[str]]] = None) -> bool:
     """
     Check if target node has all storage volumes required by the guest.
 
@@ -266,7 +266,7 @@ def check_storage_compatibility(guest: Dict, src_node_name: str, tgt_node_name: 
 # Distribution balancing helpers
 # ---------------------------------------------------------------------------
 
-def calculate_node_guest_counts(nodes: Dict, guests: Dict) -> Dict[str, int]:
+def calculate_node_guest_counts(nodes: Dict[str, Any], guests: Dict[str, Any]) -> Dict[str, int]:
     """
     Calculate the number of running guests on each node.
 
@@ -294,12 +294,12 @@ def calculate_node_guest_counts(nodes: Dict, guests: Dict) -> Dict[str, int]:
 
 
 def find_distribution_candidates(
-    nodes: Dict,
-    guests: Dict,
+    nodes: Dict[str, Any],
+    guests: Dict[str, Any],
     guest_count_threshold: int = 2,
     max_cpu_cores: int = 2,
     max_memory_gb: int = 4
-) -> List[Dict]:
+) -> List[Dict[str, Any]]:
     """
     Find small guests on overloaded nodes that could be migrated for distribution balancing.
 
@@ -393,7 +393,7 @@ def find_distribution_candidates(
 # Main recommendation engine
 # ---------------------------------------------------------------------------
 
-def _calculate_confidence(score_improvement: float, target_details: Dict, guest: Dict, penalty_cfg: Dict) -> float:
+def _calculate_confidence(score_improvement: float, target_details: Optional[Dict[str, Any]], guest: Dict[str, Any], penalty_cfg: Dict[str, Any]) -> float:
     """
     Calculate multi-factor confidence score (0-100) for a migration recommendation.
 
@@ -468,7 +468,7 @@ def _calculate_confidence(score_improvement: float, target_details: Dict, guest:
     return round(min(100, max(0, confidence)), 1)
 
 
-def _build_structured_reason(guest: Dict, src_node: Dict, tgt_node: Dict, src_details: Dict, tgt_details: Dict, is_maintenance: bool, penalty_cfg: Dict) -> Dict:
+def _build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt_node: Dict[str, Any], src_details: Dict[str, Any], tgt_details: Optional[Dict[str, Any]], is_maintenance: bool, penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build a structured, multi-factor reason for a migration recommendation.
 
@@ -498,7 +498,7 @@ def _build_structured_reason(guest: Dict, src_node: Dict, tgt_node: Dict, src_de
     weight_7d = penalty_cfg.get("weight_7d", 0.2)
 
     # Calculate weighted metrics
-    def _weighted(m, key_current, key_24h, key_7d):
+    def _weighted(m: Dict[str, Any], key_current: str, key_24h: str, key_7d: str) -> float:
         if m.get("has_historical"):
             return (m.get(key_current, 0) * weight_current +
                     m.get(key_24h, 0) * weight_24h +
@@ -600,8 +600,8 @@ def _build_structured_reason(guest: Dict, src_node: Dict, tgt_node: Dict, src_de
     }
 
 
-def _detect_migration_conflicts(recommendations: List[Dict], nodes: Dict, guests: Dict,
-                                 cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict) -> List[Dict]:
+def _detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dict[str, Any], guests: Dict[str, Any],
+                                 cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Post-generation validation: detect conflicts among recommended migrations.
 
@@ -715,7 +715,7 @@ def _detect_migration_conflicts(recommendations: List[Dict], nodes: Dict, guests
     return conflicts
 
 
-def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> Dict:
+def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None) -> Dict[str, Any]:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
 

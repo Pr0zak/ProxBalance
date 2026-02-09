@@ -15,7 +15,7 @@ Scoring philosophy:
 """
 
 import sys
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ DEFAULT_PENALTY_CONFIG = {
 # Scoring functions
 # ---------------------------------------------------------------------------
 
-def calculate_intelligent_thresholds(nodes: Dict, penalty_config: Dict = None) -> Dict:
+def calculate_intelligent_thresholds(nodes: Dict[str, Dict[str, Any]], penalty_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Analyze cluster health and suggest optimal thresholds.
     Returns suggested CPU and Memory thresholds based on cluster characteristics.
@@ -291,7 +291,7 @@ def calculate_intelligent_thresholds(nodes: Dict, penalty_config: Dict = None) -
     }
 
 
-def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict = None) -> float:
+def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None) -> float:
     """
     Calculate comprehensive health score for a node (0-100, lower is better/healthier).
     Considers CPU, Memory, IOWait, Load Average, and Storage pressure.
@@ -354,7 +354,7 @@ def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict 
     return health_score
 
 
-def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, penalty_config: Dict = None) -> Dict:
+def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], adding: bool = True, penalty_config: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     """
     Predict node load after adding or removing a guest.
     Returns predicted CPU%, Memory%, and IOWait%.
@@ -430,7 +430,7 @@ def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, pe
     }
 
 
-def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_guests: Dict, cpu_threshold: float, mem_threshold: float, penalty_config: Dict = None, return_details: bool = False):
+def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False) -> Union[float, Tuple[float, Dict[str, Any]]]:
     """
     Calculate weighted score for target node suitability (lower is better).
     Considers current load, predicted post-migration load, storage availability, and headroom.
@@ -693,7 +693,7 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
 # Migration risk scoring
 # ---------------------------------------------------------------------------
 
-def calculate_migration_risk(guest: Dict, source_node: Dict, target_node: Dict, cluster_health: float = 100.0) -> Dict:
+def calculate_migration_risk(guest: Dict[str, Any], source_node: Dict[str, Any], target_node: Dict[str, Any], cluster_health: float = 100.0) -> Dict[str, Any]:
     """
     Calculate a risk score (0-100, lower is safer) for a migration.
 
