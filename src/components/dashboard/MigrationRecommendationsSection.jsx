@@ -186,7 +186,7 @@ export default function MigrationRecommendationsSection({
             {!collapsedSections.recommendations && recommendationData?.generated_at && (
               <button
                 onClick={() => setShowInsights(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-600 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200"
                 title="View detailed analytics and insights"
               >
                 <Eye size={16} />

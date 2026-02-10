@@ -67,8 +67,8 @@ export default function InsightsDrawer({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
-              <BarChart2 size={18} className="text-orange-600 dark:text-orange-400" />
+            <div className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
+              <BarChart2 size={18} className="text-gray-600 dark:text-gray-300" />
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white">Insights & Analytics</h3>
@@ -94,7 +94,7 @@ export default function InsightsDrawer({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
                   isActive
-                    ? 'border-orange-500 text-orange-600 dark:text-orange-400'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
@@ -110,23 +110,23 @@ export default function InsightsDrawer({
           {activeTab === 'impact' && (
             <div className="space-y-6">
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <BarChart2 size={14} className="text-orange-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <BarChart2 size={14} className="text-blue-500 dark:text-blue-400" />
                   Batch Migration Impact
                 </h4>
                 <BatchImpact recommendationData={recommendationData} />
               </section>
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <List size={14} className="text-orange-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <List size={14} className="text-blue-500 dark:text-blue-400" />
                   Execution Plan
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">— Optimal migration ordering</span>
                 </h4>
                 <ExecutionPlan recommendationData={recommendationData} />
               </section>
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <RefreshCw size={14} className="text-orange-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <RefreshCw size={14} className="text-blue-500 dark:text-blue-400" />
                   Changes Since Last Generation
                 </h4>
                 <ChangeLog recommendationData={recommendationData} />
@@ -137,8 +137,8 @@ export default function InsightsDrawer({
           {activeTab === 'diagnostics' && (
             <div className="space-y-6">
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <Terminal size={14} className="text-gray-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <Terminal size={14} className="text-gray-500 dark:text-gray-400" />
                   Engine Diagnostics
                   {recommendationData?.generation_time_ms && (
                     <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
@@ -149,8 +149,8 @@ export default function InsightsDrawer({
                 <EngineDiagnostics recommendationData={recommendationData} recommendations={recommendations} />
               </section>
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <Info size={14} className="text-blue-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <Info size={14} className="text-blue-500 dark:text-blue-400" />
                   How Scoring Works
                 </h4>
                 <ScoringExplainer
@@ -165,16 +165,16 @@ export default function InsightsDrawer({
           {activeTab === 'patterns' && (
             <div className="space-y-6">
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <Activity size={14} className="text-blue-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <Activity size={14} className="text-blue-500 dark:text-blue-400" />
                   Workload Patterns
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">— Daily/weekly cycle analysis</span>
                 </h4>
                 <WorkloadPatterns API_BASE={API_BASE} active={activeTab === 'patterns'} />
               </section>
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <BarChart2 size={14} className="text-green-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <BarChart2 size={14} className="text-green-500 dark:text-green-400" />
                   Migration Outcomes
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">— Predicted vs. actual results</span>
                 </h4>
@@ -186,8 +186,8 @@ export default function InsightsDrawer({
           {activeTab === 'history' && (
             <div className="space-y-6">
               <section>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <Calendar size={14} className="text-purple-500" />
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <Calendar size={14} className="text-purple-500 dark:text-purple-400" />
                   Recommendation History
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">— Score trends over time</span>
                 </h4>
