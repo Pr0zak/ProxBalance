@@ -237,6 +237,7 @@ export default function AutomationPage(props) {
           setCurrentPage={setCurrentPage}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
+          automationConfig={automationConfig}
         />
       </div>
     </div>

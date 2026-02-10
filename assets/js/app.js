@@ -3337,7 +3337,8 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         fetchAutomationStatus: fetchAutomationStatus2,
         setCurrentPage,
         collapsedSections,
-        setCollapsedSections
+        setCollapsedSections,
+        automationConfig
       }
     ))) : /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, "Loading automation settings..."));
   }
