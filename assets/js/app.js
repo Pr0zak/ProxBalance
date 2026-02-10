@@ -4925,151 +4925,38 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     })) : /* @__PURE__ */ React.createElement("div", { className: `grid gap-4 transition-all duration-300 ease-in-out ${nodeGridColumns === 1 ? "grid-cols-1" : nodeGridColumns === 2 ? "grid-cols-1 lg:grid-cols-2" : nodeGridColumns === 3 ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-4"}` }, Object.values(data.nodes).map((node) => /* @__PURE__ */ React.createElement("div", { key: node.name, className: "border border-gray-200 dark:border-gray-700 rounded p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-900 dark:text-white" }, node.name), /* @__PURE__ */ React.createElement("span", { className: `text-sm font-medium ${node.status === "online" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, node.status)), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "CPU:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-blue-600 dark:text-blue-400" }, (node.cpu_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Memory:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-purple-600 dark:text-purple-400" }, (node.mem_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "IOWait:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-orange-600 dark:text-orange-400" }, (node.metrics?.current_iowait || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Cores:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, node.cpu_cores || 0)), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Guests:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, node.guests?.length || 0))), node.trend_data && typeof node.trend_data == "object" && Object.keys(node.trend_data).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4", style: { height: "200px" } }, /* @__PURE__ */ React.createElement("canvas", { id: `chart-${node.name}` }))))));
   }
 
-  // src/components/dashboard/MigrationRecommendationsSection.jsx
-  var { useState: useState7 } = React;
-  function MigrationRecommendationsSection({
-    // Data
-    data,
-    recommendations,
-    loadingRecommendations,
-    generateRecommendations: generateRecommendations2,
-    recommendationData,
-    penaltyConfig,
-    // Section collapse
-    collapsedSections,
-    setCollapsedSections,
-    toggleSection,
-    // Migrations
-    canMigrate,
-    migrationStatus,
-    setMigrationStatus,
-    completedMigrations,
-    guestsMigrating,
-    migrationProgress,
-    cancelMigration,
-    trackMigration,
-    setConfirmMigration,
-    // Feedback
-    feedbackGiven,
-    onFeedback,
-    // Navigation
-    setCurrentPage,
-    setOpenPenaltyConfigOnAutomation,
-    // Thresholds
-    thresholdSuggestions,
-    cpuThreshold,
-    setCpuThreshold,
-    memThreshold,
-    setMemThreshold,
-    iowaitThreshold,
-    setIowaitThreshold,
-    // Node scores (for predicted view)
-    nodeScores,
-    // API
-    API_BASE: API_BASE4
-  }) {
-    let [recFilterConfidence, setRecFilterConfidence] = useState7(""), [recFilterTargetNode, setRecFilterTargetNode] = useState7(""), [recFilterSourceNode, setRecFilterSourceNode] = useState7(""), [recSortBy, setRecSortBy] = useState7(""), [recSortDir, setRecSortDir] = useState7("desc"), [showRecFilters, setShowRecFilters] = useState7(!1), [migrationOutcomes, setMigrationOutcomes] = useState7(null), [loadingOutcomes, setLoadingOutcomes] = useState7(!1), [historyData, setHistoryData] = useState7(null), [historyLoading, setHistoryLoading] = useState7(!1), [historyHours, setHistoryHours] = useState7(24), [workloadPatterns, setWorkloadPatterns] = useState7(null), [patternsLoading, setPatternsLoading] = useState7(!1);
-    return React.useEffect(() => {
-      if (collapsedSections.recHistory) return;
-      let cancelled = !1;
-      return setHistoryLoading(!0), fetch(`${API_BASE4}/score-history?hours=${historyHours}`).then((r) => r.json()).then((res) => {
-        cancelled || setHistoryData(res.history || []);
-      }).catch(() => {
-      }).finally(() => {
-        cancelled || setHistoryLoading(!1);
-      }), () => {
-        cancelled = !0;
-      };
-    }, [historyHours, collapsedSections.recHistory]), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-y-3 mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0" }, /* @__PURE__ */ React.createElement(Activity, { size: 24, className: "text-white" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("h2", { className: "text-lg sm:text-2xl font-bold text-gray-900 dark:text-white" }, "Migration Recommendations"), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => toggleSection("recommendations"),
-        className: "p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200",
-        title: collapsedSections.recommendations ? "Expand section" : "Collapse section"
-      },
-      collapsedSections.recommendations ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 20, className: "text-gray-600 dark:text-gray-400" }) : /* @__PURE__ */ React.createElement(ChevronUp, { size: 20, className: "text-gray-600 dark:text-gray-400" })
-    )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mt-0.5" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Suggested optimizations"), recommendationData?.ai_enhanced && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 border border-purple-300 dark:border-purple-600 rounded text-xs font-semibold text-purple-700 dark:text-purple-300" }, "AI Enhanced"), recommendationData?.generated_at && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-500" }, "\u2022 Generated: ", (() => {
-      let genTime = new Date(recommendationData.generated_at);
-      return formatLocalTime(genTime);
-    })(), " (backend auto-generates every 10-60min based on cluster size)")))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, recommendations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setCollapsedSections((prev) => ({ ...prev, exportDropdown: !prev.exportDropdown })),
-        className: "flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200",
-        title: "Export recommendations"
-      },
-      /* @__PURE__ */ React.createElement(Download, { size: 16 }),
-      "Export",
-      /* @__PURE__ */ React.createElement(ChevronDown, { size: 14 })
-    ), collapsedSections.exportDropdown && /* @__PURE__ */ React.createElement("div", { className: "absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px]" }, /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations JSON"), /* @__PURE__ */ React.createElement("hr", { className: "my-1 border-gray-200 dark:border-gray-700" }), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History JSON"))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: generateRecommendations2,
-        disabled: loadingRecommendations || !data,
-        className: "flex items-center gap-2 px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200",
-        title: "Manually generate new recommendations now"
-      },
-      loadingRecommendations ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 18, className: "animate-spin" }), "Generating...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 18 }), "Generate Now")
-    ))), !collapsedSections.recommendations && /* @__PURE__ */ React.createElement("div", { className: "mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-300 dark:border-blue-700" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setCollapsedSections((prev) => ({ ...prev, scoringInfo: !prev.scoringInfo })),
-        className: "w-full p-4 flex items-center justify-between hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors rounded-lg"
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement(Info, { size: 20, className: "text-blue-600 dark:text-blue-400 flex-shrink-0" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-blue-900 dark:text-blue-100" }, "Penalty-Based Scoring System")),
-      /* @__PURE__ */ React.createElement(
-        ChevronDown,
-        {
-          size: 20,
-          className: `text-blue-600 dark:text-blue-400 transition-transform ${collapsedSections.scoringInfo ? "" : "rotate-180"}`
-        }
-      )
-    ), !collapsedSections.scoringInfo && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-900 dark:text-blue-100" }, /* @__PURE__ */ React.createElement("p", { className: "text-blue-800 dark:text-blue-200 mb-3" }, "ProxBalance uses a penalty-based scoring system to evaluate every guest on every node. Migrations are recommended when moving a guest would improve its suitability rating by ", /* @__PURE__ */ React.createElement("span", { className: "font-bold" }, penaltyConfig?.min_score_improvement || 15, "+ points"), "."), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-blue-800 dark:text-blue-200 mb-1.5" }, "Suitability Rating Scale"), /* @__PURE__ */ React.createElement("div", { className: "flex rounded overflow-hidden h-5 mb-1" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "0-30"), /* @__PURE__ */ React.createElement("div", { className: "bg-orange-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "30-50"), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "50-70"), /* @__PURE__ */ React.createElement("div", { className: "bg-green-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "70-100")), /* @__PURE__ */ React.createElement("div", { className: "flex text-[10px] text-blue-700 dark:text-blue-300" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Poor"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Fair"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Good"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Excellent"))), /* @__PURE__ */ React.createElement("div", { className: "p-2.5 bg-blue-100 dark:bg-blue-800/30 rounded mb-3" }, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-blue-800 dark:text-blue-200 mb-1" }, "Your Configuration"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-blue-700 dark:text-blue-300" }, /* @__PURE__ */ React.createElement("span", null, "CPU weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "30%")), /* @__PURE__ */ React.createElement("span", null, "Memory weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "30%")), /* @__PURE__ */ React.createElement("span", null, "IOWait weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "20%")), /* @__PURE__ */ React.createElement("span", null, "Other factors: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "20%")), /* @__PURE__ */ React.createElement("span", null, "Current period: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_current * 100).toFixed(0) : "50", "%")), /* @__PURE__ */ React.createElement("span", null, "24h average: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_24h * 100).toFixed(0) : "30", "%")), /* @__PURE__ */ React.createElement("span", null, "7-day average: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_7d * 100).toFixed(0) : "20", "%")), /* @__PURE__ */ React.createElement("span", null, "Min improvement: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig?.min_score_improvement || 15, " pts")))), /* @__PURE__ */ React.createElement("ul", { className: "ml-4 space-y-1 text-blue-700 dark:text-blue-300 text-xs list-disc" }, /* @__PURE__ */ React.createElement("li", null, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Penalties applied for:"), " High CPU/memory/IOWait, rising trends, historical spikes, predicted post-migration overload"), /* @__PURE__ */ React.createElement("li", null, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Smart decisions:"), " Balances immediate needs with long-term stability and capacity planning")), /* @__PURE__ */ React.createElement("div", { className: "mt-3 text-xs" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setCurrentPage("automation"), setOpenPenaltyConfigOnAutomation(!0);
-        },
-        className: "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
-      },
-      "Configure penalty scoring weights in Automation \u2192"
-    )))))), !collapsedSections.recommendations && /* @__PURE__ */ React.createElement("div", { className: "transition-all duration-300 ease-in-out" }, thresholdSuggestions && thresholdSuggestions.confidence && (Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 || Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3 ? /* @__PURE__ */ React.createElement("div", { className: "mb-4 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement(Info, { size: 16, className: "text-blue-600 dark:text-blue-400 shrink-0" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-blue-900 dark:text-blue-100" }, "Threshold Suggestions"), /* @__PURE__ */ React.createElement("span", { className: `text-xs px-1.5 py-0.5 rounded ${thresholdSuggestions.confidence === "high" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"}` }, thresholdSuggestions.confidence, " confidence")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-blue-800 dark:text-blue-200 mb-2" }, thresholdSuggestions.summary), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "CPU: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, cpuThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_cpu_threshold, "%")), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Memory: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, memThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_mem_threshold, "%")), thresholdSuggestions.suggested_iowait_threshold && /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "IOWait: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, iowaitThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_iowait_threshold, "%")))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), thresholdSuggestions.suggested_iowait_threshold && setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold);
-        },
-        className: "shrink-0 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-      },
-      "Apply All"
-    ))) : null), !loadingRecommendations && recommendationData?.generated_at && /* @__PURE__ */ React.createElement("details", { className: "mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg" }, /* @__PURE__ */ React.createElement(Terminal, { size: 16 }), "Engine Diagnostics", recommendationData.generation_time_ms && /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400 ml-2" }, "Generated in ", recommendationData.generation_time_ms, "ms")), /* @__PURE__ */ React.createElement("div", { className: "px-3 pb-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Generation Time"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.count || recommendations.length)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Guests Evaluated"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, (recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Skipped"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.skipped_guests?.length || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "AI Enhanced"), /* @__PURE__ */ React.createElement("div", { className: `font-semibold ${recommendationData.ai_enhanced ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}` }, recommendationData.ai_enhanced ? "Yes" : "No")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Conflicts / Advisories"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.conflicts?.length || 0, " / ", recommendationData.capacity_advisories?.length || 0))), recommendationData.parameters && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Thresholds: "), /* @__PURE__ */ React.createElement("span", { className: "font-mono text-gray-700 dark:text-gray-300" }, "CPU ", recommendationData.parameters.cpu_threshold, "% | Mem ", recommendationData.parameters.mem_threshold, "% | IOWait ", recommendationData.parameters.iowait_threshold, "%"), recommendationData.parameters.maintenance_nodes?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-yellow-600 dark:text-yellow-400" }, "| Maintenance: ", recommendationData.parameters.maintenance_nodes.join(", "))), recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 block mb-1" }, "Skip Reasons:"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => /* @__PURE__ */ React.createElement("span", { key: reason, className: "px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300 font-mono" }, reason, ": ", count)))))), !loadingRecommendations && recommendationData?.generated_at && /* @__PURE__ */ React.createElement(
-      "details",
-      {
-        className: "mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50",
-        onToggle: (e) => {
-          e.target.open && !workloadPatterns && !patternsLoading && (setPatternsLoading(!0), fetch(`${API_BASE4}/workload-patterns?hours=168`).then((r) => r.json()).then((res) => {
-            res.success && setWorkloadPatterns(res.patterns || []);
-          }).catch(() => {
-          }).finally(() => setPatternsLoading(!1)));
-        }
-      },
-      /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg" }, /* @__PURE__ */ React.createElement(Activity, { size: 16 }), "Workload Patterns", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400 ml-2" }, "Daily/weekly cycle analysis")),
-      /* @__PURE__ */ React.createElement("div", { className: "px-3 pb-3" }, patternsLoading ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Analyzing patterns...") : !workloadPatterns || workloadPatterns.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-2" }, "Insufficient history data for pattern analysis. Patterns emerge after several days of data collection.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, workloadPatterns.map((p, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "bg-white dark:bg-gray-900/50 rounded p-2.5 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1.5" }, /* @__PURE__ */ React.createElement(Server, { size: 12, className: "text-blue-500" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300" }, p.node), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-400 dark:text-gray-500" }, p.data_points, " data points")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]" }, p.daily_pattern ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-blue-700 dark:text-blue-300 mb-0.5" }, "Daily Cycle ", /* @__PURE__ */ React.createElement("span", { className: "text-blue-500" }, "(", p.daily_pattern.pattern_confidence, ")")), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, "Peak: ", p.daily_pattern.peak_avg_cpu, "% | Trough: ", p.daily_pattern.trough_avg_cpu, "%"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Biz hrs: ", p.daily_pattern.business_hours_avg, "% | Off hrs: ", p.daily_pattern.off_hours_avg, "%")) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No daily cycle detected"), p.weekly_pattern ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-purple-700 dark:text-purple-300 mb-0.5" }, "Weekly Cycle ", /* @__PURE__ */ React.createElement("span", { className: "text-purple-500" }, "(", p.weekly_pattern.pattern_confidence, ")")), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, "Weekday: ", p.weekly_pattern.weekday_avg, "% | Weekend: ", p.weekly_pattern.weekend_avg, "%"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Peak days: ", p.weekly_pattern.peak_days?.join(", "))) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No weekly cycle detected"), p.burst_detection?.detected ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-amber-700 dark:text-amber-300 mb-0.5" }, "Burst Detection"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, p.burst_detection.recurring_bursts, " recurring burst hour(s)"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Avg burst: ", p.burst_detection.avg_burst_cpu, "% at hours ", p.burst_detection.burst_hours?.join(", "))) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No recurring bursts")), p.recommendation_timing && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Clock, { size: 10 }), " ", p.recommendation_timing)))))
-    ), !loadingRecommendations && recommendationData?.summary && /* @__PURE__ */ React.createElement("div", { className: `mb-4 rounded-lg border p-4 ${recommendationData.summary.urgency === "high" ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700" : recommendationData.summary.urgency === "medium" ? "bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700" : recommendationData.summary.urgency === "none" ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Activity, { size: 18, className: recommendationData.summary.urgency === "high" ? "text-yellow-600 dark:text-yellow-400" : recommendationData.summary.urgency === "medium" ? "text-orange-600 dark:text-orange-400" : recommendationData.summary.urgency === "none" ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-gray-900 dark:text-white" }, "Cluster Health: ", recommendationData.summary.cluster_health, "/100")), recommendationData.summary.urgency !== "none" && /* @__PURE__ */ React.createElement("span", { className: `text-xs px-2 py-0.5 rounded font-medium ${recommendationData.summary.urgency === "high" ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" : recommendationData.summary.urgency === "medium" ? "bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200" : "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"}` }, recommendationData.summary.urgency_label)), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2" }, /* @__PURE__ */ React.createElement(
+  // src/utils/useIsMobile.js
+  var { useState: useState7, useEffect } = React, useIsMobile = (breakpoint = 768) => {
+    let [isMobile, setIsMobile] = useState7(
+      typeof window < "u" && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
+    );
+    return useEffect(() => {
+      let mql = window.matchMedia(`(max-width: ${breakpoint}px)`), handler = (e) => setIsMobile(e.matches);
+      return mql.addEventListener("change", handler), () => mql.removeEventListener("change", handler);
+    }, [breakpoint]), isMobile;
+  }, useIsMobile_default = useIsMobile;
+
+  // src/components/dashboard/recommendations/RecommendationSummaryBar.jsx
+  function RecommendationSummaryBar({ recommendationData }) {
+    if (!recommendationData?.summary) return null;
+    let summary = recommendationData.summary;
+    return /* @__PURE__ */ React.createElement("div", { className: `mb-4 rounded-lg border p-4 ${summary.urgency === "high" ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700" : summary.urgency === "medium" ? "bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700" : summary.urgency === "none" ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700" : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Activity, { size: 18, className: summary.urgency === "high" ? "text-yellow-600 dark:text-yellow-400" : summary.urgency === "medium" ? "text-orange-600 dark:text-orange-400" : summary.urgency === "none" ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-gray-900 dark:text-white" }, "Cluster Health: ", summary.cluster_health, "/100")), summary.urgency !== "none" && /* @__PURE__ */ React.createElement("span", { className: `text-xs px-2 py-0.5 rounded font-medium ${summary.urgency === "high" ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" : summary.urgency === "medium" ? "bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200" : "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200"}` }, summary.urgency_label)), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2" }, /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: `h-2 rounded-full transition-all ${recommendationData.summary.cluster_health >= 70 ? "bg-green-500" : recommendationData.summary.cluster_health >= 50 ? "bg-yellow-500" : recommendationData.summary.cluster_health >= 30 ? "bg-orange-500" : "bg-red-500"}`,
-        style: { width: `${recommendationData.summary.cluster_health}%` }
+        className: `h-2 rounded-full transition-all ${summary.cluster_health >= 70 ? "bg-green-500" : summary.cluster_health >= 50 ? "bg-yellow-500" : summary.cluster_health >= 30 ? "bg-orange-500" : "bg-red-500"}`,
+        style: { width: `${summary.cluster_health}%` }
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, recommendationData.summary.total_recommendations, " migration", recommendationData.summary.total_recommendations !== 1 ? "s" : "", " recommended"), recommendationData.summary.reasons_breakdown?.length > 0 && /* @__PURE__ */ React.createElement("span", null, "(", recommendationData.summary.reasons_breakdown.join(", "), ")"), recommendationData.summary.total_improvement > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "+", recommendationData.summary.total_improvement.toFixed(0), " pts total improvement"), recommendationData.summary.predicted_health > recommendationData.summary.cluster_health && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400" }, "Predicted health after: ", recommendationData.summary.predicted_health, "/100"))), !loadingRecommendations && recommendationData?.summary?.batch_impact && recommendations.length > 0 && /* @__PURE__ */ React.createElement("details", { className: "mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 group" }, /* @__PURE__ */ React.createElement("summary", { className: "p-3 cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors rounded-lg list-none" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(BarChart2, { size: 16, className: "text-indigo-600 dark:text-indigo-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200" }, "Batch Migration Impact"), recommendationData.summary.batch_impact.improvement && /* @__PURE__ */ React.createElement("span", { className: "text-xs px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium" }, recommendationData.summary.batch_impact.improvement.variance_reduction_pct > 0 ? `${recommendationData.summary.batch_impact.improvement.variance_reduction_pct.toFixed(0)}% variance reduction` : `+${recommendationData.summary.batch_impact.improvement.health_delta.toFixed(0)} health`)), /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "text-gray-500 transition-transform group-open:rotate-180" })), /* @__PURE__ */ React.createElement("div", { className: "px-3 pb-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" }, Object.entries(recommendationData.summary.batch_impact.before?.node_scores || {}).map(([node, before]) => {
-      let after = recommendationData.summary.batch_impact.after?.node_scores?.[node];
-      if (!after) return null;
-      let cpuDelta = after.cpu - before.cpu, memDelta = after.mem - before.mem, guestDelta = after.guest_count - before.guest_count;
-      return /* @__PURE__ */ React.createElement("div", { key: node, className: "p-2 bg-gray-50 dark:bg-gray-700/30 rounded" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-800 dark:text-gray-200 mb-1" }, node), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-1" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "CPU"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.cpu.toFixed(0), "%", /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${cpuDelta < -0.5 ? "text-green-600 dark:text-green-400" : cpuDelta > 0.5 ? "text-red-600 dark:text-red-400" : "text-gray-400"}` }, cpuDelta !== 0 ? `\u2192${after.cpu.toFixed(0)}%` : ""))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Mem"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.mem.toFixed(0), "%", /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${memDelta < -0.5 ? "text-green-600 dark:text-green-400" : memDelta > 0.5 ? "text-red-600 dark:text-red-400" : "text-gray-400"}` }, memDelta !== 0 ? `\u2192${after.mem.toFixed(0)}%` : ""))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Guests"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.guest_count, guestDelta !== 0 && /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${guestDelta < 0 ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400"}` }, "\u2192", after.guest_count)))));
-    })), recommendationData.summary.batch_impact.improvement && /* @__PURE__ */ React.createElement("div", { className: "mt-2 flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("span", null, "Health: ", recommendationData.summary.cluster_health, " \u2192 ", recommendationData.summary.predicted_health, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium ml-1" }, "(+", recommendationData.summary.batch_impact.improvement.health_delta.toFixed(1), ")")), /* @__PURE__ */ React.createElement("span", null, "Variance: ", recommendationData.summary.batch_impact.before.score_variance.toFixed(1), " \u2192 ", recommendationData.summary.batch_impact.after.score_variance.toFixed(1)), recommendationData.summary.batch_impact.improvement.all_nodes_improved && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "All nodes improved or stable")))), !loadingRecommendations && recommendationData?.changes_since_last && (() => {
-      let changes = recommendationData.changes_since_last;
-      return changes.new_recommendations?.length > 0 || changes.removed_recommendations?.length > 0 || changes.changed_targets?.length > 0 ? /* @__PURE__ */ React.createElement("details", { className: "mb-4 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20" }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer p-3 flex items-center gap-2 text-sm font-medium text-indigo-800 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors rounded-lg" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16 }), "Changes Since Last Generation", /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5 ml-2" }, changes.new_recommendations?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" }, "+", changes.new_recommendations.length, " new"), changes.removed_recommendations?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" }, "-", changes.removed_recommendations.length, " removed"), changes.changed_targets?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300" }, changes.changed_targets.length, " changed"), changes.unchanged > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400" }, changes.unchanged, " unchanged"))), /* @__PURE__ */ React.createElement("div", { className: "px-3 pb-3 space-y-2 text-xs" }, changes.new_recommendations?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `new-${i}`, className: "flex items-center gap-2 text-green-700 dark:text-green-300" }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, r.source_node, " \u2192 ", r.target_node))), changes.removed_recommendations?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `rem-${i}`, className: "flex items-center gap-2 text-red-700 dark:text-red-300" }, /* @__PURE__ */ React.createElement(Minus, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, r.source_node, " \u2192 ", r.target_node, " (no longer needed)"))), changes.changed_targets?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `chg-${i}`, className: "flex items-center gap-2 text-yellow-700 dark:text-yellow-300" }, /* @__PURE__ */ React.createElement(ArrowRight, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "target changed: ", r.old_target, " \u2192 ", r.new_target))))) : null;
-    })(), !loadingRecommendations && recommendationData?.capacity_advisories?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-4 space-y-2" }, recommendationData.capacity_advisories.map((adv, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: `rounded-lg border p-3 text-sm ${adv.severity === "critical" ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200" : adv.severity === "warning" ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: `shrink-0 mt-0.5 ${adv.severity === "critical" ? "text-red-600 dark:text-red-400" : adv.severity === "warning" ? "text-yellow-600 dark:text-yellow-400" : "text-blue-600 dark:text-blue-400"}` }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-xs uppercase tracking-wide mb-0.5" }, adv.severity === "critical" ? "Critical" : adv.severity === "warning" ? "Warning" : "Info", ": ", adv.type.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("div", null, adv.message), adv.suggestions?.length > 0 && /* @__PURE__ */ React.createElement("ul", { className: "mt-1 text-xs opacity-80 list-disc list-inside" }, adv.suggestions.map((s, j) => /* @__PURE__ */ React.createElement("li", { key: j }, s)))))))), !loadingRecommendations && recommendationData?.conflicts?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-4 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "text-orange-600 dark:text-orange-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-orange-800 dark:text-orange-200" }, "Migration Conflicts Detected (", recommendationData.conflicts.length, ")")), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs text-orange-700 dark:text-orange-300" }, recommendationData.conflicts.map((c, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "p-2 bg-white dark:bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium mb-1" }, "Target: ", c.target_node, " \u2014 ", c.incoming_guests.length, " incoming migrations"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 mb-1" }, c.exceeds_cpu && /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400" }, "Combined CPU: ", c.combined_predicted_cpu, "% (threshold: ", c.cpu_threshold, "%)"), c.exceeds_mem && /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400" }, "Combined Memory: ", c.combined_predicted_mem, "% (threshold: ", c.mem_threshold, "%)")), /* @__PURE__ */ React.createElement("div", { className: "italic" }, c.resolution))))), !loadingRecommendations && recommendationData?.forecasts?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, summary.total_recommendations, " migration", summary.total_recommendations !== 1 ? "s" : "", " recommended"), summary.reasons_breakdown?.length > 0 && /* @__PURE__ */ React.createElement("span", null, "(", summary.reasons_breakdown.join(", "), ")"), summary.total_improvement > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "+", summary.total_improvement.toFixed(0), " pts total improvement"), summary.predicted_health > summary.cluster_health && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400" }, "Predicted health after: ", summary.predicted_health, "/100")));
+  }
+
+  // src/components/dashboard/recommendations/AlertsBanner.jsx
+  function AlertsBanner({
+    recommendationData,
+    collapsedSections,
+    setCollapsedSections
+  }) {
+    let hasAdvisories = recommendationData?.capacity_advisories?.length > 0, hasConflicts = recommendationData?.conflicts?.length > 0, hasForecasts = recommendationData?.forecasts?.length > 0;
+    return !hasAdvisories && !hasConflicts && !hasForecasts ? null : /* @__PURE__ */ React.createElement(React.Fragment, null, hasAdvisories && /* @__PURE__ */ React.createElement("div", { className: "mb-4 space-y-2" }, recommendationData.capacity_advisories.map((adv, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: `rounded-lg border p-3 text-sm ${adv.severity === "critical" ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200" : adv.severity === "warning" ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: `shrink-0 mt-0.5 ${adv.severity === "critical" ? "text-red-600 dark:text-red-400" : adv.severity === "warning" ? "text-yellow-600 dark:text-yellow-400" : "text-blue-600 dark:text-blue-400"}` }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-xs uppercase tracking-wide mb-0.5" }, adv.severity === "critical" ? "Critical" : adv.severity === "warning" ? "Warning" : "Info", ": ", adv.type.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("div", null, adv.message), adv.suggestions?.length > 0 && /* @__PURE__ */ React.createElement("ul", { className: "mt-1 text-xs opacity-80 list-disc list-inside" }, adv.suggestions.map((s, j) => /* @__PURE__ */ React.createElement("li", { key: j }, s)))))))), hasConflicts && /* @__PURE__ */ React.createElement("div", { className: "mb-4 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "text-orange-600 dark:text-orange-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-orange-800 dark:text-orange-200" }, "Migration Conflicts Detected (", recommendationData.conflicts.length, ")")), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs text-orange-700 dark:text-orange-300" }, recommendationData.conflicts.map((c, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "p-2 bg-white dark:bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium mb-1" }, "Target: ", c.target_node, " \u2014 ", c.incoming_guests.length, " incoming migrations"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 mb-1" }, c.exceeds_cpu && /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400" }, "Combined CPU: ", c.combined_predicted_cpu, "% (threshold: ", c.cpu_threshold, "%)"), c.exceeds_mem && /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400" }, "Combined Memory: ", c.combined_predicted_mem, "% (threshold: ", c.mem_threshold, "%)")), /* @__PURE__ */ React.createElement("div", { className: "italic" }, c.resolution))))), hasForecasts && /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, forecastAlerts: !prev.forecastAlerts })),
@@ -5081,7 +4968,26 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       recommendationData.forecasts.length,
       ")",
       /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 dark:text-gray-500" }, "\u2014 Projected threshold crossings")
-    ), !collapsedSections.forecastAlerts && /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, recommendationData.forecasts.map((fc, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: `flex items-start gap-3 p-3 rounded-lg border ${fc.severity === "critical" ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700" : fc.severity === "warning" ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700" : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"}` }, /* @__PURE__ */ React.createElement("div", { className: `shrink-0 p-1.5 rounded-full ${fc.severity === "critical" ? "bg-red-100 dark:bg-red-800" : fc.severity === "warning" ? "bg-amber-100 dark:bg-amber-800" : "bg-blue-100 dark:bg-blue-800"}` }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14, className: fc.severity === "critical" ? "text-red-600 dark:text-red-400" : fc.severity === "warning" ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400" })), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-gray-900 dark:text-white" }, fc.node), /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${fc.severity === "critical" ? "bg-red-600 text-white" : fc.severity === "warning" ? "bg-amber-500 text-white" : "bg-blue-500 text-white"}` }, fc.severity), /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 uppercase" }, fc.metric)), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, fc.message), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 text-[10px] text-gray-500 dark:text-gray-500" }, /* @__PURE__ */ React.createElement("span", null, "Current: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.current_value?.toFixed(1), "%")), /* @__PURE__ */ React.createElement("span", null, "Threshold: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.threshold, "%")), /* @__PURE__ */ React.createElement("span", null, "Projected: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.projected_value?.toFixed(1), "%")), fc.estimated_hours_to_crossing && /* @__PURE__ */ React.createElement("span", null, "ETA: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, "~", fc.estimated_hours_to_crossing < 24 ? `${fc.estimated_hours_to_crossing.toFixed(0)}h` : `${(fc.estimated_hours_to_crossing / 24).toFixed(1)}d`)), /* @__PURE__ */ React.createElement("span", null, "Rate: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.trend_rate_per_day > 0 ? "+" : "", fc.trend_rate_per_day?.toFixed(1), "%/day")), /* @__PURE__ */ React.createElement("span", null, "Confidence: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.confidence), " (R\xB2=", fc.r_squared?.toFixed(2), ")"))))))), !loadingRecommendations && recommendations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement(
+    ), !collapsedSections.forecastAlerts && /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, recommendationData.forecasts.map((fc, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: `flex items-start gap-3 p-3 rounded-lg border ${fc.severity === "critical" ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700" : fc.severity === "warning" ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700" : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"}` }, /* @__PURE__ */ React.createElement("div", { className: `shrink-0 p-1.5 rounded-full ${fc.severity === "critical" ? "bg-red-100 dark:bg-red-800" : fc.severity === "warning" ? "bg-amber-100 dark:bg-amber-800" : "bg-blue-100 dark:bg-blue-800"}` }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14, className: fc.severity === "critical" ? "text-red-600 dark:text-red-400" : fc.severity === "warning" ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400" })), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-sm text-gray-900 dark:text-white" }, fc.node), /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${fc.severity === "critical" ? "bg-red-600 text-white" : fc.severity === "warning" ? "bg-amber-500 text-white" : "bg-blue-500 text-white"}` }, fc.severity), /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 uppercase" }, fc.metric)), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, fc.message), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 text-[10px] text-gray-500 dark:text-gray-500" }, /* @__PURE__ */ React.createElement("span", null, "Current: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.current_value?.toFixed(1), "%")), /* @__PURE__ */ React.createElement("span", null, "Threshold: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.threshold, "%")), /* @__PURE__ */ React.createElement("span", null, "Projected: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.projected_value?.toFixed(1), "%")), fc.estimated_hours_to_crossing && /* @__PURE__ */ React.createElement("span", null, "ETA: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, "~", fc.estimated_hours_to_crossing < 24 ? `${fc.estimated_hours_to_crossing.toFixed(0)}h` : `${(fc.estimated_hours_to_crossing / 24).toFixed(1)}d`)), /* @__PURE__ */ React.createElement("span", null, "Rate: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.trend_rate_per_day > 0 ? "+" : "", fc.trend_rate_per_day?.toFixed(1), "%/day")), /* @__PURE__ */ React.createElement("span", null, "Confidence: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, fc.confidence), " (R\xB2=", fc.r_squared?.toFixed(2), ")"))))))));
+  }
+
+  // src/components/dashboard/recommendations/RecommendationFilters.jsx
+  function RecommendationFilters({
+    recommendations,
+    showRecFilters,
+    setShowRecFilters,
+    recFilterConfidence,
+    setRecFilterConfidence,
+    recFilterSourceNode,
+    setRecFilterSourceNode,
+    recFilterTargetNode,
+    setRecFilterTargetNode,
+    recSortBy,
+    setRecSortBy,
+    recSortDir,
+    setRecSortDir
+  }) {
+    return recommendations.length ? /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowRecFilters((prev) => !prev),
@@ -5148,170 +5054,184 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
       },
       "Clear All"
-    ))), loadingRecommendations ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-8" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 48, className: "mx-auto mb-3 text-blue-500 dark:text-blue-400 animate-spin" }), /* @__PURE__ */ React.createElement("p", { className: "font-medium text-gray-700 dark:text-gray-300" }, "Generating recommendations..."), recommendationData?.ai_enhanced && /* @__PURE__ */ React.createElement("p", { className: "text-sm text-purple-600 dark:text-purple-400 mt-1" }, "AI enhancement in progress")) : recommendations.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-8 text-gray-500 dark:text-gray-400" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 48, className: "mx-auto mb-2 text-green-500 dark:text-green-400" }), /* @__PURE__ */ React.createElement("p", { className: "font-medium" }, "Cluster is balanced!"), /* @__PURE__ */ React.createElement("p", { className: "text-sm" }, "No migrations needed")) : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, (() => {
-      let filtered = [...recommendations];
-      if (recFilterConfidence) {
-        let minConf = parseInt(recFilterConfidence);
-        filtered = filtered.filter((r) => (r.confidence_score || 0) >= minConf);
-      }
-      return recFilterSourceNode && (filtered = filtered.filter((r) => r.source_node === recFilterSourceNode)), recFilterTargetNode && (filtered = filtered.filter((r) => r.target_node === recFilterTargetNode)), recSortBy && filtered.sort((a, b) => {
-        let va = a[recSortBy] || 0, vb = b[recSortBy] || 0;
-        return recSortDir === "asc" ? va - vb : vb - va;
-      }), filtered;
-    })().map((rec, idx) => {
-      let key = `${rec.vmid}-${rec.target_node}`, status = migrationStatus[key], completed = completedMigrations[rec.vmid], isCompleted = completed !== void 0, isMaintenance = rec.reason && rec.reason.toLowerCase().includes("maintenance"), changeLog = recommendationData?.changes_since_last, isNewRec = changeLog?.new_recommendations?.some((r) => String(r.vmid) === String(rec.vmid)), changedTarget = changeLog?.changed_targets?.find((r) => String(r.vmid) === String(rec.vmid));
-      return /* @__PURE__ */ React.createElement("div", { key: idx, className: `border rounded p-4 transition-all duration-300 ${isCompleted ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 opacity-75" : isMaintenance ? "border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10" : "border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${isCompleted ? "text-green-700 dark:text-green-300" : "text-gray-900 dark:text-white"}` }, "[", rec.type, " ", rec.vmid, "] ", rec.name), rec.mount_point_info?.has_mount_points && /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          className: `flex items-center gap-1 px-2 py-0.5 ${rec.mount_point_info.has_unshared_bind_mount ? "bg-orange-500" : "bg-green-500"} text-white text-[10px] font-bold rounded`,
-          title: `${rec.mount_point_info.mount_count} mount point(s)${rec.mount_point_info.has_shared_mount ? " (shared - can migrate)" : " (requires manual migration)"}`
-        },
-        /* @__PURE__ */ React.createElement(Folder, { size: 10 }),
-        rec.mount_point_info.mount_count,
-        " MP"
-      ), isMaintenance && !isCompleted && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded" }, "MAINTENANCE"), isNewRec && !isCompleted && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded" }, "NEW"), changedTarget && !isCompleted && /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          className: "px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded",
-          title: `Target changed from ${changedTarget.old_target} \u2192 ${changedTarget.new_target}`
-        },
-        "TARGET CHANGED"
-      ), isCompleted && /* @__PURE__ */ React.createElement(CheckCircle, { size: 18, className: "text-green-600 dark:text-green-400" }), status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 18, className: "text-red-600 dark:text-red-400" })), /* @__PURE__ */ React.createElement("div", { className: `text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? "text-green-600 dark:text-green-400" : ""}` }, isCompleted ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "MIGRATED:"), " ", rec.source_node, " \u2192 ", completed.newNode, " \u2713") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "FROM:"), /* @__PURE__ */ React.createElement("span", null, rec.source_node), rec.score_details?.source?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.source.metrics.current_cpu?.toFixed(0) || "?", "% CPU)")), /* @__PURE__ */ React.createElement(ArrowRight, { size: 16, className: "text-gray-400 dark:text-gray-500" }), /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "TO:"), /* @__PURE__ */ React.createElement("span", null, rec.target_node), rec.score_details?.target?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || "?", "% CPU)")), rec.score_improvement !== void 0 && (() => {
-        let pct = Math.min(100, rec.score_improvement / 80 * 100), barColor = rec.score_improvement >= 50 ? "bg-green-500" : rec.score_improvement >= 30 ? "bg-yellow-500" : rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? "bg-orange-500" : "bg-red-500";
-        return /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 min-w-[120px]", title: `Score improvement: +${rec.score_improvement.toFixed(1)} penalty points` }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, "+", rec.score_improvement.toFixed(0)), /* @__PURE__ */ React.createElement("span", { className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]" }, /* @__PURE__ */ React.createElement("span", { className: `block h-full rounded-full ${barColor} transition-all`, style: { width: `${pct}%` } })));
-      })())), /* @__PURE__ */ React.createElement("div", { className: `text-xs mt-1 ${isCompleted ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}` }, rec.structured_reason ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: `font-medium ${isMaintenance ? "text-yellow-600 dark:text-yellow-400" : ""}` }, rec.structured_reason.primary_label), rec.structured_reason.contributing_factors?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-gray-500 dark:text-gray-500" }, "\u2014 ", rec.structured_reason.contributing_factors.slice(0, 3).map((f) => f.label).join("; ")), /* @__PURE__ */ React.createElement("span", { className: "ml-2" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.confidence_score !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 inline-flex items-center gap-1", title: `Confidence: ${rec.confidence_score}%` }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "|"), /* @__PURE__ */ React.createElement("span", { className: "inline-flex gap-0.5" }, [20, 40, 60, 80, 100].map((threshold) => /* @__PURE__ */ React.createElement("span", { key: threshold, className: `w-1.5 h-1.5 rounded-full ${rec.confidence_score >= threshold ? rec.confidence_score >= 70 ? "bg-green-500" : rec.confidence_score >= 40 ? "bg-yellow-500" : "bg-orange-500" : "bg-gray-300 dark:bg-gray-600"}` }))), /* @__PURE__ */ React.createElement("span", { className: `font-semibold text-[10px] ${rec.confidence_score >= 70 ? "text-green-600 dark:text-green-400" : rec.confidence_score >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-orange-600 dark:text-orange-400"}` }, rec.confidence_score, "%"))) : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Reason:"), " ", /* @__PURE__ */ React.createElement("span", { className: isMaintenance ? "font-bold text-yellow-600 dark:text-yellow-400" : "" }, rec.reason), " | ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.ai_confidence_adjustment && rec.ai_confidence_adjustment !== 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2", title: "AI-adjusted confidence modification" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "AI Adjustment:"), " ", /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${rec.ai_confidence_adjustment > 0 ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}` }, rec.ai_confidence_adjustment > 0 ? "+" : "", rec.ai_confidence_adjustment))), !isCompleted && (rec.risk_level || rec.has_conflict) && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 mt-1" }, rec.risk_level && /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${rec.risk_level === "very_high" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300" : rec.risk_level === "high" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" : rec.risk_level === "moderate" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"}`, title: rec.risk_factors?.map((f) => f.detail).join(`
-`) || "" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 10 }), "Risk: ", rec.risk_level === "very_high" ? "Very High" : rec.risk_level.charAt(0).toUpperCase() + rec.risk_level.slice(1), "(", rec.risk_score, "/100)"), rec.has_conflict && /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          className: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
-          title: `Multiple migrations targeting ${rec.conflict_target} \u2014 combined load may exceed thresholds`
-        },
-        /* @__PURE__ */ React.createElement(XCircle, { size: 10 }),
-        "Target Conflict"
-      )), rec.score_details && !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation();
-            let breakdownKey = `breakdown-${idx}`;
-            setCollapsedSections((prev) => ({
-              ...prev,
-              [breakdownKey]: !prev[breakdownKey]
-            }));
-          },
-          className: "text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-        },
-        /* @__PURE__ */ React.createElement(Info, { size: 12 }),
-        collapsedSections[`breakdown-${idx}`] ? "Hide score breakdown" : "Show score breakdown"
-      ), collapsedSections[`breakdown-${idx}`] && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-red-600 dark:text-red-400 mb-1" }, "Source: ", rec.source_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.source?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.source?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-green-600 dark:text-green-400 mb-1" }, "Target: ", rec.target_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.target?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.target?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties")))), rec.score_details.target?.metrics && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1" }, "After migration on ", rec.target_node, ":"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU: ", rec.score_details.target.metrics.predicted_cpu, "%"), /* @__PURE__ */ React.createElement("span", null, "Memory: ", rec.score_details.target.metrics.predicted_mem, "%"), /* @__PURE__ */ React.createElement("span", null, "Headroom: ", rec.score_details.target.metrics.cpu_headroom, "% CPU, ", rec.score_details.target.metrics.mem_headroom, "% mem"))))), rec.ai_insight && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-purple-600 dark:text-purple-400 font-semibold shrink-0" }, "AI:"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.ai_insight))), rec.bind_mount_warning && /* @__PURE__ */ React.createElement("div", { className: `mt-2 p-2 ${rec.mount_point_info?.has_unshared_bind_mount ? "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-300 dark:border-orange-700" : "bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-300 dark:border-green-700"} rounded text-xs` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(Folder, { size: 14, className: `shrink-0 ${rec.mount_point_info?.has_unshared_bind_mount ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"}` }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.bind_mount_warning))), /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation();
-            let commandKey = `command-${idx}`;
-            setCollapsedSections((prev) => ({
-              ...prev,
-              [commandKey]: !prev[commandKey]
-            }));
-          },
-          className: "text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-        },
-        /* @__PURE__ */ React.createElement(Terminal, { size: 12 }),
-        collapsedSections[`command-${idx}`] ? "Hide command" : "Show command"
-      ), !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500" }, "Helpful?"), feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-[10px] font-medium ${feedbackGiven[`${rec.vmid}-${rec.target_node}`] === "helpful" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}` }, feedbackGiven[`${rec.vmid}-${rec.target_node}`] === "helpful" ? "Thanks!" : "Noted") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation(), onFeedback(rec, "helpful");
-          },
-          className: "p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors",
-          title: "This recommendation is helpful"
-        },
-        /* @__PURE__ */ React.createElement(ThumbsUp, { size: 12 })
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          onClick: (e) => {
-            e.stopPropagation(), onFeedback(rec, "not_helpful");
-          },
-          className: "p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors",
-          title: "This recommendation is not helpful"
-        },
-        /* @__PURE__ */ React.createElement(ThumbsDown, { size: 12 })
-      )))), collapsedSections[`command-${idx}`] && /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          onClick: (e) => {
-            e.stopPropagation(), navigator.clipboard.writeText(rec.command);
-            let btn = e.currentTarget, originalText = btn.textContent;
-            btn.textContent = "Copied!", btn.classList.add("bg-green-100", "dark:bg-green-900"), setTimeout(() => {
-              btn.textContent = originalText, btn.classList.remove("bg-green-100", "dark:bg-green-900");
-            }, 1e3);
-          },
-          className: `text-xs font-mono p-2 rounded mt-1 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all ${isCompleted ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" : "bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300"}`,
-          title: "Click to copy"
-        },
-        rec.command
-      ))), /* @__PURE__ */ React.createElement("div", { className: "sm:ml-4 flex items-center gap-2 shrink-0" }, (() => {
-        if (isCompleted)
-          return /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded flex items-center gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), "Migrated"), canMigrate && /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: async () => {
-                try {
-                  let { fetchRollbackInfo: fetchRollbackInfo2, executeRollback: executeRollback2 } = await import("../api/client.js"), infoRes = await fetchRollbackInfo2(rec.vmid);
-                  if (infoRes.error || !infoRes.success) {
-                    setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "unavailable" }));
-                    return;
-                  }
-                  let info = infoRes.rollback_info;
-                  if (!info.available) {
-                    alert(`Rollback unavailable: ${info.detail}`);
-                    return;
-                  }
-                  if (!info.rollback_safe && !confirm(`Rollback may be risky: ${info.detail}
+    ))) : null;
+  }
 
-Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) back to ${info.original_node}?`)) return;
-                  setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "running" }));
-                  let result = await executeRollback2(rec.vmid);
-                  result.success ? setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "done" })) : (alert(`Rollback failed: ${result.error || "Unknown error"}`), setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "failed" })));
-                } catch (err) {
-                  alert(`Rollback error: ${err.message}`);
-                }
-              },
-              disabled: migrationStatus[`rollback-${rec.vmid}`] === "running",
-              className: "px-3 py-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1 transition-colors",
-              title: "Rollback: migrate back to original node"
-            },
-            migrationStatus[`rollback-${rec.vmid}`] === "running" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Rolling back...") : migrationStatus[`rollback-${rec.vmid}`] === "done" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 12 }), " Rolled back") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RotateCcw, { size: 12 }), " Rollback")
-          ));
-        let isMigrating = guestsMigrating[rec.vmid] === !0, migrationKey = `${rec.vmid}-${rec.target_node}`;
-        if (isMigrating && canMigrate) {
-          let progress = migrationProgress[rec.vmid], progressText = "", tooltipText = "Cancel migration in progress";
-          return progress && (progress.percentage ? (progressText = ` ${progress.percentage}%`, progress.total_human_readable && (tooltipText = `Copying ${progress.human_readable} / ${progress.total_human_readable}`)) : progressText = ` (${progress.human_readable})`), /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: () => cancelMigration(rec.vmid, rec.target_node),
-              className: "px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 flex items-center gap-2 animate-pulse",
-              title: tooltipText
-            },
-            /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }),
-            "Cancel",
-            progressText
-          );
-        }
-        return /* @__PURE__ */ React.createElement(
+  // src/components/dashboard/recommendations/RecommendationCard.jsx
+  function RecommendationCard({
+    rec,
+    idx,
+    penaltyConfig,
+    recommendationData,
+    migrationStatus,
+    setMigrationStatus,
+    completedMigrations,
+    guestsMigrating,
+    migrationProgress,
+    cancelMigration,
+    setConfirmMigration,
+    canMigrate,
+    feedbackGiven,
+    onFeedback,
+    collapsedSections,
+    setCollapsedSections
+  }) {
+    let key = `${rec.vmid}-${rec.target_node}`, status = migrationStatus[key], completed = completedMigrations[rec.vmid], isCompleted = completed !== void 0, isMaintenance = rec.reason && rec.reason.toLowerCase().includes("maintenance"), changeLog = recommendationData?.changes_since_last, isNewRec = changeLog?.new_recommendations?.some((r) => String(r.vmid) === String(rec.vmid)), changedTarget = changeLog?.changed_targets?.find((r) => String(r.vmid) === String(rec.vmid));
+    return /* @__PURE__ */ React.createElement("div", { className: `border rounded p-4 transition-all duration-300 ${isCompleted ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 opacity-75" : isMaintenance ? "border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10" : "border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${isCompleted ? "text-green-700 dark:text-green-300" : "text-gray-900 dark:text-white"}` }, "[", rec.type, " ", rec.vmid, "] ", rec.name), rec.mount_point_info?.has_mount_points && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        className: `flex items-center gap-1 px-2 py-0.5 ${rec.mount_point_info.has_unshared_bind_mount ? "bg-orange-500" : "bg-green-500"} text-white text-[10px] font-bold rounded`,
+        title: `${rec.mount_point_info.mount_count} mount point(s)${rec.mount_point_info.has_shared_mount ? " (shared - can migrate)" : " (requires manual migration)"}`
+      },
+      /* @__PURE__ */ React.createElement(Folder, { size: 10 }),
+      rec.mount_point_info.mount_count,
+      " MP"
+    ), isMaintenance && !isCompleted && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded" }, "MAINTENANCE"), isNewRec && !isCompleted && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded" }, "NEW"), changedTarget && !isCompleted && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        className: "px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded",
+        title: `Target changed from ${changedTarget.old_target} \u2192 ${changedTarget.new_target}`
+      },
+      "TARGET CHANGED"
+    ), isCompleted && /* @__PURE__ */ React.createElement(CheckCircle, { size: 18, className: "text-green-600 dark:text-green-400" }), status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 18, className: "text-red-600 dark:text-red-400" })), /* @__PURE__ */ React.createElement("div", { className: `text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? "text-green-600 dark:text-green-400" : ""}` }, isCompleted ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "MIGRATED:"), " ", rec.source_node, " \u2192 ", completed.newNode, " \u2713") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "FROM:"), /* @__PURE__ */ React.createElement("span", null, rec.source_node), rec.score_details?.source?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.source.metrics.current_cpu?.toFixed(0) || "?", "% CPU)")), /* @__PURE__ */ React.createElement(ArrowRight, { size: 16, className: "text-gray-400 dark:text-gray-500" }), /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "TO:"), /* @__PURE__ */ React.createElement("span", null, rec.target_node), rec.score_details?.target?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || "?", "% CPU)")), rec.score_improvement !== void 0 && (() => {
+      let pct = Math.min(100, rec.score_improvement / 80 * 100), barColor = rec.score_improvement >= 50 ? "bg-green-500" : rec.score_improvement >= 30 ? "bg-yellow-500" : rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? "bg-orange-500" : "bg-red-500";
+      return /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 min-w-[120px]", title: `Score improvement: +${rec.score_improvement.toFixed(1)} penalty points` }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, "+", rec.score_improvement.toFixed(0)), /* @__PURE__ */ React.createElement("span", { className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]" }, /* @__PURE__ */ React.createElement("span", { className: `block h-full rounded-full ${barColor} transition-all`, style: { width: `${pct}%` } })));
+    })())), /* @__PURE__ */ React.createElement("div", { className: `text-xs mt-1 ${isCompleted ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}` }, rec.structured_reason ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: `font-medium ${isMaintenance ? "text-yellow-600 dark:text-yellow-400" : ""}` }, rec.structured_reason.primary_label), rec.structured_reason.contributing_factors?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-gray-500 dark:text-gray-500" }, "\u2014 ", rec.structured_reason.contributing_factors.slice(0, 3).map((f) => f.label).join("; ")), /* @__PURE__ */ React.createElement("span", { className: "ml-2" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.confidence_score !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 inline-flex items-center gap-1", title: `Confidence: ${rec.confidence_score}%` }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "|"), /* @__PURE__ */ React.createElement("span", { className: "inline-flex gap-0.5" }, [20, 40, 60, 80, 100].map((threshold) => /* @__PURE__ */ React.createElement("span", { key: threshold, className: `w-1.5 h-1.5 rounded-full ${rec.confidence_score >= threshold ? rec.confidence_score >= 70 ? "bg-green-500" : rec.confidence_score >= 40 ? "bg-yellow-500" : "bg-orange-500" : "bg-gray-300 dark:bg-gray-600"}` }))), /* @__PURE__ */ React.createElement("span", { className: `font-semibold text-[10px] ${rec.confidence_score >= 70 ? "text-green-600 dark:text-green-400" : rec.confidence_score >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-orange-600 dark:text-orange-400"}` }, rec.confidence_score, "%"))) : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Reason:"), " ", /* @__PURE__ */ React.createElement("span", { className: isMaintenance ? "font-bold text-yellow-600 dark:text-yellow-400" : "" }, rec.reason), " | ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.ai_confidence_adjustment && rec.ai_confidence_adjustment !== 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2", title: "AI-adjusted confidence modification" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "AI Adjustment:"), " ", /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${rec.ai_confidence_adjustment > 0 ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}` }, rec.ai_confidence_adjustment > 0 ? "+" : "", rec.ai_confidence_adjustment))), !isCompleted && (rec.risk_level || rec.has_conflict) && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 mt-1" }, rec.risk_level && /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${rec.risk_level === "very_high" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300" : rec.risk_level === "high" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" : rec.risk_level === "moderate" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"}`, title: rec.risk_factors?.map((f) => f.detail).join(`
+`) || "" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 10 }), "Risk: ", rec.risk_level === "very_high" ? "Very High" : rec.risk_level.charAt(0).toUpperCase() + rec.risk_level.slice(1), "(", rec.risk_score, "/100)"), rec.has_conflict && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        className: "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+        title: `Multiple migrations targeting ${rec.conflict_target} \u2014 combined load may exceed thresholds`
+      },
+      /* @__PURE__ */ React.createElement(XCircle, { size: 10 }),
+      "Target Conflict"
+    )), rec.score_details && !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: (e) => {
+          e.stopPropagation();
+          let breakdownKey = `breakdown-${idx}`;
+          setCollapsedSections((prev) => ({ ...prev, [breakdownKey]: !prev[breakdownKey] }));
+        },
+        className: "text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+      },
+      /* @__PURE__ */ React.createElement(Info, { size: 12 }),
+      collapsedSections[`breakdown-${idx}`] ? "Hide score breakdown" : "Show score breakdown"
+    ), collapsedSections[`breakdown-${idx}`] && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-red-600 dark:text-red-400 mb-1" }, "Source: ", rec.source_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.source?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.source?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-green-600 dark:text-green-400 mb-1" }, "Target: ", rec.target_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.target?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.target?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties")))), rec.score_details.target?.metrics && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1" }, "After migration on ", rec.target_node, ":"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU: ", rec.score_details.target.metrics.predicted_cpu, "%"), /* @__PURE__ */ React.createElement("span", null, "Memory: ", rec.score_details.target.metrics.predicted_mem, "%"), /* @__PURE__ */ React.createElement("span", null, "Headroom: ", rec.score_details.target.metrics.cpu_headroom, "% CPU, ", rec.score_details.target.metrics.mem_headroom, "% mem"))))), rec.ai_insight && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-purple-600 dark:text-purple-400 font-semibold shrink-0" }, "AI:"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.ai_insight))), rec.bind_mount_warning && /* @__PURE__ */ React.createElement("div", { className: `mt-2 p-2 ${rec.mount_point_info?.has_unshared_bind_mount ? "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-300 dark:border-orange-700" : "bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-300 dark:border-green-700"} rounded text-xs` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(Folder, { size: 14, className: `shrink-0 ${rec.mount_point_info?.has_unshared_bind_mount ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"}` }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.bind_mount_warning))), /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: (e) => {
+          e.stopPropagation();
+          let commandKey = `command-${idx}`;
+          setCollapsedSections((prev) => ({ ...prev, [commandKey]: !prev[commandKey] }));
+        },
+        className: "text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+      },
+      /* @__PURE__ */ React.createElement(Terminal, { size: 12 }),
+      collapsedSections[`command-${idx}`] ? "Hide command" : "Show command"
+    ), !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500" }, "Helpful?"), feedbackGiven[`${rec.vmid}-${rec.target_node}`] ? /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-[10px] font-medium ${feedbackGiven[`${rec.vmid}-${rec.target_node}`] === "helpful" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}` }, feedbackGiven[`${rec.vmid}-${rec.target_node}`] === "helpful" ? "Thanks!" : "Noted") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: (e) => {
+          e.stopPropagation(), onFeedback(rec, "helpful");
+        },
+        className: "p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors",
+        title: "This recommendation is helpful"
+      },
+      /* @__PURE__ */ React.createElement(ThumbsUp, { size: 12 })
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: (e) => {
+          e.stopPropagation(), onFeedback(rec, "not_helpful");
+        },
+        className: "p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors",
+        title: "This recommendation is not helpful"
+      },
+      /* @__PURE__ */ React.createElement(ThumbsDown, { size: 12 })
+    )))), collapsedSections[`command-${idx}`] && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        onClick: (e) => {
+          e.stopPropagation(), navigator.clipboard.writeText(rec.command);
+          let btn = e.currentTarget, originalText = btn.textContent;
+          btn.textContent = "Copied!", btn.classList.add("bg-green-100", "dark:bg-green-900"), setTimeout(() => {
+            btn.textContent = originalText, btn.classList.remove("bg-green-100", "dark:bg-green-900");
+          }, 1e3);
+        },
+        className: `text-xs font-mono p-2 rounded mt-1 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all ${isCompleted ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" : "bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300"}`,
+        title: "Click to copy"
+      },
+      rec.command
+    ))), /* @__PURE__ */ React.createElement("div", { className: "sm:ml-4 flex items-center gap-2 shrink-0" }, (() => {
+      if (isCompleted)
+        return /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded flex items-center gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), "Migrated"), canMigrate && /* @__PURE__ */ React.createElement(
           "button",
           {
-            onClick: () => setConfirmMigration(rec),
-            disabled: !canMigrate || status === "running" || isMigrating,
-            className: "px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2",
-            title: canMigrate ? isMigrating ? "Migration in progress" : "" : "Read-only API token (PVEAuditor) - Cannot perform migrations"
+            onClick: async () => {
+              try {
+                let { fetchRollbackInfo: fetchRollbackInfo2, executeRollback: executeRollback2 } = await import("../../api/client.js"), infoRes = await fetchRollbackInfo2(rec.vmid);
+                if (infoRes.error || !infoRes.success) {
+                  setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "unavailable" }));
+                  return;
+                }
+                let info = infoRes.rollback_info;
+                if (!info.available) {
+                  alert(`Rollback unavailable: ${info.detail}`);
+                  return;
+                }
+                if (!info.rollback_safe && !confirm(`Rollback may be risky: ${info.detail}
+
+Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) back to ${info.original_node}?`)) return;
+                setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "running" }));
+                let result = await executeRollback2(rec.vmid);
+                result.success ? setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "done" })) : (alert(`Rollback failed: ${result.error || "Unknown error"}`), setMigrationStatus((prev) => ({ ...prev, [`rollback-${rec.vmid}`]: "failed" })));
+              } catch (err) {
+                alert(`Rollback error: ${err.message}`);
+              }
+            },
+            disabled: migrationStatus[`rollback-${rec.vmid}`] === "running",
+            className: "px-3 py-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1 transition-colors",
+            title: "Rollback: migrate back to original node"
           },
-          canMigrate ? isMigrating ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }), "Migrating...") : status === "running" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }), "Starting...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Play, { size: 16 }), "Migrate") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Lock, { size: 16 }), "Read-Only")
+          migrationStatus[`rollback-${rec.vmid}`] === "running" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Rolling back...") : migrationStatus[`rollback-${rec.vmid}`] === "done" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 12 }), " Rolled back") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RotateCcw, { size: 12 }), " Rollback")
+        ));
+      let isMigrating = guestsMigrating[rec.vmid] === !0;
+      if (isMigrating && canMigrate) {
+        let progress = migrationProgress[rec.vmid], progressText = "", tooltipText = "Cancel migration in progress";
+        return progress && (progress.percentage ? (progressText = ` ${progress.percentage}%`, progress.total_human_readable && (tooltipText = `Copying ${progress.human_readable} / ${progress.total_human_readable}`)) : progressText = ` (${progress.human_readable})`), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => cancelMigration(rec.vmid, rec.target_node),
+            className: "px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 flex items-center gap-2 animate-pulse",
+            title: tooltipText
+          },
+          /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }),
+          "Cancel",
+          progressText
         );
-      })())));
-    })), !loadingRecommendations && recommendationData?.skipped_guests?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement(
+      }
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmMigration(rec),
+          disabled: !canMigrate || status === "running" || isMigrating,
+          className: "px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2",
+          title: canMigrate ? isMigrating ? "Migration in progress" : "" : "Read-only API token (PVEAuditor) - Cannot perform migrations"
+        },
+        canMigrate ? isMigrating ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }), " Migrating...") : status === "running" ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }), " Starting...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Play, { size: 16 }), " Migrate") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Lock, { size: 16 }), " Read-Only")
+      );
+    })())));
+  }
+
+  // src/components/dashboard/recommendations/SkippedGuests.jsx
+  function SkippedGuests({
+    recommendationData,
+    penaltyConfig,
+    collapsedSections,
+    setCollapsedSections
+  }) {
+    return recommendationData?.skipped_guests?.length ? /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, skippedGuests: !prev.skippedGuests })),
@@ -5326,63 +5246,363 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
       ),
       /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Not Recommended (", recommendationData.skipped_guests.length, " guests evaluated)"),
       /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 dark:text-gray-500" }, "\u2014 Why weren't these guests recommended?")
-    ), !collapsedSections.skippedGuests && /* @__PURE__ */ React.createElement("div", { className: "mt-2 space-y-1" }, recommendationData.skipped_guests.slice(0, 20).map((skipped, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex items-start gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("span", { className: `shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${skipped.reason === "insufficient_improvement" ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400" : skipped.reason === "ha_managed" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400" : skipped.reason === "no_suitable_target" ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"}` }, skipped.reason === "insufficient_improvement" ? "~" : skipped.reason === "ha_managed" ? "H" : skipped.reason === "no_suitable_target" ? "!" : skipped.reason === "stopped" ? "S" : skipped.reason === "passthrough_disk" ? "P" : skipped.reason === "has_ignore_tag" ? "I" : skipped.reason === "unshared_bind_mount" ? "B" : "?"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, "[", skipped.type, " ", skipped.vmid, "] ", skipped.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 ml-1" }, "on ", skipped.node), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-2" }, "\u2014 ", skipped.detail), skipped.score_improvement !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-yellow-600 dark:text-yellow-400 font-mono" }, "(+", skipped.score_improvement, " pts, need ", penaltyConfig?.min_score_improvement || 15, ")")))), recommendationData.skipped_guests.length > 20 && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 text-center py-1" }, "...and ", recommendationData.skipped_guests.length - 20, " more"))), !loadingRecommendations && recommendationData?.execution_plan?.ordered_recommendations?.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement(
+    ), !collapsedSections.skippedGuests && /* @__PURE__ */ React.createElement("div", { className: "mt-2 space-y-1" }, recommendationData.skipped_guests.slice(0, 20).map((skipped, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex items-start gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("span", { className: `shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${skipped.reason === "insufficient_improvement" ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400" : skipped.reason === "ha_managed" ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400" : skipped.reason === "no_suitable_target" ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400" : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400"}` }, skipped.reason === "insufficient_improvement" ? "~" : skipped.reason === "ha_managed" ? "H" : skipped.reason === "no_suitable_target" ? "!" : skipped.reason === "stopped" ? "S" : skipped.reason === "passthrough_disk" ? "P" : skipped.reason === "has_ignore_tag" ? "I" : skipped.reason === "unshared_bind_mount" ? "B" : "?"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, "[", skipped.type, " ", skipped.vmid, "] ", skipped.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 ml-1" }, "on ", skipped.node), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-2" }, "\u2014 ", skipped.detail), skipped.score_improvement !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-yellow-600 dark:text-yellow-400 font-mono" }, "(+", skipped.score_improvement, " pts, need ", penaltyConfig?.min_score_improvement || 15, ")")))), recommendationData.skipped_guests.length > 20 && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 text-center py-1" }, "...and ", recommendationData.skipped_guests.length - 20, " more"))) : null;
+  }
+
+  // src/components/dashboard/recommendations/insights/ScoringExplainer.jsx
+  function ScoringExplainer({ penaltyConfig, setCurrentPage, setOpenPenaltyConfigOnAutomation }) {
+    return /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-700 dark:text-gray-300" }, "ProxBalance uses a penalty-based scoring system to evaluate every guest on every node. Migrations are recommended when moving a guest would improve its suitability rating by ", /* @__PURE__ */ React.createElement("span", { className: "font-bold" }, penaltyConfig?.min_score_improvement || 15, "+ points"), "."), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Suitability Rating Scale"), /* @__PURE__ */ React.createElement("div", { className: "flex rounded overflow-hidden h-5 mb-1" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "0-30"), /* @__PURE__ */ React.createElement("div", { className: "bg-orange-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "30-50"), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "50-70"), /* @__PURE__ */ React.createElement("div", { className: "bg-green-500 flex-1 flex items-center justify-center text-white text-[10px] font-bold" }, "70-100")), /* @__PURE__ */ React.createElement("div", { className: "flex text-[10px] text-gray-500 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Poor"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Fair"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Good"), /* @__PURE__ */ React.createElement("div", { className: "flex-1 text-center" }, "Excellent"))), /* @__PURE__ */ React.createElement("div", { className: "p-2.5 bg-gray-100 dark:bg-gray-700/50 rounded" }, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1" }, "Your Configuration"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "30%")), /* @__PURE__ */ React.createElement("span", null, "Memory weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "30%")), /* @__PURE__ */ React.createElement("span", null, "IOWait weight: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "20%")), /* @__PURE__ */ React.createElement("span", null, "Other factors: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, "20%")), /* @__PURE__ */ React.createElement("span", null, "Current period: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_current * 100).toFixed(0) : "50", "%")), /* @__PURE__ */ React.createElement("span", null, "24h average: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_24h * 100).toFixed(0) : "30", "%")), /* @__PURE__ */ React.createElement("span", null, "7-day average: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig ? (penaltyConfig.weight_7d * 100).toFixed(0) : "20", "%")), /* @__PURE__ */ React.createElement("span", null, "Min improvement: ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold" }, penaltyConfig?.min_score_improvement || 15, " pts")))), /* @__PURE__ */ React.createElement("ul", { className: "ml-4 space-y-1 text-gray-600 dark:text-gray-400 text-xs list-disc" }, /* @__PURE__ */ React.createElement("li", null, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Penalties applied for:"), " High CPU/memory/IOWait, rising trends, historical spikes, predicted post-migration overload"), /* @__PURE__ */ React.createElement("li", null, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Smart decisions:"), " Balances immediate needs with long-term stability and capacity planning")), /* @__PURE__ */ React.createElement("div", { className: "text-xs" }, /* @__PURE__ */ React.createElement(
       "button",
       {
-        onClick: () => setCollapsedSections((prev) => ({ ...prev, executionPlan: !prev.executionPlan })),
-        className: "flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
-      },
-      /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: `transition-transform ${collapsedSections.executionPlan ? "" : "rotate-180"}` }),
-      /* @__PURE__ */ React.createElement(List, { size: 14, className: "text-indigo-500" }),
-      "Execution Plan (",
-      recommendationData.execution_plan.total_steps,
-      " steps)",
-      recommendationData.execution_plan.can_parallelize && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400" }, "Parallel groups available")
-    ), !collapsedSections.executionPlan && /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5" }, recommendationData.execution_plan.ordered_recommendations.map((step, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex items-center gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-bold text-[11px]" }, step.step), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, "[", step.vmid, "] ", step.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 mx-1" }, step.source_node), /* @__PURE__ */ React.createElement(ArrowRight, { size: 10, className: "inline text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 mx-1" }, step.target_node)), step.parallel_group !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[9px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400" }, "Group ", step.parallel_group + 1), step.reason_for_order && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-400 dark:text-gray-500 max-w-[200px] truncate", title: step.reason_for_order }, step.reason_for_order))), recommendationData.execution_plan.can_parallelize && recommendationData.execution_plan.parallel_groups?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-400 dark:text-gray-500 mt-1 px-2" }, "Steps within the same group can run in parallel. Groups must execute sequentially."))), !loadingRecommendations && /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: async () => {
-          if (setCollapsedSections((prev) => ({ ...prev, migrationOutcomes: !prev.migrationOutcomes })), !migrationOutcomes && !loadingOutcomes) {
-            setLoadingOutcomes(!0);
-            try {
-              let { fetchMigrationOutcomes: fetchMigrationOutcomes2, refreshMigrationOutcomes: refreshMigrationOutcomes2 } = await import("../api/client.js");
-              await refreshMigrationOutcomes2();
-              let res = await fetchMigrationOutcomes2(null, 10);
-              res.success && setMigrationOutcomes(res.outcomes || []);
-            } catch (e) {
-              console.error("Error loading outcomes:", e);
-            }
-            setLoadingOutcomes(!1);
-          }
+        onClick: () => {
+          setCurrentPage("automation"), setOpenPenaltyConfigOnAutomation(!0);
         },
-        className: "flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
+        className: "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
       },
-      /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: `transition-transform ${collapsedSections.migrationOutcomes ? "" : "rotate-180"}` }),
-      /* @__PURE__ */ React.createElement(BarChart2, { size: 14, className: "text-green-500" }),
-      "Migration Outcomes",
-      /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 dark:text-gray-500" }, "\u2014 Predicted vs. actual results")
-    ), !collapsedSections.migrationOutcomes && /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, loadingOutcomes ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Loading outcomes...") : !migrationOutcomes || migrationOutcomes.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-2" }, "No migration outcomes tracked yet. Outcomes are recorded automatically when migrations are executed.") : migrationOutcomes.map((outcome, idx) => {
+      "Configure penalty scoring weights in Automation \u2192"
+    )));
+  }
+
+  // src/components/dashboard/recommendations/insights/EngineDiagnostics.jsx
+  function EngineDiagnostics({ recommendationData, recommendations }) {
+    return recommendationData?.generated_at ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Generation Time"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.count || recommendations.length)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Guests Evaluated"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, (recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Skipped"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.skipped_guests?.length || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "AI Enhanced"), /* @__PURE__ */ React.createElement("div", { className: `font-semibold ${recommendationData.ai_enhanced ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}` }, recommendationData.ai_enhanced ? "Yes" : "No")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Conflicts / Advisories"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.conflicts?.length || 0, " / ", recommendationData.capacity_advisories?.length || 0))), recommendationData.parameters && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Thresholds: "), /* @__PURE__ */ React.createElement("span", { className: "font-mono text-gray-700 dark:text-gray-300" }, "CPU ", recommendationData.parameters.cpu_threshold, "% | Mem ", recommendationData.parameters.mem_threshold, "% | IOWait ", recommendationData.parameters.iowait_threshold, "%"), recommendationData.parameters.maintenance_nodes?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-yellow-600 dark:text-yellow-400" }, "| Maintenance: ", recommendationData.parameters.maintenance_nodes.join(", "))), recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 block mb-1" }, "Skip Reasons:"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => /* @__PURE__ */ React.createElement("span", { key: reason, className: "px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300 font-mono" }, reason, ": ", count))))) : null;
+  }
+
+  // src/components/dashboard/recommendations/insights/WorkloadPatterns.jsx
+  var { useState: useState8, useEffect: useEffect2 } = React;
+  function WorkloadPatterns({ API_BASE: API_BASE4, active }) {
+    let [patterns, setPatterns] = useState8(null), [loading, setLoading] = useState8(!1);
+    return useEffect2(() => {
+      !active || patterns || loading || (setLoading(!0), fetch(`${API_BASE4}/workload-patterns?hours=168`).then((r) => r.json()).then((res) => {
+        res.success && setPatterns(res.patterns || []);
+      }).catch(() => {
+      }).finally(() => setLoading(!1)));
+    }, [active]), loading ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-4 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Analyzing patterns...") : !patterns || patterns.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-4" }, "Insufficient history data for pattern analysis. Patterns emerge after several days of data collection.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, patterns.map((p, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "bg-white dark:bg-gray-900/50 rounded p-2.5 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1.5" }, /* @__PURE__ */ React.createElement(Server, { size: 12, className: "text-blue-500" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300" }, p.node), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-400 dark:text-gray-500" }, p.data_points, " data points")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]" }, p.daily_pattern ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-blue-700 dark:text-blue-300 mb-0.5" }, "Daily Cycle ", /* @__PURE__ */ React.createElement("span", { className: "text-blue-500" }, "(", p.daily_pattern.pattern_confidence, ")")), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, "Peak: ", p.daily_pattern.peak_avg_cpu, "% | Trough: ", p.daily_pattern.trough_avg_cpu, "%"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Biz hrs: ", p.daily_pattern.business_hours_avg, "% | Off hrs: ", p.daily_pattern.off_hours_avg, "%")) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No daily cycle detected"), p.weekly_pattern ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-purple-700 dark:text-purple-300 mb-0.5" }, "Weekly Cycle ", /* @__PURE__ */ React.createElement("span", { className: "text-purple-500" }, "(", p.weekly_pattern.pattern_confidence, ")")), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, "Weekday: ", p.weekly_pattern.weekday_avg, "% | Weekend: ", p.weekly_pattern.weekend_avg, "%"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Peak days: ", p.weekly_pattern.peak_days?.join(", "))) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No weekly cycle detected"), p.burst_detection?.detected ? /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-amber-700 dark:text-amber-300 mb-0.5" }, "Burst Detection"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, p.burst_detection.recurring_bursts, " recurring burst hour(s)"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-500" }, "Avg burst: ", p.burst_detection.avg_burst_cpu, "% at hours ", p.burst_detection.burst_hours?.join(", "))) : /* @__PURE__ */ React.createElement("div", { className: "p-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500" }, "No recurring bursts")), p.recommendation_timing && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Clock, { size: 10 }), " ", p.recommendation_timing))));
+  }
+
+  // src/components/dashboard/recommendations/insights/BatchImpact.jsx
+  function BatchImpact({ recommendationData }) {
+    let batchImpact = recommendationData?.summary?.batch_impact;
+    return batchImpact ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" }, Object.entries(batchImpact.before?.node_scores || {}).map(([node, before]) => {
+      let after = batchImpact.after?.node_scores?.[node];
+      if (!after) return null;
+      let cpuDelta = after.cpu - before.cpu, memDelta = after.mem - before.mem, guestDelta = after.guest_count - before.guest_count;
+      return /* @__PURE__ */ React.createElement("div", { key: node, className: "p-2 bg-gray-50 dark:bg-gray-700/30 rounded" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-800 dark:text-gray-200 mb-1" }, node), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-1" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "CPU"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.cpu.toFixed(0), "%", /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${cpuDelta < -0.5 ? "text-green-600 dark:text-green-400" : cpuDelta > 0.5 ? "text-red-600 dark:text-red-400" : "text-gray-400"}` }, cpuDelta !== 0 ? `\u2192${after.cpu.toFixed(0)}%` : ""))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Mem"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.mem.toFixed(0), "%", /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${memDelta < -0.5 ? "text-green-600 dark:text-green-400" : memDelta > 0.5 ? "text-red-600 dark:text-red-400" : "text-gray-400"}` }, memDelta !== 0 ? `\u2192${after.mem.toFixed(0)}%` : ""))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Guests"), /* @__PURE__ */ React.createElement("div", { className: "font-mono" }, before.guest_count, guestDelta !== 0 && /* @__PURE__ */ React.createElement("span", { className: `ml-1 ${guestDelta < 0 ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400"}` }, "\u2192", after.guest_count)))));
+    })), batchImpact.improvement && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("span", null, "Health: ", recommendationData.summary.cluster_health, " \u2192 ", recommendationData.summary.predicted_health, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium ml-1" }, "(+", batchImpact.improvement.health_delta.toFixed(1), ")")), /* @__PURE__ */ React.createElement("span", null, "Variance: ", batchImpact.before.score_variance.toFixed(1), " \u2192 ", batchImpact.after.score_variance.toFixed(1)), batchImpact.improvement.all_nodes_improved && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "All nodes improved or stable"))) : null;
+  }
+
+  // src/components/dashboard/recommendations/insights/ChangeLog.jsx
+  function ChangeLog({ recommendationData }) {
+    let changes = recommendationData?.changes_since_last;
+    return changes ? changes.new_recommendations?.length > 0 || changes.removed_recommendations?.length > 0 || changes.changed_targets?.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 mb-2" }, changes.new_recommendations?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" }, "+", changes.new_recommendations.length, " new"), changes.removed_recommendations?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300" }, "-", changes.removed_recommendations.length, " removed"), changes.changed_targets?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300" }, changes.changed_targets.length, " changed"), changes.unchanged > 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400" }, changes.unchanged, " unchanged")), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, changes.new_recommendations?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `new-${i}`, className: "flex items-center gap-2 text-green-700 dark:text-green-300" }, /* @__PURE__ */ React.createElement(Plus, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, r.source_node, " \u2192 ", r.target_node))), changes.removed_recommendations?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `rem-${i}`, className: "flex items-center gap-2 text-red-700 dark:text-red-300" }, /* @__PURE__ */ React.createElement(Minus, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, r.source_node, " \u2192 ", r.target_node, " (no longer needed)"))), changes.changed_targets?.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: `chg-${i}`, className: "flex items-center gap-2 text-yellow-700 dark:text-yellow-300" }, /* @__PURE__ */ React.createElement(ArrowRight, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "[", r.vmid, "] ", r.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "target changed: ", r.old_target, " \u2192 ", r.new_target))))) : /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-4" }, "No changes since last generation.") : null;
+  }
+
+  // src/components/dashboard/recommendations/insights/ExecutionPlan.jsx
+  function ExecutionPlan({ recommendationData }) {
+    let plan = recommendationData?.execution_plan;
+    return !plan?.ordered_recommendations?.length || plan.ordered_recommendations.length <= 1 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-4" }, "Execution plan shows the optimal order for running migrations when multiple are recommended. It identifies which migrations can run in parallel and which must be sequential to avoid conflicts. Only shown when there are 2+ recommendations.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-600 dark:text-gray-400" }, plan.total_steps, " steps"), plan.can_parallelize && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400" }, "Parallel groups available")), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5" }, plan.ordered_recommendations.map((step, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex items-center gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-bold text-[11px]" }, step.step), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, "[", step.vmid, "] ", step.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 mx-1" }, step.source_node), /* @__PURE__ */ React.createElement(ArrowRight, { size: 10, className: "inline text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-500 mx-1" }, step.target_node)), step.parallel_group !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 text-[9px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400" }, "Group ", step.parallel_group + 1), step.reason_for_order && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-400 dark:text-gray-500 max-w-[200px] truncate", title: step.reason_for_order }, step.reason_for_order))), plan.can_parallelize && plan.parallel_groups?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-400 dark:text-gray-500 mt-1 px-2" }, "Steps within the same group can run in parallel. Groups must execute sequentially.")));
+  }
+
+  // src/components/dashboard/recommendations/insights/MigrationOutcomes.jsx
+  var { useState: useState9, useEffect: useEffect3 } = React;
+  function MigrationOutcomes({ API_BASE: API_BASE4, active }) {
+    let [outcomes, setOutcomes] = useState9(null), [loading, setLoading] = useState9(!1);
+    return useEffect3(() => {
+      !active || outcomes || loading || (setLoading(!0), (async () => {
+        try {
+          let { fetchMigrationOutcomes: fetchMigrationOutcomes2, refreshMigrationOutcomes: refreshMigrationOutcomes2 } = await import("../../../api/client.js");
+          await refreshMigrationOutcomes2();
+          let res = await fetchMigrationOutcomes2(null, 10);
+          res.success && setOutcomes(res.outcomes || []);
+        } catch (e) {
+          console.error("Error loading outcomes:", e);
+        }
+        setLoading(!1);
+      })());
+    }, [active]), loading ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-4 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Loading outcomes...") : !outcomes || outcomes.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-4" }, "No migration outcomes tracked yet. Outcomes are recorded automatically when migrations are executed, comparing predicted vs. actual resource changes.") : /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, outcomes.map((outcome, idx) => {
       let pre = outcome.pre_migration || {}, post = outcome.post_migration || {}, isPending = outcome.status === "pending_post_capture";
       return /* @__PURE__ */ React.createElement("div", { key: idx, className: `text-xs p-2.5 rounded border ${isPending ? "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1.5" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, "[", outcome.guest_type, " ", outcome.vmid, "] ", outcome.source_node, " \u2192 ", outcome.target_node), /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? "bg-amber-500 text-white" : outcome.accuracy_pct >= 70 ? "bg-green-500 text-white" : "bg-gray-500 text-white"}` }, isPending ? "PENDING" : outcome.accuracy_pct != null ? `${outcome.accuracy_pct}% accurate` : "COMPLETED")), !isPending && post && /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-400 dark:text-gray-500 mb-0.5" }, "Source CPU"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, pre.source_node?.cpu, "%"), /* @__PURE__ */ React.createElement(ArrowRight, { size: 8, className: "text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: `font-medium ${(pre.source_node?.cpu || 0) > (post.source_node?.cpu || 0) ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, post.source_node?.cpu, "%"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-400 dark:text-gray-500 mb-0.5" }, "Source Memory"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, pre.source_node?.mem, "%"), /* @__PURE__ */ React.createElement(ArrowRight, { size: 8, className: "text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: `font-medium ${(pre.source_node?.mem || 0) > (post.source_node?.mem || 0) ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, post.source_node?.mem, "%")))), isPending && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-amber-600 dark:text-amber-400" }, "Post-migration metrics pending (captured after 5 minute cooldown)"));
-    }))), !loadingRecommendations && /* @__PURE__ */ React.createElement("div", { className: "mt-4" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setCollapsedSections((prev) => ({ ...prev, recHistory: !prev.recHistory })),
-        className: "flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-2"
-      },
-      /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: `transition-transform ${collapsedSections.recHistory ? "" : "rotate-180"}` }),
-      /* @__PURE__ */ React.createElement(Calendar, { size: 14, className: "text-purple-500" }),
-      "Recommendation History",
-      /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 dark:text-gray-500" }, "\u2014 Score trends over time")
-    ), !collapsedSections.recHistory && /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700" }, historyLoading ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Loading history...") : !historyData || historyData.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-2" }, "No score history data yet. History is recorded automatically every time recommendations are generated.") : (() => {
-      let entries = historyData.slice(-48), healthValues = entries.map((e) => e.cluster_health || 0), recCounts = entries.map((e) => e.recommendation_count || 0), maxRec = Math.max(...recCounts, 1);
-      return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-[10px]" }, /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "w-2 h-2 bg-green-500 rounded-full inline-block" }), " Cluster Health"), /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "w-2 h-2 bg-orange-500 rounded-full inline-block" }), " Rec Count")), /* @__PURE__ */ React.createElement("select", { value: historyHours, onChange: (e) => setHistoryHours(Number(e.target.value)), className: "text-[10px] px-1.5 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("option", { value: 6 }, "6h"), /* @__PURE__ */ React.createElement("option", { value: 24 }, "24h"), /* @__PURE__ */ React.createElement("option", { value: 72 }, "3 days"), /* @__PURE__ */ React.createElement("option", { value: 168 }, "7 days"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-end gap-px h-16" }, entries.map((entry, i) => {
-        let healthPct = healthValues[i] / 100 * 100, recPct = recCounts[i] > 0 ? Math.max(10, recCounts[i] / maxRec * 100) : 0, timeLabel = new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        return /* @__PURE__ */ React.createElement("div", { key: i, className: "flex-1 flex flex-col items-center gap-0.5 group relative", title: `${timeLabel}
+    }));
+  }
+
+  // src/components/dashboard/recommendations/insights/RecommendationHistory.jsx
+  var { useState: useState10, useEffect: useEffect4 } = React;
+  function RecommendationHistory({ API_BASE: API_BASE4, active }) {
+    let [historyData, setHistoryData] = useState10(null), [loading, setLoading] = useState10(!1), [hours, setHours] = useState10(24);
+    if (useEffect4(() => {
+      if (!active) return;
+      let cancelled = !1;
+      return setLoading(!0), fetch(`${API_BASE4}/score-history?hours=${hours}`).then((r) => r.json()).then((res) => {
+        cancelled || setHistoryData(res.history || []);
+      }).catch(() => {
+      }).finally(() => {
+        cancelled || setLoading(!1);
+      }), () => {
+        cancelled = !0;
+      };
+    }, [hours, active]), loading)
+      return /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 py-4 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Loading history...");
+    if (!historyData || historyData.length === 0)
+      return /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-400 dark:text-gray-500 py-4" }, "No score history data yet. History is recorded automatically every time recommendations are generated.");
+    let entries = historyData.slice(-48), healthValues = entries.map((e) => e.cluster_health || 0), recCounts = entries.map((e) => e.recommendation_count || 0), maxRec = Math.max(...recCounts, 1);
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-[10px]" }, /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "w-2 h-2 bg-green-500 rounded-full inline-block" }), " Cluster Health"), /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "w-2 h-2 bg-orange-500 rounded-full inline-block" }), " Rec Count")), /* @__PURE__ */ React.createElement("select", { value: hours, onChange: (e) => setHours(Number(e.target.value)), className: "text-[10px] px-1.5 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("option", { value: 6 }, "6h"), /* @__PURE__ */ React.createElement("option", { value: 24 }, "24h"), /* @__PURE__ */ React.createElement("option", { value: 72 }, "3 days"), /* @__PURE__ */ React.createElement("option", { value: 168 }, "7 days"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-end gap-px h-16" }, entries.map((entry, i) => {
+      let healthPct = healthValues[i] / 100 * 100, recPct = recCounts[i] > 0 ? Math.max(10, recCounts[i] / maxRec * 100) : 0, timeLabel = new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return /* @__PURE__ */ React.createElement("div", { key: i, className: "flex-1 flex flex-col items-center gap-0.5 group relative", title: `${timeLabel}
 Health: ${healthValues[i].toFixed(0)}%
 Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className: "w-full flex flex-col justify-end h-16" }, /* @__PURE__ */ React.createElement("div", { className: "w-full bg-green-400 dark:bg-green-500 rounded-t-sm opacity-60 group-hover:opacity-100 transition-opacity", style: { height: `${healthPct}%`, minHeight: healthPct > 0 ? "1px" : "0" } })), recPct > 0 && /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-0 w-1 bg-orange-500 rounded-t-sm opacity-70", style: { height: `${recPct * 0.6}%`, minHeight: "2px" } }));
-      })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-1 text-[9px] text-gray-400 dark:text-gray-500" }, /* @__PURE__ */ React.createElement("span", null, entries.length > 0 ? new Date(entries[0].timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""), /* @__PURE__ */ React.createElement("span", null, entries.length > 0 ? new Date(entries[entries.length - 1].timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "")), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-[10px] text-gray-500 dark:text-gray-400" }, entries.length, " snapshots over last ", historyHours, "h \u2014 Latest health: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, healthValues[healthValues.length - 1]?.toFixed(0), "%"), ", Recs: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, recCounts[recCounts.length - 1])));
-    })()))));
+    })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between mt-1 text-[9px] text-gray-400 dark:text-gray-500" }, /* @__PURE__ */ React.createElement("span", null, entries.length > 0 ? new Date(entries[0].timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""), /* @__PURE__ */ React.createElement("span", null, entries.length > 0 ? new Date(entries[entries.length - 1].timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "")), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-[10px] text-gray-500 dark:text-gray-400" }, entries.length, " snapshots over last ", hours, "h \u2014 Latest health: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, healthValues[healthValues.length - 1]?.toFixed(0), "%"), ", Recs: ", /* @__PURE__ */ React.createElement("strong", { className: "text-gray-700 dark:text-gray-300" }, recCounts[recCounts.length - 1])));
+  }
+
+  // src/components/dashboard/recommendations/InsightsDrawer.jsx
+  var { useState: useState11, useEffect: useEffect5, useRef } = React, TABS = [
+    { id: "impact", label: "Impact", icon: BarChart2 },
+    { id: "diagnostics", label: "Diagnostics", icon: Terminal },
+    { id: "patterns", label: "Patterns", icon: Activity },
+    { id: "history", label: "History", icon: Calendar }
+  ];
+  function InsightsDrawer({
+    open,
+    onClose,
+    recommendationData,
+    recommendations,
+    penaltyConfig,
+    setCurrentPage,
+    setOpenPenaltyConfigOnAutomation,
+    API_BASE: API_BASE4,
+    isMobile
+  }) {
+    let [activeTab, setActiveTab] = useState11("impact"), drawerRef = useRef(null);
+    return useEffect5(() => {
+      if (!open) return;
+      let handleKey = (e) => {
+        e.key === "Escape" && onClose();
+      };
+      return window.addEventListener("keydown", handleKey), () => window.removeEventListener("keydown", handleKey);
+    }, [open]), useEffect5(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
+      document.body.style.overflow = "";
+    }), [open]), open ? /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60]" }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "absolute inset-0 bg-black/30 transition-opacity",
+        onClick: onClose
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        ref: drawerRef,
+        className: `absolute top-0 right-0 h-full ${isMobile ? "w-full" : "w-[520px]"} bg-white dark:bg-gray-800 shadow-2xl flex flex-col transform transition-transform duration-200`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "p-1.5 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg" }, /* @__PURE__ */ React.createElement(BarChart2, { size: 18, className: "text-indigo-600 dark:text-indigo-400" })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white" }, "Insights & Analytics"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Deep-dive into recommendation data"))), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: onClose,
+          className: "p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 20 })
+      )),
+      /* @__PURE__ */ React.createElement("div", { className: "flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-2" }, TABS.map((tab) => {
+        let Icon = tab.icon, isActive = activeTab === tab.id;
+        return /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            key: tab.id,
+            onClick: () => setActiveTab(tab.id),
+            className: `flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${isActive ? "border-indigo-500 text-indigo-600 dark:text-indigo-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"}`
+          },
+          /* @__PURE__ */ React.createElement(Icon, { size: 14 }),
+          tab.label
+        );
+      })),
+      /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto p-4" }, activeTab === "impact" && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(BarChart2, { size: 14, className: "text-indigo-500" }), "Batch Migration Impact"), /* @__PURE__ */ React.createElement(BatchImpact, { recommendationData })), /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(List, { size: 14, className: "text-indigo-500" }), "Execution Plan", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "\u2014 Optimal migration ordering")), /* @__PURE__ */ React.createElement(ExecutionPlan, { recommendationData })), /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 14, className: "text-indigo-500" }), "Changes Since Last Generation"), /* @__PURE__ */ React.createElement(ChangeLog, { recommendationData }))), activeTab === "diagnostics" && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Terminal, { size: 14, className: "text-gray-500" }), "Engine Diagnostics", recommendationData?.generation_time_ms && /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "Generated in ", recommendationData.generation_time_ms, "ms")), /* @__PURE__ */ React.createElement(EngineDiagnostics, { recommendationData, recommendations })), /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Info, { size: 14, className: "text-blue-500" }), "How Scoring Works"), /* @__PURE__ */ React.createElement(
+        ScoringExplainer,
+        {
+          penaltyConfig,
+          setCurrentPage,
+          setOpenPenaltyConfigOnAutomation
+        }
+      ))), activeTab === "patterns" && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Activity, { size: 14, className: "text-blue-500" }), "Workload Patterns", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "\u2014 Daily/weekly cycle analysis")), /* @__PURE__ */ React.createElement(WorkloadPatterns, { API_BASE: API_BASE4, active: activeTab === "patterns" })), /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(BarChart2, { size: 14, className: "text-green-500" }), "Migration Outcomes", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "\u2014 Predicted vs. actual results")), /* @__PURE__ */ React.createElement(MigrationOutcomes, { API_BASE: API_BASE4, active: activeTab === "patterns" }))), activeTab === "history" && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Calendar, { size: 14, className: "text-purple-500" }), "Recommendation History", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "\u2014 Score trends over time")), /* @__PURE__ */ React.createElement(RecommendationHistory, { API_BASE: API_BASE4, active: activeTab === "history" }))))
+    )) : null;
+  }
+
+  // src/components/dashboard/MigrationRecommendationsSection.jsx
+  var { useState: useState12 } = React;
+  function MigrationRecommendationsSection({
+    // Data
+    data,
+    recommendations,
+    loadingRecommendations,
+    generateRecommendations: generateRecommendations2,
+    recommendationData,
+    penaltyConfig,
+    // Section collapse
+    collapsedSections,
+    setCollapsedSections,
+    toggleSection,
+    // Migrations
+    canMigrate,
+    migrationStatus,
+    setMigrationStatus,
+    completedMigrations,
+    guestsMigrating,
+    migrationProgress,
+    cancelMigration,
+    trackMigration,
+    setConfirmMigration,
+    // Feedback
+    feedbackGiven,
+    onFeedback,
+    // Navigation
+    setCurrentPage,
+    setOpenPenaltyConfigOnAutomation,
+    // Thresholds
+    thresholdSuggestions,
+    cpuThreshold,
+    setCpuThreshold,
+    memThreshold,
+    setMemThreshold,
+    iowaitThreshold,
+    setIowaitThreshold,
+    // Node scores (for predicted view)
+    nodeScores,
+    // API
+    API_BASE: API_BASE4
+  }) {
+    let [recFilterConfidence, setRecFilterConfidence] = useState12(""), [recFilterTargetNode, setRecFilterTargetNode] = useState12(""), [recFilterSourceNode, setRecFilterSourceNode] = useState12(""), [recSortBy, setRecSortBy] = useState12(""), [recSortDir, setRecSortDir] = useState12("desc"), [showRecFilters, setShowRecFilters] = useState12(!1), [showInsights, setShowInsights] = useState12(!1), [showThresholdPopover, setShowThresholdPopover] = useState12(!1), isMobile = useIsMobile_default(), hasThresholdDiff = thresholdSuggestions && thresholdSuggestions.confidence && (Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 || Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3), getFilteredRecs = () => {
+      let filtered = [...recommendations];
+      if (recFilterConfidence) {
+        let minConf = parseInt(recFilterConfidence);
+        filtered = filtered.filter((r) => (r.confidence_score || 0) >= minConf);
+      }
+      return recFilterSourceNode && (filtered = filtered.filter((r) => r.source_node === recFilterSourceNode)), recFilterTargetNode && (filtered = filtered.filter((r) => r.target_node === recFilterTargetNode)), recSortBy && filtered.sort((a, b) => {
+        let va = a[recSortBy] || 0, vb = b[recSortBy] || 0;
+        return recSortDir === "asc" ? va - vb : vb - va;
+      }), filtered;
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-y-3 mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0" }, /* @__PURE__ */ React.createElement(Activity, { size: 24, className: "text-white" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("h2", { className: "text-lg sm:text-2xl font-bold text-gray-900 dark:text-white" }, "Migration Recommendations"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => toggleSection("recommendations"),
+        className: "p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200",
+        title: collapsedSections.recommendations ? "Expand section" : "Collapse section"
+      },
+      collapsedSections.recommendations ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 20, className: "text-gray-600 dark:text-gray-400" }) : /* @__PURE__ */ React.createElement(ChevronUp, { size: 20, className: "text-gray-600 dark:text-gray-400" })
+    )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mt-0.5" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Suggested optimizations"), recommendationData?.ai_enhanced && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 border border-purple-300 dark:border-purple-600 rounded text-xs font-semibold text-purple-700 dark:text-purple-300" }, "AI Enhanced"), recommendationData?.generated_at && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-500" }, "\u2022 Generated: ", (() => {
+      let genTime = new Date(recommendationData.generated_at);
+      return formatLocalTime(genTime);
+    })(), " (backend auto-generates every 10-60min based on cluster size)")))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, hasThresholdDiff && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowThresholdPopover((prev) => !prev),
+        className: "flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors",
+        title: "Threshold suggestions available"
+      },
+      /* @__PURE__ */ React.createElement(Info, { size: 14 }),
+      "Suggestions",
+      /* @__PURE__ */ React.createElement("span", { className: `px-1 py-0.5 rounded text-[9px] font-bold ${thresholdSuggestions.confidence === "high" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"}` }, thresholdSuggestions.confidence)
+    ), showThresholdPopover && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-40", onClick: () => setShowThresholdPopover(!1) }), /* @__PURE__ */ React.createElement("div", { className: "absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[280px]" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1" }, "Threshold Suggestions"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400 mb-2" }, thresholdSuggestions.summary), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5 text-xs mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, cpuThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_cpu_threshold, "%"))), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "Memory"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, memThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_mem_threshold, "%"))), thresholdSuggestions.suggested_iowait_threshold && /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "IOWait"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, iowaitThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_iowait_threshold, "%")))), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), thresholdSuggestions.suggested_iowait_threshold && setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold), setShowThresholdPopover(!1);
+        },
+        className: "w-full px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+      },
+      "Apply All"
+    )))), !collapsedSections.recommendations && recommendationData?.generated_at && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowInsights(!0),
+        className: "flex items-center gap-1.5 px-3 py-2 text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-600 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors",
+        title: "View detailed analytics and insights"
+      },
+      /* @__PURE__ */ React.createElement(Eye, { size: 16 }),
+      "Insights"
+    ), recommendations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setCollapsedSections((prev) => ({ ...prev, exportDropdown: !prev.exportDropdown })),
+        className: "flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200",
+        title: "Export recommendations"
+      },
+      /* @__PURE__ */ React.createElement(Download, { size: 16 }),
+      "Export",
+      /* @__PURE__ */ React.createElement(ChevronDown, { size: 14 })
+    ), collapsedSections.exportDropdown && /* @__PURE__ */ React.createElement("div", { className: "absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px]" }, /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations JSON"), /* @__PURE__ */ React.createElement("hr", { className: "my-1 border-gray-200 dark:border-gray-700" }), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History JSON"))), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: generateRecommendations2,
+        disabled: loadingRecommendations || !data,
+        className: "flex items-center gap-2 px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200",
+        title: "Manually generate new recommendations now"
+      },
+      loadingRecommendations ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 18, className: "animate-spin" }), "Generating...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 18 }), "Generate Now")
+    )))), !collapsedSections.recommendations && /* @__PURE__ */ React.createElement("div", { className: "transition-all duration-300 ease-in-out" }, !loadingRecommendations && /* @__PURE__ */ React.createElement(RecommendationSummaryBar, { recommendationData }), !loadingRecommendations && /* @__PURE__ */ React.createElement(
+      AlertsBanner,
+      {
+        recommendationData,
+        collapsedSections,
+        setCollapsedSections
+      }
+    ), !loadingRecommendations && /* @__PURE__ */ React.createElement(
+      RecommendationFilters,
+      {
+        recommendations,
+        showRecFilters,
+        setShowRecFilters,
+        recFilterConfidence,
+        setRecFilterConfidence,
+        recFilterSourceNode,
+        setRecFilterSourceNode,
+        recFilterTargetNode,
+        setRecFilterTargetNode,
+        recSortBy,
+        setRecSortBy,
+        recSortDir,
+        setRecSortDir
+      }
+    ), loadingRecommendations ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-8" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 48, className: "mx-auto mb-3 text-blue-500 dark:text-blue-400 animate-spin" }), /* @__PURE__ */ React.createElement("p", { className: "font-medium text-gray-700 dark:text-gray-300" }, "Generating recommendations..."), recommendationData?.ai_enhanced && /* @__PURE__ */ React.createElement("p", { className: "text-sm text-purple-600 dark:text-purple-400 mt-1" }, "AI enhancement in progress")) : recommendations.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-8 text-gray-500 dark:text-gray-400" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 48, className: "mx-auto mb-2 text-green-500 dark:text-green-400" }), /* @__PURE__ */ React.createElement("p", { className: "font-medium" }, "Cluster is balanced!"), /* @__PURE__ */ React.createElement("p", { className: "text-sm" }, "No migrations needed")) : /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, getFilteredRecs().map((rec, idx) => /* @__PURE__ */ React.createElement(
+      RecommendationCard,
+      {
+        key: idx,
+        rec,
+        idx,
+        penaltyConfig,
+        recommendationData,
+        migrationStatus,
+        setMigrationStatus,
+        completedMigrations,
+        guestsMigrating,
+        migrationProgress,
+        cancelMigration,
+        setConfirmMigration,
+        canMigrate,
+        feedbackGiven,
+        onFeedback,
+        collapsedSections,
+        setCollapsedSections
+      }
+    ))), !loadingRecommendations && /* @__PURE__ */ React.createElement(
+      SkippedGuests,
+      {
+        recommendationData,
+        penaltyConfig,
+        collapsedSections,
+        setCollapsedSections
+      }
+    )), /* @__PURE__ */ React.createElement(
+      InsightsDrawer,
+      {
+        open: showInsights,
+        onClose: () => setShowInsights(!1),
+        recommendationData,
+        recommendations,
+        penaltyConfig,
+        setCurrentPage,
+        setOpenPenaltyConfigOnAutomation,
+        API_BASE: API_BASE4,
+        isMobile
+      }
+    ));
   }
 
   // src/components/dashboard/AIRecommendationsSection.jsx
@@ -6192,7 +6412,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/IconLegend.jsx
-  var { useState: useState8 } = React, iconGroups = [
+  var { useState: useState13 } = React, iconGroups = [
     {
       label: "Actions",
       icons: [
@@ -6289,7 +6509,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     }
   ];
   function IconLegend({ darkMode, onClose }) {
-    let [searchTerm, setSearchTerm] = useState8(""), filteredGroups = iconGroups.map((group) => ({
+    let [searchTerm, setSearchTerm] = useState13(""), filteredGroups = iconGroups.map((group) => ({
       ...group,
       icons: group.icons.filter(
         (icon) => icon.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -6324,36 +6544,25 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     ));
   }
 
-  // src/utils/useIsMobile.js
-  var { useState: useState9, useEffect } = React, useIsMobile = (breakpoint = 768) => {
-    let [isMobile, setIsMobile] = useState9(
-      typeof window < "u" && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
-    );
-    return useEffect(() => {
-      let mql = window.matchMedia(`(max-width: ${breakpoint}px)`), handler = (e) => setIsMobile(e.matches);
-      return mql.addEventListener("change", handler), () => mql.removeEventListener("change", handler);
-    }, [breakpoint]), isMobile;
-  }, useIsMobile_default = useIsMobile;
-
   // src/hooks/useDarkMode.js
-  var { useState: useState10 } = React;
+  var { useState: useState14 } = React;
   function useDarkMode(initialDark = !0) {
-    let [darkMode, setDarkMode] = useState10(initialDark);
+    let [darkMode, setDarkMode] = useState14(initialDark);
     return { darkMode, setDarkMode, toggleDarkMode: () => {
       setDarkMode(!darkMode), document.documentElement.classList.toggle("dark");
     } };
   }
 
   // src/hooks/useUIState.js
-  var { useState: useState11, useEffect: useEffect2 } = React;
+  var { useState: useState15, useEffect: useEffect6 } = React;
   function useUIState() {
-    let [currentPage, setCurrentPage] = useState11("dashboard"), [showSettings, setShowSettings] = useState11(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState11(!1), [showIconLegend, setShowIconLegend] = useState11(!1), [scrollToApiConfig, setScrollToApiConfig] = useState11(!1), [logoBalancing, setLogoBalancing] = useState11(!1), [countdownTick, setCountdownTick] = useState11(0), [refreshElapsed, setRefreshElapsed] = useState11(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState11(() => {
+    let [currentPage, setCurrentPage] = useState15("dashboard"), [showSettings, setShowSettings] = useState15(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState15(!1), [showIconLegend, setShowIconLegend] = useState15(!1), [scrollToApiConfig, setScrollToApiConfig] = useState15(!1), [logoBalancing, setLogoBalancing] = useState15(!1), [countdownTick, setCountdownTick] = useState15(0), [refreshElapsed, setRefreshElapsed] = useState15(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState15(() => {
       let saved = localStorage.getItem("dashboardHeaderCollapsed");
       return saved ? JSON.parse(saved) : !1;
-    }), [nodeGridColumns, setNodeGridColumns] = useState11(() => {
+    }), [nodeGridColumns, setNodeGridColumns] = useState15(() => {
       let saved = localStorage.getItem("nodeGridColumns");
       return saved ? parseInt(saved) : 3;
-    }), [collapsedSections, setCollapsedSections] = useState11(() => {
+    }), [collapsedSections, setCollapsedSections] = useState15(() => {
       let defaults = {
         clusterMap: !1,
         maintenance: !0,
@@ -6377,32 +6586,32 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         notificationSettings: !0
       }, saved = localStorage.getItem("collapsedSections");
       return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
-    }), [clusterMapViewMode, setClusterMapViewMode] = useState11(() => {
+    }), [clusterMapViewMode, setClusterMapViewMode] = useState15(() => {
       let saved = localStorage.getItem("clusterMapViewMode");
       return saved === "usage" ? "cpu" : saved || "cpu";
-    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState11(() => {
+    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState15(() => {
       let saved = localStorage.getItem("showPoweredOffGuests");
       return saved === null ? !0 : saved === "true";
-    }), [guestModalCollapsed, setGuestModalCollapsed] = useState11({
+    }), [guestModalCollapsed, setGuestModalCollapsed] = useState15({
       mountPoints: !0,
       passthroughDisks: !0
     });
-    return useEffect2(() => {
+    return useEffect6(() => {
       localStorage.setItem("collapsedSections", JSON.stringify(collapsedSections));
-    }, [collapsedSections]), useEffect2(() => {
+    }, [collapsedSections]), useEffect6(() => {
       localStorage.setItem("nodeGridColumns", nodeGridColumns.toString());
-    }, [nodeGridColumns]), useEffect2(() => {
+    }, [nodeGridColumns]), useEffect6(() => {
       localStorage.setItem("clusterMapViewMode", clusterMapViewMode);
-    }, [clusterMapViewMode]), useEffect2(() => {
+    }, [clusterMapViewMode]), useEffect6(() => {
       localStorage.setItem("showPoweredOffGuests", showPoweredOffGuests.toString());
-    }, [showPoweredOffGuests]), useEffect2(() => {
+    }, [showPoweredOffGuests]), useEffect6(() => {
       localStorage.setItem("dashboardHeaderCollapsed", JSON.stringify(dashboardHeaderCollapsed));
-    }, [dashboardHeaderCollapsed]), useEffect2(() => {
+    }, [dashboardHeaderCollapsed]), useEffect6(() => {
       let interval = setInterval(() => {
         setCountdownTick((prev) => prev + 1);
       }, 1e3);
       return () => clearInterval(interval);
-    }, []), useEffect2(() => {
+    }, []), useEffect6(() => {
     }, [showSettings]), {
       currentPage,
       setCurrentPage,
@@ -6443,9 +6652,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAuth.js
-  var { useState: useState12 } = React;
+  var { useState: useState16 } = React;
   function useAuth(API_BASE4) {
-    let [canMigrate, setCanMigrate] = useState12(!0), [permissionReason, setPermissionReason] = useState12(""), [proxmoxTokenId, setProxmoxTokenId] = useState12(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState12(""), [validatingToken, setValidatingToken] = useState12(!1), [tokenValidationResult, setTokenValidationResult] = useState12(null), [tokenAuthError, setTokenAuthError] = useState12(!1);
+    let [canMigrate, setCanMigrate] = useState16(!0), [permissionReason, setPermissionReason] = useState16(""), [proxmoxTokenId, setProxmoxTokenId] = useState16(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState16(""), [validatingToken, setValidatingToken] = useState16(!1), [tokenValidationResult, setTokenValidationResult] = useState16(null), [tokenAuthError, setTokenAuthError] = useState16(!1);
     return {
       canMigrate,
       setCanMigrate,
@@ -6502,9 +6711,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useConfig.js
-  var { useState: useState13, useEffect: useEffect3 } = React;
+  var { useState: useState17, useEffect: useEffect7 } = React;
   function useConfig(API_BASE4, deps = {}) {
-    let { setError } = deps, [config, setConfig] = useState13(null), [autoRefreshInterval, setAutoRefreshInterval] = useState13(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState13(60), [tempUiInterval, setTempUiInterval] = useState13(60), [savingSettings, setSavingSettings] = useState13(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState13(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState13(!1), [logLevel, setLogLevel] = useState13("INFO"), [verboseLogging, setVerboseLogging] = useState13(!1), [penaltyConfig, setPenaltyConfig] = useState13(null), [penaltyDefaults, setPenaltyDefaults] = useState13(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState13(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState13(!1), [penaltyPresets, setPenaltyPresets] = useState13(null), [activePreset, setActivePreset] = useState13("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState13(!1);
+    let { setError } = deps, [config, setConfig] = useState17(null), [autoRefreshInterval, setAutoRefreshInterval] = useState17(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState17(60), [tempUiInterval, setTempUiInterval] = useState17(60), [savingSettings, setSavingSettings] = useState17(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState17(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState17(!1), [logLevel, setLogLevel] = useState17("INFO"), [verboseLogging, setVerboseLogging] = useState17(!1), [penaltyConfig, setPenaltyConfig] = useState17(null), [penaltyDefaults, setPenaltyDefaults] = useState17(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState17(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState17(!1), [penaltyPresets, setPenaltyPresets] = useState17(null), [activePreset, setActivePreset] = useState17("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState17(!1);
     return {
       config,
       setConfig,
@@ -6616,9 +6825,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useClusterData.js
-  var { useState: useState14, useMemo } = React;
+  var { useState: useState18, useMemo } = React;
   function useClusterData(API_BASE4, deps = {}) {
-    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState14(null), [loading, setLoading] = useState14(!1), [error, setError] = useState14(null), [lastUpdate, setLastUpdate] = useState14(null), [nextUpdate, setNextUpdate] = useState14(null), [backendCollected, setBackendCollected] = useState14(null), [clusterHealth, setClusterHealth] = useState14(null), [nodeScores, setNodeScores] = useState14(null), [chartPeriod, setChartPeriod] = useState14("1h"), [charts, setCharts] = useState14({}), [chartJsLoaded, setChartJsLoaded] = useState14(!1), [chartJsLoading, setChartJsLoading] = useState14(!1), fetchAnalysis2 = async () => {
+    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState18(null), [loading, setLoading] = useState18(!1), [error, setError] = useState18(null), [lastUpdate, setLastUpdate] = useState18(null), [nextUpdate, setNextUpdate] = useState18(null), [backendCollected, setBackendCollected] = useState18(null), [clusterHealth, setClusterHealth] = useState18(null), [nodeScores, setNodeScores] = useState18(null), [chartPeriod, setChartPeriod] = useState18("1h"), [charts, setCharts] = useState18({}), [chartJsLoaded, setChartJsLoaded] = useState18(!1), [chartJsLoading, setChartJsLoading] = useState18(!1), fetchAnalysis2 = async () => {
       setLoading(!0), setError(null);
       try {
         let response = await fetch(`${API_BASE4}/analyze`);
@@ -6766,27 +6975,27 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/hooks/useRecommendations.js
   init_constants();
-  var { useState: useState15, useEffect: useEffect4 } = React;
+  var { useState: useState19, useEffect: useEffect8 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
-    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState15([]), [recommendationData, setRecommendationData] = useState15(null), [loadingRecommendations, setLoadingRecommendations] = useState15(!1), [feedbackGiven, setFeedbackGiven] = useState15({}), [thresholdSuggestions, setThresholdSuggestions] = useState15(null), [cpuThreshold, setCpuThreshold] = useState15(() => {
+    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState19([]), [recommendationData, setRecommendationData] = useState19(null), [loadingRecommendations, setLoadingRecommendations] = useState19(!1), [feedbackGiven, setFeedbackGiven] = useState19({}), [thresholdSuggestions, setThresholdSuggestions] = useState19(null), [cpuThreshold, setCpuThreshold] = useState19(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
       return saved ? Number(saved) : 50;
-    }), [memThreshold, setMemThreshold] = useState15(() => {
+    }), [memThreshold, setMemThreshold] = useState19(() => {
       let saved = localStorage.getItem("proxbalance_mem_threshold");
       return saved ? Number(saved) : 60;
-    }), [iowaitThreshold, setIowaitThreshold] = useState15(() => {
+    }), [iowaitThreshold, setIowaitThreshold] = useState19(() => {
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
-    }), [thresholdMode, setThresholdMode] = useState15(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
-    useEffect4(() => {
+    }), [thresholdMode, setThresholdMode] = useState19(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
+    useEffect8(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
-    }, [cpuThreshold]), useEffect4(() => {
+    }, [cpuThreshold]), useEffect8(() => {
       localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString());
-    }, [memThreshold]), useEffect4(() => {
+    }, [memThreshold]), useEffect8(() => {
       localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString());
-    }, [iowaitThreshold]), useEffect4(() => {
+    }, [iowaitThreshold]), useEffect8(() => {
       localStorage.setItem("proxbalance_threshold_mode", thresholdMode);
-    }, [thresholdMode]), useEffect4(() => {
+    }, [thresholdMode]), useEffect8(() => {
       thresholdMode === "auto" && thresholdSuggestions && (setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold));
     }, [thresholdMode, thresholdSuggestions]);
     let fetchCachedRecommendations2 = async () => {
@@ -6859,9 +7068,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAIRecommendations.js
-  var { useState: useState16 } = React;
+  var { useState: useState20 } = React;
   function useAIRecommendations(API_BASE4, deps = {}) {
-    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState16(!1), [aiProvider, setAiProvider] = useState16("none"), [openaiKey, setOpenaiKey] = useState16(""), [openaiModel, setOpenaiModel] = useState16("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState16(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState16([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState16(!1), [anthropicKey, setAnthropicKey] = useState16(""), [anthropicModel, setAnthropicModel] = useState16("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState16(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState16([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState16(!1), [localUrl, setLocalUrl] = useState16("http://localhost:11434"), [localModel, setLocalModel] = useState16("llama2"), [localModelCustom, setLocalModelCustom] = useState16(""), [localAvailableModels, setLocalAvailableModels] = useState16([]), [localLoadingModels, setLocalLoadingModels] = useState16(!1), [aiRecommendations, setAiRecommendations] = useState16(null), [loadingAi, setLoadingAi] = useState16(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState16("24h");
+    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState20(!1), [aiProvider, setAiProvider] = useState20("none"), [openaiKey, setOpenaiKey] = useState20(""), [openaiModel, setOpenaiModel] = useState20("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState20(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState20([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState20(!1), [anthropicKey, setAnthropicKey] = useState20(""), [anthropicModel, setAnthropicModel] = useState20("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState20(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState20([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState20(!1), [localUrl, setLocalUrl] = useState20("http://localhost:11434"), [localModel, setLocalModel] = useState20("llama2"), [localModelCustom, setLocalModelCustom] = useState20(""), [localAvailableModels, setLocalAvailableModels] = useState20([]), [localLoadingModels, setLocalLoadingModels] = useState20(!1), [aiRecommendations, setAiRecommendations] = useState20(null), [loadingAi, setLoadingAi] = useState20(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState20("24h");
     return {
       aiEnabled,
       setAiEnabled,
@@ -6965,9 +7174,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useMigrations.js
-  var { useState: useState17 } = React;
+  var { useState: useState21 } = React;
   function useMigrations(API_BASE4, deps = {}) {
-    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState17({}), [activeMigrations, setActiveMigrations] = useState17({}), [guestsMigrating, setGuestsMigrating] = useState17({}), [migrationProgress, setMigrationProgress] = useState17({}), [completedMigrations, setCompletedMigrations] = useState17({}), [showBatchConfirmation, setShowBatchConfirmation] = useState17(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState17([]), [showMigrationDialog, setShowMigrationDialog] = useState17(!1), [selectedGuest, setSelectedGuest] = useState17(null), [migrationTarget, setMigrationTarget] = useState17(""), [confirmMigration, setConfirmMigration] = useState17(null), [cancelMigrationModal, setCancelMigrationModal] = useState17(null), [cancellingMigration, setCancellingMigration] = useState17(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState17(null), [loadingGuestOptions, setLoadingGuestOptions] = useState17(!1), [showTagModal, setShowTagModal] = useState17(!1), [tagModalGuest, setTagModalGuest] = useState17(null), [newTag, setNewTag] = useState17(""), [tagOperation, setTagOperation] = useState17(""), [confirmRemoveTag, setConfirmRemoveTag] = useState17(null), [confirmHostChange, setConfirmHostChange] = useState17(null), [guestSortField, setGuestSortField] = useState17("tags"), [guestSortDirection, setGuestSortDirection] = useState17("desc"), [guestPageSize, setGuestPageSize] = useState17(10), [guestCurrentPage, setGuestCurrentPage] = useState17(1), [guestSearchFilter, setGuestSearchFilter] = useState17(""), [selectedNode, setSelectedNode] = useState17(null), [selectedGuestDetails, setSelectedGuestDetails] = useState17(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
+    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState21({}), [activeMigrations, setActiveMigrations] = useState21({}), [guestsMigrating, setGuestsMigrating] = useState21({}), [migrationProgress, setMigrationProgress] = useState21({}), [completedMigrations, setCompletedMigrations] = useState21({}), [showBatchConfirmation, setShowBatchConfirmation] = useState21(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState21([]), [showMigrationDialog, setShowMigrationDialog] = useState21(!1), [selectedGuest, setSelectedGuest] = useState21(null), [migrationTarget, setMigrationTarget] = useState21(""), [confirmMigration, setConfirmMigration] = useState21(null), [cancelMigrationModal, setCancelMigrationModal] = useState21(null), [cancellingMigration, setCancellingMigration] = useState21(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState21(null), [loadingGuestOptions, setLoadingGuestOptions] = useState21(!1), [showTagModal, setShowTagModal] = useState21(!1), [tagModalGuest, setTagModalGuest] = useState21(null), [newTag, setNewTag] = useState21(""), [tagOperation, setTagOperation] = useState21(""), [confirmRemoveTag, setConfirmRemoveTag] = useState21(null), [confirmHostChange, setConfirmHostChange] = useState21(null), [guestSortField, setGuestSortField] = useState21("tags"), [guestSortDirection, setGuestSortDirection] = useState21("desc"), [guestPageSize, setGuestPageSize] = useState21(10), [guestCurrentPage, setGuestCurrentPage] = useState21(1), [guestSearchFilter, setGuestSearchFilter] = useState21(""), [selectedNode, setSelectedNode] = useState21(null), [selectedGuestDetails, setSelectedGuestDetails] = useState21(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
       let key = `${vmid}-${targetNode}`;
       setActiveMigrations((prev) => ({
         ...prev,
@@ -7284,15 +7493,15 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAutomation.js
-  var { useState: useState18 } = React;
+  var { useState: useState22 } = React;
   function useAutomation(API_BASE4, deps = {}) {
-    let { setError } = deps, [automationStatus, setAutomationStatus] = useState18({
+    let { setError } = deps, [automationStatus, setAutomationStatus] = useState22({
       enabled: !1,
       timer_active: !1,
       check_interval_minutes: 0,
       dry_run: !1,
       state: {}
-    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState18(!1), [runHistory, setRunHistory] = useState18([]), [loadingRunHistory, setLoadingRunHistory] = useState18(!1), [expandedRun, setExpandedRun] = useState18(null), [automationConfig, setAutomationConfig] = useState18({
+    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState22(!1), [runHistory, setRunHistory] = useState22([]), [loadingRunHistory, setLoadingRunHistory] = useState22(!1), [expandedRun, setExpandedRun] = useState22(null), [automationConfig, setAutomationConfig] = useState22({
       enabled: !1,
       dry_run: !1,
       check_interval_minutes: 5,
@@ -7312,13 +7521,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         balanced: { min_confidence_score: 70, max_migrations_per_run: 3, cooldown_minutes: 60, check_interval_minutes: 15 },
         aggressive: { min_confidence_score: 60, max_migrations_per_run: 5, cooldown_minutes: 30, check_interval_minutes: 5 }
       }
-    }), [savingAutomationConfig, setSavingAutomationConfig] = useState18(!1), [editingPreset, setEditingPreset] = useState18(null), [testResult, setTestResult] = useState18(null), [testingAutomation, setTestingAutomation] = useState18(!1), [runningAutomation, setRunningAutomation] = useState18(!1), [runNowMessage, setRunNowMessage] = useState18(null), [automigrateLogs, setAutomigrateLogs] = useState18(null), [logRefreshTime, setLogRefreshTime] = useState18(null), [migrationLogsTab, setMigrationLogsTab] = useState18("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState18(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState18(5), [showTimeWindowForm, setShowTimeWindowForm] = useState18(!1), [editingWindowIndex, setEditingWindowIndex] = useState18(null), [newWindowData, setNewWindowData] = useState18({
+    }), [savingAutomationConfig, setSavingAutomationConfig] = useState22(!1), [editingPreset, setEditingPreset] = useState22(null), [testResult, setTestResult] = useState22(null), [testingAutomation, setTestingAutomation] = useState22(!1), [runningAutomation, setRunningAutomation] = useState22(!1), [runNowMessage, setRunNowMessage] = useState22(null), [automigrateLogs, setAutomigrateLogs] = useState22(null), [logRefreshTime, setLogRefreshTime] = useState22(null), [migrationLogsTab, setMigrationLogsTab] = useState22("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState22(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState22(5), [showTimeWindowForm, setShowTimeWindowForm] = useState22(!1), [editingWindowIndex, setEditingWindowIndex] = useState22(null), [newWindowData, setNewWindowData] = useState22({
       name: "",
       type: "migration",
       days: [],
       start_time: "00:00",
       end_time: "00:00"
-    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState18(null), [confirmEnableAutomation, setConfirmEnableAutomation] = useState18(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState18(!1), [confirmApplyPreset, setConfirmApplyPreset] = useState18(null), [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState18(!1), fetchAutomationStatus2 = async () => {
+    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState22(null), [confirmEnableAutomation, setConfirmEnableAutomation] = useState22(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState22(!1), [confirmApplyPreset, setConfirmApplyPreset] = useState22(null), [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState22(!1), fetchAutomationStatus2 = async () => {
       setLoadingAutomationStatus(!0);
       try {
         let result = await (await fetch(`${API_BASE4}/automigrate/status`)).json();
@@ -7475,13 +7684,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useEvacuation.js
-  var { useState: useState19, useEffect: useEffect5 } = React;
+  var { useState: useState23, useEffect: useEffect9 } = React;
   function useEvacuation(deps = {}) {
-    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState19(() => {
+    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState23(() => {
       let saved = localStorage.getItem("maintenanceNodes");
       return saved ? new Set(JSON.parse(saved)) : /* @__PURE__ */ new Set();
-    }), [evacuatingNodes, setEvacuatingNodes] = useState19(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState19({}), [evacuationPlan, setEvacuationPlan] = useState19(null), [planNode, setPlanNode] = useState19(null), [planningNodes, setPlanningNodes] = useState19(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState19({}), [guestTargets, setGuestTargets] = useState19({}), [showConfirmModal, setShowConfirmModal] = useState19(!1);
-    return useEffect5(() => {
+    }), [evacuatingNodes, setEvacuatingNodes] = useState23(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState23({}), [evacuationPlan, setEvacuationPlan] = useState23(null), [planNode, setPlanNode] = useState23(null), [planningNodes, setPlanningNodes] = useState23(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState23({}), [guestTargets, setGuestTargets] = useState23({}), [showConfirmModal, setShowConfirmModal] = useState23(!1);
+    return useEffect9(() => {
       if (localStorage.setItem("maintenanceNodes", JSON.stringify(Array.from(maintenanceNodes))), automationConfig !== null && saveAutomationConfig2) {
         let maintenanceArray = Array.from(maintenanceNodes), currentMaintenance = automationConfig.maintenance_nodes || [];
         JSON.stringify(maintenanceArray.sort()) !== JSON.stringify(currentMaintenance.sort()) && saveAutomationConfig2({ maintenance_nodes: maintenanceArray });
@@ -7509,9 +7718,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useUpdates.js
-  var { useState: useState20 } = React;
+  var { useState: useState24 } = React;
   function useUpdates(API_BASE4, deps = {}) {
-    let { setError } = deps, [systemInfo, setSystemInfo] = useState20(null), [updating, setUpdating] = useState20(!1), [updateLog, setUpdateLog] = useState20([]), [updateResult, setUpdateResult] = useState20(null), [updateError, setUpdateError] = useState20(null), [showUpdateModal, setShowUpdateModal] = useState20(!1), [showBranchModal, setShowBranchModal] = useState20(!1), [availableBranches, setAvailableBranches] = useState20([]), [loadingBranches, setLoadingBranches] = useState20(!1), [switchingBranch, setSwitchingBranch] = useState20(!1), [branchPreview, setBranchPreview] = useState20(null), [loadingPreview, setLoadingPreview] = useState20(!1), [rollingBack, setRollingBack] = useState20(!1), fetchSystemInfo2 = async () => {
+    let { setError } = deps, [systemInfo, setSystemInfo] = useState24(null), [updating, setUpdating] = useState24(!1), [updateLog, setUpdateLog] = useState24([]), [updateResult, setUpdateResult] = useState24(null), [updateError, setUpdateError] = useState24(null), [showUpdateModal, setShowUpdateModal] = useState24(!1), [showBranchModal, setShowBranchModal] = useState24(!1), [availableBranches, setAvailableBranches] = useState24([]), [loadingBranches, setLoadingBranches] = useState24(!1), [switchingBranch, setSwitchingBranch] = useState24(!1), [branchPreview, setBranchPreview] = useState24(null), [loadingPreview, setLoadingPreview] = useState24(!1), [rollingBack, setRollingBack] = useState24(!1), fetchSystemInfo2 = async () => {
       try {
         let result = await (await fetch(`${API_BASE4}/system/info`)).json();
         result.success && setSystemInfo(result);
@@ -7614,7 +7823,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/index.jsx
   init_constants();
-  var { useState: useState21, useEffect: useEffect6, useMemo: useMemo2, useCallback, useRef } = React, ProxmoxBalanceManager = () => {
+  var { useState: useState25, useEffect: useEffect10, useMemo: useMemo2, useCallback, useRef: useRef2 } = React, ProxmoxBalanceManager = () => {
     let isMobile = useIsMobile_default(640), { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(!0), ui = useUIState(), auth = useAuth(API_BASE), automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) }), evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig }), configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) }), updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) }), cluster = useClusterData(API_BASE, {
       setTokenAuthError: auth.setTokenAuthError,
       checkPermissions: auth.checkPermissions,
@@ -7630,41 +7839,41 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setError: cluster.setError,
       fetchGuestLocations: cluster.fetchGuestLocations
     });
-    useEffect6(() => {
+    useEffect10(() => {
       document.documentElement.classList.add("dark"), configHook.fetchConfig().then((cfg) => {
         cfg && (ai.initFromConfig(cfg), auth.setProxmoxTokenId(cfg.proxmox_api_token_id || ""), auth.setProxmoxTokenSecret(cfg.proxmox_api_token_secret || ""));
       }), updates.fetchSystemInfo(), automation.fetchAutomationStatus(), automation.fetchAutomationConfig(), automation.fetchRunHistory(), auth.checkPermissions(), configHook.fetchPenaltyConfig();
-    }, []), useEffect6(() => {
+    }, []), useEffect10(() => {
       if (cluster.data) {
         let splashScreen = document.getElementById("loading-screen");
         splashScreen && (splashScreen.classList.add("hidden"), setTimeout(() => {
           splashScreen.style.display = "none";
         }, 500));
       }
-    }, [cluster.data]), useEffect6(() => {
+    }, [cluster.data]), useEffect10(() => {
       let interval = setInterval(() => {
         automation.fetchAutomationStatus(), automation.fetchRunHistory();
       }, 1e4);
       return () => clearInterval(interval);
-    }, []), useEffect6(() => {
+    }, []), useEffect10(() => {
       cluster.fetchAnalysis();
-    }, []), useEffect6(() => {
+    }, []), useEffect10(() => {
       let interval = setInterval(() => {
         cluster.fetchAnalysis();
       }, configHook.autoRefreshInterval);
       return () => clearInterval(interval);
-    }, [configHook.autoRefreshInterval]), useEffect6(() => {
+    }, [configHook.autoRefreshInterval]), useEffect10(() => {
       cluster.data && !recs.loadingRecommendations && (recs.fetchCachedRecommendations(), cluster.fetchNodeScores(
         { cpu: recs.cpuThreshold, mem: recs.memThreshold, iowait: recs.iowaitThreshold },
         evacuation.maintenanceNodes
       ));
-    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect6(() => {
+    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect10(() => {
       if (!cluster.data) return;
       let interval = setInterval(() => {
         recs.fetchCachedRecommendations();
       }, 12e4);
       return () => clearInterval(interval);
-    }, [cluster.data]), useEffect6(() => {
+    }, [cluster.data]), useEffect10(() => {
       ui.currentPage === "automation" && configHook.openPenaltyConfigOnAutomation && requestAnimationFrame(() => {
         ui.setCollapsedSections((prev) => ({ ...prev, penaltyScoring: !1 })), setTimeout(() => {
           let penaltySection = document.getElementById("penalty-config-section");
@@ -7675,18 +7884,18 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           configHook.setOpenPenaltyConfigOnAutomation(!1);
         }, 300);
       });
-    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect6(() => {
+    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect10(() => {
       ui.scrollToApiConfig && ui.currentPage === "settings" && (ui.setShowAdvancedSettings(!0), setTimeout(() => {
         let element = document.getElementById("proxmox-api-config");
         element && (element.scrollIntoView({ behavior: "smooth", block: "start" }), element.classList.add("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg"), setTimeout(() => {
           element.classList.remove("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg");
         }, 3e3)), ui.setScrollToApiConfig(!1);
       }, 400));
-    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect6(() => {
+    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect10(() => {
       !ui.collapsedSections.nodeStatus && !cluster.chartJsLoaded && cluster.loadChartJs();
-    }, [ui.collapsedSections.nodeStatus]), useEffect6(() => {
+    }, [ui.collapsedSections.nodeStatus]), useEffect10(() => {
       migrations.selectedGuestDetails && ui.setGuestModalCollapsed({ mountPoints: !0, passthroughDisks: !0 });
-    }, [migrations.selectedGuestDetails?.vmid]), useEffect6(() => {
+    }, [migrations.selectedGuestDetails?.vmid]), useEffect10(() => {
       if (!cluster.data || !cluster.data.nodes || ui.collapsedSections.nodeStatus || !cluster.chartJsLoaded || typeof Chart > "u") return;
       Object.values(cluster.charts).forEach((chart) => {
         try {
