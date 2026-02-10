@@ -21,7 +21,7 @@ export default function MigrationRecommendationsSection({
   // Feedback
   feedbackGiven, onFeedback,
   // Navigation
-  setCurrentPage, setOpenPenaltyConfigOnSettings,
+  setCurrentPage, setOpenPenaltyConfigOnAutomation,
   // Thresholds
   thresholdSuggestions, cpuThreshold, setCpuThreshold, memThreshold, setMemThreshold, iowaitThreshold, setIowaitThreshold,
   // Node scores (for predicted view)
@@ -219,12 +219,12 @@ export default function MigrationRecommendationsSection({
                       <div className="mt-3 text-xs">
                         <button
                           onClick={() => {
-                            setCurrentPage('settings');
-                            setOpenPenaltyConfigOnSettings(true);
+                            setCurrentPage('automation');
+                            setOpenPenaltyConfigOnAutomation(true);
                           }}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-semibold"
                         >
-                          Configure penalty scoring weights in Settings →
+                          Configure penalty scoring weights in Automation →
                         </button>
                       </div>
                     </div>

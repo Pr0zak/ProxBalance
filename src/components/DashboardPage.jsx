@@ -22,7 +22,7 @@ export default function DashboardPage({
   // Dark mode
   darkMode, toggleDarkMode,
   // Navigation
-  setCurrentPage, setScrollToApiConfig, setOpenPenaltyConfigOnSettings,
+  setCurrentPage, setScrollToApiConfig, setOpenPenaltyConfigOnAutomation,
   // Token auth
   tokenAuthError, setTokenAuthError,
   // Dashboard header
@@ -302,7 +302,7 @@ export default function DashboardPage({
           feedbackGiven={feedbackGiven}
           onFeedback={onFeedback}
           setCurrentPage={setCurrentPage}
-          setOpenPenaltyConfigOnSettings={setOpenPenaltyConfigOnSettings}
+          setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
           thresholdSuggestions={thresholdSuggestions}
           cpuThreshold={cpuThreshold}
           setCpuThreshold={setCpuThreshold}

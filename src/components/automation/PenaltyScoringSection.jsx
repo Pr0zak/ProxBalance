@@ -1,9 +1,9 @@
-import { Settings, ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye } from '../Icons.jsx';
+import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState } = React;
 
 export default function PenaltyScoringSection({
-  showPenaltyConfig, setShowPenaltyConfig,
+  collapsedSections, setCollapsedSections,
   penaltyConfig, setPenaltyConfig, penaltyDefaults,
   penaltyConfigSaved, savingPenaltyConfig,
   penaltyPresets, activePreset, applyPenaltyPreset,
@@ -79,28 +79,22 @@ export default function PenaltyScoringSection({
   };
 
   return (<>
-                    {/* Penalty Scoring Configuration - Standalone Section */}
+                    {/* Penalty Scoring Configuration */}
                     <div id="penalty-config-section" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
                       <button
-                        onClick={() => setShowPenaltyConfig(!showPenaltyConfig)}
-                        className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
+                        onClick={() => setCollapsedSections(prev => ({ ...prev, penaltyScoring: !prev.penaltyScoring }))}
+                        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Settings size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                          <div className="min-w-0">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Penalty Scoring Configuration</h2>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Configure penalty weights used by the scoring algorithm</p>
-                          </div>
-                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Penalty Scoring Configuration</h2>
                         <ChevronDown
-                          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${showPenaltyConfig ? 'rotate-180' : ''}`}
-                          size={20}
+                          size={24}
+                          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.penaltyScoring ? '-rotate-180' : ''}`}
                         />
                       </button>
 
-                      {showPenaltyConfig && penaltyConfig && penaltyDefaults && (
-                        <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded mt-4">
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      {!collapsedSections.penaltyScoring && penaltyConfig && penaltyDefaults && (
+                        <div className="space-y-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             Configure penalty weights used by the scoring algorithm when evaluating migration targets. Lower penalties favor that condition.
                           </p>
 
@@ -226,7 +220,7 @@ export default function PenaltyScoringSection({
                               <button
                                 onClick={runSimulation}
                                 disabled={simulatingConfig}
-                                className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-500 text-white text-sm font-medium rounded hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
                               >
                                 {simulatingConfig ? (
                                   <><RefreshCw size={14} className="animate-spin" /> Simulating...</>
@@ -239,12 +233,12 @@ export default function PenaltyScoringSection({
                             {showSimulator && simulatorResult && !simulatorResult.error && (
                               <div className="mt-3 space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
-                                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded text-center">
+                                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current Settings</div>
                                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{simulatorResult.current_count}</div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">recommendations</div>
                                   </div>
-                                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded text-center">
+                                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Proposed Settings</div>
                                     <div className={`text-2xl font-bold ${
                                       simulatorResult.proposed_count > simulatorResult.current_count
@@ -263,8 +257,8 @@ export default function PenaltyScoringSection({
                                     <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Changes</h5>
                                     <div className="space-y-1 max-h-40 overflow-y-auto">
                                       {simulatorResult.changes.map((change, i) => (
-                                        <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded">
-                                          <span className={`px-1.5 py-0.5 rounded font-medium ${
+                                        <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                                          <span className={`px-1.5 py-0.5 rounded-lg font-medium ${
                                             change.action === 'added'
                                               ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                                               : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
@@ -289,7 +283,7 @@ export default function PenaltyScoringSection({
                                     <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Node Score Impact</h5>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                       {Object.entries(simulatorResult.node_score_comparison).map(([node, scores]) => (
-                                        <div key={node} className="flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded">
+                                        <div key={node} className="flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                                           <span className="font-medium text-gray-700 dark:text-gray-300">{node}</span>
                                           <span className="text-gray-500 dark:text-gray-400">
                                             {scores.current} → {scores.proposed}
@@ -316,7 +310,7 @@ export default function PenaltyScoringSection({
                             )}
 
                             {showSimulator && simulatorResult?.error && (
-                              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-700 dark:text-red-400">
+                              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
                                 Simulation error: {simulatorResult.error}
                               </div>
                             )}
@@ -331,7 +325,7 @@ export default function PenaltyScoringSection({
                             <div className="mt-3 space-y-4">
 
                           {/* Time Period Weights */}
-                          <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                          <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <h4 className="font-medium text-gray-900 dark:text-white">Time Period Weights</h4>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
                               Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.
@@ -349,7 +343,7 @@ export default function PenaltyScoringSection({
                                   max="1"
                                   value={penaltyConfig.weight_current}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_current: parseFloat(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -363,7 +357,7 @@ export default function PenaltyScoringSection({
                                   max="1"
                                   value={penaltyConfig.weight_24h}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_24h: parseFloat(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -377,7 +371,7 @@ export default function PenaltyScoringSection({
                                   max="1"
                                   value={penaltyConfig.weight_7d}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_7d: parseFloat(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                             </div>
@@ -408,7 +402,7 @@ export default function PenaltyScoringSection({
                                   min="0"
                                   value={penaltyConfig.cpu_high_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_high_penalty: parseInt(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -420,7 +414,7 @@ export default function PenaltyScoringSection({
                                   min="0"
                                   value={penaltyConfig.cpu_very_high_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_very_high_penalty: parseInt(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -432,7 +426,7 @@ export default function PenaltyScoringSection({
                                   min="0"
                                   value={penaltyConfig.cpu_extreme_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_extreme_penalty: parseInt(e.target.value) || 0})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                             </div>
@@ -450,7 +444,7 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.mem_high_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_high_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -461,7 +455,7 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.mem_very_high_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_very_high_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -472,7 +466,7 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.mem_extreme_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_extreme_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                             </div>
@@ -490,7 +484,7 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.iowait_moderate_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_moderate_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -501,7 +495,7 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.iowait_high_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_high_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
                               <div>
@@ -512,14 +506,14 @@ export default function PenaltyScoringSection({
                                   type="number"
                                   value={penaltyConfig.iowait_severe_penalty}
                                   onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_severe_penalty: parseInt(e.target.value)})}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
-              </div>
+                              </div>
                             </div>
                           </div>
 
                           {/* Minimum Score Improvement */}
-                          <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                          <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                             <h4 className="font-medium text-gray-900 dark:text-white">Minimum Score Improvement</h4>
                             <p className="text-xs text-gray-600 dark:text-gray-400">
                               Minimum score improvement (in points) required for a migration to be recommended. This threshold filters out migrations that would provide only marginal benefit.
@@ -536,7 +530,7 @@ export default function PenaltyScoringSection({
                                 max="100"
                                 value={penaltyConfig.min_score_improvement !== undefined ? penaltyConfig.min_score_improvement : 15}
                                 onChange={(e) => setPenaltyConfig({...penaltyConfig, min_score_improvement: parseInt(e.target.value) || 15})}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               />
                               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                 Recommended values: Conservative (20-30), Balanced (10-15), Aggressive (5-10)
@@ -549,7 +543,7 @@ export default function PenaltyScoringSection({
 
                           {/* Success Message */}
                           {penaltyConfigSaved && (
-                            <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded text-green-800 dark:text-green-300">
+                            <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-800 dark:text-green-300">
                               Penalty configuration saved successfully!
                             </div>
                           )}
@@ -559,7 +553,7 @@ export default function PenaltyScoringSection({
                             <button
                               onClick={savePenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className={`flex-1 px-4 py-2 text-white rounded font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${
+                              className={`flex-1 px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${
                                 penaltyConfigSaved
                                   ? 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
                                   : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
@@ -570,7 +564,7 @@ export default function PenaltyScoringSection({
                             <button
                               onClick={resetPenaltyConfig}
                               disabled={savingPenaltyConfig}
-                              className="flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                              className="flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
                             >
                               <RotateCcw size={14} />
                               Reset to Defaults

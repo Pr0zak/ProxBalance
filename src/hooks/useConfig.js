@@ -16,12 +16,11 @@ export function useConfig(API_BASE, deps = {}) {
   // Penalty Configuration state
   const [penaltyConfig, setPenaltyConfig] = useState(null);
   const [penaltyDefaults, setPenaltyDefaults] = useState(null);
-  const [showPenaltyConfig, setShowPenaltyConfig] = useState(false);
   const [savingPenaltyConfig, setSavingPenaltyConfig] = useState(false);
   const [penaltyConfigSaved, setPenaltyConfigSaved] = useState(false);
   const [penaltyPresets, setPenaltyPresets] = useState(null);
   const [activePreset, setActivePreset] = useState('custom');
-  const [openPenaltyConfigOnSettings, setOpenPenaltyConfigOnSettings] = useState(false);
+  const [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -158,12 +157,11 @@ export function useConfig(API_BASE, deps = {}) {
     verboseLogging, setVerboseLogging,
     penaltyConfig, setPenaltyConfig,
     penaltyDefaults,
-    showPenaltyConfig, setShowPenaltyConfig,
     savingPenaltyConfig,
     penaltyConfigSaved,
     penaltyPresets,
     activePreset,
-    openPenaltyConfigOnSettings, setOpenPenaltyConfigOnSettings,
+    openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation,
     fetchConfig,
     fetchPenaltyConfig,
     applyPenaltyPreset,

@@ -5,7 +5,6 @@ import {
 import AIProviderSection from './settings/AIProviderSection.jsx';
 import DataCollectionSection from './settings/DataCollectionSection.jsx';
 import NotificationsSection from './settings/NotificationsSection.jsx';
-import PenaltyScoringSection from './settings/PenaltyScoringSection.jsx';
 import AdvancedSystemSettings from './settings/AdvancedSystemSettings.jsx';
 
 export default function SettingsPage(props) {
@@ -27,11 +26,6 @@ export default function SettingsPage(props) {
     loading,
     data,
     automationConfig,
-    showPenaltyConfig, setShowPenaltyConfig,
-    penaltyConfig, setPenaltyConfig,
-    penaltyDefaults,
-    penaltyConfigSaved,
-    savingPenaltyConfig,
     showAdvancedSettings, setShowAdvancedSettings,
     logLevel, setLogLevel,
     verboseLogging, setVerboseLogging,
@@ -48,14 +42,6 @@ export default function SettingsPage(props) {
     saveAutomationConfig,
     validateToken,
     confirmAndChangeHost,
-    savePenaltyConfig,
-    resetPenaltyConfig,
-    penaltyPresets,
-    activePreset,
-    applyPenaltyPreset,
-    cpuThreshold,
-    memThreshold,
-    iowaitThreshold,
   } = props;
 
   return (
@@ -167,20 +153,6 @@ export default function SettingsPage(props) {
               </div>
             </div>
           </div>
-
-          <hr className="border-gray-300 dark:border-gray-600" />
-
-          <PenaltyScoringSection
-            showPenaltyConfig={showPenaltyConfig} setShowPenaltyConfig={setShowPenaltyConfig}
-            penaltyConfig={penaltyConfig} setPenaltyConfig={setPenaltyConfig}
-            penaltyDefaults={penaltyDefaults}
-            penaltyConfigSaved={penaltyConfigSaved}
-            savingPenaltyConfig={savingPenaltyConfig}
-            penaltyPresets={penaltyPresets} activePreset={activePreset}
-            applyPenaltyPreset={applyPenaltyPreset}
-            cpuThreshold={cpuThreshold} memThreshold={memThreshold} iowaitThreshold={iowaitThreshold}
-            savePenaltyConfig={savePenaltyConfig} resetPenaltyConfig={resetPenaltyConfig}
-          />
 
           <AdvancedSystemSettings
             showAdvancedSettings={showAdvancedSettings} setShowAdvancedSettings={setShowAdvancedSettings}
