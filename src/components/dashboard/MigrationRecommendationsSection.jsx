@@ -144,7 +144,7 @@ export default function MigrationRecommendationsSection({
                 {showThresholdPopover && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowThresholdPopover(false)} />
-                    <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[280px]">
+                    <div className="absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[280px] max-w-[calc(100vw-2rem)]">
                       <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">Threshold Suggestions</div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{thresholdSuggestions.summary}</p>
                       <div className="space-y-1.5 text-xs mb-3">
@@ -186,7 +186,7 @@ export default function MigrationRecommendationsSection({
             {!collapsedSections.recommendations && recommendationData?.generated_at && (
               <button
                 onClick={() => setShowInsights(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-600 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-600 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors"
                 title="View detailed analytics and insights"
               >
                 <Eye size={16} />
@@ -207,7 +207,7 @@ export default function MigrationRecommendationsSection({
                   <ChevronDown size={14} />
                 </button>
                 {collapsedSections.exportDropdown && (
-                  <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px]">
+                  <div className="absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] max-w-[calc(100vw-2rem)]">
                     <a href="/api/recommendations/export?format=csv" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                       <ClipboardList size={14} /> Recommendations CSV
                     </a>

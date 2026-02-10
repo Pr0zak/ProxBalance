@@ -67,8 +67,8 @@ export default function InsightsDrawer({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg">
-              <BarChart2 size={18} className="text-indigo-600 dark:text-indigo-400" />
+            <div className="p-1.5 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
+              <BarChart2 size={18} className="text-orange-600 dark:text-orange-400" />
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white">Insights & Analytics</h3>
@@ -94,7 +94,7 @@ export default function InsightsDrawer({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
                   isActive
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                    ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
@@ -111,14 +111,14 @@ export default function InsightsDrawer({
             <div className="space-y-6">
               <section>
                 <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <BarChart2 size={14} className="text-indigo-500" />
+                  <BarChart2 size={14} className="text-orange-500" />
                   Batch Migration Impact
                 </h4>
                 <BatchImpact recommendationData={recommendationData} />
               </section>
               <section>
                 <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <List size={14} className="text-indigo-500" />
+                  <List size={14} className="text-orange-500" />
                   Execution Plan
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">— Optimal migration ordering</span>
                 </h4>
@@ -126,7 +126,7 @@ export default function InsightsDrawer({
               </section>
               <section>
                 <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <RefreshCw size={14} className="text-indigo-500" />
+                  <RefreshCw size={14} className="text-orange-500" />
                   Changes Since Last Generation
                 </h4>
                 <ChangeLog recommendationData={recommendationData} />
