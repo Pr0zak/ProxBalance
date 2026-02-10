@@ -122,9 +122,9 @@ const ProxmoxBalanceManager = () => {
 
   // Handle auto-expansion of Penalty Config when navigating from Migration Recommendations
   useEffect(() => {
-    if (ui.currentPage === 'settings' && configHook.openPenaltyConfigOnSettings) {
+    if (ui.currentPage === 'automation' && configHook.openPenaltyConfigOnAutomation) {
       requestAnimationFrame(() => {
-        configHook.setShowPenaltyConfig(true);
+        ui.setCollapsedSections(prev => ({ ...prev, penaltyScoring: false }));
         setTimeout(() => {
           const penaltySection = document.getElementById('penalty-config-section');
           if (penaltySection) {
@@ -133,10 +133,10 @@ const ProxmoxBalanceManager = () => {
             setTimeout(() => { penaltySection.style.boxShadow = ''; }, 2000);
           }
         }, 200);
-        setTimeout(() => { configHook.setOpenPenaltyConfigOnSettings(false); }, 300);
+        setTimeout(() => { configHook.setOpenPenaltyConfigOnAutomation(false); }, 300);
       });
     }
-  }, [ui.currentPage, configHook.openPenaltyConfigOnSettings]);
+  }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]);
 
   // Scroll to Proxmox API Configuration when navigating from error banner
   useEffect(() => {
@@ -341,19 +341,6 @@ const ProxmoxBalanceManager = () => {
       setError={cluster.setError}
       automationConfig={automation.automationConfig}
       saveAutomationConfig={automation.saveAutomationConfig}
-      showPenaltyConfig={configHook.showPenaltyConfig} setShowPenaltyConfig={configHook.setShowPenaltyConfig}
-      penaltyConfig={configHook.penaltyConfig} setPenaltyConfig={configHook.setPenaltyConfig}
-      penaltyDefaults={configHook.penaltyDefaults}
-      savingPenaltyConfig={configHook.savingPenaltyConfig}
-      penaltyConfigSaved={configHook.penaltyConfigSaved}
-      penaltyPresets={configHook.penaltyPresets}
-      activePreset={configHook.activePreset}
-      applyPenaltyPreset={configHook.applyPenaltyPreset}
-      cpuThreshold={recs.cpuThreshold}
-      memThreshold={recs.memThreshold}
-      iowaitThreshold={recs.iowaitThreshold}
-      savePenaltyConfig={configHook.savePenaltyConfig}
-      resetPenaltyConfig={configHook.resetPenaltyConfig}
       showAdvancedSettings={ui.showAdvancedSettings} setShowAdvancedSettings={ui.setShowAdvancedSettings}
       logLevel={configHook.logLevel} setLogLevel={configHook.setLogLevel}
       verboseLogging={configHook.verboseLogging} setVerboseLogging={configHook.setVerboseLogging}
@@ -412,6 +399,18 @@ const ProxmoxBalanceManager = () => {
       migrationLogsTab={automation.migrationLogsTab}
       newWindowData={automation.newWindowData}
       penaltyConfig={configHook.penaltyConfig}
+      setPenaltyConfig={configHook.setPenaltyConfig}
+      penaltyDefaults={configHook.penaltyDefaults}
+      penaltyConfigSaved={configHook.penaltyConfigSaved}
+      savingPenaltyConfig={configHook.savingPenaltyConfig}
+      penaltyPresets={configHook.penaltyPresets}
+      activePreset={configHook.activePreset}
+      applyPenaltyPreset={configHook.applyPenaltyPreset}
+      cpuThreshold={recs.cpuThreshold}
+      memThreshold={recs.memThreshold}
+      iowaitThreshold={recs.iowaitThreshold}
+      savePenaltyConfig={configHook.savePenaltyConfig}
+      resetPenaltyConfig={configHook.resetPenaltyConfig}
       saveAutomationConfig={automation.saveAutomationConfig}
       setAutomigrateLogs={automation.setAutomigrateLogs}
       setCollapsedSections={ui.setCollapsedSections}
@@ -430,7 +429,6 @@ const ProxmoxBalanceManager = () => {
       setMigrationHistoryPageSize={automation.setMigrationHistoryPageSize}
       setMigrationLogsTab={automation.setMigrationLogsTab}
       setNewWindowData={automation.setNewWindowData}
-      setOpenPenaltyConfigOnSettings={configHook.setOpenPenaltyConfigOnSettings}
       setShowTimeWindowForm={automation.setShowTimeWindowForm}
       setTestResult={automation.setTestResult}
       showTimeWindowForm={automation.showTimeWindowForm}
@@ -541,7 +539,7 @@ const ProxmoxBalanceManager = () => {
     darkMode={darkMode} toggleDarkMode={toggleDarkMode}
     setCurrentPage={ui.setCurrentPage}
     setScrollToApiConfig={ui.setScrollToApiConfig}
-    setOpenPenaltyConfigOnSettings={configHook.setOpenPenaltyConfigOnSettings}
+    setOpenPenaltyConfigOnAutomation={configHook.setOpenPenaltyConfigOnAutomation}
     tokenAuthError={auth.tokenAuthError} setTokenAuthError={auth.setTokenAuthError}
     dashboardHeaderCollapsed={ui.dashboardHeaderCollapsed} setDashboardHeaderCollapsed={ui.setDashboardHeaderCollapsed}
     handleLogoHover={ui.handleLogoHover} logoBalancing={ui.logoBalancing}

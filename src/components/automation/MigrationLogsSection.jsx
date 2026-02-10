@@ -9,7 +9,7 @@ export default function MigrationLogsSection({
   migrationHistoryPageSize, setMigrationHistoryPageSize,
   migrationLogsTab, setMigrationLogsTab,
   setAutomigrateLogs, logRefreshTime, setLogRefreshTime,
-  fetchAutomationStatus, setOpenPenaltyConfigOnSettings, setCurrentPage,
+  fetchAutomationStatus, setCurrentPage,
   collapsedSections, setCollapsedSections, automationConfig
 }) {
   return (<>

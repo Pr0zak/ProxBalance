@@ -9,6 +9,7 @@ import SafetyRulesSection from './automation/SafetyRulesSection.jsx';
 import DistributionBalancingSection from './automation/DistributionBalancingSection.jsx';
 import TimeWindowsSection from './automation/TimeWindowsSection.jsx';
 import MigrationLogsSection from './automation/MigrationLogsSection.jsx';
+import PenaltyScoringSection from './automation/PenaltyScoringSection.jsx';
 
 export default function AutomationPage(props) {
   const {
@@ -30,7 +31,11 @@ export default function AutomationPage(props) {
     migrationHistoryPageSize,
     migrationLogsTab,
     newWindowData,
-    penaltyConfig,
+    penaltyConfig, setPenaltyConfig, penaltyDefaults,
+    penaltyConfigSaved, savingPenaltyConfig,
+    penaltyPresets, activePreset, applyPenaltyPreset,
+    cpuThreshold, memThreshold, iowaitThreshold,
+    savePenaltyConfig, resetPenaltyConfig,
     saveAutomationConfig,
     setAutomigrateLogs,
     setCollapsedSections,
@@ -49,7 +54,6 @@ export default function AutomationPage(props) {
     setMigrationHistoryPageSize,
     setMigrationLogsTab,
     setNewWindowData,
-    setOpenPenaltyConfigOnSettings,
     setShowTimeWindowForm,
     setTestResult,
     showTimeWindowForm,
@@ -174,6 +178,24 @@ export default function AutomationPage(props) {
           setConfirmAllowContainerRestarts={setConfirmAllowContainerRestarts}
         />
 
+        <PenaltyScoringSection
+          collapsedSections={collapsedSections}
+          setCollapsedSections={setCollapsedSections}
+          penaltyConfig={penaltyConfig}
+          setPenaltyConfig={setPenaltyConfig}
+          penaltyDefaults={penaltyDefaults}
+          penaltyConfigSaved={penaltyConfigSaved}
+          savingPenaltyConfig={savingPenaltyConfig}
+          penaltyPresets={penaltyPresets}
+          activePreset={activePreset}
+          applyPenaltyPreset={applyPenaltyPreset}
+          cpuThreshold={cpuThreshold}
+          memThreshold={memThreshold}
+          iowaitThreshold={iowaitThreshold}
+          savePenaltyConfig={savePenaltyConfig}
+          resetPenaltyConfig={resetPenaltyConfig}
+        />
+
         <DistributionBalancingSection
           config={config}
           automationConfig={automationConfig}
@@ -212,10 +234,10 @@ export default function AutomationPage(props) {
           logRefreshTime={logRefreshTime}
           setLogRefreshTime={setLogRefreshTime}
           fetchAutomationStatus={fetchAutomationStatus}
-          setOpenPenaltyConfigOnSettings={setOpenPenaltyConfigOnSettings}
           setCurrentPage={setCurrentPage}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
+          automationConfig={automationConfig}
         />
       </div>
     </div>

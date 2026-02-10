@@ -21,8 +21,7 @@ export function useUIState() {
   });
 
   const [collapsedSections, setCollapsedSections] = useState(() => {
-    const saved = localStorage.getItem('collapsedSections');
-    return saved ? JSON.parse(saved) : {
+    const defaults = {
       clusterMap: false,
       maintenance: true,
       nodeStatus: true,
@@ -36,6 +35,7 @@ export function useUIState() {
       automatedMigrations: true,
       howItWorks: true,
       decisionTree: true,
+      penaltyScoring: true,
       distributionBalancing: true,
       distributionBalancingHelp: true,
       lastRunSummary: true,
@@ -43,6 +43,8 @@ export function useUIState() {
       passthroughDisks: true,
       notificationSettings: true
     };
+    const saved = localStorage.getItem('collapsedSections');
+    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
   });
 
   const [clusterMapViewMode, setClusterMapViewMode] = useState(() => {
