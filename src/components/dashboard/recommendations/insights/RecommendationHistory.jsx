@@ -43,7 +43,7 @@ export default function RecommendationHistory({ API_BASE, active }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3 text-[10px]">
+        <div className="flex items-center gap-3 text-[10px] text-gray-600 dark:text-gray-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span> Cluster Health</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-500 rounded-full inline-block"></span> Rec Count</span>
         </div>

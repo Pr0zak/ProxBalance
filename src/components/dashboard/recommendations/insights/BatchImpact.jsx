@@ -6,7 +6,7 @@ export default function BatchImpact({ recommendationData }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
         {Object.entries(batchImpact.before?.node_scores || {}).map(([node, before]) => {
           const after = batchImpact.after?.node_scores?.[node];
           if (!after) return null;
