@@ -1658,7 +1658,14 @@ def main():
                 'duration_seconds': result.get('duration', 0),
                 'initiated_by': 'automated',
                 'dry_run': dry_run,
-                'window_name': window_msg
+                'window_name': window_msg,
+                'reasoning': {
+                    'score_improvement': rec.get('score_improvement'),
+                    'confidence_score': rec.get('confidence_score'),
+                    'cost_benefit': rec.get('cost_benefit', {}).get('ratio') if rec.get('cost_benefit') else None,
+                    'risk_score': rec.get('risk_score'),
+                    'has_conflict': rec.get('has_conflict', False),
+                },
             }
 
             # Add task_id if present

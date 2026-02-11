@@ -65,7 +65,6 @@ export function useAutomation(API_BASE, deps = {}) {
   const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
   const [confirmApplyPreset, setConfirmApplyPreset] = useState(null);
-  const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
 
   const fetchAutomationStatus = async () => {
     setLoadingAutomationStatus(true);
@@ -251,7 +250,6 @@ export function useAutomation(API_BASE, deps = {}) {
     confirmEnableAutomation, setConfirmEnableAutomation,
     confirmDisableDryRun, setConfirmDisableDryRun,
     confirmApplyPreset, setConfirmApplyPreset,
-    confirmAllowContainerRestarts, setConfirmAllowContainerRestarts,
     fetchAutomationStatus,
     fetchRunHistory,
     fetchAutomationConfig,

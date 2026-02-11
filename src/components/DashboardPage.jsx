@@ -1,7 +1,8 @@
-import { useState } from 'react';
 import {
   AlertCircle, Settings, X
 } from './Icons.jsx';
+
+const { useState } = React;
 
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';

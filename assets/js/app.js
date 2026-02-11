@@ -2197,6 +2197,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } }),
         className: "sr-only peer"
       }
+    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect Affinity (affinity_* tags)"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        checked: automationConfig.rules?.respect_affinity_rules !== !1,
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } }),
+        className: "sr-only peer"
+      }
     ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect Anti-Affinity (exclude_* tags)"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Prevents VMs with the same exclude tag from clustering on one node.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -3266,7 +3274,6 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       automigrateLogs,
       collapsedSections,
       config,
-      confirmAllowContainerRestarts,
       confirmApplyPreset,
       confirmDisableDryRun,
       confirmEnableAutomation,
@@ -3296,7 +3303,6 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       setAutomigrateLogs,
       setCollapsedSections,
       setConfig,
-      setConfirmAllowContainerRestarts,
       setConfirmApplyPreset,
       setConfirmDisableDryRun,
       setConfirmEnableAutomation,
@@ -6028,6 +6034,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/DashboardPage.jsx
+  var { useState: useState14 } = React;
   function DashboardPage({
     // Data & loading
     data,
@@ -6227,7 +6234,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     // API base
     API_BASE: API_BASE4
   }) {
-    let ignoredGuests = Object.values(data.guests || {}).filter((g) => g.tags?.has_ignore), excludeGuests = Object.values(data.guests || {}).filter((g) => g.tags?.exclude_groups?.length > 0), affinityGuests = Object.values(data.guests || {}).filter((g) => g.tags?.affinity_groups?.length > 0 || g.tags?.all_tags?.some((t) => t.startsWith("affinity_"))), autoMigrateOkGuests = Object.values(data.guests || {}).filter((g) => g.tags?.all_tags?.includes("auto_migrate_ok")), violations = checkAffinityViolations();
+    let [showPredicted, setShowPredicted] = useState14(!1), ignoredGuests = Object.values(data.guests || {}).filter((g) => g.tags?.has_ignore), excludeGuests = Object.values(data.guests || {}).filter((g) => g.tags?.exclude_groups?.length > 0), affinityGuests = Object.values(data.guests || {}).filter((g) => g.tags?.affinity_groups?.length > 0 || g.tags?.all_tags?.some((t) => t.startsWith("affinity_"))), autoMigrateOkGuests = Object.values(data.guests || {}).filter((g) => g.tags?.all_tags?.includes("auto_migrate_ok")), violations = checkAffinityViolations();
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-7xl mx-auto" }, tokenAuthError && /* @__PURE__ */ React.createElement("div", { className: "mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-600 dark:border-red-400 p-4 rounded-r-lg shadow-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-bold text-red-900 dark:text-red-200 mb-1" }, "API Token Authentication Failed"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-red-800 dark:text-red-300 mb-3" }, "ProxBalance cannot connect to the Proxmox API due to invalid or misconfigured token credentials. This prevents cluster data collection and monitoring."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -6388,6 +6395,8 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         data,
         collapsedSections,
         toggleSection,
+        showPredicted,
+        setShowPredicted,
         recommendationData,
         recommendations,
         nodeGridColumns,
@@ -6537,7 +6546,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/IconLegend.jsx
-  var { useState: useState14 } = React, iconGroups = [
+  var { useState: useState15 } = React, iconGroups = [
     {
       label: "Actions",
       icons: [
@@ -6634,7 +6643,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     }
   ];
   function IconLegend({ darkMode, onClose }) {
-    let [searchTerm, setSearchTerm] = useState14(""), filteredGroups = iconGroups.map((group) => ({
+    let [searchTerm, setSearchTerm] = useState15(""), filteredGroups = iconGroups.map((group) => ({
       ...group,
       icons: group.icons.filter(
         (icon) => icon.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -6670,24 +6679,24 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useDarkMode.js
-  var { useState: useState15 } = React;
+  var { useState: useState16 } = React;
   function useDarkMode(initialDark = !0) {
-    let [darkMode, setDarkMode] = useState15(initialDark);
+    let [darkMode, setDarkMode] = useState16(initialDark);
     return { darkMode, setDarkMode, toggleDarkMode: () => {
       setDarkMode(!darkMode), document.documentElement.classList.toggle("dark");
     } };
   }
 
   // src/hooks/useUIState.js
-  var { useState: useState16, useEffect: useEffect7 } = React;
+  var { useState: useState17, useEffect: useEffect7 } = React;
   function useUIState() {
-    let [currentPage, setCurrentPage] = useState16("dashboard"), [showSettings, setShowSettings] = useState16(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState16(!1), [showIconLegend, setShowIconLegend] = useState16(!1), [scrollToApiConfig, setScrollToApiConfig] = useState16(!1), [logoBalancing, setLogoBalancing] = useState16(!1), [countdownTick, setCountdownTick] = useState16(0), [refreshElapsed, setRefreshElapsed] = useState16(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState16(() => {
+    let [currentPage, setCurrentPage] = useState17("dashboard"), [showSettings, setShowSettings] = useState17(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState17(!1), [showIconLegend, setShowIconLegend] = useState17(!1), [scrollToApiConfig, setScrollToApiConfig] = useState17(!1), [logoBalancing, setLogoBalancing] = useState17(!1), [countdownTick, setCountdownTick] = useState17(0), [refreshElapsed, setRefreshElapsed] = useState17(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState17(() => {
       let saved = localStorage.getItem("dashboardHeaderCollapsed");
       return saved ? JSON.parse(saved) : !1;
-    }), [nodeGridColumns, setNodeGridColumns] = useState16(() => {
+    }), [nodeGridColumns, setNodeGridColumns] = useState17(() => {
       let saved = localStorage.getItem("nodeGridColumns");
       return saved ? parseInt(saved) : 3;
-    }), [collapsedSections, setCollapsedSections] = useState16(() => {
+    }), [collapsedSections, setCollapsedSections] = useState17(() => {
       let defaults = {
         clusterMap: !1,
         maintenance: !0,
@@ -6711,13 +6720,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         notificationSettings: !0
       }, saved = localStorage.getItem("collapsedSections");
       return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
-    }), [clusterMapViewMode, setClusterMapViewMode] = useState16(() => {
+    }), [clusterMapViewMode, setClusterMapViewMode] = useState17(() => {
       let saved = localStorage.getItem("clusterMapViewMode");
       return saved === "usage" ? "cpu" : saved || "cpu";
-    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState16(() => {
+    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState17(() => {
       let saved = localStorage.getItem("showPoweredOffGuests");
       return saved === null ? !0 : saved === "true";
-    }), [guestModalCollapsed, setGuestModalCollapsed] = useState16({
+    }), [guestModalCollapsed, setGuestModalCollapsed] = useState17({
       mountPoints: !0,
       passthroughDisks: !0
     });
@@ -6777,9 +6786,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAuth.js
-  var { useState: useState17 } = React;
+  var { useState: useState18 } = React;
   function useAuth(API_BASE4) {
-    let [canMigrate, setCanMigrate] = useState17(!0), [permissionReason, setPermissionReason] = useState17(""), [proxmoxTokenId, setProxmoxTokenId] = useState17(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState17(""), [validatingToken, setValidatingToken] = useState17(!1), [tokenValidationResult, setTokenValidationResult] = useState17(null), [tokenAuthError, setTokenAuthError] = useState17(!1);
+    let [canMigrate, setCanMigrate] = useState18(!0), [permissionReason, setPermissionReason] = useState18(""), [proxmoxTokenId, setProxmoxTokenId] = useState18(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState18(""), [validatingToken, setValidatingToken] = useState18(!1), [tokenValidationResult, setTokenValidationResult] = useState18(null), [tokenAuthError, setTokenAuthError] = useState18(!1);
     return {
       canMigrate,
       setCanMigrate,
@@ -6836,9 +6845,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useConfig.js
-  var { useState: useState18, useEffect: useEffect8 } = React;
+  var { useState: useState19, useEffect: useEffect8 } = React;
   function useConfig(API_BASE4, deps = {}) {
-    let { setError } = deps, [config, setConfig] = useState18(null), [autoRefreshInterval, setAutoRefreshInterval] = useState18(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState18(60), [tempUiInterval, setTempUiInterval] = useState18(60), [savingSettings, setSavingSettings] = useState18(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState18(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState18(!1), [logLevel, setLogLevel] = useState18("INFO"), [verboseLogging, setVerboseLogging] = useState18(!1), [penaltyConfig, setPenaltyConfig] = useState18(null), [penaltyDefaults, setPenaltyDefaults] = useState18(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState18(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState18(!1), [penaltyPresets, setPenaltyPresets] = useState18(null), [activePreset, setActivePreset] = useState18("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState18(!1);
+    let { setError } = deps, [config, setConfig] = useState19(null), [autoRefreshInterval, setAutoRefreshInterval] = useState19(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState19(60), [tempUiInterval, setTempUiInterval] = useState19(60), [savingSettings, setSavingSettings] = useState19(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState19(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState19(!1), [logLevel, setLogLevel] = useState19("INFO"), [verboseLogging, setVerboseLogging] = useState19(!1), [penaltyConfig, setPenaltyConfig] = useState19(null), [penaltyDefaults, setPenaltyDefaults] = useState19(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState19(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState19(!1), [penaltyPresets, setPenaltyPresets] = useState19(null), [activePreset, setActivePreset] = useState19("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState19(!1);
     return {
       config,
       setConfig,
@@ -6950,9 +6959,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useClusterData.js
-  var { useState: useState19, useMemo } = React;
+  var { useState: useState20, useMemo } = React;
   function useClusterData(API_BASE4, deps = {}) {
-    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState19(null), [loading, setLoading] = useState19(!1), [error, setError] = useState19(null), [lastUpdate, setLastUpdate] = useState19(null), [nextUpdate, setNextUpdate] = useState19(null), [backendCollected, setBackendCollected] = useState19(null), [clusterHealth, setClusterHealth] = useState19(null), [nodeScores, setNodeScores] = useState19(null), [chartPeriod, setChartPeriod] = useState19("1h"), [charts, setCharts] = useState19({}), [chartJsLoaded, setChartJsLoaded] = useState19(!1), [chartJsLoading, setChartJsLoading] = useState19(!1), [guestProfiles, setGuestProfiles] = useState19(null), [scoreHistory, setScoreHistory] = useState19(null), fetchAnalysis2 = async () => {
+    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState20(null), [loading, setLoading] = useState20(!1), [error, setError] = useState20(null), [lastUpdate, setLastUpdate] = useState20(null), [nextUpdate, setNextUpdate] = useState20(null), [backendCollected, setBackendCollected] = useState20(null), [clusterHealth, setClusterHealth] = useState20(null), [nodeScores, setNodeScores] = useState20(null), [chartPeriod, setChartPeriod] = useState20("1h"), [charts, setCharts] = useState20({}), [chartJsLoaded, setChartJsLoaded] = useState20(!1), [chartJsLoading, setChartJsLoading] = useState20(!1), [guestProfiles, setGuestProfiles] = useState20(null), [scoreHistory, setScoreHistory] = useState20(null), fetchAnalysis2 = async () => {
       setLoading(!0), setError(null);
       try {
         let response = await fetch(`${API_BASE4}/analyze`);
@@ -7118,18 +7127,18 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/hooks/useRecommendations.js
   init_constants();
-  var { useState: useState20, useEffect: useEffect9 } = React;
+  var { useState: useState21, useEffect: useEffect9 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
-    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState20([]), [recommendationData, setRecommendationData] = useState20(null), [loadingRecommendations, setLoadingRecommendations] = useState20(!1), [feedbackGiven, setFeedbackGiven] = useState20({}), [thresholdSuggestions, setThresholdSuggestions] = useState20(null), [cpuThreshold, setCpuThreshold] = useState20(() => {
+    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState21([]), [recommendationData, setRecommendationData] = useState21(null), [loadingRecommendations, setLoadingRecommendations] = useState21(!1), [feedbackGiven, setFeedbackGiven] = useState21({}), [thresholdSuggestions, setThresholdSuggestions] = useState21(null), [cpuThreshold, setCpuThreshold] = useState21(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
       return saved ? Number(saved) : 50;
-    }), [memThreshold, setMemThreshold] = useState20(() => {
+    }), [memThreshold, setMemThreshold] = useState21(() => {
       let saved = localStorage.getItem("proxbalance_mem_threshold");
       return saved ? Number(saved) : 60;
-    }), [iowaitThreshold, setIowaitThreshold] = useState20(() => {
+    }), [iowaitThreshold, setIowaitThreshold] = useState21(() => {
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
-    }), [thresholdMode, setThresholdMode] = useState20(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
+    }), [thresholdMode, setThresholdMode] = useState21(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
     useEffect9(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
     }, [cpuThreshold]), useEffect9(() => {
@@ -7211,9 +7220,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAIRecommendations.js
-  var { useState: useState21 } = React;
+  var { useState: useState22 } = React;
   function useAIRecommendations(API_BASE4, deps = {}) {
-    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState21(!1), [aiProvider, setAiProvider] = useState21("none"), [openaiKey, setOpenaiKey] = useState21(""), [openaiModel, setOpenaiModel] = useState21("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState21(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState21([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState21(!1), [anthropicKey, setAnthropicKey] = useState21(""), [anthropicModel, setAnthropicModel] = useState21("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState21(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState21([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState21(!1), [localUrl, setLocalUrl] = useState21("http://localhost:11434"), [localModel, setLocalModel] = useState21("llama2"), [localModelCustom, setLocalModelCustom] = useState21(""), [localAvailableModels, setLocalAvailableModels] = useState21([]), [localLoadingModels, setLocalLoadingModels] = useState21(!1), [aiRecommendations, setAiRecommendations] = useState21(null), [loadingAi, setLoadingAi] = useState21(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState21("24h");
+    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState22(!1), [aiProvider, setAiProvider] = useState22("none"), [openaiKey, setOpenaiKey] = useState22(""), [openaiModel, setOpenaiModel] = useState22("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState22(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState22([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState22(!1), [anthropicKey, setAnthropicKey] = useState22(""), [anthropicModel, setAnthropicModel] = useState22("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState22(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState22([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState22(!1), [localUrl, setLocalUrl] = useState22("http://localhost:11434"), [localModel, setLocalModel] = useState22("llama2"), [localModelCustom, setLocalModelCustom] = useState22(""), [localAvailableModels, setLocalAvailableModels] = useState22([]), [localLoadingModels, setLocalLoadingModels] = useState22(!1), [aiRecommendations, setAiRecommendations] = useState22(null), [loadingAi, setLoadingAi] = useState22(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState22("24h");
     return {
       aiEnabled,
       setAiEnabled,
@@ -7317,9 +7326,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useMigrations.js
-  var { useState: useState22 } = React;
+  var { useState: useState23 } = React;
   function useMigrations(API_BASE4, deps = {}) {
-    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState22({}), [activeMigrations, setActiveMigrations] = useState22({}), [guestsMigrating, setGuestsMigrating] = useState22({}), [migrationProgress, setMigrationProgress] = useState22({}), [completedMigrations, setCompletedMigrations] = useState22({}), [showBatchConfirmation, setShowBatchConfirmation] = useState22(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState22([]), [showMigrationDialog, setShowMigrationDialog] = useState22(!1), [selectedGuest, setSelectedGuest] = useState22(null), [migrationTarget, setMigrationTarget] = useState22(""), [confirmMigration, setConfirmMigration] = useState22(null), [cancelMigrationModal, setCancelMigrationModal] = useState22(null), [cancellingMigration, setCancellingMigration] = useState22(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState22(null), [loadingGuestOptions, setLoadingGuestOptions] = useState22(!1), [showTagModal, setShowTagModal] = useState22(!1), [tagModalGuest, setTagModalGuest] = useState22(null), [newTag, setNewTag] = useState22(""), [tagOperation, setTagOperation] = useState22(""), [confirmRemoveTag, setConfirmRemoveTag] = useState22(null), [confirmHostChange, setConfirmHostChange] = useState22(null), [guestSortField, setGuestSortField] = useState22("tags"), [guestSortDirection, setGuestSortDirection] = useState22("desc"), [guestPageSize, setGuestPageSize] = useState22(10), [guestCurrentPage, setGuestCurrentPage] = useState22(1), [guestSearchFilter, setGuestSearchFilter] = useState22(""), [selectedNode, setSelectedNode] = useState22(null), [selectedGuestDetails, setSelectedGuestDetails] = useState22(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
+    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState23({}), [activeMigrations, setActiveMigrations] = useState23({}), [guestsMigrating, setGuestsMigrating] = useState23({}), [migrationProgress, setMigrationProgress] = useState23({}), [completedMigrations, setCompletedMigrations] = useState23({}), [showBatchConfirmation, setShowBatchConfirmation] = useState23(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState23([]), [showMigrationDialog, setShowMigrationDialog] = useState23(!1), [selectedGuest, setSelectedGuest] = useState23(null), [migrationTarget, setMigrationTarget] = useState23(""), [confirmMigration, setConfirmMigration] = useState23(null), [cancelMigrationModal, setCancelMigrationModal] = useState23(null), [cancellingMigration, setCancellingMigration] = useState23(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState23(null), [loadingGuestOptions, setLoadingGuestOptions] = useState23(!1), [showTagModal, setShowTagModal] = useState23(!1), [tagModalGuest, setTagModalGuest] = useState23(null), [newTag, setNewTag] = useState23(""), [tagOperation, setTagOperation] = useState23(""), [confirmRemoveTag, setConfirmRemoveTag] = useState23(null), [confirmHostChange, setConfirmHostChange] = useState23(null), [guestSortField, setGuestSortField] = useState23("tags"), [guestSortDirection, setGuestSortDirection] = useState23("desc"), [guestPageSize, setGuestPageSize] = useState23(10), [guestCurrentPage, setGuestCurrentPage] = useState23(1), [guestSearchFilter, setGuestSearchFilter] = useState23(""), [selectedNode, setSelectedNode] = useState23(null), [selectedGuestDetails, setSelectedGuestDetails] = useState23(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
       let key = `${vmid}-${targetNode}`;
       setActiveMigrations((prev) => ({
         ...prev,
@@ -7636,15 +7645,15 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAutomation.js
-  var { useState: useState23 } = React;
+  var { useState: useState24 } = React;
   function useAutomation(API_BASE4, deps = {}) {
-    let { setError } = deps, [automationStatus, setAutomationStatus] = useState23({
+    let { setError } = deps, [automationStatus, setAutomationStatus] = useState24({
       enabled: !1,
       timer_active: !1,
       check_interval_minutes: 0,
       dry_run: !1,
       state: {}
-    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState23(!1), [runHistory, setRunHistory] = useState23([]), [loadingRunHistory, setLoadingRunHistory] = useState23(!1), [expandedRun, setExpandedRun] = useState23(null), [automationConfig, setAutomationConfig] = useState23({
+    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState24(!1), [runHistory, setRunHistory] = useState24([]), [loadingRunHistory, setLoadingRunHistory] = useState24(!1), [expandedRun, setExpandedRun] = useState24(null), [automationConfig, setAutomationConfig] = useState24({
       enabled: !1,
       dry_run: !1,
       check_interval_minutes: 5,
@@ -7664,13 +7673,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         balanced: { min_confidence_score: 70, max_migrations_per_run: 3, cooldown_minutes: 60, check_interval_minutes: 15 },
         aggressive: { min_confidence_score: 60, max_migrations_per_run: 5, cooldown_minutes: 30, check_interval_minutes: 5 }
       }
-    }), [savingAutomationConfig, setSavingAutomationConfig] = useState23(!1), [editingPreset, setEditingPreset] = useState23(null), [testResult, setTestResult] = useState23(null), [testingAutomation, setTestingAutomation] = useState23(!1), [runningAutomation, setRunningAutomation] = useState23(!1), [runNowMessage, setRunNowMessage] = useState23(null), [automigrateLogs, setAutomigrateLogs] = useState23(null), [logRefreshTime, setLogRefreshTime] = useState23(null), [migrationLogsTab, setMigrationLogsTab] = useState23("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState23(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState23(5), [showTimeWindowForm, setShowTimeWindowForm] = useState23(!1), [editingWindowIndex, setEditingWindowIndex] = useState23(null), [newWindowData, setNewWindowData] = useState23({
+    }), [savingAutomationConfig, setSavingAutomationConfig] = useState24(!1), [editingPreset, setEditingPreset] = useState24(null), [testResult, setTestResult] = useState24(null), [testingAutomation, setTestingAutomation] = useState24(!1), [runningAutomation, setRunningAutomation] = useState24(!1), [runNowMessage, setRunNowMessage] = useState24(null), [automigrateLogs, setAutomigrateLogs] = useState24(null), [logRefreshTime, setLogRefreshTime] = useState24(null), [migrationLogsTab, setMigrationLogsTab] = useState24("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState24(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState24(5), [showTimeWindowForm, setShowTimeWindowForm] = useState24(!1), [editingWindowIndex, setEditingWindowIndex] = useState24(null), [newWindowData, setNewWindowData] = useState24({
       name: "",
       type: "migration",
       days: [],
       start_time: "00:00",
       end_time: "00:00"
-    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState23(null), [confirmEnableAutomation, setConfirmEnableAutomation] = useState23(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState23(!1), [confirmApplyPreset, setConfirmApplyPreset] = useState23(null), [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState23(!1), fetchAutomationStatus2 = async () => {
+    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState24(null), [confirmEnableAutomation, setConfirmEnableAutomation] = useState24(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState24(!1), [confirmApplyPreset, setConfirmApplyPreset] = useState24(null), fetchAutomationStatus2 = async () => {
       setLoadingAutomationStatus(!0);
       try {
         let result = await (await fetch(`${API_BASE4}/automigrate/status`)).json();
@@ -7723,8 +7732,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setConfirmDisableDryRun,
       confirmApplyPreset,
       setConfirmApplyPreset,
-      confirmAllowContainerRestarts,
-      setConfirmAllowContainerRestarts,
       fetchAutomationStatus: fetchAutomationStatus2,
       fetchRunHistory: async (limit = 10) => {
         setLoadingRunHistory(!0);
@@ -7827,12 +7834,12 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useEvacuation.js
-  var { useState: useState24, useEffect: useEffect10 } = React;
+  var { useState: useState25, useEffect: useEffect10 } = React;
   function useEvacuation(deps = {}) {
-    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState24(() => {
+    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState25(() => {
       let saved = localStorage.getItem("maintenanceNodes");
       return saved ? new Set(JSON.parse(saved)) : /* @__PURE__ */ new Set();
-    }), [evacuatingNodes, setEvacuatingNodes] = useState24(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState24({}), [evacuationPlan, setEvacuationPlan] = useState24(null), [planNode, setPlanNode] = useState24(null), [planningNodes, setPlanningNodes] = useState24(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState24({}), [guestTargets, setGuestTargets] = useState24({}), [showConfirmModal, setShowConfirmModal] = useState24(!1);
+    }), [evacuatingNodes, setEvacuatingNodes] = useState25(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState25({}), [evacuationPlan, setEvacuationPlan] = useState25(null), [planNode, setPlanNode] = useState25(null), [planningNodes, setPlanningNodes] = useState25(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState25({}), [guestTargets, setGuestTargets] = useState25({}), [showConfirmModal, setShowConfirmModal] = useState25(!1);
     return useEffect10(() => {
       if (localStorage.setItem("maintenanceNodes", JSON.stringify(Array.from(maintenanceNodes))), automationConfig !== null && saveAutomationConfig2) {
         let maintenanceArray = Array.from(maintenanceNodes), currentMaintenance = automationConfig.maintenance_nodes || [];
@@ -7861,9 +7868,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useUpdates.js
-  var { useState: useState25 } = React;
+  var { useState: useState26 } = React;
   function useUpdates(API_BASE4, deps = {}) {
-    let { setError } = deps, [systemInfo, setSystemInfo] = useState25(null), [updating, setUpdating] = useState25(!1), [updateLog, setUpdateLog] = useState25([]), [updateResult, setUpdateResult] = useState25(null), [updateError, setUpdateError] = useState25(null), [showUpdateModal, setShowUpdateModal] = useState25(!1), [showBranchModal, setShowBranchModal] = useState25(!1), [availableBranches, setAvailableBranches] = useState25([]), [loadingBranches, setLoadingBranches] = useState25(!1), [switchingBranch, setSwitchingBranch] = useState25(!1), [branchPreview, setBranchPreview] = useState25(null), [loadingPreview, setLoadingPreview] = useState25(!1), [rollingBack, setRollingBack] = useState25(!1), fetchSystemInfo2 = async () => {
+    let { setError } = deps, [systemInfo, setSystemInfo] = useState26(null), [updating, setUpdating] = useState26(!1), [updateLog, setUpdateLog] = useState26([]), [updateResult, setUpdateResult] = useState26(null), [updateError, setUpdateError] = useState26(null), [showUpdateModal, setShowUpdateModal] = useState26(!1), [showBranchModal, setShowBranchModal] = useState26(!1), [availableBranches, setAvailableBranches] = useState26([]), [loadingBranches, setLoadingBranches] = useState26(!1), [switchingBranch, setSwitchingBranch] = useState26(!1), [branchPreview, setBranchPreview] = useState26(null), [loadingPreview, setLoadingPreview] = useState26(!1), [rollingBack, setRollingBack] = useState26(!1), fetchSystemInfo2 = async () => {
       try {
         let result = await (await fetch(`${API_BASE4}/system/info`)).json();
         result.success && setSystemInfo(result);
@@ -7966,7 +7973,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/index.jsx
   init_constants();
-  var { useState: useState26, useEffect: useEffect11, useMemo: useMemo2, useCallback, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
+  var { useState: useState27, useEffect: useEffect11, useMemo: useMemo2, useCallback, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
     let isMobile = useIsMobile_default(640), { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(!0), ui = useUIState(), auth = useAuth(API_BASE), automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) }), evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig }), configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) }), updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) }), cluster = useClusterData(API_BASE, {
       setTokenAuthError: auth.setTokenAuthError,
       checkPermissions: auth.checkPermissions,
@@ -8228,7 +8235,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         automigrateLogs: automation.automigrateLogs,
         collapsedSections: ui.collapsedSections,
         config: configHook.config,
-        confirmAllowContainerRestarts: automation.confirmAllowContainerRestarts,
         confirmApplyPreset: automation.confirmApplyPreset,
         confirmDisableDryRun: automation.confirmDisableDryRun,
         confirmEnableAutomation: automation.confirmEnableAutomation,
@@ -8258,7 +8264,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         setAutomigrateLogs: automation.setAutomigrateLogs,
         setCollapsedSections: ui.setCollapsedSections,
         setConfig: configHook.setConfig,
-        setConfirmAllowContainerRestarts: automation.setConfirmAllowContainerRestarts,
         setConfirmApplyPreset: automation.setConfirmApplyPreset,
         setConfirmDisableDryRun: automation.setConfirmDisableDryRun,
         setConfirmEnableAutomation: automation.setConfirmEnableAutomation,

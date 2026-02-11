@@ -393,7 +393,6 @@ const ProxmoxBalanceManager = () => {
       automigrateLogs={automation.automigrateLogs}
       collapsedSections={ui.collapsedSections}
       config={configHook.config}
-      confirmAllowContainerRestarts={automation.confirmAllowContainerRestarts}
       confirmApplyPreset={automation.confirmApplyPreset}
       confirmDisableDryRun={automation.confirmDisableDryRun}
       confirmEnableAutomation={automation.confirmEnableAutomation}
@@ -423,7 +422,6 @@ const ProxmoxBalanceManager = () => {
       setAutomigrateLogs={automation.setAutomigrateLogs}
       setCollapsedSections={ui.setCollapsedSections}
       setConfig={configHook.setConfig}
-      setConfirmAllowContainerRestarts={automation.setConfirmAllowContainerRestarts}
       setConfirmApplyPreset={automation.setConfirmApplyPreset}
       setConfirmDisableDryRun={automation.setConfirmDisableDryRun}
       setConfirmEnableAutomation={automation.setConfirmEnableAutomation}
