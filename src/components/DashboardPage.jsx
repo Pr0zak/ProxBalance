@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   AlertCircle, Settings, X
 } from './Icons.jsx';
@@ -94,6 +95,7 @@ export default function DashboardPage({
   API_BASE
 }) {
   // Dashboard Page - data is guaranteed to be available here
+  const [showPredicted, setShowPredicted] = useState(false);
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -274,6 +276,8 @@ export default function DashboardPage({
           data={data}
           collapsedSections={collapsedSections}
           toggleSection={toggleSection}
+          showPredicted={showPredicted}
+          setShowPredicted={setShowPredicted}
           recommendationData={recommendationData}
           recommendations={recommendations}
           nodeGridColumns={nodeGridColumns}
