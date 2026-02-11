@@ -304,8 +304,8 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                       <NumberField
                         min="2"
                         max="10"
-                        value={automationConfig.rules?.intelligent_migrations?.required_observations || 3}
-                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: val } } })}
+                        value={automationConfig.rules?.intelligent_migrations?.observation_periods || 3}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_periods: val } } })}
                         className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
@@ -328,14 +328,14 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                       <NumberField
                         min="0"
                         max="48"
-                        value={automationConfig.rules?.intelligent_migrations?.min_data_collection_hours !== undefined ? automationConfig.rules.intelligent_migrations.min_data_collection_hours : 0}
-                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: val } } })}
+                        value={automationConfig.rules?.intelligent_migrations?.minimum_data_collection_hours !== undefined ? automationConfig.rules.intelligent_migrations.minimum_data_collection_hours : 0}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, minimum_data_collection_hours: val } } })}
                         className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Minimum wait time: {((automationConfig.rules?.intelligent_migrations?.required_observations || 3) - 1) * (automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1)} hour(s) of consistent recommendations before execution
+                    Minimum wait time: {((automationConfig.rules?.intelligent_migrations?.observation_periods || 3) - 1) * (automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1)} hour(s) of consistent recommendations before execution
                   </p>
 
                   <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
@@ -365,8 +365,8 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                             max="5.0"
                             step="0.1"
                             isFloat
-                            value={automationConfig.rules?.intelligent_migrations?.risk_multiplier !== undefined ? automationConfig.rules.intelligent_migrations.risk_multiplier : 1.0}
-                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: val } } })}
+                            value={automationConfig.rules?.intelligent_migrations?.risk_confidence_multiplier !== undefined ? automationConfig.rules.intelligent_migrations.risk_confidence_multiplier : 1.2}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_confidence_multiplier: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
@@ -441,8 +441,8 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                             max="10.0"
                             step="0.1"
                             isFloat
-                            value={automationConfig.rules?.intelligent_migrations?.min_benefit_ratio !== undefined ? automationConfig.rules.intelligent_migrations.min_benefit_ratio : 1.5}
-                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: val } } })}
+                            value={automationConfig.rules?.intelligent_migrations?.min_cost_benefit_ratio !== undefined ? automationConfig.rules.intelligent_migrations.min_cost_benefit_ratio : 1.0}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_cost_benefit_ratio: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
@@ -470,8 +470,8 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                           <NumberField
                             min="1"
                             max="168"
-                            value={automationConfig.rules?.intelligent_migrations?.cycle_detection_window_hours || 24}
-                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: val } } })}
+                            value={automationConfig.rules?.intelligent_migrations?.cycle_window_hours || 48}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_window_hours: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
