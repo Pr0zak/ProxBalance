@@ -1,43 +1,9 @@
 import {
   AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
+import NumberField from '../NumberField.jsx';
 
-const { useState, useEffect, useRef } = React;
-
-// Number input that uses local state during editing, commits on blur.
-// Prevents the snap-back issue where parseInt("") = NaN resets the value.
-function NumberField({ value, onCommit, isFloat, className, ...props }) {
-  const [localVal, setLocalVal] = useState(String(value ?? ''));
-  const committedRef = useRef(value);
-
-  useEffect(() => {
-    // Sync from parent only when the external value actually changes
-    if (value !== committedRef.current) {
-      committedRef.current = value;
-      setLocalVal(String(value ?? ''));
-    }
-  }, [value]);
-
-  return (
-    <input
-      {...props}
-      type="number"
-      value={localVal}
-      onChange={(e) => setLocalVal(e.target.value)}
-      onBlur={() => {
-        const parsed = isFloat ? parseFloat(localVal) : parseInt(localVal, 10);
-        if (!isNaN(parsed)) {
-          committedRef.current = parsed;
-          onCommit(parsed);
-        } else {
-          // Reset to last good value if empty/invalid
-          setLocalVal(String(value ?? ''));
-        }
-      }}
-      className={className}
-    />
-  );
-}
+const { useState } = React;
 
 export default function SafetyRulesSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
@@ -63,12 +29,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Min Confidence Score
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="0"
                 max="100"
                 value={automationConfig.rules?.min_confidence_score || 75}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, min_confidence_score: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, min_confidence_score: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -76,12 +41,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Max Migrations Per Run
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="1"
                 max="20"
                 value={automationConfig.rules?.max_migrations_per_run || 3}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_migrations_per_run: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_migrations_per_run: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -89,12 +53,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Cooldown Minutes
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="0"
                 max="1440"
                 value={automationConfig.rules?.cooldown_minutes || 30}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, cooldown_minutes: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, cooldown_minutes: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -105,12 +68,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Max Concurrent Migrations
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="1"
                 max="10"
                 value={automationConfig.rules?.max_concurrent_migrations || 1}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -121,12 +83,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Grace Period (seconds)
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="0"
                 max="300"
                 value={automationConfig.rules?.grace_period_seconds !== undefined ? automationConfig.rules.grace_period_seconds : 30}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, grace_period_seconds: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, grace_period_seconds: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -138,12 +99,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Max Node CPU %
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="50"
                 max="100"
                 value={automationConfig.safety_checks?.max_node_cpu_percent || 85}
-                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -151,12 +111,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Max Node Memory %
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="50"
                 max="100"
                 value={automationConfig.safety_checks?.max_node_memory_percent || 90}
-                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: parseInt(e.target.value) } })}
+                onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
             </div>
@@ -304,12 +263,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                     Rollback Detection Window (hours)
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     min="1"
                     max="168"
                     value={automationConfig.rules?.rollback_window_hours || 24}
-                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_window_hours: parseInt(e.target.value) } })}
+                    onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, rollback_window_hours: val } })}
                     className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

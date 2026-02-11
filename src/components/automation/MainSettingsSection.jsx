@@ -1,6 +1,7 @@
 import {
   AlertTriangle, Activity, ChevronDown, Settings, Shield, X, Power
 } from '../Icons.jsx';
+import NumberField from '../NumberField.jsx';
 
 const { useState } = React;
 
@@ -153,12 +154,11 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
               <label className="block font-semibold text-gray-900 dark:text-white mb-2">
                 Check Interval (minutes)
               </label>
-              <input
-                type="number"
+              <NumberField
                 min="1"
                 max="60"
                 value={automationConfig.check_interval_minutes || 5}
-                onChange={(e) => saveAutomationConfig({ check_interval_minutes: parseInt(e.target.value) })}
+                onCommit={(val) => saveAutomationConfig({ check_interval_minutes: val })}
                 className="w-32 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
               />
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -219,15 +219,14 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                               </div>
                               <div>
                                 <label className="text-xs text-gray-600 dark:text-gray-400">Min Confidence</label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="0"
                                   max="100"
                                   value={preset.min_confidence_score}
-                                  onChange={(e) => saveAutomationConfig({
+                                  onCommit={(val) => saveAutomationConfig({
                                     presets: {
                                       ...presets,
-                                      [key]: { ...preset, min_confidence_score: parseInt(e.target.value) }
+                                      [key]: { ...preset, min_confidence_score: val }
                                     }
                                   })}
                                   className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
@@ -235,15 +234,14 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                               </div>
                               <div>
                                 <label className="text-xs text-gray-600 dark:text-gray-400">Max Migrations</label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="1"
                                   max="20"
                                   value={preset.max_migrations_per_run}
-                                  onChange={(e) => saveAutomationConfig({
+                                  onCommit={(val) => saveAutomationConfig({
                                     presets: {
                                       ...presets,
-                                      [key]: { ...preset, max_migrations_per_run: parseInt(e.target.value) }
+                                      [key]: { ...preset, max_migrations_per_run: val }
                                     }
                                   })}
                                   className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
@@ -251,15 +249,14 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                               </div>
                               <div>
                                 <label className="text-xs text-gray-600 dark:text-gray-400">Cooldown (min)</label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="1"
                                   max="1440"
                                   value={preset.cooldown_minutes}
-                                  onChange={(e) => saveAutomationConfig({
+                                  onCommit={(val) => saveAutomationConfig({
                                     presets: {
                                       ...presets,
-                                      [key]: { ...preset, cooldown_minutes: parseInt(e.target.value) }
+                                      [key]: { ...preset, cooldown_minutes: val }
                                     }
                                   })}
                                   className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
@@ -267,15 +264,14 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                               </div>
                               <div>
                                 <label className="text-xs text-gray-600 dark:text-gray-400">Check Interval (min)</label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="1"
                                   max="1440"
                                   value={preset.check_interval_minutes}
-                                  onChange={(e) => saveAutomationConfig({
+                                  onCommit={(val) => saveAutomationConfig({
                                     presets: {
                                       ...presets,
-                                      [key]: { ...preset, check_interval_minutes: parseInt(e.target.value) }
+                                      [key]: { ...preset, check_interval_minutes: val }
                                     }
                                   })}
                                   className="w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"

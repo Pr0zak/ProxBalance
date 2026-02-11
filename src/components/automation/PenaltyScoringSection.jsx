@@ -1,4 +1,5 @@
 import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye } from '../Icons.jsx';
+import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState } = React;
 
@@ -336,13 +337,13 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Current Weight (default: {penaltyDefaults.weight_current})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   step="0.1"
                                   min="0"
                                   max="1"
+                                  isFloat
                                   value={penaltyConfig.weight_current}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_current: parseFloat(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_current: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -350,13 +351,13 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   24h Weight (default: {penaltyDefaults.weight_24h})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   step="0.1"
                                   min="0"
                                   max="1"
+                                  isFloat
                                   value={penaltyConfig.weight_24h}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_24h: parseFloat(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_24h: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -364,13 +365,13 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   7d Weight (default: {penaltyDefaults.weight_7d})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   step="0.1"
                                   min="0"
                                   max="1"
+                                  isFloat
                                   value={penaltyConfig.weight_7d}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, weight_7d: parseFloat(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_7d: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -397,11 +398,10 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   High (default: {penaltyDefaults.cpu_high_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="0"
                                   value={penaltyConfig.cpu_high_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_high_penalty: parseInt(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, cpu_high_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -409,11 +409,10 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Very High (default: {penaltyDefaults.cpu_very_high_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="0"
                                   value={penaltyConfig.cpu_very_high_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_very_high_penalty: parseInt(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, cpu_very_high_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -421,11 +420,10 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Extreme (default: {penaltyDefaults.cpu_extreme_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   min="0"
                                   value={penaltyConfig.cpu_extreme_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, cpu_extreme_penalty: parseInt(e.target.value) || 0})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, cpu_extreme_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -440,10 +438,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   High (default: {penaltyDefaults.mem_high_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.mem_high_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_high_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, mem_high_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -451,10 +448,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Very High (default: {penaltyDefaults.mem_very_high_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.mem_very_high_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_very_high_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, mem_very_high_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -462,10 +458,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Extreme (default: {penaltyDefaults.mem_extreme_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.mem_extreme_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, mem_extreme_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, mem_extreme_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -480,10 +475,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Moderate (default: {penaltyDefaults.iowait_moderate_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.iowait_moderate_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_moderate_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, iowait_moderate_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -491,10 +485,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   High (default: {penaltyDefaults.iowait_high_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.iowait_high_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_high_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, iowait_high_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -502,10 +495,9 @@ export default function PenaltyScoringSection({
                                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                   Severe (default: {penaltyDefaults.iowait_severe_penalty})
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberField
                                   value={penaltyConfig.iowait_severe_penalty}
-                                  onChange={(e) => setPenaltyConfig({...penaltyConfig, iowait_severe_penalty: parseInt(e.target.value)})}
+                                  onCommit={(val) => setPenaltyConfig({...penaltyConfig, iowait_severe_penalty: val})}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -524,12 +516,11 @@ export default function PenaltyScoringSection({
                               <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                                 Minimum Score Improvement (default: {penaltyDefaults.min_score_improvement || 15})
                               </label>
-                              <input
-                                type="number"
+                              <NumberField
                                 min="1"
                                 max="100"
                                 value={penaltyConfig.min_score_improvement !== undefined ? penaltyConfig.min_score_improvement : 15}
-                                onChange={(e) => setPenaltyConfig({...penaltyConfig, min_score_improvement: parseInt(e.target.value) || 15})}
+                                onCommit={(val) => setPenaltyConfig({...penaltyConfig, min_score_improvement: val})}
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               />
                               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
