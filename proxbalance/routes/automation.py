@@ -482,7 +482,22 @@ def get_automigrate_status():
                 pass
 
             data_collection_hours = 0
-            if tracked:
+            # Try score_history.json first (most accurate - has hourly snapshots)
+            try:
+                sh_file = os.path.join(BASE_PATH, 'score_history.json')
+                if os.path.exists(sh_file):
+                    with open(sh_file, 'r') as f:
+                        sh_data = json.load(f)
+                    if isinstance(sh_data, list) and sh_data:
+                        earliest_ts = sh_data[0].get('timestamp', '')
+                        if earliest_ts:
+                            from datetime import datetime as dt, timezone
+                            first_dt = dt.fromisoformat(earliest_ts.replace('Z', '+00:00')).replace(tzinfo=None)
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+            except Exception:
+                pass
+            # Fallback to recommendation tracking first_seen
+            if data_collection_hours == 0 and tracked:
                 first_seen_times = [v.get('first_seen', '') for v in tracked.values() if v.get('first_seen')]
                 if first_seen_times:
                     earliest = min(first_seen_times)
@@ -492,6 +507,23 @@ def get_automigrate_status():
                         data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
                     except Exception:
                         pass
+            # Fallback to cluster_cache.json collected_at
+            if data_collection_hours == 0:
+                try:
+                    cache_file = os.path.join(BASE_PATH, 'cluster_cache.json')
+                    if os.path.exists(cache_file):
+                        cache_mtime = os.path.getmtime(cache_file)
+                        from datetime import datetime as dt, timezone
+                        cache_age_hours = (time.time() - cache_mtime) / 3600
+                        # Use file creation time approximation - check if there's a collected_at
+                        with open(cache_file, 'r') as f:
+                            cache_data = json.load(f)
+                        first_collected = cache_data.get('first_collected_at') or cache_data.get('collected_at', '')
+                        if first_collected:
+                            first_dt = dt.fromisoformat(first_collected.replace('Z', '+00:00')).replace(tzinfo=None)
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
 
             # Intelligence level suggestion
             suggested_level = None
