@@ -1984,7 +1984,26 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/SafetyRulesSection.jsx
-  var { useState: useState4 } = React;
+  var { useState: useState4, useEffect, useRef } = React;
+  function NumberField({ value, onCommit, isFloat, className, ...props }) {
+    let [localVal, setLocalVal] = useState4(String(value ?? "")), committedRef = useRef(value);
+    return useEffect(() => {
+      value !== committedRef.current && (committedRef.current = value, setLocalVal(String(value ?? "")));
+    }, [value]), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        ...props,
+        type: "number",
+        value: localVal,
+        onChange: (e) => setLocalVal(e.target.value),
+        onBlur: () => {
+          let parsed = isFloat ? parseFloat(localVal) : parseInt(localVal, 10);
+          isNaN(parsed) ? setLocalVal(String(value ?? "")) : (committedRef.current = parsed, onCommit(parsed));
+        },
+        className
+      }
+    );
+  }
   function SafetyRulesSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
     let [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState4(!1);
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
@@ -2150,33 +2169,30 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "sr-only peer"
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), automationConfig.rules?.intelligent_migrations?.enabled === !0 && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Required Observation Periods"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "2",
         max: "10",
         value: automationConfig.rules?.intelligent_migrations?.required_observations || 3,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: parseInt(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: val } } }),
         className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Observation Window (hours)"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "48",
         value: automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: parseInt(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: val } } }),
         className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Minimum Data Collection Time (hours)"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         max: "48",
         value: automationConfig.rules?.intelligent_migrations?.min_data_collection_hours !== void 0 ? automationConfig.rules.intelligent_migrations.min_data_collection_hours : 0,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: parseInt(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: val } } }),
         className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     ))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-blue-600 dark:text-blue-400" }, "Minimum wait time: ", ((automationConfig.rules?.intelligent_migrations?.required_observations || 3) - 1) * (automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1), " hour(s) of consistent recommendations before execution"), /* @__PURE__ */ React.createElement("div", { className: "border-t border-gray-200 dark:border-gray-600 pt-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold text-gray-900 dark:text-white mb-3" }, "Intelligence Features"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, "Risk-Adjusted Confidence")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
@@ -2188,14 +2204,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "sr-only peer"
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), automationConfig.rules?.intelligent_migrations?.risk_gating_enabled === !0 && /* @__PURE__ */ React.createElement("div", { className: "pl-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Risk Multiplier"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0.1",
         max: "5.0",
         step: "0.1",
+        isFloat: !0,
         value: automationConfig.rules?.intelligent_migrations?.risk_multiplier !== void 0 ? automationConfig.rules.intelligent_migrations.risk_multiplier : 1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: parseFloat(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: val } } }),
         className: "w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, "Trend-Aware Filtering")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
@@ -2231,14 +2247,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "sr-only peer"
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), automationConfig.rules?.intelligent_migrations?.cost_benefit_enabled === !0 && /* @__PURE__ */ React.createElement("div", { className: "pl-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Minimum Benefit Ratio"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0.1",
         max: "10.0",
         step: "0.1",
+        isFloat: !0,
         value: automationConfig.rules?.intelligent_migrations?.min_benefit_ratio !== void 0 ? automationConfig.rules.intelligent_migrations.min_benefit_ratio : 1.5,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: parseFloat(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: val } } }),
         className: "w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, "Cycle Detection")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
@@ -2250,13 +2266,12 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "sr-only peer"
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), automationConfig.rules?.intelligent_migrations?.cycle_detection_enabled === !0 && /* @__PURE__ */ React.createElement("div", { className: "pl-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Cycle Detection Window (hours)"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "168",
         value: automationConfig.rules?.intelligent_migrations?.cycle_detection_window_hours || 24,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: parseInt(e.target.value) } } }),
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: val } } }),
         className: "w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, "Guest Success Tracking")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
@@ -5052,11 +5067,11 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/utils/useIsMobile.js
-  var { useState: useState7, useEffect } = React, useIsMobile = (breakpoint = 768) => {
+  var { useState: useState7, useEffect: useEffect2 } = React, useIsMobile = (breakpoint = 768) => {
     let [isMobile, setIsMobile] = useState7(
       typeof window < "u" && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
     );
-    return useEffect(() => {
+    return useEffect2(() => {
       let mql = window.matchMedia(`(max-width: ${breakpoint}px)`), handler = (e) => setIsMobile(e.matches);
       return mql.addEventListener("change", handler), () => mql.removeEventListener("change", handler);
     }, [breakpoint]), isMobile;
@@ -5396,10 +5411,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/WorkloadPatterns.jsx
-  var { useState: useState8, useEffect: useEffect2 } = React;
+  var { useState: useState8, useEffect: useEffect3 } = React;
   function WorkloadPatterns({ API_BASE: API_BASE4, active }) {
     let [patterns, setPatterns] = useState8(null), [loading, setLoading] = useState8(!1);
-    return useEffect2(() => {
+    return useEffect3(() => {
       !active || patterns || loading || (setLoading(!0), fetch(`${API_BASE4}/workload-patterns?hours=168`).then((r) => r.json()).then((res) => {
         res.success && setPatterns(res.patterns || []);
       }).catch(() => {
@@ -5431,10 +5446,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/MigrationOutcomes.jsx
-  var { useState: useState9, useEffect: useEffect3 } = React;
+  var { useState: useState9, useEffect: useEffect4 } = React;
   function MigrationOutcomes({ API_BASE: API_BASE4, active }) {
     let [outcomes, setOutcomes] = useState9(null), [loading, setLoading] = useState9(!1);
-    return useEffect3(() => {
+    return useEffect4(() => {
       !active || outcomes || loading || (setLoading(!0), (async () => {
         try {
           let { fetchMigrationOutcomes: fetchMigrationOutcomes2, refreshMigrationOutcomes: refreshMigrationOutcomes2 } = await import("../../../api/client.js");
@@ -5453,10 +5468,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/RecommendationHistory.jsx
-  var { useState: useState10, useEffect: useEffect4 } = React;
+  var { useState: useState10, useEffect: useEffect5 } = React;
   function RecommendationHistory({ API_BASE: API_BASE4, active }) {
     let [historyData, setHistoryData] = useState10(null), [loading, setLoading] = useState10(!1), [hours, setHours] = useState10(24);
-    if (useEffect4(() => {
+    if (useEffect5(() => {
       if (!active) return;
       let cancelled = !1;
       return setLoading(!0), fetch(`${API_BASE4}/score-history?hours=${hours}`).then((r) => r.json()).then((res) => {
@@ -5481,7 +5496,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/dashboard/recommendations/InsightsDrawer.jsx
-  var { useState: useState11, useEffect: useEffect5, useRef } = React, TABS = [
+  var { useState: useState11, useEffect: useEffect6, useRef: useRef2 } = React, TABS = [
     { id: "impact", label: "Impact", icon: BarChart2 },
     { id: "diagnostics", label: "Diagnostics", icon: Terminal },
     { id: "patterns", label: "Patterns", icon: Activity },
@@ -5498,14 +5513,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     API_BASE: API_BASE4,
     isMobile
   }) {
-    let [activeTab, setActiveTab] = useState11("impact"), drawerRef = useRef(null);
-    return useEffect5(() => {
+    let [activeTab, setActiveTab] = useState11("impact"), drawerRef = useRef2(null);
+    return useEffect6(() => {
       if (!open) return;
       let handleKey = (e) => {
         e.key === "Escape" && onClose();
       };
       return window.addEventListener("keydown", handleKey), () => window.removeEventListener("keydown", handleKey);
-    }, [open]), useEffect5(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
+    }, [open]), useEffect6(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
       document.body.style.overflow = "";
     }), [open]), open ? /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60]" }, /* @__PURE__ */ React.createElement(
       "div",
@@ -6681,7 +6696,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useUIState.js
-  var { useState: useState15, useEffect: useEffect6 } = React;
+  var { useState: useState15, useEffect: useEffect7 } = React;
   function useUIState() {
     let [currentPage, setCurrentPage] = useState15("dashboard"), [showSettings, setShowSettings] = useState15(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState15(!1), [showIconLegend, setShowIconLegend] = useState15(!1), [scrollToApiConfig, setScrollToApiConfig] = useState15(!1), [logoBalancing, setLogoBalancing] = useState15(!1), [countdownTick, setCountdownTick] = useState15(0), [refreshElapsed, setRefreshElapsed] = useState15(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState15(() => {
       let saved = localStorage.getItem("dashboardHeaderCollapsed");
@@ -6723,22 +6738,22 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       mountPoints: !0,
       passthroughDisks: !0
     });
-    return useEffect6(() => {
+    return useEffect7(() => {
       localStorage.setItem("collapsedSections", JSON.stringify(collapsedSections));
-    }, [collapsedSections]), useEffect6(() => {
+    }, [collapsedSections]), useEffect7(() => {
       localStorage.setItem("nodeGridColumns", nodeGridColumns.toString());
-    }, [nodeGridColumns]), useEffect6(() => {
+    }, [nodeGridColumns]), useEffect7(() => {
       localStorage.setItem("clusterMapViewMode", clusterMapViewMode);
-    }, [clusterMapViewMode]), useEffect6(() => {
+    }, [clusterMapViewMode]), useEffect7(() => {
       localStorage.setItem("showPoweredOffGuests", showPoweredOffGuests.toString());
-    }, [showPoweredOffGuests]), useEffect6(() => {
+    }, [showPoweredOffGuests]), useEffect7(() => {
       localStorage.setItem("dashboardHeaderCollapsed", JSON.stringify(dashboardHeaderCollapsed));
-    }, [dashboardHeaderCollapsed]), useEffect6(() => {
+    }, [dashboardHeaderCollapsed]), useEffect7(() => {
       let interval = setInterval(() => {
         setCountdownTick((prev) => prev + 1);
       }, 1e3);
       return () => clearInterval(interval);
-    }, []), useEffect6(() => {
+    }, []), useEffect7(() => {
     }, [showSettings]), {
       currentPage,
       setCurrentPage,
@@ -6838,7 +6853,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useConfig.js
-  var { useState: useState17, useEffect: useEffect7 } = React;
+  var { useState: useState17, useEffect: useEffect8 } = React;
   function useConfig(API_BASE4, deps = {}) {
     let { setError } = deps, [config, setConfig] = useState17(null), [autoRefreshInterval, setAutoRefreshInterval] = useState17(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState17(60), [tempUiInterval, setTempUiInterval] = useState17(60), [savingSettings, setSavingSettings] = useState17(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState17(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState17(!1), [logLevel, setLogLevel] = useState17("INFO"), [verboseLogging, setVerboseLogging] = useState17(!1), [penaltyConfig, setPenaltyConfig] = useState17(null), [penaltyDefaults, setPenaltyDefaults] = useState17(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState17(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState17(!1), [penaltyPresets, setPenaltyPresets] = useState17(null), [activePreset, setActivePreset] = useState17("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState17(!1);
     return {
@@ -7102,7 +7117,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/hooks/useRecommendations.js
   init_constants();
-  var { useState: useState19, useEffect: useEffect8 } = React;
+  var { useState: useState19, useEffect: useEffect9 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
     let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState19([]), [recommendationData, setRecommendationData] = useState19(null), [loadingRecommendations, setLoadingRecommendations] = useState19(!1), [feedbackGiven, setFeedbackGiven] = useState19({}), [thresholdSuggestions, setThresholdSuggestions] = useState19(null), [cpuThreshold, setCpuThreshold] = useState19(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
@@ -7114,15 +7129,15 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
     }), [thresholdMode, setThresholdMode] = useState19(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
-    useEffect8(() => {
+    useEffect9(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
-    }, [cpuThreshold]), useEffect8(() => {
+    }, [cpuThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString());
-    }, [memThreshold]), useEffect8(() => {
+    }, [memThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString());
-    }, [iowaitThreshold]), useEffect8(() => {
+    }, [iowaitThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_threshold_mode", thresholdMode);
-    }, [thresholdMode]), useEffect8(() => {
+    }, [thresholdMode]), useEffect9(() => {
       thresholdMode === "auto" && thresholdSuggestions && (setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold));
     }, [thresholdMode, thresholdSuggestions]);
     let fetchCachedRecommendations2 = async () => {
@@ -7811,13 +7826,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useEvacuation.js
-  var { useState: useState23, useEffect: useEffect9 } = React;
+  var { useState: useState23, useEffect: useEffect10 } = React;
   function useEvacuation(deps = {}) {
     let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState23(() => {
       let saved = localStorage.getItem("maintenanceNodes");
       return saved ? new Set(JSON.parse(saved)) : /* @__PURE__ */ new Set();
     }), [evacuatingNodes, setEvacuatingNodes] = useState23(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState23({}), [evacuationPlan, setEvacuationPlan] = useState23(null), [planNode, setPlanNode] = useState23(null), [planningNodes, setPlanningNodes] = useState23(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState23({}), [guestTargets, setGuestTargets] = useState23({}), [showConfirmModal, setShowConfirmModal] = useState23(!1);
-    return useEffect9(() => {
+    return useEffect10(() => {
       if (localStorage.setItem("maintenanceNodes", JSON.stringify(Array.from(maintenanceNodes))), automationConfig !== null && saveAutomationConfig2) {
         let maintenanceArray = Array.from(maintenanceNodes), currentMaintenance = automationConfig.maintenance_nodes || [];
         JSON.stringify(maintenanceArray.sort()) !== JSON.stringify(currentMaintenance.sort()) && saveAutomationConfig2({ maintenance_nodes: maintenanceArray });
@@ -7950,7 +7965,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/index.jsx
   init_constants();
-  var { useState: useState25, useEffect: useEffect10, useMemo: useMemo2, useCallback, useRef: useRef2 } = React, ProxmoxBalanceManager = () => {
+  var { useState: useState25, useEffect: useEffect11, useMemo: useMemo2, useCallback, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
     let isMobile = useIsMobile_default(640), { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(!0), ui = useUIState(), auth = useAuth(API_BASE), automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) }), evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig }), configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) }), updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) }), cluster = useClusterData(API_BASE, {
       setTokenAuthError: auth.setTokenAuthError,
       checkPermissions: auth.checkPermissions,
@@ -7966,41 +7981,41 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setError: cluster.setError,
       fetchGuestLocations: cluster.fetchGuestLocations
     });
-    useEffect10(() => {
+    useEffect11(() => {
       document.documentElement.classList.add("dark"), configHook.fetchConfig().then((cfg) => {
         cfg && (ai.initFromConfig(cfg), auth.setProxmoxTokenId(cfg.proxmox_api_token_id || ""), auth.setProxmoxTokenSecret(cfg.proxmox_api_token_secret || ""));
       }), updates.fetchSystemInfo(), automation.fetchAutomationStatus(), automation.fetchAutomationConfig(), automation.fetchRunHistory(), auth.checkPermissions(), configHook.fetchPenaltyConfig();
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       if (cluster.data) {
         let splashScreen = document.getElementById("loading-screen");
         splashScreen && (splashScreen.classList.add("hidden"), setTimeout(() => {
           splashScreen.style.display = "none";
         }, 500));
       }
-    }, [cluster.data]), useEffect10(() => {
+    }, [cluster.data]), useEffect11(() => {
       let interval = setInterval(() => {
         automation.fetchAutomationStatus(), automation.fetchRunHistory();
       }, 1e4);
       return () => clearInterval(interval);
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       cluster.fetchAnalysis();
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       let interval = setInterval(() => {
         cluster.fetchAnalysis();
       }, configHook.autoRefreshInterval);
       return () => clearInterval(interval);
-    }, [configHook.autoRefreshInterval]), useEffect10(() => {
+    }, [configHook.autoRefreshInterval]), useEffect11(() => {
       cluster.data && !recs.loadingRecommendations && (recs.fetchCachedRecommendations(), cluster.fetchNodeScores(
         { cpu: recs.cpuThreshold, mem: recs.memThreshold, iowait: recs.iowaitThreshold },
         evacuation.maintenanceNodes
       ));
-    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect10(() => {
+    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect11(() => {
       if (!cluster.data) return;
       let interval = setInterval(() => {
         recs.fetchCachedRecommendations();
       }, 12e4);
       return () => clearInterval(interval);
-    }, [cluster.data]), useEffect10(() => {
+    }, [cluster.data]), useEffect11(() => {
       ui.currentPage === "automation" && configHook.openPenaltyConfigOnAutomation && requestAnimationFrame(() => {
         ui.setCollapsedSections((prev) => ({ ...prev, penaltyScoring: !1 })), setTimeout(() => {
           let penaltySection = document.getElementById("penalty-config-section");
@@ -8011,18 +8026,18 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           configHook.setOpenPenaltyConfigOnAutomation(!1);
         }, 300);
       });
-    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect10(() => {
+    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect11(() => {
       ui.scrollToApiConfig && ui.currentPage === "settings" && (ui.setShowAdvancedSettings(!0), setTimeout(() => {
         let element = document.getElementById("proxmox-api-config");
         element && (element.scrollIntoView({ behavior: "smooth", block: "start" }), element.classList.add("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg"), setTimeout(() => {
           element.classList.remove("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg");
         }, 3e3)), ui.setScrollToApiConfig(!1);
       }, 400));
-    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect10(() => {
+    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect11(() => {
       !ui.collapsedSections.nodeStatus && !cluster.chartJsLoaded && cluster.loadChartJs();
-    }, [ui.collapsedSections.nodeStatus]), useEffect10(() => {
+    }, [ui.collapsedSections.nodeStatus]), useEffect11(() => {
       migrations.selectedGuestDetails && ui.setGuestModalCollapsed({ mountPoints: !0, passthroughDisks: !0 });
-    }, [migrations.selectedGuestDetails?.vmid]), useEffect10(() => {
+    }, [migrations.selectedGuestDetails?.vmid]), useEffect11(() => {
       if (!cluster.data || !cluster.data.nodes || ui.collapsedSections.nodeStatus || !cluster.chartJsLoaded || typeof Chart > "u") return;
       Object.values(cluster.charts).forEach((chart) => {
         try {

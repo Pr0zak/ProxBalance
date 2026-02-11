@@ -2,7 +2,42 @@ import {
   AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
 
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
+
+// Number input that uses local state during editing, commits on blur.
+// Prevents the snap-back issue where parseInt("") = NaN resets the value.
+function NumberField({ value, onCommit, isFloat, className, ...props }) {
+  const [localVal, setLocalVal] = useState(String(value ?? ''));
+  const committedRef = useRef(value);
+
+  useEffect(() => {
+    // Sync from parent only when the external value actually changes
+    if (value !== committedRef.current) {
+      committedRef.current = value;
+      setLocalVal(String(value ?? ''));
+    }
+  }, [value]);
+
+  return (
+    <input
+      {...props}
+      type="number"
+      value={localVal}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onBlur={() => {
+        const parsed = isFloat ? parseFloat(localVal) : parseInt(localVal, 10);
+        if (!isNaN(parsed)) {
+          committedRef.current = parsed;
+          onCommit(parsed);
+        } else {
+          // Reset to last good value if empty/invalid
+          setLocalVal(String(value ?? ''));
+        }
+      }}
+      className={className}
+    />
+  );
+}
 
 export default function SafetyRulesSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
@@ -308,12 +343,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Required Observation Periods
                       </label>
-                      <input
-                        type="number"
+                      <NumberField
                         min="2"
                         max="10"
                         value={automationConfig.rules?.intelligent_migrations?.required_observations || 3}
-                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: parseInt(e.target.value) } } })}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: val } } })}
                         className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
@@ -321,12 +355,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Observation Window (hours)
                       </label>
-                      <input
-                        type="number"
+                      <NumberField
                         min="1"
                         max="48"
                         value={automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1}
-                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: parseInt(e.target.value) } } })}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: val } } })}
                         className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
@@ -334,12 +367,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Minimum Data Collection Time (hours)
                       </label>
-                      <input
-                        type="number"
+                      <NumberField
                         min="0"
                         max="48"
                         value={automationConfig.rules?.intelligent_migrations?.min_data_collection_hours !== undefined ? automationConfig.rules.intelligent_migrations.min_data_collection_hours : 0}
-                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: parseInt(e.target.value) } } })}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: val } } })}
                         className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
@@ -370,13 +402,13 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                             Risk Multiplier
                           </label>
-                          <input
-                            type="number"
+                          <NumberField
                             min="0.1"
                             max="5.0"
                             step="0.1"
+                            isFloat
                             value={automationConfig.rules?.intelligent_migrations?.risk_multiplier !== undefined ? automationConfig.rules.intelligent_migrations.risk_multiplier : 1.0}
-                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: parseFloat(e.target.value) } } })}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
@@ -446,13 +478,13 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                             Minimum Benefit Ratio
                           </label>
-                          <input
-                            type="number"
+                          <NumberField
                             min="0.1"
                             max="10.0"
                             step="0.1"
+                            isFloat
                             value={automationConfig.rules?.intelligent_migrations?.min_benefit_ratio !== undefined ? automationConfig.rules.intelligent_migrations.min_benefit_ratio : 1.5}
-                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: parseFloat(e.target.value) } } })}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
@@ -477,12 +509,11 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                             Cycle Detection Window (hours)
                           </label>
-                          <input
-                            type="number"
+                          <NumberField
                             min="1"
                             max="168"
                             value={automationConfig.rules?.intelligent_migrations?.cycle_detection_window_hours || 24}
-                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: parseInt(e.target.value) } } })}
+                            onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: val } } })}
                             className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
