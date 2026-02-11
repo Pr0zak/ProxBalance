@@ -684,6 +684,27 @@ export default function AutomationStatusSection({
                         </div>
                       </div>
                     )}
+
+                    {/* Activity Log — VMs considered but not migrated */}
+                    {automationStatus.state?.activity_log && automationStatus.state.activity_log.length > 0 && (
+                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Activity Log — Skipped ({automationStatus.state.activity_log.length}):
+                        </div>
+                        <div className="space-y-1.5">
+                          {automationStatus.state.activity_log.map((activity, aidx) => (
+                            <div key={aidx} className="text-xs bg-white dark:bg-gray-700 rounded p-2 border-l-4 border-yellow-400 dark:border-yellow-600 flex items-start gap-2">
+                              <MinusCircle size={12} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <span className="font-semibold text-gray-900 dark:text-white">{activity.name}</span>
+                                {activity.vmid && <span className="text-gray-500 dark:text-gray-400 ml-1">({activity.vmid})</span>}
+                                <div className="text-gray-600 dark:text-gray-400 mt-0.5">{activity.reason}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -822,7 +843,7 @@ export default function AutomationStatusSection({
                   {runHistory.slice(0, 5).map((run, idx) => {
                     const isExpanded = expandedRun === run.timestamp;
                     const timeDisplay = formatRelativeTime(run.timestamp);
-                    const activityLog = idx === 0 ? (automationStatus.state?.activity_log || []) : [];
+                    // Activity log now shown in Last Run Summary section above
 
                     return (
                       <div key={idx} className="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
@@ -895,21 +916,6 @@ export default function AutomationStatusSection({
                               </div>
                             )}
 
-                            {/* Activity Log (skipped items from last check, shown in most recent run) */}
-                            {activityLog.length > 0 && (
-                              <div className="mt-2 pl-5 space-y-1">
-                                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                                  Skipped ({activityLog.length})
-                                </div>
-                                {activityLog.slice(0, 10).map((activity, aidx) => (
-                                  <div key={aidx} className="text-xs bg-gray-50 dark:bg-gray-600 rounded p-1.5 flex items-center gap-2" title={activity.reason}>
-                                    <MinusCircle size={12} className="text-yellow-600 dark:text-yellow-400 shrink-0" />
-                                    <span className="font-medium text-gray-900 dark:text-white">{activity.name}</span>
-                                    <span className="text-gray-600 dark:text-gray-400 truncate flex-1">{activity.reason}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </>
                         )}
                       </div>
