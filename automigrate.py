@@ -1483,15 +1483,32 @@ def main():
 
                 filtered.append(r)
 
+            # Derive activity_log entries from decisions (all filtered/deferred/skipped/observing)
+            for d in last_run_summary['decisions']:
+                if d.get('action') in ('filtered', 'deferred', 'skipped', 'observing'):
+                    # Avoid duplicates from previous iterations
+                    if not any(a.get('vmid') == d.get('vmid') and a.get('reason') == d.get('reason') for a in activity_log):
+                        activity_log.append({
+                            'timestamp': datetime.utcnow().isoformat() + 'Z',
+                            'vmid': d.get('vmid'),
+                            'name': d.get('name', f"VM-{d.get('vmid')}"),
+                            'action': d.get('action', 'filtered'),
+                            'reason': d.get('reason', 'Filtered')
+                        })
+
+            # Always save filter state so the UI can see decisions and activity log
+            try:
+                history = load_history()
+                run_state = history.setdefault('state', {})
+                run_state['last_filter_reasons'] = filtered_reasons
+                run_state['activity_log'] = activity_log[-50:]
+                run_state['last_run'] = last_run_summary
+                save_history(history)
+            except Exception as e:
+                logger.error(f"Failed to save filter state: {e}")
+
             if not filtered:
                 logger.info("No recommendations passed filters")
-                # Save filter reasons to state for frontend display
-                try:
-                    history = load_history()
-                    history.setdefault('state', {})['last_filter_reasons'] = filtered_reasons
-                    save_history(history)
-                except Exception as e:
-                    logger.error(f"Failed to save filter reasons: {e}")
 
                 # Log all original recommendations as "skipped" or "filtered" for visibility
                 for r in recommendations:
@@ -1509,7 +1526,7 @@ def main():
                             r
                         ))
 
-                # Save decisions immediately so UI can see them
+                # Re-save with the additional "not selected" decisions
                 try:
                     history = load_history()
                     history.setdefault('state', {})['last_run'] = last_run_summary
@@ -1880,7 +1897,9 @@ def main():
         # Always save last_run summary (even if exited early)
         try:
             history = load_history()
-            history.setdefault('state', {})['last_run'] = last_run_summary
+            run_state = history.setdefault('state', {})
+            run_state['last_run'] = last_run_summary
+            run_state['activity_log'] = activity_log[-50:]
 
             # Archive completed run to run_history (keep last 50 runs)
             if last_run_summary.get('status') in ['success', 'partial', 'failed', 'no_action']:
