@@ -71,6 +71,8 @@ export default function DashboardPage({
   selectedNode, setSelectedNode, selectedGuestDetails, setSelectedGuestDetails,
   // Node status
   nodeGridColumns, setNodeGridColumns, chartPeriod, setChartPeriod, nodeScores,
+  // Guest profiles & score history
+  guestProfiles, scoreHistory,
   // Maintenance & evacuation
   maintenanceNodes, setMaintenanceNodes, evacuatingNodes, setEvacuatingNodes, planningNodes, setPlanningNodes,
   evacuationPlan, setEvacuationPlan, planNode, setPlanNode,
@@ -159,6 +161,7 @@ export default function DashboardPage({
         <AutomationStatusSection
           automationStatus={automationStatus}
           automationConfig={automationConfig}
+          scoreHistory={scoreHistory}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
           toggleSection={toggleSection}
@@ -176,6 +179,7 @@ export default function DashboardPage({
 
         <GuestTagManagement
           data={data}
+          guestProfiles={guestProfiles}
           collapsedSections={collapsedSections}
           toggleSection={toggleSection}
           guestSearchFilter={guestSearchFilter}

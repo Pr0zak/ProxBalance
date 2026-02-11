@@ -15,6 +15,8 @@ export function useClusterData(API_BASE, deps = {}) {
   const [charts, setCharts] = useState({});
   const [chartJsLoaded, setChartJsLoaded] = useState(false);
   const [chartJsLoading, setChartJsLoading] = useState(false);
+  const [guestProfiles, setGuestProfiles] = useState(null);
+  const [scoreHistory, setScoreHistory] = useState(null);
 
   const fetchAnalysis = async () => {
     setLoading(true);
@@ -195,6 +197,30 @@ export function useClusterData(API_BASE, deps = {}) {
     };
   }, []);
 
+  const fetchGuestProfiles = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/guest-profiles`);
+      const result = await response.json();
+      if (result.success) {
+        setGuestProfiles(result.profiles);
+      }
+    } catch (err) {
+      console.error('Error fetching guest profiles:', err);
+    }
+  };
+
+  const fetchScoreHistory = async (limit = 168) => {
+    try {
+      const response = await fetch(`${API_BASE}/score-history?limit=${limit}`);
+      const result = await response.json();
+      if (result.success) {
+        setScoreHistory(result.history);
+      }
+    } catch (err) {
+      console.error('Error fetching score history:', err);
+    }
+  };
+
   // Lazy load Chart.js library
   const loadChartJs = async () => {
     if (chartJsLoaded || chartJsLoading) return;
@@ -238,8 +264,12 @@ export function useClusterData(API_BASE, deps = {}) {
     charts, setCharts,
     chartJsLoaded,
     chartJsLoading,
+    guestProfiles,
+    scoreHistory,
     fetchAnalysis,
     fetchGuestLocations,
+    fetchGuestProfiles,
+    fetchScoreHistory,
     handleRefresh,
     fetchNodeScores,
     generateSparkline,

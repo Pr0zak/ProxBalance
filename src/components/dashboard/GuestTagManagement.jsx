@@ -24,7 +24,8 @@ export default function GuestTagManagement({
   ignoredGuests,
   excludeGuests,
   affinityGuests,
-  autoMigrateOkGuests
+  autoMigrateOkGuests,
+  guestProfiles
 }) {
   if (!data) return null;
 
@@ -345,7 +346,26 @@ export default function GuestTagManagement({
                         </td>
                         <td className="hidden sm:table-cell p-3 text-sm font-mono text-gray-900 dark:text-white">{guest.vmid}</td>
                         <td className="p-3">
-                          <div className="text-sm text-gray-900 dark:text-white">{guest.name}</div>
+                          <div className="text-sm text-gray-900 dark:text-white flex items-center gap-1.5">
+                            {guest.name}
+                            {(() => {
+                              const profile = guestProfiles?.[String(guest.vmid)];
+                              if (!profile || profile.confidence === 'low') return null;
+                              const colors = {
+                                steady: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                                bursty: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+                                growing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                                cyclical: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+                              };
+                              const cls = colors[profile.behavior];
+                              if (!cls) return null;
+                              return (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${cls}`} title={`${profile.behavior} workload (${profile.confidence} confidence, ${profile.data_points} data points)`}>
+                                  {profile.behavior.charAt(0).toUpperCase() + profile.behavior.slice(1)}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           {/* Mobile: show tag badges below name */}
                           {guestHasTags && (
                             <div className="flex flex-wrap gap-1 mt-1 sm:hidden">

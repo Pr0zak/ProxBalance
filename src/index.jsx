@@ -120,6 +120,14 @@ const ProxmoxBalanceManager = () => {
     return () => clearInterval(interval);
   }, [cluster.data]);
 
+  // Fetch guest profiles and score history when cluster data loads
+  useEffect(() => {
+    if (cluster.data) {
+      cluster.fetchGuestProfiles();
+      cluster.fetchScoreHistory();
+    }
+  }, [cluster.data]);
+
   // Handle auto-expansion of Penalty Config when navigating from Migration Recommendations
   useEffect(() => {
     if (ui.currentPage === 'automation' && configHook.openPenaltyConfigOnAutomation) {
@@ -604,6 +612,8 @@ const ProxmoxBalanceManager = () => {
     nodeGridColumns={ui.nodeGridColumns} setNodeGridColumns={ui.setNodeGridColumns}
     chartPeriod={cluster.chartPeriod} setChartPeriod={cluster.setChartPeriod}
     nodeScores={cluster.nodeScores}
+    guestProfiles={cluster.guestProfiles}
+    scoreHistory={cluster.scoreHistory}
     maintenanceNodes={evacuation.maintenanceNodes} setMaintenanceNodes={evacuation.setMaintenanceNodes}
     evacuatingNodes={evacuation.evacuatingNodes} setEvacuatingNodes={evacuation.setEvacuatingNodes}
     planningNodes={evacuation.planningNodes} setPlanningNodes={evacuation.setPlanningNodes}

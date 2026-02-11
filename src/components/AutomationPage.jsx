@@ -171,11 +171,10 @@ export default function AutomationPage(props) {
 
         <SafetyRulesSection
           automationConfig={automationConfig}
+          automationStatus={automationStatus}
           saveAutomationConfig={saveAutomationConfig}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
-          confirmAllowContainerRestarts={confirmAllowContainerRestarts}
-          setConfirmAllowContainerRestarts={setConfirmAllowContainerRestarts}
         />
 
         <PenaltyScoringSection

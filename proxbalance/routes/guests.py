@@ -569,6 +569,26 @@ def remove_guest_tag(vmid, tag):
     })
 
 
+@guests_bp.route("/api/guest-profiles", methods=["GET"])
+@api_route
+def get_guest_profiles():
+    """Return behavior classifications for all profiled guests"""
+    from proxbalance.guest_profiles import load_guest_profiles, classify_guest_behavior
+    profiles = load_guest_profiles()
+    result = {}
+    for vmid, profile in profiles.get('profiles', {}).items():
+        classification = classify_guest_behavior(profile)
+        result[vmid] = {
+            'behavior': classification.get('behavior', 'unknown'),
+            'confidence': classification.get('confidence', 'low'),
+            'cpu_volatility': classification.get('cpu_volatility', 0),
+            'peak_multiplier': classification.get('peak_multiplier', 1.0),
+            'growth_rate_per_day': classification.get('growth_rate_per_day', 0),
+            'data_points': classification.get('data_points', 0),
+        }
+    return jsonify({"success": True, "profiles": result})
+
+
 @guests_bp.route("/api/affinity-groups", methods=["GET"])
 @api_route
 def get_affinity_groups():

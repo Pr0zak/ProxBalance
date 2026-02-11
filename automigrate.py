@@ -732,55 +732,6 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
     return False
 
 
-def is_rollback_migration(vmid: int, source_node: str, target_node: str, rollback_window_hours: int = 24) -> bool:
-    """
-    Check if this migration would be a rollback (migrating VM back to a node it was recently migrated from).
-
-    Args:
-        vmid: VM ID to check
-        source_node: Current source node
-        target_node: Proposed target node
-        rollback_window_hours: Time window in hours to check for rollbacks (default: 24)
-
-    Returns:
-        True if this would be a rollback migration, False otherwise
-    """
-    if rollback_window_hours <= 0:
-        return False
-
-    history = load_history()
-    migrations = history.get('migrations', [])
-
-    # Check if this VM was recently migrated FROM the target TO the source
-    now = datetime.utcnow()
-    rollback_threshold = now - timedelta(hours=rollback_window_hours)
-
-    for migration in reversed(migrations):  # Check most recent first
-        if migration.get('vmid') == vmid and migration.get('status') == 'success':
-            try:
-                migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
-
-                # Only check migrations within the rollback window
-                if migration_time < rollback_threshold:
-                    # Past the rollback window, no need to check older entries
-                    return False
-
-                # Check if this would be a rollback:
-                # Previous migration went FROM target_node TO source_node
-                # Now we want to go FROM source_node TO target_node (rollback!)
-                if (migration.get('source_node') == target_node and
-                    migration.get('target_node') == source_node):
-                    logger.info(
-                        f"VM {vmid} rollback detected: would migrate back to {target_node} "
-                        f"(was migrated from {target_node} to {source_node} at {migration_time.isoformat()})"
-                    )
-                    return True
-
-            except (ValueError, TypeError):
-                continue
-
-    return False
-
 
 def record_migration(migration_record: Dict[str, Any]):
     """
@@ -937,8 +888,9 @@ def update_recommendation_tracking(
 
 def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48) -> Tuple[bool, str]:
     """
-    Detect multi-hop cycling: A->B->C->A pattern.
-    Check if the target_node appears in the VM's migration history within the window.
+    Detect migration cycling by checking if the VM has recently been on the
+    proposed target node. Catches both simple rollbacks (A->B->A) and multi-hop
+    cycles (A->B->C->A) by tracking all nodes the VM has visited.
     """
     if cycle_window_hours <= 0:
         return False, ""
@@ -949,7 +901,7 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48
     now = datetime.utcnow()
     cycle_threshold = now - timedelta(hours=cycle_window_hours)
 
-    visited_nodes = []
+    visited_nodes = set()
     for migration in reversed(migrations):
         if migration.get('vmid') != vmid or migration.get('status') != 'success':
             continue
@@ -957,13 +909,13 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48
             migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
             if migration_time < cycle_threshold:
                 break
-            visited_nodes.append(migration.get('target_node'))
+            visited_nodes.add(migration.get('source_node'))
+            visited_nodes.add(migration.get('target_node'))
         except (ValueError, TypeError):
             continue
 
     if target_node in visited_nodes:
-        cycle_path = ' -> '.join(reversed(visited_nodes)) + f' -> {target_node}'
-        return True, f"Multi-node cycle detected: {cycle_path}"
+        return True, f"VM was recently on {target_node} (visited: {', '.join(sorted(visited_nodes))})"
 
     return False, ""
 
@@ -1046,6 +998,56 @@ def is_in_known_peak_period(source_node: str) -> Tuple[bool, str]:
     except Exception as e:
         logger.debug(f"Pattern check failed for {source_node}: {e}")
         return False, ""
+
+
+def _resolve_intelligence_level(intelligent_config: Dict[str, Any]) -> Dict[str, bool]:
+    """
+    Resolve which intelligent migration features are active based on either:
+    1. The new 'intelligence_level' field (basic/standard/full), OR
+    2. Legacy individual boolean toggles (backward compatibility)
+    """
+    LEVELS = {
+        'basic': {
+            'cycle_detection': True,
+            'cost_benefit': False,
+            'outcome_learning': False,
+            'guest_success_tracking': False,
+            'trend_awareness': False,
+            'pattern_suppression': False,
+            'risk_gating': False,
+        },
+        'standard': {
+            'cycle_detection': True,
+            'cost_benefit': True,
+            'outcome_learning': True,
+            'guest_success_tracking': True,
+            'trend_awareness': False,
+            'pattern_suppression': False,
+            'risk_gating': False,
+        },
+        'full': {
+            'cycle_detection': True,
+            'cost_benefit': True,
+            'outcome_learning': True,
+            'guest_success_tracking': True,
+            'trend_awareness': True,
+            'pattern_suppression': True,
+            'risk_gating': True,
+        },
+    }
+    level = intelligent_config.get('intelligence_level')
+    if level and level in LEVELS:
+        return LEVELS[level]
+    # Legacy: read individual booleans for backward compatibility
+    return {
+        'cycle_detection': intelligent_config.get('cycle_detection_enabled', True),
+        'cost_benefit': intelligent_config.get('cost_benefit_enabled', False),
+        'outcome_learning': intelligent_config.get('outcome_learning_enabled', False),
+        'guest_success_tracking': intelligent_config.get('guest_success_tracking_enabled', False),
+        'trend_awareness': intelligent_config.get('trend_awareness_enabled', False),
+        'pattern_suppression': intelligent_config.get('pattern_suppression_enabled', False),
+        'risk_gating': intelligent_config.get('risk_gating_enabled', False),
+    }
 
 
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
@@ -1218,6 +1220,7 @@ def main():
             # --- Intelligent Migration: Persistence Filter (Phase 1) ---
             intelligent_config = rules.get('intelligent_migrations', {})
             intelligent_enabled = intelligent_config.get('enabled', False)
+            resolved_features = _resolve_intelligence_level(intelligent_config)
 
             if intelligent_enabled and migrations_attempted == 0:
                 # First iteration: update tracking with current recommendations
@@ -1292,9 +1295,9 @@ def main():
                     logger.info("[Intelligent] No tracked recommendations ready after re-filter")
                     break
 
-            # Helper function to create decision entry with full metadata
+            # Helper function to create decision entry with full metadata + reasoning
             def create_decision(vmid, guest, source_node, target_node, action, reason, recommendation):
-                return {
+                decision = {
                     'vmid': vmid,
                     'name': guest.get('name', f'VM-{vmid}'),
                     'type': guest.get('type', 'Unknown'),
@@ -1308,8 +1311,16 @@ def main():
                     'ha_managed': guest.get('ha_managed', False),
                     'has_bind_mount': guest.get('mount_points', {}).get('has_bind_mount', False),
                     'has_unshared_bind_mount': guest.get('mount_points', {}).get('has_unshared_bind_mount', False),
-                    'has_passthrough': guest.get('local_disks', {}).get('has_passthrough', False)
+                    'has_passthrough': guest.get('local_disks', {}).get('has_passthrough', False),
+                    'reasoning': {
+                        'score_improvement': recommendation.get('score_improvement'),
+                        'confidence_score': recommendation.get('confidence_score'),
+                        'cost_benefit': recommendation.get('cost_benefit', {}).get('ratio') if recommendation.get('cost_benefit') else None,
+                        'risk_score': recommendation.get('risk_score'),
+                        'has_conflict': recommendation.get('has_conflict', False),
+                    },
                 }
+                return decision
 
             # Re-filter recommendations with current cooldown/confidence/tag rules
             filtered = []
@@ -1334,18 +1345,10 @@ def main():
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
 
-                # Check rollback detection (if enabled) - bypass for distribution balancing and maintenance evacuations
                 is_distribution_balancing = r.get('distribution_balancing', False)
-                rollback_enabled = rules.get('rollback_detection_enabled', True)
-                rollback_window_hours = rules.get('rollback_window_hours', 24)
-                if not is_maintenance_evac and not is_distribution_balancing and rollback_enabled and is_rollback_migration(vmid, source_node, target_node, rollback_window_hours):
-                    reason = f"Rollback detected (would migrate back within {rollback_window_hours}h)"
-                    filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
-                    last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
-                    continue
 
-                # Phase 4c: Multi-node cycle detection (extends rollback to catch A->B->C->A)
-                cycle_detection_enabled = intelligent_config.get('cycle_detection_enabled', True)
+                # Cycle detection (catches both A->B->A rollbacks and A->B->C->A cycles)
+                cycle_detection_enabled = resolved_features['cycle_detection']
                 cycle_window = intelligent_config.get('cycle_window_hours', 48)
                 if not is_maintenance_evac and not is_distribution_balancing and cycle_detection_enabled:
                     is_cycle, cycle_msg = is_cycle_migration(vmid, target_node, cycle_window)
@@ -1372,8 +1375,8 @@ def main():
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
 
-                # Phase 2b: Risk-adjusted confidence
-                risk_gating_enabled = intelligent_config.get('risk_gating_enabled', False)
+                # Risk-adjusted confidence
+                risk_gating_enabled = resolved_features['risk_gating']
                 if not is_maintenance_evac and not is_distribution_balancing and risk_gating_enabled:
                     risk_score = r.get('risk_score', 0)
                     risk_multiplier = intelligent_config.get('risk_confidence_multiplier', 1.2)
@@ -1385,8 +1388,8 @@ def main():
                             last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                             continue
 
-                # Phase 2c: Trend-aware filtering
-                trend_awareness_enabled = intelligent_config.get('trend_awareness_enabled', False)
+                # Trend-aware filtering
+                trend_awareness_enabled = resolved_features['trend_awareness']
                 if not is_maintenance_evac and not is_distribution_balancing and trend_awareness_enabled:
                     score_details = r.get('score_details', {})
                     source_metrics = score_details.get('source', {}).get('metrics', {})
@@ -1398,8 +1401,8 @@ def main():
                         last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'deferred', reason, r))
                         continue
 
-                # Phase 2d: Outcome-based learning
-                outcome_learning_enabled = intelligent_config.get('outcome_learning_enabled', False)
+                # Outcome-based learning
+                outcome_learning_enabled = resolved_features['outcome_learning']
                 if not is_maintenance_evac and not is_distribution_balancing and outcome_learning_enabled:
                     pair_stats = get_node_pair_outcome_stats(source_node, target_node)
                     if pair_stats.get('has_data') and pair_stats.get('count', 0) >= 3:
@@ -1412,8 +1415,8 @@ def main():
                                 last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                                 continue
 
-                # Phase 2e: Workload pattern suppression
-                pattern_suppression_enabled = intelligent_config.get('pattern_suppression_enabled', False)
+                # Workload pattern suppression
+                pattern_suppression_enabled = resolved_features['pattern_suppression']
                 if not is_maintenance_evac and not is_distribution_balancing and pattern_suppression_enabled:
                     in_peak, peak_msg = is_in_known_peak_period(source_node)
                     if in_peak:
@@ -1439,8 +1442,8 @@ def main():
                         last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', affinity_reason, r))
                         continue
 
-                    # Phase 4b: Cost-benefit ratio check
-                    cost_benefit_enabled = intelligent_config.get('cost_benefit_enabled', False)
+                    # Cost-benefit ratio check
+                    cost_benefit_enabled = resolved_features['cost_benefit']
                     min_cb_ratio = intelligent_config.get('min_cost_benefit_ratio', 1.0)
                     if cost_benefit_enabled:
                         cb = r.get('cost_benefit', {})
@@ -1451,8 +1454,8 @@ def main():
                             last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                             continue
 
-                    # Phase 4e: Per-guest migration success rate
-                    guest_success_enabled = intelligent_config.get('guest_success_tracking_enabled', False)
+                    # Per-guest migration success rate
+                    guest_success_enabled = resolved_features['guest_success_tracking']
                     if guest_success_enabled:
                         try:
                             from proxbalance.outcomes import get_migration_outcomes

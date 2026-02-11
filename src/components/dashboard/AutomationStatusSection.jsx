@@ -7,6 +7,7 @@ import {
 export default function AutomationStatusSection({
   automationStatus,
   automationConfig,
+  scoreHistory,
   collapsedSections,
   setCollapsedSections,
   toggleSection,
@@ -369,6 +370,106 @@ export default function AutomationStatusSection({
               );
             })()}
 
+            {/* Cluster Health Timeline */}
+            {scoreHistory && scoreHistory.length > 1 && (() => {
+              const points = scoreHistory.map(e => e.cluster_health).filter(v => v != null);
+              if (points.length < 2) return null;
+              const min = Math.min(...points);
+              const max = Math.max(...points);
+              const range = max - min || 1;
+              const w = 400;
+              const h = 80;
+              const pad = 4;
+              const coords = points.map((v, i) => {
+                const x = pad + (i / (points.length - 1)) * (w - 2 * pad);
+                const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+                return `${x},${y}`;
+              });
+              const linePoints = coords.join(' ');
+              const areaPoints = `${pad},${h - pad} ${linePoints} ${w - pad},${h - pad}`;
+              const latest = points[points.length - 1];
+              const earliest = points[0];
+              const trend = latest - earliest;
+              return (
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cluster Health</h4>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold text-gray-900 dark:text-white">{latest.toFixed(1)}%</span>
+                      <span className={`font-semibold ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {trend >= 0 ? '+' : ''}{trend.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                  <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '80px' }} preserveAspectRatio="none">
+                    <polygon points={areaPoints} fill="url(#healthGrad)" opacity="0.3" />
+                    <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+                    <defs>
+                      <linearGradient id="healthGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                    <span>{scoreHistory.length > 0 ? new Date(scoreHistory[0].timestamp).toLocaleDateString() : ''}</span>
+                    <span>{scoreHistory.length > 0 ? new Date(scoreHistory[scoreHistory.length - 1].timestamp).toLocaleDateString() : ''}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Learning Progress */}
+            {automationStatus.intelligent_tracking?.enabled && automationStatus.intelligent_tracking?.learning_progress && (() => {
+              const lp = automationStatus.intelligent_tracking.learning_progress;
+              const pct = lp.min_required_hours > 0 ? Math.min(100, Math.round((lp.data_collection_hours / lp.min_required_hours) * 100)) : 100;
+              const isReady = pct >= 100;
+              const level = automationStatus.intelligent_tracking.intelligence_level;
+              return (
+                <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <Info size={14} className="text-blue-500" />
+                      Learning Progress
+                      {level && (
+                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-semibold rounded capitalize">
+                          {level}
+                        </span>
+                      )}
+                    </h4>
+                    <span className={`text-xs font-semibold ${isReady ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {isReady ? 'Ready' : 'Collecting data...'}
+                    </span>
+                  </div>
+                  {lp.min_required_hours > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1">
+                        <span>Data collection: {Math.round(lp.data_collection_hours)}h of {lp.min_required_hours}h</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${isReady ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3 text-[10px] text-gray-600 dark:text-gray-400">
+                    {lp.guest_profiles_count > 0 && (
+                      <span>{lp.guest_profiles_count} guest profile{lp.guest_profiles_count !== 1 ? 's' : ''} built</span>
+                    )}
+                    {lp.outcomes_count > 0 && (
+                      <span>{lp.outcomes_count} migration outcome{lp.outcomes_count !== 1 ? 's' : ''} recorded</span>
+                    )}
+                    {lp.avg_prediction_accuracy != null && (
+                      <span>Avg accuracy: {lp.avg_prediction_accuracy}%</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {automationStatus.state && (
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
@@ -700,6 +801,16 @@ export default function AutomationStatusSection({
                                   </div>
                                 )}
 
+                                {decision.reasoning && (
+                                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+                                    {decision.reasoning.score_improvement != null && <span>Score: +{Number(decision.reasoning.score_improvement).toFixed(1)}</span>}
+                                    {decision.reasoning.cost_benefit != null && <><span className="text-gray-400 dark:text-gray-600">|</span><span>Cost-benefit: {Number(decision.reasoning.cost_benefit).toFixed(1)}x</span></>}
+                                    {decision.reasoning.observation_count != null && <><span className="text-gray-400 dark:text-gray-600">|</span><span>Observed {decision.reasoning.observation_count}/{decision.reasoning.required_observations}</span></>}
+                                    {decision.reasoning.hours_tracked != null && <><span className="text-gray-400 dark:text-gray-600">|</span><span>{Number(decision.reasoning.hours_tracked).toFixed(1)}h tracked</span></>}
+                                    {decision.reasoning.guest_behavior && decision.reasoning.guest_behavior !== 'unknown' && <><span className="text-gray-400 dark:text-gray-600">|</span><span>{decision.reasoning.guest_behavior}</span></>}
+                                  </div>
+                                )}
+
                                 {decision.error && (
                                   <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">
                                     Error: {decision.error}
@@ -962,46 +1073,23 @@ export default function AutomationStatusSection({
                           </div>
                         </div>
                       )}
-                      {/* Rollback Detection */}
-                      {(() => {
-                        // Only show rollback warning if rollback detection is enabled in settings
-                        if (!automationConfig?.rules?.rollback_detection_enabled) {
-                          return null;
-                        }
-
-                        // Use configured rollback window (default 24 hours if not set)
-                        const rollbackWindowHours = automationConfig?.rules?.rollback_window_hours || 24;
-                        const rollbackWindow = rollbackWindowHours * 60 * 60 * 1000; // Convert to ms
-                        const currentTime = new Date(migration.timestamp.endsWith('Z') ? migration.timestamp : migration.timestamp + 'Z');
-
-                        // Find potential rollback - look for migration where this VM went back
-                        const rollback = automationStatus.recent_migrations.find(m => {
-                          if (m.vmid !== migration.vmid) return false;
-                          if (m.id === migration.id) return false;
-
-                          // Check if it's a rollback (went from target back to source)
-                          const isRollback = m.source_node === migration.target_node && m.target_node === migration.source_node;
-
-                          // Check time window
-                          const mTime = new Date(m.timestamp.endsWith('Z') ? m.timestamp : m.timestamp + 'Z');
-                          const timeDiff = Math.abs(mTime - currentTime);
-                          const withinWindow = timeDiff < rollbackWindow;
-
-                          return isRollback && withinWindow;
-                        });
-
-                        if (rollback) {
-                          return (
-                            <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded flex items-start gap-2">
-                              <AlertTriangle size={14} className="text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
-                              <div className="text-xs text-orange-800 dark:text-orange-300">
-                                <span className="font-semibold">Rollback Detected:</span> This VM was migrated back to its original node within {rollbackWindowHours} hour{rollbackWindowHours !== 1 ? 's' : ''}. This may indicate a problem with the target node or migration configuration.
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
+                      {/* Decision Reasoning */}
+                      {migration.reasoning && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+                          {migration.reasoning.score_improvement != null && (
+                            <span>Score: +{Number(migration.reasoning.score_improvement).toFixed(1)}</span>
+                          )}
+                          {migration.reasoning.confidence_score != null && (
+                            <><span className="text-gray-400 dark:text-gray-600">|</span><span>Confidence: {migration.reasoning.confidence_score}%</span></>
+                          )}
+                          {migration.reasoning.cost_benefit != null && (
+                            <><span className="text-gray-400 dark:text-gray-600">|</span><span>Cost-benefit: {Number(migration.reasoning.cost_benefit).toFixed(1)}x</span></>
+                          )}
+                          {migration.reasoning.guest_behavior && migration.reasoning.guest_behavior !== 'unknown' && (
+                            <><span className="text-gray-400 dark:text-gray-600">|</span><span>Behavior: {migration.reasoning.guest_behavior}</span></>
+                          )}
+                        </div>
+                      )}
                     </div>
                     );
                   })}
@@ -1117,6 +1205,13 @@ export default function AutomationStatusSection({
                                 {decision.reason && (
                                   <div className="text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">
                                     {decision.reason}
+                                  </div>
+                                )}
+                                {decision.reasoning && (
+                                  <div className="mt-0.5 flex flex-wrap gap-1.5 text-[9px] text-gray-500 dark:text-gray-400">
+                                    {decision.reasoning.score_improvement != null && <span>+{Number(decision.reasoning.score_improvement).toFixed(1)}pts</span>}
+                                    {decision.reasoning.cost_benefit != null && <span>CB:{Number(decision.reasoning.cost_benefit).toFixed(1)}x</span>}
+                                    {decision.reasoning.observation_count != null && <span>{decision.reasoning.observation_count}/{decision.reasoning.required_observations} obs</span>}
                                   </div>
                                 )}
                               </div>

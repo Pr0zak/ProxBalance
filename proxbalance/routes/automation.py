@@ -457,13 +457,75 @@ def get_automigrate_status():
                 "status": v.get('status', 'observing'),
                 "first_seen": v.get('first_seen', ''),
             } for v in tracked.values()]
+            # Learning progress data
+            guest_profiles_count = 0
+            try:
+                profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
+                if os.path.exists(profiles_file):
+                    with open(profiles_file, 'r') as f:
+                        guest_profiles_count = len(json.load(f).get('profiles', {}))
+            except Exception:
+                pass
+
+            outcomes_count = 0
+            avg_accuracy = None
+            try:
+                outcomes_file = os.path.join(BASE_PATH, 'migration_outcomes.json')
+                if os.path.exists(outcomes_file):
+                    with open(outcomes_file, 'r') as f:
+                        outcomes_list = json.load(f).get('outcomes', [])
+                    outcomes_count = len(outcomes_list)
+                    completed = [o for o in outcomes_list if o.get('status') == 'completed']
+                    if completed:
+                        avg_accuracy = round(sum(o.get('accuracy_pct', 0) for o in completed) / len(completed), 1)
+            except Exception:
+                pass
+
+            data_collection_hours = 0
+            if tracked:
+                first_seen_times = [v.get('first_seen', '') for v in tracked.values() if v.get('first_seen')]
+                if first_seen_times:
+                    earliest = min(first_seen_times)
+                    try:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest.rstrip('Z'))
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                    except Exception:
+                        pass
+
+            # Intelligence level suggestion
+            suggested_level = None
+            current_level = im_config.get('intelligence_level', 'basic')
+            if current_level == 'basic' and outcomes_count >= 3 and guest_profiles_count >= 5:
+                suggested_level = 'standard'
+            elif current_level == 'standard':
+                score_history_count = 0
+                try:
+                    sh_file = os.path.join(BASE_PATH, 'score_history.json')
+                    if os.path.exists(sh_file):
+                        with open(sh_file, 'r') as f:
+                            score_history_count = len(json.load(f))
+                except Exception:
+                    pass
+                if score_history_count >= 168 and outcomes_count >= 10:
+                    suggested_level = 'full'
+
             intelligent_tracking = {
                 "enabled": im_enabled,
+                "intelligence_level": im_config.get('intelligence_level', None),
                 "observation_periods": im_config.get('observation_periods', 3),
                 "total_tracked": len(tracked),
                 "observing_count": observing_count,
                 "ready_count": ready_count,
                 "items": items,
+                "suggested_level": suggested_level,
+                "learning_progress": {
+                    "data_collection_hours": data_collection_hours,
+                    "min_required_hours": im_config.get('minimum_data_collection_hours', 24),
+                    "guest_profiles_count": guest_profiles_count,
+                    "outcomes_count": outcomes_count,
+                    "avg_prediction_accuracy": avg_accuracy,
+                },
             }
         except Exception:
             pass

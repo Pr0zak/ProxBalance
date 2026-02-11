@@ -162,7 +162,7 @@ export default function DecisionTreeFlowchart({
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate penalty scores for all nodes</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Find VMs on high-penalty nodes</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Match with low-penalty target nodes</div>
-                              <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Apply filters (tags, storage, rollback detection)</div>
+                              <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Apply filters (tags, storage, compatibility)</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate confidence scores</div>
                             </div>
                           </div>
@@ -175,7 +175,7 @@ export default function DecisionTreeFlowchart({
                           <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">6</div>
                           <div className="flex-1">
                             <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                              <span>👁</span> Persistent recommendation? <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(if intelligent migrations enabled)</span>
+                              <span>👁</span> Persistent recommendation?
                             </div>
                             <div className="space-y-2 text-xs">
                               <div className="flex items-center gap-2 p-2 bg-cyan-50 dark:bg-cyan-900/10 rounded-lg">
@@ -231,17 +231,12 @@ export default function DecisionTreeFlowchart({
                           <div className="bg-gradient-to-br from-cyan-600 to-teal-600 dark:from-cyan-500 dark:to-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">8</div>
                           <div className="flex-1">
                             <div className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                              <span>🧠</span> Intelligent Filters <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(per recommendation, if enabled)</span>
+                              <span>🧠</span> Intelligent Filters <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(per recommendation, based on intelligence level)</span>
                             </div>
                             <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg">
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Conflict detection — skip if target overloaded by multiple migrations</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Risk-adjusted confidence — require higher confidence for risky moves</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Trend awareness — defer if source load is falling</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Outcome learning — raise bar for historically poor node pairs</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Pattern suppression — defer during known peak periods</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Cost-benefit ratio — skip low-ROI migrations</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Cycle prevention — block A→B→C→A ping-pong</div>
-                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400">▸</span> Guest success tracking — deprioritize poor-performing guests</div>
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Basic:</span> Cycle prevention, Conflict detection</div>
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Standard:</span> + Cost-benefit analysis, Outcome learning, Guest tracking</div>
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Full:</span> + Trend awareness, Pattern suppression, Risk gating</div>
                             </div>
                             <div className="mt-2 space-y-2 text-xs">
                               <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
@@ -332,6 +327,7 @@ export default function DecisionTreeFlowchart({
                         <div>• Min confidence: 80+</div>
                         <div>• Max migrations: 1-2</div>
                         <div>• Cooldown: 60+ min</div>
+                        <div>• Intelligence: Standard+</div>
                       </div>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
@@ -340,6 +336,7 @@ export default function DecisionTreeFlowchart({
                         <div>• Min confidence: 70+</div>
                         <div>• Max migrations: 3-5</div>
                         <div>• Cooldown: 30-60 min</div>
+                        <div>• Intelligence: Standard</div>
                       </div>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
@@ -348,6 +345,7 @@ export default function DecisionTreeFlowchart({
                         <div>• Min confidence: 60+</div>
                         <div>• Max migrations: 5-10</div>
                         <div>• Cooldown: 15-30 min</div>
+                        <div>• Intelligence: Basic</div>
                       </div>
                     </div>
                   </div>
