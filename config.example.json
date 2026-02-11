@@ -73,7 +73,23 @@
       "respect_exclude_tags": true,
       "respect_exclude_affinity": true,
       "respect_affinity_rules": true,
-      "require_auto_migrate_ok_tag": false
+      "require_auto_migrate_ok_tag": false,
+      "intelligent_migrations": {
+        "enabled": false,
+        "observation_periods": 3,
+        "observation_window_hours": 1,
+        "minimum_data_collection_hours": 0,
+        "risk_gating_enabled": false,
+        "risk_confidence_multiplier": 1.2,
+        "trend_awareness_enabled": false,
+        "outcome_learning_enabled": false,
+        "pattern_suppression_enabled": false,
+        "cost_benefit_enabled": false,
+        "min_cost_benefit_ratio": 1.0,
+        "cycle_detection_enabled": true,
+        "cycle_window_hours": 48,
+        "guest_success_tracking_enabled": false
+      }
     },
     "safety_checks": {
       "check_cluster_health": true,

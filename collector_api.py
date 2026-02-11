@@ -248,6 +248,44 @@ class ProxmoxAPICollector:
             # Silently fail - some guests may not have RRD data
             return []
 
+    def _summarize_guest_rrd(self, rrd_data: List[Dict]) -> Dict:
+        """Summarize guest RRD data into min/max/avg/p95 for CPU and memory."""
+        if not rrd_data:
+            return {}
+
+        cpu_values = []
+        mem_values = []
+
+        for point in rrd_data:
+            cpu = point.get('cpu')
+            if cpu is not None:
+                cpu_values.append(cpu * 100)  # Convert to percentage
+
+            maxmem = point.get('maxmem', 0)
+            mem = point.get('mem', 0)
+            if maxmem and maxmem > 0:
+                mem_values.append(mem / maxmem * 100)
+
+        def _stats(values):
+            if not values:
+                return {}
+            sorted_v = sorted(values)
+            n = len(sorted_v)
+            return {
+                "min": round(sorted_v[0], 1),
+                "max": round(sorted_v[-1], 1),
+                "avg": round(sum(sorted_v) / n, 1),
+                "p95": round(sorted_v[int(n * 0.95)] if n > 1 else sorted_v[0], 1),
+                "samples": n,
+            }
+
+        result = {}
+        if cpu_values:
+            result["cpu"] = _stats(cpu_values)
+        if mem_values:
+            result["mem"] = _stats(mem_values)
+        return result
+
     def parse_tags(self, tags_str: str) -> Dict:
         """Parse tags and extract ignore/exclude/affinity rules"""
         if not tags_str:
@@ -692,6 +730,15 @@ class ProxmoxAPICollector:
                             net_in_bps = point.get("netin", 0) or 0
                             net_out_bps = point.get("netout", 0) or 0
                             break
+
+                    # Phase 3a: Summarize guest RRD for behavioral profiling
+                    guest_rrd_summary = self._summarize_guest_rrd(rrd_data)
+                    if guest_rrd_summary:
+                        try:
+                            from proxbalance.guest_profiles import update_guest_profile
+                            update_guest_profile(str(vmid), guest_rrd_summary, node_name)
+                        except Exception:
+                            pass  # Graceful degradation
 
             # Check HA status
             ha_sid = f"{'vm' if guest_type == 'VM' else 'ct'}:{vmid}"

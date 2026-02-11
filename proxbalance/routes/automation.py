@@ -434,6 +434,40 @@ def get_automigrate_status():
         state = history.get('state', {}).copy()
         state['current_window'] = current_window
 
+        # Load intelligent migration tracking data
+        intelligent_tracking = {"enabled": False}
+        try:
+            rules = auto_config.get('rules', {})
+            im_config = rules.get('intelligent_migrations', {})
+            im_enabled = im_config.get('enabled', False)
+            tracking_file = os.path.join(BASE_PATH, 'recommendation_tracking.json')
+            tracking_data = {}
+            if os.path.exists(tracking_file):
+                with open(tracking_file, 'r') as f:
+                    tracking_data = json.load(f)
+            tracked = tracking_data.get('tracked', {})
+            observing_count = sum(1 for v in tracked.values() if v.get('status') == 'observing')
+            ready_count = sum(1 for v in tracked.values() if v.get('status') == 'ready')
+            items = [{
+                "vmid": v.get('vmid'),
+                "name": v.get('guest_name', ''),
+                "source_node": v.get('source_node', ''),
+                "last_target_node": v.get('last_target_node', ''),
+                "consecutive_count": v.get('consecutive_count', 0),
+                "status": v.get('status', 'observing'),
+                "first_seen": v.get('first_seen', ''),
+            } for v in tracked.values()]
+            intelligent_tracking = {
+                "enabled": im_enabled,
+                "observation_periods": im_config.get('observation_periods', 3),
+                "total_tracked": len(tracked),
+                "observing_count": observing_count,
+                "ready_count": ready_count,
+                "items": items,
+            }
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "enabled": auto_config.get('enabled', False),
@@ -444,7 +478,8 @@ def get_automigrate_status():
             "recent_migrations": recent,
             "in_progress_migrations": in_progress_migrations,
             "state": state,
-            "filter_reasons": history.get('state', {}).get('last_filter_reasons', [])
+            "filter_reasons": history.get('state', {}).get('last_filter_reasons', []),
+            "intelligent_tracking": intelligent_tracking
         })
 
     except Exception as e:

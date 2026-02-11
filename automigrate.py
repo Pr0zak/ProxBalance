@@ -29,6 +29,7 @@ CONFIG_FILE = BASE_DIR / "config.json"
 CACHE_FILE = BASE_DIR / "cluster_cache.json"
 HISTORY_FILE = BASE_DIR / "migration_history.json"
 LOCK_FILE = BASE_DIR / "automigrate.lock"
+TRACKING_FILE = BASE_DIR / "recommendation_tracking.json"
 
 # Logging
 logging.basicConfig(
@@ -801,6 +802,252 @@ def record_migration(migration_record: Dict[str, Any]):
     save_history(history)
 
 
+# ---------------------------------------------------------------------------
+# Intelligent Migration Functions
+# ---------------------------------------------------------------------------
+
+def load_tracking() -> Dict[str, Any]:
+    """Load recommendation tracking data from disk."""
+    try:
+        if TRACKING_FILE.exists():
+            with open(TRACKING_FILE, 'r') as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"Failed to load tracking file: {e}")
+    return {"version": 1, "last_updated": None, "tracked": {}}
+
+
+def save_tracking(tracking: Dict[str, Any]):
+    """Save recommendation tracking data to disk."""
+    tracking["last_updated"] = datetime.utcnow().isoformat() + 'Z'
+    try:
+        tmp_file = str(TRACKING_FILE) + '.tmp'
+        with open(tmp_file, 'w') as f:
+            json.dump(tracking, f, indent=2)
+        os.replace(tmp_file, str(TRACKING_FILE))
+    except IOError as e:
+        logger.error(f"Failed to save tracking file: {e}")
+
+
+def make_tracking_key(vmid: int, source_node: str) -> str:
+    """Create a tracking key for a recommendation."""
+    return f"{vmid}_{source_node}"
+
+
+def update_recommendation_tracking(
+    tracking: Dict[str, Any],
+    recommendations: List[Dict[str, Any]],
+    intelligent_config: Dict[str, Any]
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Update tracking data with current recommendations and classify as ready/observing.
+
+    Returns:
+        (updated_tracking, ready_recommendations, observing_recommendations)
+    """
+    observation_periods = intelligent_config.get('observation_periods', 3)
+    observation_window_hours = intelligent_config.get('observation_window_hours', 1)
+    min_data_hours = intelligent_config.get('minimum_data_collection_hours', 0)
+    now = datetime.utcnow()
+    window_cutoff = now - timedelta(hours=observation_window_hours)
+
+    # Build set of current recommendation keys
+    current_keys = {}
+    for r in recommendations:
+        key = make_tracking_key(r.get('vmid'), r.get('source_node'))
+        current_keys[key] = r
+
+    tracked = tracking.get("tracked", {})
+
+    # Remove tracked entries not in current set (recommendation disappeared)
+    stale_keys = [k for k in tracked if k not in current_keys]
+    for k in stale_keys:
+        del tracked[k]
+
+    ready = []
+    observing = []
+
+    for key, rec in current_keys.items():
+        vmid = rec.get('vmid')
+        source_node = rec.get('source_node')
+        target_node = rec.get('target_node')
+        confidence = rec.get('confidence_score', 0)
+        score_improvement = rec.get('score_improvement', 0)
+        guest_name = rec.get('name', f'VM-{vmid}')
+
+        observation = {
+            "timestamp": now.isoformat() + 'Z',
+            "confidence": confidence,
+            "score_improvement": score_improvement,
+            "target_node": target_node
+        }
+
+        if key in tracked:
+            entry = tracked[key]
+            entry["consecutive_count"] += 1
+            entry["last_seen"] = now.isoformat() + 'Z'
+            entry["last_target_node"] = target_node
+            entry["observations"].append(observation)
+        else:
+            entry = {
+                "vmid": vmid,
+                "guest_name": guest_name,
+                "source_node": source_node,
+                "last_target_node": target_node,
+                "first_seen": now.isoformat() + 'Z',
+                "last_seen": now.isoformat() + 'Z',
+                "consecutive_count": 1,
+                "observations": [observation]
+            }
+            tracked[key] = entry
+
+        # Prune observations older than window
+        entry["observations"] = [
+            obs for obs in entry["observations"]
+            if datetime.fromisoformat(obs["timestamp"].rstrip('Z')) > window_cutoff
+        ]
+
+        # Recalculate averages
+        if entry["observations"]:
+            entry["avg_confidence"] = round(
+                sum(o["confidence"] for o in entry["observations"]) / len(entry["observations"]), 1
+            )
+            entry["avg_score_improvement"] = round(
+                sum(o["score_improvement"] for o in entry["observations"]) / len(entry["observations"]), 1
+            )
+
+        # Classify as ready or observing
+        count_met = entry["consecutive_count"] >= observation_periods
+        time_met = True
+        if min_data_hours > 0:
+            first_seen = datetime.fromisoformat(entry["first_seen"].rstrip('Z'))
+            hours_tracked = (now - first_seen).total_seconds() / 3600
+            time_met = hours_tracked >= min_data_hours
+
+        if count_met and time_met:
+            entry["status"] = "ready"
+            ready.append(rec)
+        else:
+            entry["status"] = "observing"
+            observing.append(rec)
+
+    tracking["tracked"] = tracked
+    return tracking, ready, observing
+
+
+def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48) -> Tuple[bool, str]:
+    """
+    Detect multi-hop cycling: A->B->C->A pattern.
+    Check if the target_node appears in the VM's migration history within the window.
+    """
+    if cycle_window_hours <= 0:
+        return False, ""
+
+    history = load_history()
+    migrations = history.get('migrations', [])
+
+    now = datetime.utcnow()
+    cycle_threshold = now - timedelta(hours=cycle_window_hours)
+
+    visited_nodes = []
+    for migration in reversed(migrations):
+        if migration.get('vmid') != vmid or migration.get('status') != 'success':
+            continue
+        try:
+            migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+            if migration_time < cycle_threshold:
+                break
+            visited_nodes.append(migration.get('target_node'))
+        except (ValueError, TypeError):
+            continue
+
+    if target_node in visited_nodes:
+        cycle_path = ' -> '.join(reversed(visited_nodes)) + f' -> {target_node}'
+        return True, f"Multi-node cycle detected: {cycle_path}"
+
+    return False, ""
+
+
+def get_node_pair_outcome_stats(source_node: str, target_node: str) -> Dict[str, Any]:
+    """
+    Analyze historical migration outcomes for a source->target node pair.
+    Returns stats on accuracy and success rate.
+    """
+    try:
+        from proxbalance.outcomes import get_migration_outcomes
+        outcomes = get_migration_outcomes()
+    except Exception:
+        return {"has_data": False}
+
+    pair_outcomes = [
+        o for o in outcomes
+        if o.get('source_node') == source_node
+        and o.get('target_node') == target_node
+        and o.get('status') == 'completed'
+    ]
+
+    if not pair_outcomes:
+        return {"has_data": False}
+
+    accuracies = [o['accuracy_pct'] for o in pair_outcomes if o.get('accuracy_pct') is not None]
+    improvements = []
+    for o in pair_outcomes:
+        actual = o.get('actual_improvement', {})
+        cpu_delta = actual.get('source_cpu_delta') if actual else None
+        if cpu_delta is not None:
+            improvements.append(cpu_delta)
+
+    negative_outcomes = sum(1 for i in improvements if i < 0)
+
+    return {
+        "has_data": True,
+        "count": len(pair_outcomes),
+        "avg_accuracy": round(sum(accuracies) / len(accuracies), 1) if accuracies else None,
+        "avg_improvement": round(sum(improvements) / len(improvements), 2) if improvements else None,
+        "negative_outcome_rate": negative_outcomes / len(improvements) if improvements else 0,
+    }
+
+
+def is_in_known_peak_period(source_node: str) -> Tuple[bool, str]:
+    """
+    Check if the source node's current state matches a known recurring
+    load peak that historically always recovers.
+    """
+    try:
+        from proxbalance.patterns import analyze_workload_patterns
+        from proxbalance.constants import SCORE_HISTORY_FILE
+
+        if not os.path.exists(SCORE_HISTORY_FILE):
+            return False, ""
+
+        with open(SCORE_HISTORY_FILE, 'r') as f:
+            score_history = json.load(f)
+
+        if not isinstance(score_history, list) or len(score_history) < 12:
+            return False, ""
+
+        patterns = analyze_workload_patterns(score_history, source_node)
+        daily = patterns.get('daily_pattern')
+
+        if not daily or daily.get('pattern_confidence') not in ('high', 'medium'):
+            return False, ""
+
+        current_hour = datetime.utcnow().hour
+        peak_hours = daily.get('peak_hours', [])
+        spread = daily.get('spread', 0)
+
+        if current_hour in peak_hours and spread > 15:
+            return True, (
+                f"Node {source_node} is in known daily peak hours "
+                f"({peak_hours}) with {spread:.0f}% spread - load typically recovers"
+            )
+
+        return False, ""
+    except Exception as e:
+        logger.debug(f"Pattern check failed for {source_node}: {e}")
+        return False, ""
+
+
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
     """
     Send notification via configured providers.
@@ -952,6 +1199,7 @@ def main():
 
         success_count = 0
         migrations_attempted = 0
+        batch_migrated_guests = {}  # Phase 2f: Track in-flight migrations for this batch
 
         # Migrate one at a time, regenerating recommendations after each
         for _ in range(max_new_migrations):
@@ -966,6 +1214,83 @@ def main():
             if not recommendations:
                 logger.info("No more recommendations available")
                 break
+
+            # --- Intelligent Migration: Persistence Filter (Phase 1) ---
+            intelligent_config = rules.get('intelligent_migrations', {})
+            intelligent_enabled = intelligent_config.get('enabled', False)
+
+            if intelligent_enabled and migrations_attempted == 0:
+                # First iteration: update tracking with current recommendations
+                tracking = load_tracking()
+                # Bypass for maintenance evacuations
+                non_maint_recs = [r for r in recommendations if r.get('source_node') not in maintenance_nodes]
+                maint_recs = [r for r in recommendations if r.get('source_node') in maintenance_nodes]
+
+                if non_maint_recs:
+                    tracking, ready_recs, observing_recs = update_recommendation_tracking(
+                        tracking, non_maint_recs, intelligent_config
+                    )
+                    save_tracking(tracking)
+
+                    # Log observing items
+                    obs_periods = intelligent_config.get('observation_periods', 3)
+                    for obs_rec in observing_recs:
+                        obs_key = make_tracking_key(obs_rec.get('vmid'), obs_rec.get('source_node'))
+                        entry = tracking.get('tracked', {}).get(obs_key, {})
+                        count = entry.get('consecutive_count', 1)
+                        min_hours = intelligent_config.get('minimum_data_collection_hours', 0)
+                        if min_hours > 0 and count >= obs_periods:
+                            first_seen = datetime.fromisoformat(entry.get('first_seen', '').rstrip('Z'))
+                            hours_tracked = (datetime.utcnow() - first_seen).total_seconds() / 3600
+                            obs_msg = f"observing {count}/{obs_periods}, waiting for {min_hours}h data (seen for {hours_tracked:.1f}h)"
+                        else:
+                            obs_msg = f"observing {count}/{obs_periods}"
+                        logger.info(f"[Intelligent] VM {obs_rec.get('vmid')} ({obs_rec.get('name')}): {obs_msg}")
+
+                    # Add observing decisions to last_run_summary
+                    for obs_rec in observing_recs:
+                        obs_key = make_tracking_key(obs_rec.get('vmid'), obs_rec.get('source_node'))
+                        entry = tracking.get('tracked', {}).get(obs_key, {})
+                        count = entry.get('consecutive_count', 1)
+                        guest = cache_data.get('guests', {}).get(str(obs_rec.get('vmid')), {})
+                        last_run_summary['decisions'].append({
+                            'vmid': obs_rec.get('vmid'),
+                            'name': obs_rec.get('name', guest.get('name', '')),
+                            'type': guest.get('type', 'Unknown'),
+                            'source_node': obs_rec.get('source_node'),
+                            'target_node': obs_rec.get('target_node'),
+                            'target_node_score': obs_rec.get('target_node_score'),
+                            'action': 'observing',
+                            'reason': f"Observing {count}/{obs_periods} consecutive runs",
+                            'confidence_score': obs_rec.get('confidence_score'),
+                            'tags': guest.get('tags', {}).get('all_tags', []),
+                            'ha_managed': guest.get('ha_managed', False),
+                        })
+
+                    # Replace recommendations with only ready + maintenance recs
+                    recommendations = ready_recs + maint_recs
+                    if not recommendations:
+                        logger.info("[Intelligent] No recommendations ready yet (all still observing)")
+                        break
+
+            elif intelligent_enabled and migrations_attempted > 0:
+                # Subsequent iterations: filter against saved tracking (read-only)
+                tracking = load_tracking()
+                tracked = tracking.get('tracked', {})
+                filtered_by_tracking = []
+                for r in recommendations:
+                    if r.get('source_node') in maintenance_nodes:
+                        filtered_by_tracking.append(r)
+                        continue
+                    key = make_tracking_key(r.get('vmid'), r.get('source_node'))
+                    entry = tracked.get(key, {})
+                    if entry.get('status') == 'ready':
+                        filtered_by_tracking.append(r)
+                recommendations = filtered_by_tracking
+
+                if not recommendations:
+                    logger.info("[Intelligent] No tracked recommendations ready after re-filter")
+                    break
 
             # Helper function to create decision entry with full metadata
             def create_decision(vmid, guest, source_node, target_node, action, reason, recommendation):
@@ -1019,6 +1344,17 @@ def main():
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
 
+                # Phase 4c: Multi-node cycle detection (extends rollback to catch A->B->C->A)
+                cycle_detection_enabled = intelligent_config.get('cycle_detection_enabled', True)
+                cycle_window = intelligent_config.get('cycle_window_hours', 48)
+                if not is_maintenance_evac and not is_distribution_balancing and cycle_detection_enabled:
+                    is_cycle, cycle_msg = is_cycle_migration(vmid, target_node, cycle_window)
+                    if is_cycle:
+                        reason = f"Cycle prevention: {cycle_msg}"
+                        filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                        last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                        continue
+
                 # Check confidence threshold (bypass for distribution balancing and maintenance evacuations)
                 confidence = r.get('confidence_score', 0)
                 min_confidence = rules.get('min_confidence_score', 75)
@@ -1027,6 +1363,63 @@ def main():
                     filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
                     continue
+
+                # Phase 2a: Conflict detection (always active, no toggle needed)
+                if not is_maintenance_evac and r.get('has_conflict', False):
+                    conflict_target = r.get('conflict_target', 'unknown')
+                    reason = f"Migration conflict on target {conflict_target} (combined load would exceed thresholds)"
+                    filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                    last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                    continue
+
+                # Phase 2b: Risk-adjusted confidence
+                risk_gating_enabled = intelligent_config.get('risk_gating_enabled', False)
+                if not is_maintenance_evac and not is_distribution_balancing and risk_gating_enabled:
+                    risk_score = r.get('risk_score', 0)
+                    risk_multiplier = intelligent_config.get('risk_confidence_multiplier', 1.2)
+                    if risk_score > 50:
+                        adjusted_min = min(100, min_confidence * risk_multiplier)
+                        if confidence < adjusted_min:
+                            reason = f"High risk ({risk_score}) requires confidence >= {adjusted_min:.0f}% (has {confidence}%)"
+                            filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                            last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                            continue
+
+                # Phase 2c: Trend-aware filtering
+                trend_awareness_enabled = intelligent_config.get('trend_awareness_enabled', False)
+                if not is_maintenance_evac and not is_distribution_balancing and trend_awareness_enabled:
+                    score_details = r.get('score_details', {})
+                    source_metrics = score_details.get('source', {}).get('metrics', {})
+                    src_cpu_trend = source_metrics.get('cpu_trend', 'stable')
+                    src_mem_trend = source_metrics.get('mem_trend', 'stable')
+                    if src_cpu_trend == 'falling' and src_mem_trend != 'rising':
+                        reason = "Source CPU trend falling - problem may be resolving naturally"
+                        filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                        last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'deferred', reason, r))
+                        continue
+
+                # Phase 2d: Outcome-based learning
+                outcome_learning_enabled = intelligent_config.get('outcome_learning_enabled', False)
+                if not is_maintenance_evac and not is_distribution_balancing and outcome_learning_enabled:
+                    pair_stats = get_node_pair_outcome_stats(source_node, target_node)
+                    if pair_stats.get('has_data') and pair_stats.get('count', 0) >= 3:
+                        neg_rate = pair_stats.get('negative_outcome_rate', 0)
+                        if neg_rate > 0.5:
+                            adjusted_min = min(100, min_confidence * 1.3)
+                            if confidence < adjusted_min:
+                                reason = f"Poor outcome history for {source_node}->{target_node} ({neg_rate:.0%} negative), requires confidence >= {adjusted_min:.0f}%"
+                                filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                                last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                                continue
+
+                # Phase 2e: Workload pattern suppression
+                pattern_suppression_enabled = intelligent_config.get('pattern_suppression_enabled', False)
+                if not is_maintenance_evac and not is_distribution_balancing and pattern_suppression_enabled:
+                    in_peak, peak_msg = is_in_known_peak_period(source_node)
+                    if in_peak:
+                        filtered_reasons.append(f"{vm_name} ({vmid}): {peak_msg.lower()}")
+                        last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'deferred', peak_msg, r))
+                        continue
 
                 # For maintenance evacuations, bypass tag checks
                 if not is_maintenance_evac:
@@ -1045,6 +1438,37 @@ def main():
                         filtered_reasons.append(f"{vm_name} ({vmid}): {affinity_reason}")
                         last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', affinity_reason, r))
                         continue
+
+                    # Phase 4b: Cost-benefit ratio check
+                    cost_benefit_enabled = intelligent_config.get('cost_benefit_enabled', False)
+                    min_cb_ratio = intelligent_config.get('min_cost_benefit_ratio', 1.0)
+                    if cost_benefit_enabled:
+                        cb = r.get('cost_benefit', {})
+                        cb_ratio = cb.get('ratio', float('inf'))
+                        if cb_ratio < min_cb_ratio:
+                            reason = f"Poor cost-benefit ratio ({cb_ratio:.1f} < {min_cb_ratio:.1f})"
+                            filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                            last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                            continue
+
+                    # Phase 4e: Per-guest migration success rate
+                    guest_success_enabled = intelligent_config.get('guest_success_tracking_enabled', False)
+                    if guest_success_enabled:
+                        try:
+                            from proxbalance.outcomes import get_migration_outcomes
+                            outcomes = get_migration_outcomes()
+                            guest_outcomes = [o for o in outcomes if str(o.get('vmid')) == str(vmid) and o.get('status') == 'completed']
+                            if len(guest_outcomes) >= 2:
+                                positive = sum(1 for o in guest_outcomes
+                                             if o.get('actual_improvement', {}).get('source_cpu_delta', 0) > 0)
+                                success_rate = positive / len(guest_outcomes)
+                                if success_rate < 0.3:
+                                    reason = f"Guest has poor migration history ({positive}/{len(guest_outcomes)} positive outcomes)"
+                                    filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                                    last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
+                                    continue
+                        except Exception as e:
+                            logger.debug(f"Guest success rate check failed: {e}")
 
                     # Validate resource improvement for balance migrations
                     is_valid, balance_msg = validates_resource_improvement(r)
@@ -1277,6 +1701,12 @@ def main():
             if result.get('success'):
                 success_count += 1
                 last_run_summary['migrations_successful'] = success_count
+
+                # Phase 2f: Track in-flight migration for batch awareness
+                guest_for_tracking = cache_data.get('guests', {}).get(str(vmid), {})
+                if target not in batch_migrated_guests:
+                    batch_migrated_guests[target] = []
+                batch_migrated_guests[target].append(guest_for_tracking)
 
                 # Affinity companion migrations: if this VM has affinity groups,
                 # migrate companions to the same target node

@@ -284,6 +284,230 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               )}
             </div>
 
+            {/* Intelligent Migrations */}
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between p-4">
+                <div>
+                  <div className="font-semibold text-gray-900 dark:text-white">Intelligent Migrations</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Track recommendations across consecutive runs and only execute migrations that persist. Prevents acting on transient load spikes.</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={automationConfig.rules?.intelligent_migrations?.enabled === true}
+                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, enabled: e.target.checked } } })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                </label>
+              </div>
+              {automationConfig.rules?.intelligent_migrations?.enabled === true && (
+                <div className="px-4 pb-4 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Required Observation Periods
+                      </label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="10"
+                        value={automationConfig.rules?.intelligent_migrations?.required_observations || 3}
+                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: parseInt(e.target.value) } } })}
+                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Observation Window (hours)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="48"
+                        value={automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1}
+                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: parseInt(e.target.value) } } })}
+                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Minimum Data Collection Time (hours)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="48"
+                        value={automationConfig.rules?.intelligent_migrations?.min_data_collection_hours !== undefined ? automationConfig.rules.intelligent_migrations.min_data_collection_hours : 0}
+                        onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: parseInt(e.target.value) } } })}
+                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    Minimum wait time: {((automationConfig.rules?.intelligent_migrations?.required_observations || 3) - 1) * (automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1)} hour(s) of consistent recommendations before execution
+                  </p>
+
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Intelligence Features</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Risk-Adjusted Confidence</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.risk_gating_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_gating_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                      {automationConfig.rules?.intelligent_migrations?.risk_gating_enabled === true && (
+                        <div className="pl-4">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Risk Multiplier
+                          </label>
+                          <input
+                            type="number"
+                            min="0.1"
+                            max="5.0"
+                            step="0.1"
+                            value={automationConfig.rules?.intelligent_migrations?.risk_multiplier !== undefined ? automationConfig.rules.intelligent_migrations.risk_multiplier : 1.0}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: parseFloat(e.target.value) } } })}
+                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Trend-Aware Filtering</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.trend_awareness_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, trend_awareness_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Outcome-Based Learning</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.outcome_learning_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, outcome_learning_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Pattern Suppression</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.pattern_suppression_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, pattern_suppression_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Cost-Benefit Analysis</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.cost_benefit_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cost_benefit_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                      {automationConfig.rules?.intelligent_migrations?.cost_benefit_enabled === true && (
+                        <div className="pl-4">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Minimum Benefit Ratio
+                          </label>
+                          <input
+                            type="number"
+                            min="0.1"
+                            max="10.0"
+                            step="0.1"
+                            value={automationConfig.rules?.intelligent_migrations?.min_benefit_ratio !== undefined ? automationConfig.rules.intelligent_migrations.min_benefit_ratio : 1.5}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: parseFloat(e.target.value) } } })}
+                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Cycle Detection</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.cycle_detection_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                      {automationConfig.rules?.intelligent_migrations?.cycle_detection_enabled === true && (
+                        <div className="pl-4">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Cycle Detection Window (hours)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="168"
+                            value={automationConfig.rules?.intelligent_migrations?.cycle_detection_window_hours || 24}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: parseInt(e.target.value) } } })}
+                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Guest Success Tracking</div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={automationConfig.rules?.intelligent_migrations?.guest_success_tracking_enabled === true}
+                            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, guest_success_tracking_enabled: e.target.checked } } })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Check Cluster Health */}
             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
               <div className="flex items-center justify-between p-4">

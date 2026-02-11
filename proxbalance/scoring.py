@@ -84,6 +84,15 @@ DEFAULT_PENALTY_CONFIG = {
     "weight_current": 0.5,            # Weight for current/immediate metrics (50%)
     "weight_24h": 0.3,                # Weight for 24-hour average metrics (30%)
     "weight_7d": 0.2,                 # Weight for 7-day average metrics (20%)
+
+    # Intelligent migration: cluster convergence
+    "cluster_convergence_threshold": 8.0,  # Suppress recommendations when node spread < this %
+
+    # Intelligent migration: seasonal baseline
+    "seasonal_baseline": {
+        "enabled": False,
+        "sigma_threshold": 2.0,       # Only flag overload if > N sigma above seasonal baseline
+    },
 }
 
 
@@ -354,7 +363,7 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
     return health_score
 
 
-def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], adding: bool = True, penalty_config: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], adding: bool = True, penalty_config: Optional[Dict[str, Any]] = None, guest_profile: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     """
     Predict node load after adding or removing a guest.
     Returns predicted CPU%, Memory%, and IOWait%.
@@ -406,6 +415,20 @@ def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], add
     guest_cpu_cores = guest.get("cpu_cores", 1)
     guest_cpu_impact = (guest_cpu * guest_cpu_cores / node_cores) if node_cores > 0 else 0
 
+    # Phase 3c: Profile-based adjustments for better load prediction
+    if guest_profile and guest_profile.get('behavior') != 'unknown':
+        behavior = guest_profile['behavior']
+        peak_mult = guest_profile.get('peak_multiplier', 1.0)
+        growth_rate = guest_profile.get('growth_rate_per_day', 0)
+
+        if behavior == 'bursty':
+            # Use p95 load for bursty guests instead of current snapshot
+            guest_cpu_impact *= max(1.0, peak_mult * 0.8)  # Dampen slightly
+        elif behavior == 'growing':
+            # Project 48 hours of growth
+            growth_factor = 1.0 + (growth_rate * 2 / 100)
+            guest_cpu_impact *= min(2.0, max(1.0, growth_factor))  # Cap at 2x
+
     # Estimate guest's memory impact
     guest_mem_impact = (guest_mem_gb / node_total_mem_gb * 100) if node_total_mem_gb > 0 else 0
 
@@ -430,7 +453,7 @@ def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], add
     }
 
 
-def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False) -> Union[float, Tuple[float, Dict[str, Any]]]:
+def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False, guest_profile: Optional[Dict[str, Any]] = None) -> Union[float, Tuple[float, Dict[str, Any]]]:
     """
     Calculate weighted score for target node suitability (lower is better).
     Considers current load, predicted post-migration load, storage availability, and headroom.
@@ -579,7 +602,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
-    predicted = predict_post_migration_load(target_node, guest, adding=True, penalty_config=penalty_config)
+    predicted = predict_post_migration_load(target_node, guest, adding=True, penalty_config=penalty_config, guest_profile=guest_profile)
 
     # Account for pending migrations to this target
     if target_name in pending_target_guests:

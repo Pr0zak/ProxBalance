@@ -164,11 +164,98 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
 
 
 # ---------------------------------------------------------------------------
+# Intelligent migration helper functions
+# ---------------------------------------------------------------------------
+
+def _check_cluster_convergence(nodes: Dict[str, Any], penalty_cfg: Dict[str, Any],
+                                cpu_threshold: float, mem_threshold: float,
+                                convergence_threshold: float) -> Optional[str]:
+    """
+    Check if the cluster is already well-balanced enough that migrations
+    would provide negligible benefit. Returns a message if converged, None otherwise.
+    """
+    online_nodes = {k: v for k, v in nodes.items() if v.get('status') == 'online'}
+    if len(online_nodes) < 2:
+        return None
+
+    weight_current = penalty_cfg.get('weight_current', 0.5)
+    weight_24h = penalty_cfg.get('weight_24h', 0.3)
+    weight_7d = penalty_cfg.get('weight_7d', 0.2)
+
+    cpus = []
+    mems = []
+    for node in online_nodes.values():
+        metrics = node.get('metrics', {})
+        if metrics.get('has_historical'):
+            cpu = (metrics.get('current_cpu', 0) * weight_current +
+                   metrics.get('avg_cpu', 0) * weight_24h +
+                   metrics.get('avg_cpu_week', 0) * weight_7d)
+            mem = (metrics.get('current_mem', 0) * weight_current +
+                   metrics.get('avg_mem', 0) * weight_24h +
+                   metrics.get('avg_mem_week', 0) * weight_7d)
+        else:
+            cpu = metrics.get('current_cpu', 0)
+            mem = metrics.get('current_mem', 0)
+        cpus.append(cpu)
+        mems.append(mem)
+
+    cpu_spread = max(cpus) - min(cpus)
+    mem_spread = max(mems) - min(mems)
+
+    # Only suppress if NO node exceeds thresholds
+    any_over_threshold = any(c > cpu_threshold for c in cpus) or any(m > mem_threshold for m in mems)
+
+    if not any_over_threshold and cpu_spread < convergence_threshold and mem_spread < convergence_threshold:
+        return (f"Cluster is well-balanced (CPU spread: {cpu_spread:.1f}%, "
+                f"memory spread: {mem_spread:.1f}%, threshold: {convergence_threshold:.0f}%)")
+
+    return None
+
+
+def _calculate_cost_benefit(recommendation: Dict[str, Any], guest: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Calculate cost-benefit ratio for a migration recommendation.
+    Benefit: score improvement and confidence.
+    Cost: estimated migration duration and disruption.
+    """
+    score_improvement = recommendation.get('score_improvement', 0)
+    confidence = recommendation.get('confidence_score', 50)
+    benefit = (score_improvement * 0.7 + confidence * 0.3)
+
+    mem_gb = guest.get('mem_max_gb', 0)
+    disk_io = (guest.get('disk_read_bps', 0) + guest.get('disk_write_bps', 0)) / (1024**2)
+    is_ct = guest.get('type') == 'CT'
+
+    # Duration estimate: ~1 min per 4GB RAM + I/O penalty
+    est_duration = max(1, mem_gb / 4) + (disk_io / 50)
+    if is_ct:
+        est_duration *= 0.5
+
+    # Disruption factor
+    disruption = 1.0
+    if is_ct and not guest.get('mount_points', {}).get('has_shared_mount'):
+        disruption = 1.5
+    if mem_gb > 32:
+        disruption *= 1.3
+
+    cost = est_duration * disruption
+    ratio = benefit / max(cost, 0.1)
+
+    return {
+        "ratio": round(ratio, 2),
+        "benefit_score": round(benefit, 1),
+        "cost_score": round(cost, 1),
+        "est_duration_minutes": round(est_duration, 1),
+        "viable": ratio >= 1.0,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main recommendation engine
 # ---------------------------------------------------------------------------
 
 
-def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None) -> Dict[str, Any]:
+def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None) -> Dict[str, Any]:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
 
@@ -199,7 +286,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
 
     recommendations = []
     skipped_guests = []
-    pending_target_guests = {}
+    pending_target_guests = dict(initial_pending_guests) if initial_pending_guests else {}
 
     # Get Proxmox client for storage compatibility checks
     proxmox = None
@@ -227,6 +314,24 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
 
     # Maintenance nodes get priority evacuation regardless of score
     MAINTENANCE_SCORE_BOOST = penalty_cfg.get("maintenance_score_boost", 100)  # Extra improvement to prioritize evacuation
+
+    # Phase 4a: Cluster convergence check - suppress if all nodes are balanced
+    convergence_threshold = penalty_cfg.get("cluster_convergence_threshold", 8.0)
+    convergence_message = _check_cluster_convergence(nodes, penalty_cfg, cpu_threshold, mem_threshold, convergence_threshold)
+    # Only suppress if no maintenance nodes need evacuation
+    if convergence_message and not maintenance_nodes:
+        print(f"Cluster convergence: {convergence_message}", file=sys.stderr)
+        summary = _build_summary([], [], nodes, penalty_cfg)
+        summary["convergence_message"] = convergence_message
+        return {
+            "recommendations": [],
+            "skipped_guests": [],
+            "summary": summary,
+            "conflicts": [],
+            "capacity_advisories": [],
+            "forecasts": [],
+            "execution_plan": {},
+        }
 
     # Step 1: Calculate current score for each guest on its current node
     # Step 2: Calculate potential scores on all other nodes
@@ -542,6 +647,9 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 recommendation["mount_point_info"] = mount_point_info
             if bind_mount_warning:
                 recommendation["bind_mount_warning"] = bind_mount_warning
+
+            # Phase 4b: Calculate cost-benefit ratio
+            recommendation["cost_benefit"] = _calculate_cost_benefit(recommendation, guest)
 
             recommendations.append(recommendation)
 

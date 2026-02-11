@@ -605,11 +605,12 @@ export default function AutomationStatusSection({
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Decisions Made:</div>
                         <div className="space-y-2">
                           {[...automationStatus.state.last_run.decisions].sort((a, b) => {
-                            // Sort by priority: executed/pending first, then skipped by rank, then filtered last
+                            // Sort by priority: executed/pending first, then observing/deferred, then skipped by rank, then filtered last
                             const getOrder = (d) => {
                               if (d.action === 'executed' || d.action === 'pending' || d.action === 'failed') return 0;
-                              if (d.action === 'skipped') return 1;
-                              return 2; // filtered
+                              if (d.action === 'observing' || d.action === 'deferred') return 1;
+                              if (d.action === 'skipped') return 2;
+                              return 3; // filtered
                             };
                             const orderA = getOrder(a);
                             const orderB = getOrder(b);
@@ -621,10 +622,14 @@ export default function AutomationStatusSection({
                             const isPending = decision.action === 'pending';
                             const borderColor = isExecuted ? 'border-green-500' :
                                                isPending ? 'border-blue-500' :
+                                               decision.action === 'observing' ? 'border-cyan-500' :
+                                               decision.action === 'deferred' ? 'border-amber-500' :
                                                decision.action === 'skipped' ? 'border-yellow-500' :
                                                'border-gray-400';
                             const bgColor = isExecuted ? 'bg-green-50 dark:bg-green-900/20' :
                                            isPending ? 'bg-blue-50 dark:bg-blue-900/20' :
+                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/20' :
+                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/20' :
                                            'bg-gray-50 dark:bg-gray-700';
 
                             return (
@@ -647,7 +652,9 @@ export default function AutomationStatusSection({
                                         {decision.action === 'filtered' ? '⊗' :
                                          decision.action === 'skipped' ? '⏭' :
                                          decision.action === 'pending' ? '🔄' :
-                                         decision.action === 'executed' ? '✅' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
+                                         decision.action === 'executed' ? '✅' :
+                                         decision.action === 'observing' ? '👁' :
+                                         decision.action === 'deferred' ? '🕐' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
                                       </span>
 
                                       {decision.type && (
@@ -672,6 +679,8 @@ export default function AutomationStatusSection({
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                                     decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                     decision.action === 'pending' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    decision.action === 'observing' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' :
+                                    decision.action === 'deferred' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                                     decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                     decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
                                     'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
@@ -1077,6 +1086,10 @@ export default function AutomationStatusSection({
                                   ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
                                   : decision.action === 'pending'
                                   ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+                                  : decision.action === 'observing'
+                                  ? 'bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700'
+                                  : decision.action === 'deferred'
+                                  ? 'bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700'
                                   : decision.action === 'skipped'
                                   ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700'
                                   : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600'
@@ -1085,6 +1098,8 @@ export default function AutomationStatusSection({
                                   <div className="flex items-center gap-1">
                                     {decision.action === 'executed' && <CheckCircle size={10} className="text-green-600 dark:text-green-400" />}
                                     {decision.action === 'pending' && <RefreshCw size={10} className="text-blue-600 dark:text-blue-400" />}
+                                    {decision.action === 'observing' && <Info size={10} className="text-cyan-600 dark:text-cyan-400" />}
+                                    {decision.action === 'deferred' && <Clock size={10} className="text-amber-600 dark:text-amber-400" />}
                                     {decision.action === 'skipped' && <Minus size={10} className="text-yellow-600 dark:text-yellow-400" />}
                                     {decision.action === 'filtered' && <XCircle size={10} className="text-gray-600 dark:text-gray-400" />}
                                     <span className="font-medium text-gray-900 dark:text-gray-100">{decision.name}</span>
