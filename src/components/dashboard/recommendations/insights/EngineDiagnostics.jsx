@@ -43,6 +43,12 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
           </div>
         </div>
       </div>
+      {recommendationData.summary?.convergence_message && (
+        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700 text-xs">
+          <span className="text-green-700 dark:text-green-300 font-medium">Cluster Converged: </span>
+          <span className="text-green-600 dark:text-green-400">{recommendationData.summary.convergence_message}</span>
+        </div>
+      )}
       {recommendationData.parameters && (
         <div className="p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs">
           <span className="text-gray-500 dark:text-gray-400">Thresholds: </span>

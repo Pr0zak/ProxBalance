@@ -1,4 +1,4 @@
-import { Activity } from '../../Icons.jsx';
+import { Activity, CheckCircle } from '../../Icons.jsx';
 
 export default function RecommendationSummaryBar({ recommendationData }) {
   if (!recommendationData?.summary) return null;
@@ -63,6 +63,11 @@ export default function RecommendationSummaryBar({ recommendationData }) {
         {summary.predicted_health > summary.cluster_health && (
           <span className="text-green-600 dark:text-green-400">
             Predicted health after: {summary.predicted_health}/100
+          </span>
+        )}
+        {summary.convergence_message && (
+          <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+            <CheckCircle size={12} /> Converged
           </span>
         )}
       </div>

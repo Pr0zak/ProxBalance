@@ -72,8 +72,12 @@ export default function MigrationRecommendationsSection({
     }
     if (recSortBy) {
       filtered.sort((a, b) => {
-        const va = a[recSortBy] || 0;
-        const vb = b[recSortBy] || 0;
+        const getValue = (rec) => {
+          if (recSortBy === 'cost_benefit_ratio') return rec.cost_benefit?.ratio || 0;
+          return rec[recSortBy] || 0;
+        };
+        const va = getValue(a);
+        const vb = getValue(b);
         return recSortDir === 'asc' ? va - vb : vb - va;
       });
     }
