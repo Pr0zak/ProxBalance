@@ -314,7 +314,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                         max="10"
                         value={automationConfig.rules?.intelligent_migrations?.required_observations || 3}
                         onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, required_observations: parseInt(e.target.value) } } })}
-                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
                     <div>
@@ -327,7 +327,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                         max="48"
                         value={automationConfig.rules?.intelligent_migrations?.observation_window_hours || 1}
                         onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, observation_window_hours: parseInt(e.target.value) } } })}
-                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
                     <div>
@@ -340,7 +340,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                         max="48"
                         value={automationConfig.rules?.intelligent_migrations?.min_data_collection_hours !== undefined ? automationConfig.rules.intelligent_migrations.min_data_collection_hours : 0}
                         onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_data_collection_hours: parseInt(e.target.value) } } })}
-                        className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -377,7 +377,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                             step="0.1"
                             value={automationConfig.rules?.intelligent_migrations?.risk_multiplier !== undefined ? automationConfig.rules.intelligent_migrations.risk_multiplier : 1.0}
                             onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, risk_multiplier: parseFloat(e.target.value) } } })}
-                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                            className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
                       )}
@@ -453,7 +453,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                             step="0.1"
                             value={automationConfig.rules?.intelligent_migrations?.min_benefit_ratio !== undefined ? automationConfig.rules.intelligent_migrations.min_benefit_ratio : 1.5}
                             onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, min_benefit_ratio: parseFloat(e.target.value) } } })}
-                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                            className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
                       )}
@@ -483,7 +483,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                             max="168"
                             value={automationConfig.rules?.intelligent_migrations?.cycle_detection_window_hours || 24}
                             onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...automationConfig.rules?.intelligent_migrations, cycle_detection_window_hours: parseInt(e.target.value) } } })}
-                            className="w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                            className="w-full sm:w-32 px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
                           />
                         </div>
                       )}
