@@ -88,6 +88,10 @@ DEFAULT_PENALTY_CONFIG = {
     "predicted_mem_high_penalty": 25,        # Penalty when predicted Memory > threshold+10
     "predicted_mem_extreme_penalty": 50,     # Penalty when predicted Memory > threshold+20
 
+    # Memory overcommit penalties (committed/allocated > physical RAM)
+    "mem_overcommit_penalty": 15,            # Penalty when overcommit ratio > 1.0
+    "mem_overcommit_high_penalty": 40,       # Penalty when overcommit ratio > 1.2
+
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
     "cpu_threshold_offset_2": 20,     # Second threshold offset (used for +20 calculations)
@@ -97,6 +101,7 @@ DEFAULT_PENALTY_CONFIG = {
     # Score improvement requirements
     "min_score_improvement": 15,      # Minimum score improvement to recommend migration
     "maintenance_score_boost": 100,   # Extra score added to maintenance nodes for evacuation priority
+    "iowait_score_boost": 30,        # Extra score added to IOWait-stressed nodes to trigger migrations
 
     # Time period weighting (for historical data)
     "weight_current": 0.5,            # Weight for current/immediate metrics (50%)
@@ -540,6 +545,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         "predicted_cpu": 0,
         "predicted_mem": 0,
     }
+    cpu_stability_factor = 1.0  # Default: no adjustment (overridden by trend analysis)
 
     # Get configurable threshold offsets
     cpu_offset_1 = penalty_config.get("cpu_threshold_offset_1", 10)
@@ -628,15 +634,24 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             elif mem_rate > 0.5:
                 penalty_breakdown["mem_trend"] = base_mem_trend_penalty
 
-            # Stability bonus: stable nodes get a penalty reduction
+            # CPU stability factor: scale CPU-related penalties by node volatility.
+            # Stable nodes get CPU penalties *reduced* (the high reading is likely
+            # transient); volatile nodes get penalties *inflated* (unpredictable).
             if node_stability >= 80:
-                stability_bonus = -10
+                cpu_stability_factor = 0.7   # Excellent — reduce CPU penalties 30%
             elif node_stability >= 60:
-                stability_bonus = -5
+                cpu_stability_factor = 0.85  # Good — reduce CPU penalties 15%
+            elif node_stability < 40:
+                cpu_stability_factor = 1.3   # Volatile — inflate CPU penalties 30%
             else:
-                stability_bonus = 0
+                cpu_stability_factor = 1.0   # Moderate — no change
 
-            penalty_breakdown["stability_bonus"] = stability_bonus
+            for _cpu_key in ("current_cpu", "sustained_cpu", "cpu_trend",
+                             "cpu_spikes", "predicted_cpu"):
+                if _cpu_key in penalty_breakdown:
+                    penalty_breakdown[_cpu_key] = int(
+                        round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
+                    )
         except Exception:
             _node_trend_data = None
 
@@ -696,6 +711,13 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_high_penalty", 50)
     elif predicted["mem"] > mem_threshold:
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
+
+    # Memory overcommit penalty — committed (allocated) memory exceeds physical RAM
+    overcommit_ratio = target_node.get("mem_overcommit_ratio", 0)
+    if overcommit_ratio > 1.2:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_high_penalty", 40)
+    elif overcommit_ratio > 1.0:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_penalty", 15)
 
     # Sum all penalties
     penalties = sum(penalty_breakdown.values())
@@ -787,6 +809,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             "mem_direction": _node_trend_data.get("memory", {}).get("direction", "unknown"),
             "stability_score": _node_trend_data.get("overall_stability", 50),
             "stability_label": _node_trend_data.get("overall_stability_label", "unknown"),
+            "cpu_stability_factor": cpu_stability_factor,
             "overall_direction": _node_trend_data.get("overall_direction", "unknown"),
             "data_quality": _node_trend_data.get("data_quality", {}),
         }

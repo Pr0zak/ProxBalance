@@ -808,6 +808,18 @@ class ProxmoxAPICollector:
     
     def generate_summary(self) -> Dict:
         """Generate cluster summary"""
+        # Calculate committed (allocated) memory per node from guest maxmem values
+        for node_name, node_data in self.nodes.items():
+            committed_mem_gb = 0.0
+            for vmid in node_data.get("guests", []):
+                guest = self.guests.get(str(vmid), {})
+                committed_mem_gb += guest.get("mem_max_gb", 0)
+            node_data["committed_mem_gb"] = round(committed_mem_gb, 2)
+            total_mem_gb = node_data.get("total_mem_gb", 1)
+            node_data["mem_overcommit_ratio"] = round(
+                committed_mem_gb / total_mem_gb, 2
+            ) if total_mem_gb > 0 else 0.0
+
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])

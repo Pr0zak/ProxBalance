@@ -109,7 +109,7 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
     return round(min(100, max(0, confidence)), 1)
 
 
-def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt_node: Dict[str, Any], src_details: Dict[str, Any], tgt_details: Optional[Dict[str, Any]], is_maintenance: bool, penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt_node: Dict[str, Any], src_details: Dict[str, Any], tgt_details: Optional[Dict[str, Any]], is_maintenance: bool, penalty_cfg: Dict[str, Any], is_iowait_triggered: bool = False) -> Dict[str, Any]:
     """
     Build a structured, multi-factor reason for a migration recommendation.
 
@@ -210,7 +210,10 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
         })
 
     # Primary reason
-    if cpu_diff > mem_diff:
+    if is_iowait_triggered:
+        primary_reason = "iowait_relief"
+        primary_label = "Relieve I/O pressure"
+    elif cpu_diff > mem_diff:
         primary_reason = "cpu_imbalance"
         primary_label = "Balance CPU load"
     else:
@@ -222,16 +225,23 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     tgt_name = tgt_node.get("name", "target")
     guest_name = guest.get("name", "guest")
 
-    dominant = "CPU" if cpu_diff > mem_diff else "memory"
     trend_note = ""
     if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
         trend_note = " with an upward trend"
 
-    summary = (
-        f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
-        f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
-        f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
-    )
+    if is_iowait_triggered:
+        summary = (
+            f"{guest_name} should move to {tgt_name} because {src_name} has high I/O wait "
+            f"({src_iowait:.0f}%{trend_note}), "
+            f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
+        )
+    else:
+        dominant = "CPU" if cpu_diff > mem_diff else "memory"
+        summary = (
+            f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
+            f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
+            f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
+        )
 
     return {
         "primary_reason": primary_reason,

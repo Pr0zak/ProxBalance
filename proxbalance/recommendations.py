@@ -74,10 +74,12 @@ def _get_trend_module():
 # Guest selection
 # ---------------------------------------------------------------------------
 
-def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
+def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str, iowait_threshold: float = 30.0) -> List[str]:
     """
-    Intelligently select which guests to migrate from an overloaded node
-    Uses knapsack-style algorithm to minimize migrations while resolving overload
+    Intelligently select which guests to migrate from an overloaded node.
+    Uses knapsack-style algorithm to minimize migrations while resolving overload.
+
+    overload_reason can be: "maintenance", "cpu", "mem", "iowait", or combined.
     """
     node_name = node.get("name")
     metrics = node.get("metrics", {})
@@ -132,11 +134,17 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
         disk_io_mbps = (guest.get("disk_read_bps", 0) + guest.get("disk_write_bps", 0)) / (1024**2)
         migration_cost = guest.get("mem_max_gb", 0) + (disk_io_mbps / 10)  # Factor in I/O activity
 
+        # Disk I/O impact: for IOWait overload, the highest-I/O guest gives the most relief
+        io_impact = disk_io_mbps  # MB/s — direct measure of I/O pressure contribution
+
         # Efficiency score: impact per migration cost (higher is better)
         if overload_reason == "cpu":
             efficiency = cpu_impact / migration_cost if migration_cost > 0 else 0
         elif overload_reason == "mem":
             efficiency = mem_impact / migration_cost if migration_cost > 0 else 0
+        elif overload_reason == "iowait":
+            # For IOWait, prioritize guests generating the most disk I/O
+            efficiency = io_impact / migration_cost if migration_cost > 0 else 0
         else:
             efficiency = (cpu_impact + mem_impact) / (2 * migration_cost) if migration_cost > 0 else 0
 
@@ -145,6 +153,7 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
             "guest": guest,
             "cpu_impact": cpu_impact,
             "mem_impact": mem_impact,
+            "io_impact": io_impact,
             "migration_cost": migration_cost,
             "efficiency": efficiency
         })
@@ -157,6 +166,10 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
     cpu_reduction = 0
     mem_reduction = 0
 
+    # Track IOWait reduction heuristically: each I/O-heavy guest removed reduces IOWait
+    iowait_reduction_needed = max(0, current_iowait - (iowait_threshold - 5)) if overload_reason == "iowait" else 0
+    io_reduction = 0.0
+
     for candidate in candidates:
         # For maintenance mode, don't stop early - evacuate ALL guests
         if overload_reason != "maintenance":
@@ -164,12 +177,16 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
                 break
             if overload_reason == "mem" and mem_reduction >= mem_reduction_needed:
                 break
-            if overload_reason not in ["cpu", "mem"] and (cpu_reduction >= cpu_reduction_needed and mem_reduction >= mem_reduction_needed):
+            if overload_reason == "iowait" and io_reduction >= iowait_reduction_needed:
+                break
+            if overload_reason not in ["cpu", "mem", "iowait"] and (cpu_reduction >= cpu_reduction_needed and mem_reduction >= mem_reduction_needed):
                 break
 
         selected.append(candidate["vmid_key"])
         cpu_reduction += candidate["cpu_impact"]
         mem_reduction += candidate["mem_impact"]
+        # Rough heuristic: each MB/s of disk I/O removed reduces IOWait by ~0.05%
+        io_reduction += candidate.get("io_impact", 0) * 0.05
 
         # Limit to 5 migrations per node (skip limit for maintenance mode)
         if overload_reason != "maintenance" and len(selected) >= 5:
@@ -333,8 +350,23 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     # Phase 4a: Cluster convergence check - suppress if all nodes are balanced
     convergence_threshold = penalty_cfg.get("cluster_convergence_threshold", 8.0)
     convergence_message = _check_cluster_convergence(nodes, penalty_cfg, cpu_threshold, mem_threshold, convergence_threshold)
-    # Only suppress if no maintenance nodes need evacuation
-    if convergence_message and not maintenance_nodes:
+
+    # Pre-scan for IOWait-stressed nodes (needed to decide if convergence should be overridden)
+    iowait_stressed_nodes = set()
+    IOWAIT_SCORE_BOOST = penalty_cfg.get("iowait_score_boost", 30)
+    for _nname, _ndata in nodes.items():
+        if _ndata.get("status") != "online" or _nname in maintenance_nodes:
+            continue
+        _nmetrics = _ndata.get("metrics", {})
+        _current_iow = _nmetrics.get("current_iowait", 0)
+        _avg_iow = _nmetrics.get("avg_iowait", 0) if _nmetrics.get("has_historical") else _current_iow
+        # Require both current AND average to be elevated (avoids reacting to transient spikes)
+        if _current_iow > iowait_threshold and _avg_iow > (iowait_threshold * 0.7):
+            iowait_stressed_nodes.add(_nname)
+            print(f"IOWait trigger: {_nname} iowait={_current_iow:.1f}% (avg={_avg_iow:.1f}%) > threshold={iowait_threshold}%", file=sys.stderr)
+
+    # Only suppress if no maintenance nodes AND no IOWait-stressed nodes need relief
+    if convergence_message and not maintenance_nodes and not iowait_stressed_nodes:
         print(f"Cluster convergence: {convergence_message}", file=sys.stderr)
         summary = _build_summary([], [], nodes, penalty_cfg)
         summary["convergence_message"] = convergence_message
@@ -490,6 +522,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             if src_node_name in maintenance_nodes:
                 current_score += MAINTENANCE_SCORE_BOOST
 
+            # For IOWait-stressed nodes, boost score to help pass min_score_improvement gate
+            if src_node_name in iowait_stressed_nodes:
+                current_score += IOWAIT_SCORE_BOOST
+
             # Find best alternative target
             best_target = None
             best_target_score = 999999
@@ -531,6 +567,27 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         skip_reasons_per_target.append(f"{tgt_name}: anti-affinity conflict")
                         continue
 
+                    # Hard memory capacity gate: skip targets that can't physically
+                    # fit this guest's allocated memory (committed, not just used)
+                    guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
+                    if guest_mem_max_gb > 0:
+                        # Sum committed memory of all existing guests on the target
+                        target_committed_mem_gb = sum(
+                            guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
+                            for gid in tgt_node.get("guests", [])
+                        )
+                        # Also account for guests already pending migration to this target
+                        if tgt_name in pending_target_guests:
+                            target_committed_mem_gb += sum(
+                                pg.get("mem_max_gb", 0)
+                                for pg in pending_target_guests[tgt_name]
+                            )
+                        target_total_mem_gb = tgt_node.get("total_mem_gb", 1)
+                        # Leave 5% headroom for host OS overhead
+                        if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+                            skip_reasons_per_target.append(f"{tgt_name}: insufficient memory capacity ({target_committed_mem_gb:.1f}+{guest_mem_max_gb:.1f} > {target_total_mem_gb:.1f}GB)")
+                            continue
+
                     # Check storage compatibility (skip target if storage is incompatible)
                     if proxmox and not check_storage_compatibility(guest, src_node_name, tgt_name, proxmox, storage_cache):
                         skip_reasons_per_target.append(f"{tgt_name}: storage incompatible")
@@ -563,6 +620,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "target_score": best_target_score,
                     "improvement": score_improvement,
                     "is_maintenance": src_node_name in maintenance_nodes,
+                    "is_iowait_triggered": src_node_name in iowait_stressed_nodes,
                     "source_details": src_details,
                     "target_details": best_target_details,
                 })
@@ -598,8 +656,13 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             traceback.print_exc()
             continue
 
-    # Sort candidates by improvement (best first), prioritizing maintenance evacuations
-    migration_candidates.sort(key=lambda x: (not x["is_maintenance"], -x["improvement"]))
+    # Sort candidates by improvement (best first), prioritizing maintenance evacuations,
+    # then IOWait-triggered migrations, then normal recommendations
+    migration_candidates.sort(key=lambda x: (
+        not x["is_maintenance"],
+        not x.get("is_iowait_triggered", False),
+        -x["improvement"],
+    ))
 
     # Build final recommendations from candidates
     for candidate in migration_candidates:
@@ -618,9 +681,11 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             vmid_int = int(vmid_key) if isinstance(vmid_key, str) else vmid_key
 
             # Build structured reason
+            is_iowait_triggered = candidate.get("is_iowait_triggered", False)
             structured_reason = _build_structured_reason(
                 guest, nodes[src_node_name], nodes[best_target],
-                src_details, tgt_details, candidate["is_maintenance"], penalty_cfg
+                src_details, tgt_details, candidate["is_maintenance"], penalty_cfg,
+                is_iowait_triggered=is_iowait_triggered,
             )
 
             # Keep backward-compatible reason string from structured data
