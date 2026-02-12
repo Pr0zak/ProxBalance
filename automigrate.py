@@ -810,9 +810,24 @@ def update_recommendation_tracking(
 
     tracked = tracking.get("tracked", {})
 
-    # Remove tracked entries not in current set (recommendation disappeared)
+    # Mark entries not in current set as stale; only delete after grace period
+    stale_retention_hours = intelligent_config.get('stale_retention_hours', 48)
+    stale_cutoff = now - timedelta(hours=stale_retention_hours)
     stale_keys = [k for k in tracked if k not in current_keys]
+    keys_to_delete = []
     for k in stale_keys:
+        entry = tracked[k]
+        if 'stale_since' not in entry:
+            # Just went stale — mark it, reset consecutive count
+            entry['stale_since'] = now.isoformat() + 'Z'
+            entry['consecutive_count'] = 0
+            entry['status'] = 'stale'
+        else:
+            # Already stale — check retention period
+            stale_since = datetime.fromisoformat(entry['stale_since'].rstrip('Z'))
+            if stale_since < stale_cutoff:
+                keys_to_delete.append(k)
+    for k in keys_to_delete:
         del tracked[k]
 
     ready = []
@@ -835,6 +850,10 @@ def update_recommendation_tracking(
 
         if key in tracked:
             entry = tracked[key]
+            if 'stale_since' in entry:
+                # Recommendation reappeared — clear stale marker, restart consecutive chain
+                del entry['stale_since']
+                entry['consecutive_count'] = 0
             entry["consecutive_count"] += 1
             entry["last_seen"] = now.isoformat() + 'Z'
             entry["last_target_node"] = target_node

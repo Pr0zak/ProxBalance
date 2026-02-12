@@ -82,7 +82,8 @@
         "minimum_data_collection_hours": 24,
         "risk_confidence_multiplier": 1.2,
         "min_cost_benefit_ratio": 1.0,
-        "cycle_window_hours": 48
+        "cycle_window_hours": 48,
+        "stale_retention_hours": 48
       }
     },
     "safety_checks": {
