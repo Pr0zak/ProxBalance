@@ -821,6 +821,23 @@ def guest_migration_options(vmid):
                 target_options.append(entry)
                 continue
 
+        # Hard memory capacity gate: reject if guest can't physically fit
+        guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
+        if guest_mem_max_gb > 0 and node_name != src_node_name:
+            target_committed_mem_gb = sum(
+                guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
+                for gid in node.get("guests", [])
+            )
+            target_total_mem_gb = node.get("total_mem_gb", 1)
+            if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+                entry.update({
+                    "score": 999999, "suitability_rating": 0, "suitable": False,
+                    "reason": f"Insufficient memory ({target_committed_mem_gb:.0f}+{guest_mem_max_gb:.0f}GB > {target_total_mem_gb:.0f}GB)",
+                    "disqualified": True,
+                })
+                target_options.append(entry)
+                continue
+
         # Calculate score with details
         score, details = calculate_target_node_score(
             node, guest, {}, cpu_threshold, mem_threshold,
@@ -840,6 +857,7 @@ def guest_migration_options(vmid):
             suitable = False
             reason = 'Poor target' if score < 200 else 'High penalty score'
 
+        penalties = details.get("penalties", {})
         entry.update({
             "score": round(score, 2),
             "suitability_rating": suitability_rating,
@@ -848,14 +866,17 @@ def guest_migration_options(vmid):
             "disqualified": False,
             "improvement": round(improvement, 2),
             "penalty_categories": {
-                "cpu": details.get("penalties", {}).get("current_cpu", 0) + details.get("penalties", {}).get("sustained_cpu", 0) + details.get("penalties", {}).get("predicted_cpu", 0),
-                "memory": details.get("penalties", {}).get("current_mem", 0) + details.get("penalties", {}).get("sustained_mem", 0) + details.get("penalties", {}).get("predicted_mem", 0),
-                "iowait": details.get("penalties", {}).get("iowait_current", 0) + details.get("penalties", {}).get("iowait_sustained", 0),
-                "trends": details.get("penalties", {}).get("cpu_trend", 0) + details.get("penalties", {}).get("mem_trend", 0),
-                "spikes": details.get("penalties", {}).get("cpu_spikes", 0) + details.get("penalties", {}).get("mem_spikes", 0),
+                "cpu": penalties.get("current_cpu", 0) + penalties.get("sustained_cpu", 0) + penalties.get("predicted_cpu", 0),
+                "memory": penalties.get("current_mem", 0) + penalties.get("sustained_mem", 0) + penalties.get("predicted_mem", 0) + penalties.get("mem_overcommit", 0),
+                "iowait": penalties.get("iowait_current", 0) + penalties.get("iowait_sustained", 0),
+                "trends": penalties.get("cpu_trend", 0) + penalties.get("mem_trend", 0),
+                "spikes": penalties.get("cpu_spikes", 0) + penalties.get("mem_spikes", 0),
             },
             "metrics": details.get("metrics", {}),
             "total_penalties": details.get("total_penalties", 0),
+            "trend_analysis": details.get("trend_analysis"),
+            "overcommit_ratio": node.get("mem_overcommit_ratio", 0),
+            "committed_mem_gb": node.get("committed_mem_gb", 0),
         })
         target_options.append(entry)
 
