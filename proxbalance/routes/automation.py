@@ -834,6 +834,17 @@ def automigrate_config():
             # Keys that belong at the root config level, not under automated_migrations
             root_level_keys = {'distribution_balancing'}
 
+            # Check if cooldown_minutes is being changed — if so, record a reset timestamp
+            # so that the automigrate service ignores older migration history for cooldown checks
+            incoming_rules = updates.get('rules', {})
+            if 'cooldown_minutes' in incoming_rules:
+                current_rules = config.get('automated_migrations', {}).get('rules', {})
+                old_cooldown = current_rules.get('cooldown_minutes')
+                new_cooldown = incoming_rules['cooldown_minutes']
+                if old_cooldown is not None and old_cooldown != new_cooldown:
+                    incoming_rules['cooldown_reset_at'] = datetime.utcnow().isoformat() + 'Z'
+                    updates['rules'] = incoming_rules
+
             # Update configuration (deep merge)
             for key, value in updates.items():
                 if key in root_level_keys:

@@ -695,13 +695,15 @@ def is_migration_in_progress(vmid: int, source_node: str, config: Dict[str, Any]
         return False
 
 
-def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
+def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str = None) -> bool:
     """
     Check if a VM was recently migrated and is still in cooldown period.
 
     Args:
         vmid: VM ID to check
         cooldown_minutes: Cooldown period in minutes
+        cooldown_reset_at: ISO timestamp; migrations before this time are ignored
+                          (used when user changes cooldown settings to reset cooldown)
 
     Returns:
         True if VM is in cooldown, False otherwise
@@ -712,14 +714,35 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
     history = load_history()
     migrations = history.get('migrations', [])
 
+    # Parse cooldown reset timestamp if provided
+    reset_time = None
+    if cooldown_reset_at:
+        try:
+            reset_time = datetime.fromisoformat(cooldown_reset_at.replace('Z', '+00:00')).replace(tzinfo=None)
+        except (ValueError, TypeError):
+            pass
+
     # Check if this VM was migrated recently
     now = datetime.utcnow()
     cooldown_threshold = now - timedelta(minutes=cooldown_minutes)
 
     for migration in reversed(migrations):  # Check most recent first
         if migration.get('vmid') == vmid:
+            # Skip dry-run migrations — they didn't actually move anything
+            if migration.get('dry_run', False):
+                continue
+
+            # Skip failed migrations — they didn't complete
+            if migration.get('status') == 'failed':
+                continue
+
             try:
-                migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+                migration_time = datetime.fromisoformat(migration.get('timestamp', '').replace('Z', '+00:00')).replace(tzinfo=None)
+
+                # Skip migrations that occurred before the cooldown was reset
+                if reset_time and migration_time < reset_time:
+                    return False
+
                 if migration_time > cooldown_threshold:
                     logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()})")
                     return True
@@ -923,6 +946,9 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48
     visited_nodes = set()
     for migration in reversed(migrations):
         if migration.get('vmid') != vmid or migration.get('status') != 'success':
+            continue
+        # Skip dry-run migrations — they didn't actually move anything
+        if migration.get('dry_run', False):
             continue
         try:
             migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
@@ -1166,7 +1192,8 @@ def main():
         # 6. Setup migration parameters
         rules = auto_config.get('rules', {})
         maintenance_nodes = auto_config.get('maintenance_nodes', [])
-        cooldown_minutes = rules.get('cooldown_minutes', 60)
+        cooldown_minutes = rules.get('cooldown_minutes', 30)
+        cooldown_reset_at = rules.get('cooldown_reset_at')  # Timestamp when cooldown was last reset via settings change
         max_migrations_per_run = rules.get('max_migrations_per_run', 3)
         max_concurrent = rules.get('max_concurrent_migrations', 3)
         grace_period_seconds = rules.get('grace_period_seconds', 30)  # Default 30 seconds between migrations
@@ -1358,7 +1385,7 @@ def main():
                 vm_name = guest.get('name', f'VM-{vmid}')
 
                 # Check cooldown
-                if not is_maintenance_evac and is_vm_in_cooldown(vmid, cooldown_minutes):
+                if not is_maintenance_evac and is_vm_in_cooldown(vmid, cooldown_minutes, cooldown_reset_at):
                     reason = "In cooldown period"
                     filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', reason, r))
