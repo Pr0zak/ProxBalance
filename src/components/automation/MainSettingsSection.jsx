@@ -2,7 +2,7 @@ import {
   AlertTriangle, ChevronDown, X, Power
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
-import Toggle from '../Toggle.jsx';
+import Toggle, { ToggleRow } from '../Toggle.jsx';
 
 const { useState } = React;
 
@@ -25,23 +25,18 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
 
           {!collapsedSections.mainSettings && (<div className="space-y-4">
             {/* Enable/Disable */}
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-semibold text-gray-900 dark:text-white">Enable Automated Migrations</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Turn automation on or off</div>
-                </div>
-                <Toggle
-                  checked={automationConfig.enabled || false}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setConfirmEnableAutomation(true);
-                    } else {
-                      saveAutomationConfig({ enabled: false });
-                    }
-                  }}
-                />
-              </div>
+            <ToggleRow
+              label="Enable Automated Migrations"
+              description="Turn automation on or off"
+              checked={automationConfig.enabled || false}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setConfirmEnableAutomation(true);
+                } else {
+                  saveAutomationConfig({ enabled: false });
+                }
+              }}
+            >
               {confirmEnableAutomation && (
                 <div className="px-4 pb-4">
                   <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
@@ -76,27 +71,22 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                   </div>
                 </div>
               )}
-            </div>
+            </ToggleRow>
 
             {/* Dry Run */}
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-semibold text-gray-900 dark:text-white">Dry Run Mode</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Test without actual migrations (recommended)</div>
-                </div>
-                <Toggle
-                  checked={automationConfig.dry_run !== false}
-                  onChange={(e) => {
-                    if (!e.target.checked) {
-                      setConfirmDisableDryRun(true);
-                    } else {
-                      saveAutomationConfig({ dry_run: true });
-                    }
-                  }}
-                  color="yellow"
-                />
-              </div>
+            <ToggleRow
+              label="Dry Run Mode"
+              description="Test without actual migrations (recommended)"
+              checked={automationConfig.dry_run !== false}
+              onChange={(e) => {
+                if (!e.target.checked) {
+                  setConfirmDisableDryRun(true);
+                } else {
+                  saveAutomationConfig({ dry_run: true });
+                }
+              }}
+              color="yellow"
+            >
               {confirmDisableDryRun && (
                 <div className="px-4 pb-4">
                   <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-lg p-4">
@@ -133,7 +123,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                   </div>
                 </div>
               )}
-            </div>
+            </ToggleRow>
 
             {/* Check Interval */}
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">

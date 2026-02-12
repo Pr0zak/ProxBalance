@@ -2,7 +2,7 @@ import {
   ChevronDown, ChevronUp, X, CheckCircle, Info
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
-import Toggle from '../Toggle.jsx';
+import Toggle, { ToggleRow } from '../Toggle.jsx';
 
 const { useState } = React;
 
@@ -63,18 +63,12 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
       {!collapsedSections.smartMigrations && (
         <div className="space-y-4">
           {/* Enable/Disable Toggle */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <div className="flex items-center justify-between p-4">
-              <div>
-                <div className="font-semibold text-gray-900 dark:text-white">Enable Smart Migrations</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Prevents acting on transient load spikes</div>
-              </div>
-              <Toggle
-                checked={imConfig?.enabled !== false}
-                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, enabled: e.target.checked } } })}
-              />
-            </div>
-          </div>
+          <ToggleRow
+            label="Enable Smart Migrations"
+            description="Prevents acting on transient load spikes"
+            checked={imConfig?.enabled !== false}
+            onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, enabled: e.target.checked } } })}
+          />
 
           {imConfig?.enabled !== false && (
             <div className="space-y-4">

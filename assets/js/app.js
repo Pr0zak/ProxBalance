@@ -1818,6 +1818,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       }
     ), /* @__PURE__ */ React.createElement("div", { className: `w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${color === "yellow" ? "peer-checked:bg-yellow-600" : "peer-checked:bg-green-600"}` }));
   }
+  function ToggleRow({ label, description, checked, onChange, color, children }) {
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, label), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, description)), /* @__PURE__ */ React.createElement(Toggle, { checked, onChange, color })), children);
+  }
 
   // src/components/automation/MainSettingsSection.jsx
   var { useState: useState4 } = React;
@@ -1837,60 +1840,66 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.mainSettings && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Enable Automated Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Turn automation on or off")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), !collapsedSections.mainSettings && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Enable Automated Migrations",
+        description: "Turn automation on or off",
         checked: automationConfig.enabled || !1,
         onChange: (e) => {
           e.target.checked ? setConfirmEnableAutomation(!0) : saveAutomationConfig2({ enabled: !1 });
         }
-      }
-    )), confirmEnableAutomation && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 20, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 mb-2" }, "Enable Automated Migrations?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-orange-800 dark:text-orange-300 mb-3" }, "The system will automatically migrate VMs based on your configured rules."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ enabled: !0 }), setConfirmEnableAutomation(!1);
+      },
+      confirmEnableAutomation && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 20, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 mb-2" }, "Enable Automated Migrations?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-orange-800 dark:text-orange-300 mb-3" }, "The system will automatically migrate VMs based on your configured rules."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ enabled: !0 }), setConfirmEnableAutomation(!1);
+          },
+          className: "px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
         },
-        className: "px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(Power, { size: 14 }),
-      "Enable Automation"
+        /* @__PURE__ */ React.createElement(Power, { size: 14 }),
+        "Enable Automation"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmEnableAutomation(!1),
+          className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel"
+      ))))))
     ), /* @__PURE__ */ React.createElement(
-      "button",
+      ToggleRow,
       {
-        onClick: () => setConfirmEnableAutomation(!1),
-        className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel"
-    ))))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Dry Run Mode"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Test without actual migrations (recommended)")), /* @__PURE__ */ React.createElement(
-      Toggle,
-      {
+        label: "Dry Run Mode",
+        description: "Test without actual migrations (recommended)",
         checked: automationConfig.dry_run !== !1,
         onChange: (e) => {
           e.target.checked ? saveAutomationConfig2({ dry_run: !0 }) : setConfirmDisableDryRun(!0);
         },
         color: "yellow"
-      }
-    )), confirmDisableDryRun && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-red-900 dark:text-red-200 mb-2 text-lg" }, "DISABLE DRY RUN MODE?"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-800 dark:text-red-300 space-y-2 mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "This will enable REAL automated migrations!"), /* @__PURE__ */ React.createElement("p", null, "VMs will actually be migrated automatically based on your configured rules."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Are you absolutely sure?")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ dry_run: !1 }), setConfirmDisableDryRun(!1);
+      },
+      confirmDisableDryRun && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-red-900 dark:text-red-200 mb-2 text-lg" }, "DISABLE DRY RUN MODE?"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-800 dark:text-red-300 space-y-2 mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "This will enable REAL automated migrations!"), /* @__PURE__ */ React.createElement("p", null, "VMs will actually be migrated automatically based on your configured rules."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Are you absolutely sure?")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ dry_run: !1 }), setConfirmDisableDryRun(!1);
+          },
+          className: "px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
         },
-        className: "px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
-      "Yes, Disable Dry Run"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setConfirmDisableDryRun(!1),
-        className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel (Keep Dry Run On)"
-    ))))))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("label", { className: "block font-semibold text-gray-900 dark:text-white mb-2" }, "Check Interval (minutes)"), /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
+        "Yes, Disable Dry Run"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmDisableDryRun(!1),
+          className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel (Keep Dry Run On)"
+      ))))))
+    ), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("label", { className: "block font-semibold text-gray-900 dark:text-white mb-2" }, "Check Interval (minutes)"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "1",
@@ -2006,13 +2015,15 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.smartMigrations ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.smartMigrations && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Enable Smart Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Prevents acting on transient load spikes")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), !collapsedSections.smartMigrations && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Enable Smart Migrations",
+        description: "Prevents acting on transient load spikes",
         checked: imConfig?.enabled !== !1,
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, enabled: e.target.checked } } })
       }
-    ))), imConfig?.enabled !== !1 && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, suggestedLevel && suggestedLevel !== currentLevel && !dismissedSuggestion && /* @__PURE__ */ React.createElement("div", { className: "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2 flex-1" }, /* @__PURE__ */ React.createElement(Info, { size: 16, className: "text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-800 dark:text-blue-200" }, "You've collected enough data to enable ", /* @__PURE__ */ React.createElement("strong", null, suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)), " intelligence.", suggestedLevel === "standard" && " This adds cost-benefit analysis and outcome learning.", suggestedLevel === "full" && " This adds trend analysis, pattern recognition, and risk gating.", /* @__PURE__ */ React.createElement(
+    ), imConfig?.enabled !== !1 && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, suggestedLevel && suggestedLevel !== currentLevel && !dismissedSuggestion && /* @__PURE__ */ React.createElement("div", { className: "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2 flex-1" }, /* @__PURE__ */ React.createElement(Info, { size: 16, className: "text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-800 dark:text-blue-200" }, "You've collected enough data to enable ", /* @__PURE__ */ React.createElement("strong", null, suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)), " intelligence.", suggestedLevel === "standard" && " This adds cost-benefit analysis and outcome learning.", suggestedLevel === "full" && " This adds trend analysis, pattern recognition, and risk gating.", /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: suggestedLevel } } }),
@@ -2119,63 +2130,76 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.safetyRules ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.safetyRules && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Tag & Affinity Rules"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect 'ignore' Tags"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), !collapsedSections.safetyRules && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Tag & Affinity Rules"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Respect 'ignore' Tags",
+        description: "Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations.",
         checked: automationConfig.rules?.respect_ignore_tags !== !1,
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Require 'auto_migrate_ok' Tag"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode).")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Require 'auto_migrate_ok' Tag",
+        description: "Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode).",
         checked: automationConfig.rules?.require_auto_migrate_ok_tag || !1,
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect Affinity (affinity_* tags)"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Respect Affinity (affinity_* tags)",
+        description: "Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.",
         checked: automationConfig.rules?.respect_affinity_rules !== !1,
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect Anti-Affinity (exclude_* tags)"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Prevents VMs with the same exclude tag from clustering on one node.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Respect Anti-Affinity (exclude_* tags)",
+        description: "Prevents VMs with the same exclude tag from clustering on one node.",
         checked: automationConfig.rules?.respect_exclude_affinity !== !1,
         onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Allow Container Restarts for Migration"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Allow Container Restarts for Migration",
+        description: "Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime.",
         checked: automationConfig.rules?.allow_container_restarts === !0,
         onChange: (e) => {
           e.target.checked ? setConfirmAllowContainerRestarts(!0) : saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !1 } });
         }
-      }
-    )), confirmAllowContainerRestarts && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 18, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 text-sm mb-1" }, "ALLOW CONTAINER RESTARTS?"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-800 dark:text-orange-300 space-y-1 mb-2" }, /* @__PURE__ */ React.createElement("p", null, "This will allow automated migrations to restart containers that cannot be live-migrated."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Containers will experience brief downtime during migration.")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !0 } }), setConfirmAllowContainerRestarts(!1);
+      },
+      confirmAllowContainerRestarts && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 18, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 text-sm mb-1" }, "ALLOW CONTAINER RESTARTS?"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-800 dark:text-orange-300 space-y-1 mb-2" }, /* @__PURE__ */ React.createElement("p", null, "This will allow automated migrations to restart containers that cannot be live-migrated."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Containers will experience brief downtime during migration.")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !0 } }), setConfirmAllowContainerRestarts(!1);
+          },
+          className: "px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
         },
-        className: "px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
-      },
-      /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
-      "Yes, Allow Restarts"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
+        /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
+        "Yes, Allow Restarts"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmAllowContainerRestarts(!1),
+          className: "px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel"
+      ))))))
+    ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Safety Checks"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        onClick: () => setConfirmAllowContainerRestarts(!1),
-        className: "px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel"
-    ))))))))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Safety Checks"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Check Cluster Health Before Migrating"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Verifies cluster has quorum and node resources are within limits before migrating.")), /* @__PURE__ */ React.createElement(
-      Toggle,
-      {
+        label: "Check Cluster Health Before Migrating",
+        description: "Verifies cluster has quorum and node resources are within limits before migrating.",
         checked: automationConfig.safety_checks?.check_cluster_health !== !1,
         onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node CPU %"), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node CPU %"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "50",
@@ -2193,19 +2217,23 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         onCommit: (val) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } }),
         className: "w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Abort Batch if a Migration Fails"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Stops remaining migrations in the batch if any single migration fails.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ))), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Abort Batch if a Migration Fails",
+        description: "Stops remaining migrations in the batch if any single migration fails.",
         checked: automationConfig.safety_checks?.abort_on_failure !== !1,
         onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })
       }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Pause Automation After Migration Failure"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Automatically disables automated migrations if any migration fails. Requires manual review before resuming.")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Pause Automation After Migration Failure",
+        description: "Automatically disables automated migrations if any migration fails. Requires manual review before resuming.",
         checked: automationConfig.safety_checks?.pause_on_failure === !0,
         onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })
       }
-    )))))));
+    )))));
   }
 
   // src/components/automation/DistributionBalancingSection.jsx
@@ -2238,69 +2266,50 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
       },
       collapsedSections.distributionBalancingHelp ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "-rotate-90" }), "Show detailed explanation") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16 }), "Hide detailed explanation")
-    ), !collapsedSections.distributionBalancingHelp && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "What is Distribution Balancing?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "Complements performance-based recommendations by focusing on ", /* @__PURE__ */ React.createElement("strong", null, "evening out the number of VMs/CTs across nodes"), ", rather than just CPU, memory, or I/O metrics.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "The Problem It Solves"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "How It Works"), /* @__PURE__ */ React.createElement("ol", { className: "text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1" }, /* @__PURE__ */ React.createElement("li", null, "Counts running guests on each node (e.g., pve4: 19, pve6: 4)"), /* @__PURE__ */ React.createElement("li", null, "If difference \u2265 threshold (default: 2), finds small guests on overloaded node"), /* @__PURE__ */ React.createElement("li", null, "Only considers guests \u2264 max CPU cores (default: 2) and \u2264 max memory (default: 4 GB)"), /* @__PURE__ */ React.createElement("li", null, "Recommends migrating eligible small guests to underloaded nodes"), /* @__PURE__ */ React.createElement("li", null, "Works alongside performance-based recommendations, respects tags and storage compatibility"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "When to Enable"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "\u2713 Many small utility VMs (DNS, monitoring, etc.)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Nodes with very different guest counts (e.g., 19 vs 4)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Performance metrics don't show the imbalance", /* @__PURE__ */ React.createElement("br", null), "\u2713 Want more even workload distribution for management simplicity")))), /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Enable Distribution Balancing"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Automatically balance small workloads across nodes to prevent guest count imbalance")), /* @__PURE__ */ React.createElement(
-      Toggle,
+    ), !collapsedSections.distributionBalancingHelp && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "What is Distribution Balancing?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "Complements performance-based recommendations by focusing on ", /* @__PURE__ */ React.createElement("strong", null, "evening out the number of VMs/CTs across nodes"), ", rather than just CPU, memory, or I/O metrics.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "The Problem It Solves"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "How It Works"), /* @__PURE__ */ React.createElement("ol", { className: "text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1" }, /* @__PURE__ */ React.createElement("li", null, "Counts running guests on each node (e.g., pve4: 19, pve6: 4)"), /* @__PURE__ */ React.createElement("li", null, "If difference \u2265 threshold (default: 2), finds small guests on overloaded node"), /* @__PURE__ */ React.createElement("li", null, "Only considers guests \u2264 max CPU cores (default: 2) and \u2264 max memory (default: 4 GB)"), /* @__PURE__ */ React.createElement("li", null, "Recommends migrating eligible small guests to underloaded nodes"), /* @__PURE__ */ React.createElement("li", null, "Works alongside performance-based recommendations, respects tags and storage compatibility"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "When to Enable"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "\u2713 Many small utility VMs (DNS, monitoring, etc.)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Nodes with very different guest counts (e.g., 19 vs 4)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Performance metrics don't show the imbalance", /* @__PURE__ */ React.createElement("br", null), "\u2713 Want more even workload distribution for management simplicity")))), /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
+        label: "Enable Distribution Balancing",
+        description: "Automatically balance small workloads across nodes to prevent guest count imbalance",
         checked: config.distribution_balancing?.enabled || !1,
         onChange: (e) => {
           let enabled = e.target.checked, newConfig = { ...config };
           newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.enabled = enabled, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         }
       }
-    ))), config.distribution_balancing?.enabled && /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Guest Count Threshold"), /* @__PURE__ */ React.createElement(
-      "input",
+    ), config.distribution_balancing?.enabled && /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Guest Count Threshold"), /* @__PURE__ */ React.createElement(
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "10",
         value: config.distribution_balancing?.guest_count_threshold ?? 2,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = 2, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
     ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Minimum difference in guest counts to trigger balancing")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max CPU Cores"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         max: "32",
         value: config.distribution_balancing?.max_cpu_cores ?? 2,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = 2, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
     ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Only migrate guests with \u2264 this many CPU cores (0 = no limit)")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Memory (GB)"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         max: "256",
         value: config.distribution_balancing?.max_memory_gb ?? 4,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = 4, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
@@ -2309,6 +2318,27 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
 
   // src/components/automation/TimeWindowsSection.jsx
   var { useState: useState7 } = React;
+  function WindowTypeButtons({ currentType, onSelect }) {
+    return /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => onSelect("migration"),
+        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${currentType === "migration" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
+      },
+      /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
+      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
+      " Window"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => onSelect("blackout"),
+        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${currentType === "blackout" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
+      },
+      /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
+      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
+      " Window"
+    ));
+  }
   function TimeWindowsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections, setError }) {
     let [editingWindowIndex, setEditingWindowIndex] = useState7(null), [showTimeWindowForm, setShowTimeWindowForm] = useState7(!1), [newWindowData, setNewWindowData] = useState7({ name: "", type: "migration", days: [], start_time: "00:00", end_time: "00:00" }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState7(null);
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white mb-4" }, "Time Windows"), /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(Info, { size: 20, className: "text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Timezone for Time Windows"), /* @__PURE__ */ React.createElement(
@@ -2412,10 +2442,12 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
             "data-window-index": idx,
             className: `p-3 rounded-lg border ${isMigration ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-700"}`
           },
-          isEditing ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-            "button",
+          isEditing ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement(
+            WindowTypeButtons,
             {
-              onClick: () => {
+              currentType: isMigration ? "migration" : "blackout",
+              onSelect: (type) => {
+                if (type === "migration" === isMigration) return;
                 let newMigrationWindows = [...migrationWindows], newBlackoutWindows = [...blackoutWindows];
                 if (isMigration) {
                   let [removed] = newMigrationWindows.splice(window2.originalIndex, 1);
@@ -2431,39 +2463,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
                     blackout_windows: newBlackoutWindows
                   }
                 }), setEditingWindowIndex(null);
-              },
-              className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${isMigration ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
-            },
-            /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
-            " Window"
-          ), /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: () => {
-                let newMigrationWindows = [...migrationWindows], newBlackoutWindows = [...blackoutWindows];
-                if (isMigration) {
-                  let [removed] = newMigrationWindows.splice(window2.originalIndex, 1);
-                  newBlackoutWindows.push(removed);
-                } else {
-                  let [removed] = newBlackoutWindows.splice(window2.originalIndex, 1);
-                  newMigrationWindows.push(removed);
-                }
-                saveAutomationConfig2({
-                  schedule: {
-                    ...automationConfig.schedule,
-                    migration_windows: newMigrationWindows,
-                    blackout_windows: newBlackoutWindows
-                  }
-                }), setEditingWindowIndex(null);
-              },
-              className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${isMigration ? "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300" : "bg-red-600 text-white"}`,
-              title: "Blackout Window"
-            },
-            /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
-            " Window"
-          ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
+              }
+            }
+          )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
             "input",
             {
               type: "text",
@@ -2625,27 +2627,13 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           ))
         );
       }));
-    })(), showTimeWindowForm ? /* @__PURE__ */ React.createElement("div", { className: `rounded-lg p-4 mb-3 border ${newWindowData.type === "migration" ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"}` }, /* @__PURE__ */ React.createElement("h4", { className: "font-semibold text-gray-900 dark:text-white mb-3" }, "Add Time Window"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
+    })(), showTimeWindowForm ? /* @__PURE__ */ React.createElement("div", { className: `rounded-lg p-4 mb-3 border ${newWindowData.type === "migration" ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"}` }, /* @__PURE__ */ React.createElement("h4", { className: "font-semibold text-gray-900 dark:text-white mb-3" }, "Add Time Window"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement(
+      WindowTypeButtons,
       {
-        onClick: () => setNewWindowData({ ...newWindowData, type: "migration" }),
-        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${newWindowData.type === "migration" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`,
-        title: "Migration Window"
-      },
-      /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
-      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
-      " Window"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setNewWindowData({ ...newWindowData, type: "blackout" }),
-        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${newWindowData.type === "blackout" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`,
-        title: "Blackout Window"
-      },
-      /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
-      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
-      " Window"
-    ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
+        currentType: newWindowData.type,
+        onSelect: (type) => setNewWindowData({ ...newWindowData, type })
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "text",

@@ -1,5 +1,6 @@
 import { ChevronDown } from '../Icons.jsx';
-import Toggle from '../Toggle.jsx';
+import NumberField from '../NumberField.jsx';
+import Toggle, { ToggleRow } from '../Toggle.jsx';
 
 export default function DistributionBalancingSection({
   config, automationConfig, collapsedSections, setCollapsedSections,
@@ -82,25 +83,19 @@ export default function DistributionBalancingSection({
 
           <div className="space-y-4">
             {/* Enable Distribution Balancing */}
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <div className="font-semibold text-gray-900 dark:text-white">Enable Distribution Balancing</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Automatically balance small workloads across nodes to prevent guest count imbalance</div>
-                </div>
-                <Toggle
-                  checked={config.distribution_balancing?.enabled || false}
-                  onChange={(e) => {
-                    const enabled = e.target.checked;
-                    const newConfig = { ...config };
-                    if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.enabled = enabled;
-                    setConfig(newConfig);
-                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                  }}
-                />
-              </div>
-            </div>
+            <ToggleRow
+              label="Enable Distribution Balancing"
+              description="Automatically balance small workloads across nodes to prevent guest count imbalance"
+              checked={config.distribution_balancing?.enabled || false}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                const newConfig = { ...config };
+                if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
+                newConfig.distribution_balancing.enabled = enabled;
+                setConfig(newConfig);
+                saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
+              }}
+            />
 
             {config.distribution_balancing?.enabled && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
@@ -109,30 +104,16 @@ export default function DistributionBalancingSection({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Guest Count Threshold
                 </label>
-                <input
-                  type="number"
+                <NumberField
                   min="1"
                   max="10"
                   value={config.distribution_balancing?.guest_count_threshold ?? 2}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const numVal = val === '' ? '' : parseInt(val);
+                  onCommit={(val) => {
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.guest_count_threshold = numVal;
+                    newConfig.distribution_balancing.guest_count_threshold = val;
                     setConfig(newConfig);
-                    if (val !== '' && !isNaN(numVal)) {
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      const newConfig = { ...config };
-                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                      newConfig.distribution_balancing.guest_count_threshold = 2;
-                      setConfig(newConfig);
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
+                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
@@ -146,30 +127,16 @@ export default function DistributionBalancingSection({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Max CPU Cores
                 </label>
-                <input
-                  type="number"
+                <NumberField
                   min="0"
                   max="32"
                   value={config.distribution_balancing?.max_cpu_cores ?? 2}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const numVal = val === '' ? '' : parseInt(val);
+                  onCommit={(val) => {
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.max_cpu_cores = numVal;
+                    newConfig.distribution_balancing.max_cpu_cores = val;
                     setConfig(newConfig);
-                    if (val !== '' && !isNaN(numVal)) {
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      const newConfig = { ...config };
-                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                      newConfig.distribution_balancing.max_cpu_cores = 2;
-                      setConfig(newConfig);
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
+                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
@@ -183,30 +150,16 @@ export default function DistributionBalancingSection({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Max Memory (GB)
                 </label>
-                <input
-                  type="number"
+                <NumberField
                   min="0"
                   max="256"
                   value={config.distribution_balancing?.max_memory_gb ?? 4}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const numVal = val === '' ? '' : parseInt(val);
+                  onCommit={(val) => {
                     const newConfig = { ...config };
                     if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                    newConfig.distribution_balancing.max_memory_gb = numVal;
+                    newConfig.distribution_balancing.max_memory_gb = val;
                     setConfig(newConfig);
-                    if (val !== '' && !isNaN(numVal)) {
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
-                  }}
-                  onBlur={(e) => {
-                    if (e.target.value === '') {
-                      const newConfig = { ...config };
-                      if (!newConfig.distribution_balancing) newConfig.distribution_balancing = {};
-                      newConfig.distribution_balancing.max_memory_gb = 4;
-                      setConfig(newConfig);
-                      saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
-                    }
+                    saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />

@@ -4,6 +4,35 @@ import {
 
 const { useState } = React;
 
+function WindowTypeButtons({ currentType, onSelect }) {
+  return (
+    <div className="flex gap-2">
+      <button
+        onClick={() => onSelect('migration')}
+        className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
+          currentType === 'migration'
+            ? 'bg-green-600 text-white'
+            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+        }`}
+      >
+        <Calendar size={14} />
+        <span className="hidden sm:inline">Migration</span> Window
+      </button>
+      <button
+        onClick={() => onSelect('blackout')}
+        className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
+          currentType === 'blackout'
+            ? 'bg-red-600 text-white'
+            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+        }`}
+      >
+        <Moon size={14} />
+        <span className="hidden sm:inline">Blackout</span> Window
+      </button>
+    </div>
+  );
+}
+
 export default function TimeWindowsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, setError }) {
   const [editingWindowIndex, setEditingWindowIndex] = useState(null);
   const [showTimeWindowForm, setShowTimeWindowForm] = useState(false);
@@ -263,77 +292,29 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Type Toggle */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Window Type</label>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  // Move window from one array to another
-                                  const newMigrationWindows = [...migrationWindows];
-                                  const newBlackoutWindows = [...blackoutWindows];
-
-                                  if (isMigration) {
-                                    // Move to blackout
-                                    const [removed] = newMigrationWindows.splice(window.originalIndex, 1);
-                                    newBlackoutWindows.push(removed);
-                                  } else {
-                                    // Move to migration
-                                    const [removed] = newBlackoutWindows.splice(window.originalIndex, 1);
-                                    newMigrationWindows.push(removed);
+                            <WindowTypeButtons
+                              currentType={isMigration ? 'migration' : 'blackout'}
+                              onSelect={(type) => {
+                                if ((type === 'migration') === isMigration) return;
+                                const newMigrationWindows = [...migrationWindows];
+                                const newBlackoutWindows = [...blackoutWindows];
+                                if (isMigration) {
+                                  const [removed] = newMigrationWindows.splice(window.originalIndex, 1);
+                                  newBlackoutWindows.push(removed);
+                                } else {
+                                  const [removed] = newBlackoutWindows.splice(window.originalIndex, 1);
+                                  newMigrationWindows.push(removed);
+                                }
+                                saveAutomationConfig({
+                                  schedule: {
+                                    ...automationConfig.schedule,
+                                    migration_windows: newMigrationWindows,
+                                    blackout_windows: newBlackoutWindows
                                   }
-
-                                  saveAutomationConfig({
-                                    schedule: {
-                                      ...automationConfig.schedule,
-                                      migration_windows: newMigrationWindows,
-                                      blackout_windows: newBlackoutWindows
-                                    }
-                                  });
-                                  setEditingWindowIndex(null);
-                                }}
-                                className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
-                                  isMigration
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                                }`}
-                              >
-                                <Calendar size={14} />
-                                <span className="hidden sm:inline">Migration</span> Window
-                              </button>
-                              <button
-                                onClick={() => {
-                                  // Move window from one array to another
-                                  const newMigrationWindows = [...migrationWindows];
-                                  const newBlackoutWindows = [...blackoutWindows];
-
-                                  if (isMigration) {
-                                    // Move to blackout
-                                    const [removed] = newMigrationWindows.splice(window.originalIndex, 1);
-                                    newBlackoutWindows.push(removed);
-                                  } else {
-                                    // Move to migration
-                                    const [removed] = newBlackoutWindows.splice(window.originalIndex, 1);
-                                    newMigrationWindows.push(removed);
-                                  }
-
-                                  saveAutomationConfig({
-                                    schedule: {
-                                      ...automationConfig.schedule,
-                                      migration_windows: newMigrationWindows,
-                                      blackout_windows: newBlackoutWindows
-                                    }
-                                  });
-                                  setEditingWindowIndex(null);
-                                }}
-                                className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
-                                  !isMigration
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                                }`}
-                                title="Blackout Window"
-                              >
-                                <Moon size={14} />
-                                <span className="hidden sm:inline">Blackout</span> Window
-                              </button>
-                            </div>
+                                });
+                                setEditingWindowIndex(null);
+                              }}
+                            />
                           </div>
 
                           {/* Window Name */}
@@ -626,32 +607,10 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                 {/* Type Toggle */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Window Type</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setNewWindowData({ ...newWindowData, type: 'migration' })}
-                      className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
-                        newWindowData.type === 'migration'
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                      }`}
-                      title="Migration Window"
-                    >
-                      <Calendar size={14} />
-                      <span className="hidden sm:inline">Migration</span> Window
-                    </button>
-                    <button
-                      onClick={() => setNewWindowData({ ...newWindowData, type: 'blackout' })}
-                      className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
-                        newWindowData.type === 'blackout'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-                      }`}
-                      title="Blackout Window"
-                    >
-                      <Moon size={14} />
-                      <span className="hidden sm:inline">Blackout</span> Window
-                    </button>
-                  </div>
+                  <WindowTypeButtons
+                    currentType={newWindowData.type}
+                    onSelect={(type) => setNewWindowData({ ...newWindowData, type })}
+                  />
                 </div>
 
                 {/* Window Name */}

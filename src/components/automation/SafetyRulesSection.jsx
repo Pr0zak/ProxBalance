@@ -2,7 +2,7 @@ import {
   AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
-import Toggle from '../Toggle.jsx';
+import { ToggleRow } from '../Toggle.jsx';
 
 const { useState } = React;
 
@@ -29,80 +29,42 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">Tag & Affinity Rules</h3>
             <div className="space-y-3">
-              {/* Respect 'ignore' Tags */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Respect 'ignore' Tags</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.rules?.respect_ignore_tags !== false}
-                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
-                  />
-                </div>
-              </div>
-
-              {/* Require 'auto_migrate_ok' Tag */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Require 'auto_migrate_ok' Tag</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode).</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
-                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
-                  />
-                </div>
-              </div>
-
-              {/* Respect Pro-Affinity */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Respect Affinity (affinity_* tags)</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.rules?.respect_affinity_rules !== false}
-                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
-                  />
-                </div>
-              </div>
-
-              {/* Respect Anti-Affinity */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Respect Anti-Affinity (exclude_* tags)</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Prevents VMs with the same exclude tag from clustering on one node.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.rules?.respect_exclude_affinity !== false}
-                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
-                  />
-                </div>
-              </div>
-
-              {/* Allow Container Restarts */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Allow Container Restarts for Migration</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.rules?.allow_container_restarts === true}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setConfirmAllowContainerRestarts(true);
-                      } else {
-                        saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
-                      }
-                    }}
-                  />
-                </div>
+              <ToggleRow
+                label="Respect 'ignore' Tags"
+                description="Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations."
+                checked={automationConfig.rules?.respect_ignore_tags !== false}
+                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
+              />
+              <ToggleRow
+                label="Require 'auto_migrate_ok' Tag"
+                description="Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode)."
+                checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
+                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
+              />
+              <ToggleRow
+                label="Respect Affinity (affinity_* tags)"
+                description="Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated."
+                checked={automationConfig.rules?.respect_affinity_rules !== false}
+                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
+              />
+              <ToggleRow
+                label="Respect Anti-Affinity (exclude_* tags)"
+                description="Prevents VMs with the same exclude tag from clustering on one node."
+                checked={automationConfig.rules?.respect_exclude_affinity !== false}
+                onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
+              />
+              <ToggleRow
+                label="Allow Container Restarts for Migration"
+                description="Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime."
+                checked={automationConfig.rules?.allow_container_restarts === true}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setConfirmAllowContainerRestarts(true);
+                  } else {
+                    saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
+                  }
+                }}
+              >
                 {confirmAllowContainerRestarts && (
                   <div className="px-4 pb-4">
                     <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3">
@@ -138,7 +100,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     </div>
                   </div>
                 )}
-              </div>
+              </ToggleRow>
             </div>
           </div>
 
@@ -146,19 +108,12 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">Safety Checks</h3>
             <div className="space-y-3">
-              {/* Check Cluster Health */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Check Cluster Health Before Migrating</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Verifies cluster has quorum and node resources are within limits before migrating.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.safety_checks?.check_cluster_health !== false}
-                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
-                  />
-                </div>
-              </div>
+              <ToggleRow
+                label="Check Cluster Health Before Migrating"
+                description="Verifies cluster has quorum and node resources are within limits before migrating."
+                checked={automationConfig.safety_checks?.check_cluster_health !== false}
+                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -187,33 +142,18 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                 </div>
               </div>
 
-              {/* Abort Batch on Failure */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Abort Batch if a Migration Fails</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Stops remaining migrations in the batch if any single migration fails.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.safety_checks?.abort_on_failure !== false}
-                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
-                  />
-                </div>
-              </div>
-
-              {/* Pause Automation After Failure */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white">Pause Automation After Migration Failure</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Automatically disables automated migrations if any migration fails. Requires manual review before resuming.</div>
-                  </div>
-                  <Toggle
-                    checked={automationConfig.safety_checks?.pause_on_failure === true}
-                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
-                  />
-                </div>
-              </div>
+              <ToggleRow
+                label="Abort Batch if a Migration Fails"
+                description="Stops remaining migrations in the batch if any single migration fails."
+                checked={automationConfig.safety_checks?.abort_on_failure !== false}
+                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
+              />
+              <ToggleRow
+                label="Pause Automation After Migration Failure"
+                description="Automatically disables automated migrations if any migration fails. Requires manual review before resuming."
+                checked={automationConfig.safety_checks?.pause_on_failure === true}
+                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
+              />
             </div>
           </div>
 
