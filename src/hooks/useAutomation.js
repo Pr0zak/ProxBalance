@@ -56,8 +56,6 @@ export function useAutomation(API_BASE, deps = {}) {
 
   // Confirmation modals
   const [confirmRemoveWindow, setConfirmRemoveWindow] = useState(null);
-  const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
-  const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
 
   const fetchAutomationStatus = async () => {
     setLoadingAutomationStatus(true);
@@ -239,8 +237,6 @@ export function useAutomation(API_BASE, deps = {}) {
     editingWindowIndex, setEditingWindowIndex,
     newWindowData, setNewWindowData,
     confirmRemoveWindow, setConfirmRemoveWindow,
-    confirmEnableAutomation, setConfirmEnableAutomation,
-    confirmDisableDryRun, setConfirmDisableDryRun,
     fetchAutomationStatus,
     fetchRunHistory,
     fetchAutomationConfig,

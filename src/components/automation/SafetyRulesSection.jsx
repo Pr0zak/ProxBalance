@@ -2,6 +2,7 @@ import {
   AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
+import Toggle from '../Toggle.jsx';
 
 const { useState } = React;
 
@@ -35,15 +36,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Respect 'ignore' Tags</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.rules?.respect_ignore_tags !== false}
-                      onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.rules?.respect_ignore_tags !== false}
+                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -54,15 +50,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Require 'auto_migrate_ok' Tag</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode).</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
-                      onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
+                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -73,15 +64,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Respect Affinity (affinity_* tags)</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.rules?.respect_affinity_rules !== false}
-                      onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.rules?.respect_affinity_rules !== false}
+                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -92,15 +78,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Respect Anti-Affinity (exclude_* tags)</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Prevents VMs with the same exclude tag from clustering on one node.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.rules?.respect_exclude_affinity !== false}
-                      onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.rules?.respect_exclude_affinity !== false}
+                    onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -111,21 +92,16 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Allow Container Restarts for Migration</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.rules?.allow_container_restarts === true}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setConfirmAllowContainerRestarts(true);
-                        } else {
-                          saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
-                        }
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.rules?.allow_container_restarts === true}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setConfirmAllowContainerRestarts(true);
+                      } else {
+                        saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: false } });
+                      }
+                    }}
+                  />
                 </div>
                 {confirmAllowContainerRestarts && (
                   <div className="px-4 pb-4">
@@ -177,15 +153,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Check Cluster Health Before Migrating</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Verifies cluster has quorum and node resources are within limits before migrating.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.safety_checks?.check_cluster_health !== false}
-                      onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.safety_checks?.check_cluster_health !== false}
+                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -223,15 +194,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Abort Batch if a Migration Fails</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Stops remaining migrations in the batch if any single migration fails.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.safety_checks?.abort_on_failure !== false}
-                      onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.safety_checks?.abort_on_failure !== false}
+                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
+                  />
                 </div>
               </div>
 
@@ -242,15 +208,10 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     <div className="font-semibold text-gray-900 dark:text-white">Pause Automation After Migration Failure</div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">Automatically disables automated migrations if any migration fails. Requires manual review before resuming.</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={automationConfig.safety_checks?.pause_on_failure === true}
-                      onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                  </label>
+                  <Toggle
+                    checked={automationConfig.safety_checks?.pause_on_failure === true}
+                    onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
+                  />
                 </div>
               </div>
             </div>

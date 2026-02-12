@@ -2,6 +2,7 @@ import {
   AlertTriangle, ChevronDown, X, Power
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
+import Toggle from '../Toggle.jsx';
 
 const { useState } = React;
 
@@ -30,21 +31,16 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                   <div className="font-semibold text-gray-900 dark:text-white">Enable Automated Migrations</div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Turn automation on or off</div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={automationConfig.enabled || false}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setConfirmEnableAutomation(true);
-                      } else {
-                        saveAutomationConfig({ enabled: false });
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
-                </label>
+                <Toggle
+                  checked={automationConfig.enabled || false}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setConfirmEnableAutomation(true);
+                    } else {
+                      saveAutomationConfig({ enabled: false });
+                    }
+                  }}
+                />
               </div>
               {confirmEnableAutomation && (
                 <div className="px-4 pb-4">
@@ -89,21 +85,17 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                   <div className="font-semibold text-gray-900 dark:text-white">Dry Run Mode</div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Test without actual migrations (recommended)</div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={automationConfig.dry_run !== false}
-                    onChange={(e) => {
-                      if (!e.target.checked) {
-                        setConfirmDisableDryRun(true);
-                      } else {
-                        saveAutomationConfig({ dry_run: true });
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-yellow-600"></div>
-                </label>
+                <Toggle
+                  checked={automationConfig.dry_run !== false}
+                  onChange={(e) => {
+                    if (!e.target.checked) {
+                      setConfirmDisableDryRun(true);
+                    } else {
+                      saveAutomationConfig({ dry_run: true });
+                    }
+                  }}
+                  color="yellow"
+                />
               </div>
               {confirmDisableDryRun && (
                 <div className="px-4 pb-4">
