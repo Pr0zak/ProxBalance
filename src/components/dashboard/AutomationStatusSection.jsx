@@ -705,6 +705,25 @@ export default function AutomationStatusSection({
                         </div>
                       </div>
                     )}
+
+                    {/* Fallback: show filter_reasons when decisions and activity_log are empty */}
+                    {(!automationStatus.state.last_run.decisions || automationStatus.state.last_run.decisions.length === 0) &&
+                     (!automationStatus.state?.activity_log || automationStatus.state.activity_log.length === 0) &&
+                     automationStatus.filter_reasons && automationStatus.filter_reasons.length > 0 && (
+                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Filtered ({automationStatus.filter_reasons.length}):
+                        </div>
+                        <div className="space-y-1.5">
+                          {automationStatus.filter_reasons.map((reason, idx) => (
+                            <div key={idx} className="text-xs bg-white dark:bg-gray-700 rounded p-2 border-l-4 border-yellow-400 dark:border-yellow-600 flex items-start gap-2">
+                              <MinusCircle size={12} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
