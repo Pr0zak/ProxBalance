@@ -121,7 +121,7 @@ export default function NodeStatusSection({
                         <span className="text-gray-600 dark:text-gray-400 flex items-center gap-0.5">CPU:
                           {(() => {
                             const trend = node.metrics?.cpu_trend;
-                            const ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis;
+                            const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
                             const dir = ta?.cpu_direction || trend;
                             if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
                             if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising'} />;
@@ -159,7 +159,7 @@ export default function NodeStatusSection({
                         <span className="text-gray-600 dark:text-gray-400 flex items-center gap-0.5">Memory:
                           {(() => {
                             const trend = node.metrics?.mem_trend;
-                            const ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis;
+                            const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
                             const dir = ta?.mem_direction || trend;
                             if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `Mem ${ta.mem_rate_per_day > 0 ? '+' : ''}${ta.mem_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
                             if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title="Rising" />;

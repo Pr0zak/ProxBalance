@@ -14,8 +14,8 @@
     return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
   var __export = (target, all) => {
-    for (var name2 in all)
-      __defProp(target, name2, { get: all[name2], enumerable: !0 });
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: !0 });
   }, __copyProps = (to, from, except, desc) => {
     if (from && typeof from == "object" || typeof from == "function")
       for (let key of __getOwnPropNames(from))
@@ -4942,7 +4942,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     )))), collapsedSections.nodeStatus ? /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3" }, Object.values(data.nodes).map((node) => {
       let predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name], before = showPredicted && recommendationData?.summary?.batch_impact?.before?.node_scores?.[node.name];
       return /* @__PURE__ */ React.createElement("div", { key: node.name, className: `border rounded p-3 hover:shadow-md transition-shadow ${showPredicted && predicted ? "border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800" : "border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white" }, node.name), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, showPredicted && predicted && before && /* @__PURE__ */ React.createElement("span", { className: `text-[9px] font-medium px-1 py-0.5 rounded ${predicted.cpu < before.cpu - 0.5 ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" : predicted.cpu > before.cpu + 0.5 ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}` }, predicted.guest_count !== before.guest_count ? `${predicted.guest_count > before.guest_count ? "+" : ""}${predicted.guest_count - before.guest_count} guest${Math.abs(predicted.guest_count - before.guest_count) !== 1 ? "s" : ""}` : "no change"), /* @__PURE__ */ React.createElement("span", { className: `w-2 h-2 rounded-full ${node.status === "online" ? "bg-green-500" : "bg-red-500"}`, title: node.status }))), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400 flex items-center gap-0.5" }, "CPU:", (() => {
-        let trend = node.metrics?.cpu_trend, ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis, dir = ta?.cpu_direction || trend;
+        let trend = node.metrics?.cpu_trend, ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis, dir = ta?.cpu_direction || trend;
         return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-red-500", title: ta ? `CPU ${ta.cpu_rate_per_day > 0 ? "+" : ""}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : "Rising fast" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-400", title: ta ? `CPU ${ta.cpu_rate_per_day > 0 ? "+" : ""}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : "Rising" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500", title: "Falling" }) : null;
       })()), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.cpu_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"}` }, predicted.cpu.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-blue-600 dark:text-blue-400" }, (node.cpu_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
         "polyline",
@@ -4954,7 +4954,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           points: generateSparkline(node.cpu_percent || 0, 100, 30, 0.3)
         }
       ))), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400 flex items-center gap-0.5" }, "Memory:", (() => {
-        let trend = node.metrics?.mem_trend, ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis, dir = ta?.mem_direction || trend;
+        let trend = node.metrics?.mem_trend, ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis, dir = ta?.mem_direction || trend;
         return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-red-500", title: ta ? `Mem ${ta.mem_rate_per_day > 0 ? "+" : ""}${ta.mem_rate_per_day?.toFixed(1)}%/day` : "Rising fast" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-400", title: "Rising" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500", title: "Falling" }) : null;
       })()), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.mem_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.mem < (node.mem_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.mem > (node.mem_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-purple-600 dark:text-purple-400"}` }, predicted.mem.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-purple-600 dark:text-purple-400" }, (node.mem_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
         "polyline",
@@ -6629,14 +6629,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           className: "w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
         }
       ))),
-      /* @__PURE__ */ React.createElement("div", { className: "overflow-y-auto p-4 pt-2 space-y-4" }, filteredGroups.map((group) => /* @__PURE__ */ React.createElement("div", { key: group.label }, /* @__PURE__ */ React.createElement("h3", { className: "text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2" }, group.label), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-1.5" }, group.icons.map(({ Icon, name: name2 }) => /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "overflow-y-auto p-4 pt-2 space-y-4" }, filteredGroups.map((group) => /* @__PURE__ */ React.createElement("div", { key: group.label }, /* @__PURE__ */ React.createElement("h3", { className: "text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2" }, group.label), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-1.5" }, group.icons.map(({ Icon, name }) => /* @__PURE__ */ React.createElement(
         "div",
         {
-          key: name2,
+          key: name,
           className: "flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-sm"
         },
         /* @__PURE__ */ React.createElement(Icon, { size: 16, className: "text-gray-600 dark:text-gray-300 flex-shrink-0" }),
-        /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-200 truncate" }, name2)
+        /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-200 truncate" }, name)
       ))))), filteredGroups.length === 0 && /* @__PURE__ */ React.createElement("p", { className: "text-center text-gray-500 dark:text-gray-400 py-4" }, "No icons match your search."))
     ));
   }
