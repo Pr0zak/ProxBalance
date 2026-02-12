@@ -568,13 +568,15 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         continue
 
                     # Hard memory capacity gate: skip targets that can't physically
-                    # fit this guest's allocated memory (committed, not just used)
+                    # fit this guest's allocated memory (committed, not just used).
+                    # Only count RUNNING guests — stopped guests don't consume RAM.
                     guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
                     if guest_mem_max_gb > 0:
-                        # Sum committed memory of all existing guests on the target
+                        # Sum committed memory of running guests on the target
                         target_committed_mem_gb = sum(
                             guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
                             for gid in tgt_node.get("guests", [])
+                            if guests.get(str(gid), guests.get(gid, {})).get("status") == "running"
                         )
                         # Also account for guests already pending migration to this target
                         if tgt_name in pending_target_guests:

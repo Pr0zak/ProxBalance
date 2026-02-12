@@ -88,9 +88,11 @@ DEFAULT_PENALTY_CONFIG = {
     "predicted_mem_high_penalty": 25,        # Penalty when predicted Memory > threshold+10
     "predicted_mem_extreme_penalty": 50,     # Penalty when predicted Memory > threshold+20
 
-    # Memory overcommit penalties (committed/allocated > physical RAM)
-    "mem_overcommit_penalty": 15,            # Penalty when overcommit ratio > 1.0
-    "mem_overcommit_high_penalty": 40,       # Penalty when overcommit ratio > 1.2
+    # Memory overcommit penalties (running guests' allocated memory > physical RAM)
+    # Proxmox commonly overcommits memory via ballooning, so only penalize
+    # meaningfully above 1.2x (moderate) and heavily above 1.5x (severe).
+    "mem_overcommit_penalty": 8,             # Penalty when overcommit ratio > 1.2
+    "mem_overcommit_high_penalty": 25,       # Penalty when overcommit ratio > 1.5
 
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
@@ -712,12 +714,29 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     elif predicted["mem"] > mem_threshold:
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
 
-    # Memory overcommit penalty — committed (allocated) memory exceeds physical RAM
+    # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
+    # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
+    # 1.2x is moderate (ballooning is active), 1.5x is severe (risk of OOM).
     overcommit_ratio = target_node.get("mem_overcommit_ratio", 0)
-    if overcommit_ratio > 1.2:
-        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_high_penalty", 40)
-    elif overcommit_ratio > 1.0:
-        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_penalty", 15)
+    if overcommit_ratio > 1.5:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_high_penalty", 25)
+    elif overcommit_ratio > 1.2:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_penalty", 8)
+
+    # Cap total memory penalties to prevent memory from dominating the score.
+    # Memory is mostly static in Proxmox (fixed allocations), so it should not
+    # single-handedly make a node unsuitable — that's what the hard capacity
+    # gate in recommendations.py is for.  CPU and IOWait are the real drivers.
+    mem_penalty_keys = ("current_mem", "sustained_mem", "mem_spikes",
+                        "mem_trend", "predicted_mem", "mem_overcommit")
+    total_mem_penalties = sum(penalty_breakdown.get(k, 0) for k in mem_penalty_keys)
+    mem_penalty_cap = 60  # Maximum combined memory penalty contribution
+    if total_mem_penalties > mem_penalty_cap:
+        # Scale all memory penalties proportionally to fit within the cap
+        scale = mem_penalty_cap / total_mem_penalties
+        for k in mem_penalty_keys:
+            if k in penalty_breakdown and penalty_breakdown[k] > 0:
+                penalty_breakdown[k] = int(round(penalty_breakdown[k] * scale))
 
     # Sum all penalties
     penalties = sum(penalty_breakdown.values())

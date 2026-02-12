@@ -822,11 +822,13 @@ def guest_migration_options(vmid):
                 continue
 
         # Hard memory capacity gate: reject if guest can't physically fit
+        # Only count RUNNING guests — stopped guests don't consume RAM.
         guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
         if guest_mem_max_gb > 0 and node_name != src_node_name:
             target_committed_mem_gb = sum(
                 guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
                 for gid in node.get("guests", [])
+                if guests.get(str(gid), guests.get(gid, {})).get("status") == "running"
             )
             target_total_mem_gb = node.get("total_mem_gb", 1)
             if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):

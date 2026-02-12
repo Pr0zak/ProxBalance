@@ -202,29 +202,40 @@ score_healthy, details_healthy = calculate_target_node_score(
     node_healthy, guest_test, {}, 60.0, 70.0,
     penalty_config=cfg, return_details=True)
 
-test("No overcommit penalty when ratio < 1.0",
+test("No overcommit penalty when ratio < 1.2",
      details_healthy["penalties"].get("mem_overcommit", 0) == 0,
      f"Got penalty: {details_healthy['penalties'].get('mem_overcommit', 0)}")
 
-# Node with mild overcommit (1.1) — should get base penalty (15)
+# Node with mild overcommit (1.1) — below new threshold (1.2), no penalty
 node_mild_oc = make_node("pve-mild-oc", cpu_pct=40, mem_pct=50,
                          total_mem_gb=64, overcommit_ratio=1.1)
+score_mild_no_pen, details_mild_no_pen = calculate_target_node_score(
+    node_mild_oc, guest_test, {}, 60.0, 70.0,
+    penalty_config=cfg, return_details=True)
+
+test("Mild overcommit (1.1) gets no penalty (below 1.2 threshold)",
+     details_mild_no_pen["penalties"].get("mem_overcommit", 0) == 0,
+     f"Expected 0, got {details_mild_no_pen['penalties'].get('mem_overcommit', 0)}")
+
+# Node with moderate overcommit (1.3) — should get base penalty (8)
+node_mild_oc = make_node("pve-mod-oc", cpu_pct=40, mem_pct=50,
+                         total_mem_gb=64, overcommit_ratio=1.3)
 score_mild, details_mild = calculate_target_node_score(
     node_mild_oc, guest_test, {}, 60.0, 70.0,
     penalty_config=cfg, return_details=True)
 
-test("Mild overcommit (1.1) gets base penalty",
+test("Moderate overcommit (1.3) gets base penalty",
      details_mild["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_penalty"],
      f"Expected {cfg['mem_overcommit_penalty']}, got {details_mild['penalties'].get('mem_overcommit', 0)}")
 
-# Node with heavy overcommit (1.3) — should get high penalty (40)
+# Node with heavy overcommit (1.6) — should get high penalty (25)
 node_heavy_oc = make_node("pve-heavy-oc", cpu_pct=40, mem_pct=50,
-                          total_mem_gb=64, overcommit_ratio=1.3)
+                          total_mem_gb=64, overcommit_ratio=1.6)
 score_heavy, details_heavy = calculate_target_node_score(
     node_heavy_oc, guest_test, {}, 60.0, 70.0,
     penalty_config=cfg, return_details=True)
 
-test("Heavy overcommit (1.3) gets high penalty",
+test("Heavy overcommit (1.6) gets high penalty",
      details_heavy["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_high_penalty"],
      f"Expected {cfg['mem_overcommit_high_penalty']}, got {details_heavy['penalties'].get('mem_overcommit', 0)}")
 
@@ -427,7 +438,7 @@ print("\n" + "=" * 70)
 print("Phase 2b: Collector Committed Memory Logic")
 print("=" * 70)
 
-# Simulate what the collector's generate_summary does
+# Simulate what the collector's generate_summary does (only running guests count)
 class FakeCollector:
     def __init__(self):
         self.nodes = {
@@ -436,38 +447,43 @@ class FakeCollector:
                 "status": "online", "metrics": {}, "storage": [],
             },
             "pve2": {
-                "name": "pve2", "total_mem_gb": 64.0, "guests": [200],
+                "name": "pve2", "total_mem_gb": 64.0, "guests": [200, 201],
                 "status": "online", "metrics": {}, "storage": [],
             },
         }
         self.guests = {
-            "100": {"mem_max_gb": 32.0, "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
-            "101": {"mem_max_gb": 16.0, "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
-            "102": {"mem_max_gb": 8.0, "type": "CT", "tags": {"has_ignore": False, "exclude_groups": []}},
-            "200": {"mem_max_gb": 48.0, "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
+            "100": {"mem_max_gb": 32.0, "status": "running", "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
+            "101": {"mem_max_gb": 16.0, "status": "running", "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
+            "102": {"mem_max_gb": 8.0, "status": "stopped", "type": "CT", "tags": {"has_ignore": False, "exclude_groups": []}},
+            "200": {"mem_max_gb": 48.0, "status": "running", "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
+            "201": {"mem_max_gb": 24.0, "status": "stopped", "type": "VM", "tags": {"has_ignore": False, "exclude_groups": []}},
         }
 
 collector = FakeCollector()
 
 # Replicate the committed memory calculation from generate_summary
+# Only RUNNING guests count toward committed memory
 for node_name, node_data in collector.nodes.items():
     committed_mem_gb = 0.0
     for vmid in node_data.get("guests", []):
         guest = collector.guests.get(str(vmid), {})
-        committed_mem_gb += guest.get("mem_max_gb", 0)
+        if guest.get("status") == "running":
+            committed_mem_gb += guest.get("mem_max_gb", 0)
     node_data["committed_mem_gb"] = round(committed_mem_gb, 2)
     total_mem_gb = node_data.get("total_mem_gb", 1)
     node_data["mem_overcommit_ratio"] = round(
         committed_mem_gb / total_mem_gb, 2
     ) if total_mem_gb > 0 else 0.0
 
-test("pve1 committed_mem_gb = 56.0 (32+16+8)",
-     abs(collector.nodes["pve1"]["committed_mem_gb"] - 56.0) < 0.01,
+# pve1: guest 100 (running, 32GB) + 101 (running, 16GB) = 48GB. Guest 102 is stopped.
+test("pve1 committed_mem_gb = 48.0 (32+16, stopped guest excluded)",
+     abs(collector.nodes["pve1"]["committed_mem_gb"] - 48.0) < 0.01,
      f"Got: {collector.nodes['pve1']['committed_mem_gb']}")
-test("pve1 overcommit ratio = 0.44 (56/128)",
-     abs(collector.nodes["pve1"]["mem_overcommit_ratio"] - 0.44) < 0.01,
+test("pve1 overcommit ratio = 0.38 (48/128)",
+     abs(collector.nodes["pve1"]["mem_overcommit_ratio"] - 0.38) < 0.01,
      f"Got: {collector.nodes['pve1']['mem_overcommit_ratio']}")
-test("pve2 committed_mem_gb = 48.0",
+# pve2: guest 200 (running, 48GB) only. Guest 201 (stopped, 24GB) excluded.
+test("pve2 committed_mem_gb = 48.0 (stopped guest excluded)",
      abs(collector.nodes["pve2"]["committed_mem_gb"] - 48.0) < 0.01,
      f"Got: {collector.nodes['pve2']['committed_mem_gb']}")
 test("pve2 overcommit ratio = 0.75 (48/64)",
