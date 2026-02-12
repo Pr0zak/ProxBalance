@@ -1,10 +1,11 @@
 import {
   ArrowLeft, CheckCircle, Clock, Info, Play, RefreshCw,
-  Settings, X, XCircle
+  X, XCircle
 } from './Icons.jsx';
 
 import MainSettingsSection from './automation/MainSettingsSection.jsx';
 import DecisionTreeFlowchart from './automation/DecisionTreeFlowchart.jsx';
+import SmartMigrationsSection from './automation/SmartMigrationsSection.jsx';
 import SafetyRulesSection from './automation/SafetyRulesSection.jsx';
 import DistributionBalancingSection from './automation/DistributionBalancingSection.jsx';
 import TimeWindowsSection from './automation/TimeWindowsSection.jsx';
@@ -18,11 +19,7 @@ export default function AutomationPage(props) {
     automigrateLogs,
     collapsedSections,
     config,
-    confirmApplyPreset,
-    confirmDisableDryRun,
-    confirmEnableAutomation,
     confirmRemoveWindow,
-    editingPreset,
     editingWindowIndex,
     fetchAutomationStatus,
     logRefreshTime,
@@ -39,12 +36,8 @@ export default function AutomationPage(props) {
     setAutomigrateLogs,
     setCollapsedSections,
     setConfig,
-    setConfirmApplyPreset,
-    setConfirmDisableDryRun,
-    setConfirmEnableAutomation,
     setConfirmRemoveWindow,
     setCurrentPage,
-    setEditingPreset,
     setEditingWindowIndex,
     setError,
     setLogRefreshTime,
@@ -151,15 +144,6 @@ export default function AutomationPage(props) {
           saveAutomationConfig={saveAutomationConfig}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
-          confirmEnableAutomation={confirmEnableAutomation}
-          setConfirmEnableAutomation={setConfirmEnableAutomation}
-          confirmDisableDryRun={confirmDisableDryRun}
-          setConfirmDisableDryRun={setConfirmDisableDryRun}
-          editingPreset={editingPreset}
-          setEditingPreset={setEditingPreset}
-          confirmApplyPreset={confirmApplyPreset}
-          setConfirmApplyPreset={setConfirmApplyPreset}
-          penaltyConfig={penaltyConfig}
         />
 
         <DecisionTreeFlowchart
@@ -167,9 +151,16 @@ export default function AutomationPage(props) {
           setCollapsedSections={setCollapsedSections}
         />
 
-        <SafetyRulesSection
+        <SmartMigrationsSection
           automationConfig={automationConfig}
           automationStatus={automationStatus}
+          saveAutomationConfig={saveAutomationConfig}
+          collapsedSections={collapsedSections}
+          setCollapsedSections={setCollapsedSections}
+        />
+
+        <SafetyRulesSection
+          automationConfig={automationConfig}
           saveAutomationConfig={saveAutomationConfig}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}

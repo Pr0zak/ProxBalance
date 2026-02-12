@@ -393,11 +393,7 @@ const ProxmoxBalanceManager = () => {
       automigrateLogs={automation.automigrateLogs}
       collapsedSections={ui.collapsedSections}
       config={configHook.config}
-      confirmApplyPreset={automation.confirmApplyPreset}
-      confirmDisableDryRun={automation.confirmDisableDryRun}
-      confirmEnableAutomation={automation.confirmEnableAutomation}
       confirmRemoveWindow={automation.confirmRemoveWindow}
-      editingPreset={automation.editingPreset}
       editingWindowIndex={automation.editingWindowIndex}
       fetchAutomationStatus={automation.fetchAutomationStatus}
       logRefreshTime={automation.logRefreshTime}
@@ -422,12 +418,8 @@ const ProxmoxBalanceManager = () => {
       setAutomigrateLogs={automation.setAutomigrateLogs}
       setCollapsedSections={ui.setCollapsedSections}
       setConfig={configHook.setConfig}
-      setConfirmApplyPreset={automation.setConfirmApplyPreset}
-      setConfirmDisableDryRun={automation.setConfirmDisableDryRun}
-      setConfirmEnableAutomation={automation.setConfirmEnableAutomation}
       setConfirmRemoveWindow={automation.setConfirmRemoveWindow}
       setCurrentPage={ui.setCurrentPage}
-      setEditingPreset={automation.setEditingPreset}
       setEditingWindowIndex={automation.setEditingWindowIndex}
       setError={cluster.setError}
       setLogRefreshTime={automation.setLogRefreshTime}

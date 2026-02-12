@@ -30,6 +30,7 @@ export function useUIState() {
       taggedGuests: true,
       analysisDetails: true,
       mainSettings: false,
+      smartMigrations: true,
       safetyRules: false,
       additionalRules: false,
       automatedMigrations: true,

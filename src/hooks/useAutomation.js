@@ -28,15 +28,9 @@ export function useAutomation(API_BASE, deps = {}) {
       max_node_memory_percent: 85,
       min_free_disk_gb: 20
     },
-    time_windows: [],
-    presets: {
-      conservative: { min_confidence_score: 80, max_migrations_per_run: 1, cooldown_minutes: 120, check_interval_minutes: 30 },
-      balanced: { min_confidence_score: 70, max_migrations_per_run: 3, cooldown_minutes: 60, check_interval_minutes: 15 },
-      aggressive: { min_confidence_score: 60, max_migrations_per_run: 5, cooldown_minutes: 30, check_interval_minutes: 5 }
-    }
+    time_windows: []
   });
   const [savingAutomationConfig, setSavingAutomationConfig] = useState(false);
-  const [editingPreset, setEditingPreset] = useState(null);
   const [testResult, setTestResult] = useState(null);
   const [testingAutomation, setTestingAutomation] = useState(false);
   const [runningAutomation, setRunningAutomation] = useState(false);
@@ -64,7 +58,6 @@ export function useAutomation(API_BASE, deps = {}) {
   const [confirmRemoveWindow, setConfirmRemoveWindow] = useState(null);
   const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
-  const [confirmApplyPreset, setConfirmApplyPreset] = useState(null);
 
   const fetchAutomationStatus = async () => {
     setLoadingAutomationStatus(true);
@@ -233,7 +226,6 @@ export function useAutomation(API_BASE, deps = {}) {
     runHistory, expandedRun, setExpandedRun,
     automationConfig, setAutomationConfig,
     savingAutomationConfig,
-    editingPreset, setEditingPreset,
     testResult, setTestResult,
     testingAutomation,
     runningAutomation,
@@ -249,7 +241,6 @@ export function useAutomation(API_BASE, deps = {}) {
     confirmRemoveWindow, setConfirmRemoveWindow,
     confirmEnableAutomation, setConfirmEnableAutomation,
     confirmDisableDryRun, setConfirmDisableDryRun,
-    confirmApplyPreset, setConfirmApplyPreset,
     fetchAutomationStatus,
     fetchRunHistory,
     fetchAutomationConfig,
