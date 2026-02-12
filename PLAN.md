@@ -1,358 +1,206 @@
-# Performance Trend-Based Migration Refactoring Plan
+# Plan: Memory & Scoring Improvements
 
-## Problem Statement
+## Context
 
-ProxBalance currently makes migration decisions based primarily on **point-in-time snapshots** with some 24h/7d averages. While the scoring system includes trend/spike penalties, the core decision-making is still snapshot-driven. Key issues:
-
-1. **Metrics history is volatile** — `cluster_cache.json` overwrites on every collector run; only RRD summaries are persisted per-guest (168 samples max), and node-level time-series only lives in `score_history.json` (720 entries, only captures score/cpu/mem — no IOWait, no per-guest detail)
-2. **Trend analysis is shallow** — simple linear regression on sparse data, "rising/falling/stable" labels from comparing first/last 20% of week data
-3. **Settings are overwhelming** — 46 penalty config keys, though the UI only exposes ~15. The relationship between settings and migration behavior is opaque
-4. **UI doesn't explain decisions** — recommendation cards show structured reasons, but don't show the historical data that drove the decision or let users see performance trends *in the context of* the migration recommendation
-
-## Design Decisions
-
-- **Metrics retention**: 90 days with tiered compression (~1500 entries/node)
-- **Expert mode**: Hidden toggle at bottom of simplified settings, revealing full 46-value config
-- **Trend evidence display**: Expandable section on recommendation cards (one-line summary visible, click to expand)
-- **Scope**: All 6 phases implemented
+Memory and CPU were historically weighted identically. The previous commit reduced
+memory penalties to ~25-50% of CPU. These 5 improvements build on that by adding
+structural changes to how memory, CPU variance, and IOWait drive migration decisions.
 
 ---
 
-## Phase 1: Persistent Performance Metrics Store
+## Phase 1: Hard Memory Capacity Gate (can-it-fit)
 
-**Goal**: Create a dedicated time-series metrics store that accumulates node and guest performance data, never losing historical context.
+**Problem**: Currently there is no hard check preventing the system from recommending
+a target node that physically cannot fit a guest's memory allocation. It relies on
+predicted memory percentage penalties, which can still allow recommendations where
+the guest won't fit.
 
-### 1a. New Module: `proxbalance/metrics_store.py`
+**What changes**:
 
-**Node Metrics Store** (`node_metrics_history.json`):
-- Append-only with tiered compression:
-  - **Recent** (0-48h): Full resolution — one sample per collector run
-  - **Short-term** (2-14 days): Hourly aggregates (min/max/avg/p95 per metric)
-  - **Long-term** (14-90 days): 6-hour aggregates
-- **Per-node, per-sample**: cpu, memory, iowait, load_avg, guest_count, storage_usage_pct
-- Auto-compresses on write (compact recent→hourly when >48h old, etc.)
-- Atomic writes via temp file + rename
+- **`proxbalance/recommendations.py`** — In the target node loop (line ~499-540),
+  add a capacity check **before** calling `calculate_target_node_score()`:
+  ```python
+  # Hard memory capacity gate: skip targets that can't physically fit this guest
+  guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
+  target_committed_mem_gb = sum(
+      guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
+      for gid in tgt_node.get("guests", [])
+  )
+  target_total_mem_gb = tgt_node.get("total_mem_gb", 1)
+  # Leave 5% headroom for host OS overhead
+  if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+      skip_reasons_per_target.append(f"{tgt_name}: insufficient memory capacity")
+      continue
+  ```
+- This is a **hard gate** — the guest physically can't fit, so no scoring needed.
+- The 5% host OS headroom is conservative and protects against OOM.
 
-**Guest Metrics Store** (`guest_metrics_history.json`):
-- Same tiered compression strategy
-- **Per-guest, per-sample**: cpu, memory, disk_read_bps, disk_write_bps, net_in_bps, net_out_bps, node
-- Tracks which host the guest was on (node field changes = implicit migration tracking)
-- Same 90-day max retention
-
-**Key functions:**
-- `append_node_sample(node_name, metrics)` — Add a raw sample
-- `append_guest_sample(vmid, metrics)` — Add a raw sample
-- `get_node_history(node_name, hours=168)` → List of samples within lookback period
-- `get_guest_history(vmid, hours=168)` → List of samples within lookback period
-- `compress_old_samples()` — Run tiered compression pass
-- `get_data_quality(node_name)` → Dict with total_samples, oldest_sample_age, coverage info
-
-### 1b. Collector Integration
-
-Modify `collector_api.py`:
-- After each collection, call `metrics_store.append_node_sample()` for each online node
-- Call `metrics_store.append_guest_sample()` for each running guest
-- Call `compress_old_samples()` once per collection run
-
-### 1c. Constants
-
-Add to `proxbalance/constants.py`:
-- `NODE_METRICS_FILE = os.path.join(BASE_PATH, 'node_metrics_history.json')`
-- `GUEST_METRICS_FILE = os.path.join(BASE_PATH, 'guest_metrics_history.json')`
-- `METRICS_RETENTION_DAYS = 90`
-- `METRICS_RECENT_HOURS = 48`
-- `METRICS_SHORT_TERM_DAYS = 14`
-
-**Files created:** `proxbalance/metrics_store.py`
-**Files modified:** `collector_api.py`, `proxbalance/constants.py`
+**Files**: `proxbalance/recommendations.py`
+**Risk**: Low — adds a filter before existing scoring, doesn't change scoring math.
 
 ---
 
-## Phase 2: Trend Analysis Engine
+## Phase 2: Track Committed Memory per Node
 
-**Goal**: Replace simple "rising/falling/stable" labels with meaningful statistical trend analysis.
+**Problem**: The system tracks *used* memory (which fluctuates with ballooning) but
+not *committed/allocated* memory (which is the real constraint). A node might show
+60% used memory but have 95% committed — it can't accept more guests.
 
-### 2a. New Module: `proxbalance/trend_analysis.py`
+**What changes**:
 
-**`analyze_node_trends(node_name, lookback_hours=168)`** → Returns:
-- **Trend direction** per metric (cpu/mem/iowait): `sustained_increase`, `sustained_decrease`, `stable`, `volatile`, `cyclical`
-- **Trend magnitude**: rate of change per day (e.g., +2.3% CPU/day)
-- **Trend confidence**: based on R², number of data points, consistency
-- **Baseline**: what's "normal" for this node at this time of day/week (from seasonal patterns)
-- **Anomaly detection**: current load vs baseline (sigma deviation)
-- **Projected threshold crossing**: hours until this node exceeds thresholds if trend continues
-- **Stability score** (0-100): how predictable is this node? (based on coefficient of variation)
+- **`collector_api.py`** — In `_process_single_node()`, calculate and store
+  `committed_mem_gb` as the sum of all guest `mem_max_gb` values on that node.
+  Add to the node data dict returned by the collector.
+  ```python
+  # Calculate committed (allocated) memory across all guests
+  committed_mem_gb = sum(g.get("maxmem", 0) for g in node_guests) / (1024**3)
+  node_data["committed_mem_gb"] = round(committed_mem_gb, 2)
+  node_data["mem_overcommit_ratio"] = round(
+      committed_mem_gb / total_mem_gb, 2
+  ) if total_mem_gb > 0 else 0
+  ```
 
-**`analyze_guest_trends(vmid, lookback_hours=168)`** → Returns:
-- Same per-metric analysis as nodes
-- **Resource growth rate**: is this guest consuming more over time?
-- **Migration impact history**: how did this guest perform before/after previous migrations?
+- **`proxbalance/scoring.py`** — In `calculate_target_node_score()`, add an
+  overcommit penalty when ratio > 1.0 (more committed than physical):
+  ```python
+  overcommit = node.get("mem_overcommit_ratio", 0)
+  if overcommit > 1.2:
+      penalty_breakdown["mem_overcommit"] = 40
+  elif overcommit > 1.0:
+      penalty_breakdown["mem_overcommit"] = 15
+  ```
 
-**`compare_node_stability(node_a, node_b)`** → Which node is more stable/predictable?
+- **`proxbalance/scoring.py`** `DEFAULT_PENALTY_CONFIG` — Add new penalty keys:
+  ```python
+  "mem_overcommit_penalty": 15,       # Penalty when overcommit ratio > 1.0
+  "mem_overcommit_high_penalty": 40,  # Penalty when overcommit ratio > 1.2
+  ```
 
-### 2b. Scoring Integration
-
-Modify `proxbalance/scoring.py`:
-- In `calculate_target_node_score()`: use quantified trend magnitude instead of boolean trend checks
-  - A node trending up by 5%/day gets much more penalty than one at 0.5%/day
-- Add stability bonus: nodes with low volatility get reduced penalties
-- Factor baseline deviation: penalize nodes above their own historical normal, not just above static thresholds
-- New trend-aware penalty calculation replaces flat `cpu_trend_rising_penalty` / `mem_trend_rising_penalty`
-
-**Files created:** `proxbalance/trend_analysis.py`
-**Files modified:** `proxbalance/scoring.py`
-
----
-
-## Phase 3: Simplified Settings
-
-**Goal**: Reduce 46 penalty config keys to 5 user-facing settings with an expert toggle.
-
-### 3a. New Settings Model
-
-Five user-facing settings:
-
-1. **Migration Sensitivity** (slider: Conservative ↔ Balanced ↔ Aggressive)
-   - Conservative: Only migrate for sustained, clear problems. Prefers stability.
-   - Balanced: Migrate when trends show growing problems. Default.
-   - Aggressive: Migrate proactively to maintain optimal balance.
-   - Internally maps to: min_score_improvement, trend weight multiplier, threshold margins
-
-2. **Trend Weight** (slider: 0-100%, default 60%)
-   - How much historical trends matter vs current snapshot
-   - 0% = pure snapshot (legacy behavior), 100% = pure trend-based
-   - Internally maps to: weight_current / weight_24h / weight_7d ratios
-
-3. **Analysis Lookback** (dropdown: 1 day / 3 days / 7 days / 14 days / 30 days — default 7 days)
-   - How much history to consider when analyzing trends
-
-4. **Minimum Confidence** (slider: 50-95%, default 75%)
-   - How confident the system must be before recommending a migration
-
-5. **Protect Running Workloads** (toggle, default ON)
-   - When ON: avoids migrating guests during their detected peak usage periods
-
-### 3b. New Module: `proxbalance/settings_mapper.py`
-
-- `map_simplified_to_penalty_config(settings)` → Converts 5 settings into full 46-value penalty config
-- `detect_legacy_config(config)` → Returns True if old-style penalty_scoring keys exist
-- `migrate_legacy_config(config)` → Auto-maps old config to new simplified settings (best-fit)
-- `get_effective_penalty_config(config)` → Returns the resolved penalty config (from simplified or expert)
-
-### 3c. API Changes
-
-New endpoint in `proxbalance/routes/config.py` or new route file:
-- `GET /api/migration-settings` → Returns simplified settings + effective penalty config
-- `PUT /api/migration-settings` → Saves simplified settings, auto-maps to internal config
-- Existing `GET/PUT /api/penalty-config` remains for backward compatibility + expert mode
-
-### 3d. Config Migration
-
-On first load after update:
-- If `config.json` has old-style `penalty_scoring` but no `migration_settings`, auto-create `migration_settings` from best-fit mapping
-- Preserve old values as expert overrides
-
-**Files created:** `proxbalance/settings_mapper.py`
-**Files modified:** `proxbalance/routes/penalty.py` (or `config.py`), `proxbalance/config_manager.py`
+**Files**: `collector_api.py`, `proxbalance/scoring.py`
+**Risk**: Medium — changes collector output format. Older cached data won't have the
+new fields, so all reads must use `.get()` with safe defaults (already the pattern).
 
 ---
 
-## Phase 4: Trend-Aware Recommendation Engine
+## Phase 3: CPU Variance-Weighted Scoring
 
-**Goal**: Make the recommendation engine fundamentally trend-driven.
+**Problem**: The stability bonus is currently capped at -10 points, which barely
+affects a total score that can reach 300+. A node with wild CPU swings gets almost
+the same treatment as a steady node.
 
-### 4a. Modify Recommendation Flow in `proxbalance/recommendations.py`
+**What changes**:
 
-**New overload detection** (replaces pure threshold checks):
-- `overloaded`: sustained trend above threshold AND current value confirms
-- `trending_toward_overload`: projection shows threshold crossing within lookback period
-- `stable_but_hot`: consistently high but not trending worse
-- Each state → different urgency: high / medium / low
+- **`proxbalance/scoring.py`** — In `calculate_target_node_score()`, replace the
+  flat stability bonus (`-10/-5/0`) with a **multiplicative CPU penalty factor**:
+  ```python
+  # Stability factor: stable nodes get CPU penalties reduced, volatile nodes inflated
+  # stability 0-40 (volatile): multiply CPU penalties by 1.3
+  # stability 40-60 (moderate): no change (1.0)
+  # stability 60-80 (good): multiply CPU penalties by 0.85
+  # stability 80-100 (excellent): multiply CPU penalties by 0.7
+  if node_stability >= 80:
+      cpu_stability_factor = 0.7
+  elif node_stability >= 60:
+      cpu_stability_factor = 0.85
+  elif node_stability < 40:
+      cpu_stability_factor = 1.3
+  else:
+      cpu_stability_factor = 1.0
 
-**New guest selection** (in `select_guests_to_migrate()`):
-- Prefer migrating guests whose resource usage is *growing* on the source node
-- Deprioritize guests that are *stable* (not contributing to the upward trend)
-- Factor behavioral profile (bursty guests may self-resolve)
+  # Apply to all CPU-related penalties
+  for cpu_key in ["current_cpu", "sustained_cpu", "cpu_trend", "cpu_spikes",
+                   "predicted_cpu"]:
+      if cpu_key in penalty_breakdown:
+          penalty_breakdown[cpu_key] = int(
+              round(penalty_breakdown[cpu_key] * cpu_stability_factor)
+          )
+  ```
+  This means a volatile node (stability < 40) has its CPU penalties inflated by 30%,
+  while a rock-steady node gets 30% reduction. Much more impactful than -10 flat.
 
-**New target selection**:
-- Prefer targets with stable, predictable performance (high stability score)
-- Prefer targets where trends show flat or decreasing usage
-- Avoid targets trending up, even if they currently have headroom
-- Use projected state at lookback horizon, not just current
+- Remove the old `penalty_breakdown["stability_bonus"]` field.
+- Store `cpu_stability_factor` in score details for UI transparency.
 
-### 4b. Decision Evidence Package
-
-Each recommendation includes a new `trend_evidence` object:
-```json
-{
-  "source_node_trend": {
-    "cpu_trend": "+3.2%/day",
-    "mem_trend": "+1.1%/day",
-    "stability_score": 35,
-    "above_baseline": true,
-    "baseline_deviation_sigma": 2.4
-  },
-  "target_node_trend": {
-    "cpu_trend": "-0.5%/day",
-    "mem_trend": "+0.2%/day",
-    "stability_score": 82,
-    "above_baseline": false
-  },
-  "guest_trend": {
-    "cpu_growth_rate": "+1.5%/day",
-    "behavior": "growing",
-    "peak_hours": [9, 10, 11, 14, 15],
-    "previous_migrations": 2,
-    "last_outcome": "improved"
-  },
-  "decision_factors": [
-    {"factor": "Source node CPU trending up +3.2%/day for 7 days", "weight": "high", "type": "problem"},
-    {"factor": "Guest CPU growing +1.5%/day, contributing to source overload", "weight": "high", "type": "problem"},
-    {"factor": "Target node stable (score 82/100), trending slightly down", "weight": "high", "type": "positive"},
-    {"factor": "Guest migrated successfully 2 times before", "weight": "medium", "type": "positive"}
-  ],
-  "data_quality": {
-    "node_history_days": 14,
-    "guest_history_days": 7,
-    "confidence_note": "High data availability"
-  }
-}
-```
-
-### 4c. Decision Explanation
-
-Add `decision_explanation` field — a human-readable 1-2 sentence summary:
-> "Source node 'pve1' CPU has been rising +3.2%/day over the last 7 days and is now at 72%. VM 'web-server' (growing +1.5%/day) is a key contributor. Target node 'pve3' is stable at 28% CPU with strong headroom."
-
-**Files modified:** `proxbalance/recommendations.py`, `proxbalance/recommendation_analysis.py`
+**Files**: `proxbalance/scoring.py`
+**Risk**: Low — changes how stability modifies penalties but stays within existing
+penalty framework. More volatile nodes become worse targets (correct behavior).
 
 ---
 
-## Phase 5: UI Updates
+## Phase 4: IOWait as Migration Trigger
 
-**Goal**: Show users what drives migration decisions with simple, progressive disclosure.
+**Problem**: IOWait is only a penalty — it makes a node score worse, but it never
+*triggers* a migration. A node at 40% IOWait (severe storage contention) won't get
+guests moved away unless its CPU or memory also cross thresholds. IOWait directly
+indicates "this node's workloads are suffering from I/O starvation."
 
-### 5a. Recommendation Card Enhancement
+**What changes**:
 
-Modify `src/components/dashboard/recommendations/RecommendationCard.jsx`:
+- **`proxbalance/recommendations.py`** — In `select_guests_to_migrate()`, add
+  IOWait as a recognized overload reason. For IOWait overload, select guests by
+  disk I/O contribution (highest `disk_read_bps + disk_write_bps` first):
+  ```python
+  if overload_reason == "iowait":
+      # Target: reduce I/O pressure by migrating I/O-heavy guests
+      iowait_reduction_needed = max(0, current_iowait - (iowait_threshold - 5))
+      # Efficiency scored by disk I/O impact rather than CPU/memory
+  ```
 
-**Always visible (on card):**
-- Source → Target with small trend arrows (↑↗→↘↓) next to node names
-- One-line decision explanation (from `decision_explanation`)
-- Confidence badge (existing)
+- **`proxbalance/recommendations.py`** — In `generate_recommendations()`, before
+  the per-guest loop, identify nodes with sustained high IOWait and flag their
+  guests for migration consideration:
+  ```python
+  # Identify IOWait-stressed nodes (separate from CPU/memory overload)
+  iowait_stressed_nodes = set()
+  for node_name, node in nodes.items():
+      if node.get("status") != "online" or node_name in maintenance_nodes:
+          continue
+      node_iowait = node.get("metrics", {}).get("current_iowait", 0)
+      avg_iowait = node.get("metrics", {}).get("avg_iowait", 0)
+      # Only trigger for sustained IOWait (current > threshold AND avg confirms)
+      if node_iowait > iowait_threshold and avg_iowait > (iowait_threshold * 0.7):
+          iowait_stressed_nodes.add(node_name)
+  ```
 
-**Expandable "Why This Migration?" section (collapsed by default):**
-- Mini trend sparklines: source vs target CPU/memory over lookback period
-- Decision factors list with high/medium/low weight badges
-- Guest behavior summary (growing, bursty, stable + previous migration outcomes)
-- Data quality note: "Based on 14 days of node history"
+- **Guest efficiency for IOWait**: New efficiency heuristic that uses
+  `disk_read_bps + disk_write_bps` as the "impact" metric (instead of CPU/memory
+  impact used for other overload reasons). Moving the highest-I/O guest gives the
+  most IOWait relief.
 
-### 5b. Node Status Card Enhancement
+- IOWait migrations still go through the same `min_score_improvement` gate, so
+  they won't over-recommend. They just make IOWait-heavy nodes *eligible* for
+  migration even if CPU/memory are fine.
 
-Modify `src/components/dashboard/NodeStatusSection.jsx`:
-- Add trend arrows next to CPU/Memory/IOWait values (↑ orange, → gray, ↓ green, ↑↑ red)
-- Tooltip on trend arrow: "CPU: +2.1%/day over 7 days, projected to reach 80% in 5 days"
-- Stability score badge (small pill: "Stable" / "Volatile" / "Trending")
-
-### 5c. Enhanced Insights Drawer Tab
-
-Replace/enhance Patterns tab in `src/components/dashboard/recommendations/insights/`:
-- **Trends Tab**: Per-node trend summary, cluster trend direction, data quality overview, top movers
-- Show which nodes are improving/degrading over time
-
-### 5d. Simplified Settings UI
-
-Rewrite `src/components/automation/PenaltyScoringSection.jsx`:
-
-**Main panel (always visible):**
-- Migration Sensitivity slider (labeled: Conservative / Balanced / Aggressive)
-- Trend Weight slider (with brief tooltip explanation)
-- Analysis Lookback dropdown
-- Clear explanation text under each control
-
-**"Advanced" expandable section:**
-- Minimum Confidence slider
-- Protect Running Workloads toggle
-
-**"Expert Mode" toggle at bottom (collapsed by default):**
-- Reveals full 46-value penalty config as before
-- Warning text: "These values are automatically managed by the settings above. Manual changes override automatic mapping."
-
-### 5e. New API Endpoints for UI
-
-- `GET /api/trends/nodes` → All node trends summary (for insights drawer)
-- `GET /api/trends/node/<name>` → Single node trend detail (for tooltip popups)
-- `GET /api/trends/guest/<vmid>` → Guest trend detail (for recommendation cards)
-
-**Files modified:** `RecommendationCard.jsx`, `NodeStatusSection.jsx`, `PenaltyScoringSection.jsx`, insights drawer components, `src/api/client.js`
-**Files created:** New route file or extend existing routes for `/api/trends/*`
+**Files**: `proxbalance/recommendations.py`
+**Risk**: Medium — introduces a new migration trigger. Gated behind existing score
+improvement check. Requires `avg_iowait` confirmation to avoid reacting to transient
+spikes.
 
 ---
 
-## Phase 6: Migration Outcome Feedback Loop
+## Phase 5: Wire Together + Test
 
-**Goal**: Use historical outcomes to improve future recommendation confidence.
+- Add new `mem_overcommit` penalty keys to `DEFAULT_PENALTY_CONFIG` and
+  `settings_mapper.py` (not sensitive to sensitivity scaling — it's a hard fact)
+- Update penalty presets in `routes/penalty.py`
+- Frontend `PenaltyScoringSection.jsx` Expert Mode already renders all penalty keys
+  dynamically, so new keys appear automatically
+- Verify with sample scenarios:
+  - Node at 90% committed / 60% used → rejected as target (Phase 1)
+  - Node with overcommit ratio 1.3 → gets overcommit penalty (Phase 2)
+  - Volatile node (CV > 35%) → CPU penalties inflated 30% (Phase 3)
+  - Node at 35% IOWait sustained → guests selected for migration (Phase 4)
+- Build frontend, commit, push
 
-### 6a. Enhanced Outcome Tracking
-
-Modify `proxbalance/outcomes.py`:
-- Track post-migration metrics at 1-hour and 24-hour marks (in addition to 5-minute)
-- Store the `trend_evidence` that was used when the migration was recommended
-- Increase `MAX_OUTCOME_ENTRIES` to 500
-- Add `calculate_outcome_accuracy()` that compares predicted improvement vs actual at 1h/24h
-
-### 6b. Outcome-Informed Confidence
-
-Modify `proxbalance/recommendation_analysis.py`:
-- In `calculate_confidence()`: add new factor (10-15% weight) for historical outcome data
-- Look up: has this guest been migrated before? What were the outcomes?
-- Boost confidence if past migrations succeeded; reduce if they failed
-- Add to `trend_evidence.guest_trend`: `previous_migrations`, `success_rate`, `last_outcome`
-
-### 6c. UI: Outcome Badge on Cards
-
-On recommendation cards, if the guest has migration history:
-- Small badge: "Migrated 3x, 2 successful" with color coding
-- In expanded section: brief outcome history timeline
-
-**Files modified:** `proxbalance/outcomes.py`, `proxbalance/recommendation_analysis.py`, `RecommendationCard.jsx`
+**Files**: All files from Phases 1-4, plus `proxbalance/settings_mapper.py`,
+`proxbalance/routes/penalty.py`
 
 ---
 
-## Implementation Order & Dependencies
+## Execution Order
 
-```
-Phase 1 (Metrics Store)
-    ↓
-Phase 2 (Trend Analysis) ← depends on Phase 1 data
-    ↓
-Phase 3 (Simplified Settings) ← independent, can parallel with Phase 2
-    ↓
-Phase 4 (Trend-Aware Recommendations) ← depends on Phase 2
-    ↓
-Phase 5 (UI Updates) ← depends on Phases 3 & 4
-    ↓
-Phase 6 (Outcome Feedback) ← depends on Phase 4
-```
-
-## File Summary
-
-| Action | File |
-|--------|------|
-| **Create** | `proxbalance/metrics_store.py` |
-| **Create** | `proxbalance/trend_analysis.py` |
-| **Create** | `proxbalance/settings_mapper.py` |
-| **Modify** | `proxbalance/constants.py` — new file paths and retention constants |
-| **Modify** | `collector_api.py` — append to metrics store after collection |
-| **Modify** | `proxbalance/scoring.py` — trend-magnitude penalties, stability bonus |
-| **Modify** | `proxbalance/recommendations.py` — trend-aware overload detection, guest/target selection |
-| **Modify** | `proxbalance/recommendation_analysis.py` — outcome-informed confidence |
-| **Modify** | `proxbalance/outcomes.py` — multi-window tracking, increased retention |
-| **Modify** | `proxbalance/routes/penalty.py` — new migration-settings endpoints |
-| **Modify** | `proxbalance/config_manager.py` — migration settings support |
-| **Modify** | `src/components/dashboard/recommendations/RecommendationCard.jsx` — trend evidence section |
-| **Modify** | `src/components/dashboard/NodeStatusSection.jsx` — trend arrows, tooltips |
-| **Modify** | `src/components/automation/PenaltyScoringSection.jsx` — simplified settings UI |
-| **Modify** | `src/components/dashboard/recommendations/insights/*` — enhanced trends tab |
-| **Modify** | `src/api/client.js` — new API calls for trends and migration-settings |
-| **Create** | New route for `/api/trends/*` endpoints (or add to existing routes) |
+1. **Phase 1** (hard capacity gate) — Independent, low risk, immediate value
+2. **Phase 3** (CPU variance) — Independent, low risk, improves scoring quality
+3. **Phase 2** (committed memory tracking) — Requires collector change, medium risk
+4. **Phase 4** (IOWait trigger) — Most impactful change, depends on good scoring
+5. **Phase 5** (wire together) — Integration and verification
