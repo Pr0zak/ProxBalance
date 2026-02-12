@@ -821,20 +821,19 @@ def guest_migration_options(vmid):
                 target_options.append(entry)
                 continue
 
-        # Hard memory capacity gate: reject if guest can't physically fit
-        # Only count RUNNING guests — stopped guests don't consume RAM.
+        # Hard memory capacity gate: reject if guest can't physically fit.
+        # Use actual node memory usage (mem_percent) rather than summing
+        # guest committed memory (mem_max_gb). This correctly handles
+        # environments with memory ballooning / overcommitment where
+        # VMs are allocated more RAM than they actually use.
         guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
         if guest_mem_max_gb > 0 and node_name != src_node_name:
-            target_committed_mem_gb = sum(
-                guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
-                for gid in node.get("guests", [])
-                if guests.get(str(gid), guests.get(gid, {})).get("status") == "running"
-            )
             target_total_mem_gb = node.get("total_mem_gb", 1)
-            if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+            target_used_mem_gb = (node.get("mem_percent", 0) / 100.0) * target_total_mem_gb
+            if (target_used_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
                 entry.update({
                     "score": 999999, "suitability_rating": 0, "suitable": False,
-                    "reason": f"Insufficient memory ({target_committed_mem_gb:.0f}+{guest_mem_max_gb:.0f}GB > {target_total_mem_gb:.0f}GB)",
+                    "reason": f"Insufficient memory ({target_used_mem_gb:.0f}+{guest_mem_max_gb:.0f}GB > {target_total_mem_gb:.0f}GB)",
                     "disqualified": True,
                 })
                 target_options.append(entry)

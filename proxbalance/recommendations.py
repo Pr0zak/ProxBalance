@@ -568,26 +568,27 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         continue
 
                     # Hard memory capacity gate: skip targets that can't physically
-                    # fit this guest's allocated memory (committed, not just used).
-                    # Only count RUNNING guests — stopped guests don't consume RAM.
+                    # fit this guest's allocated memory.
+                    # Use actual node memory usage (mem_percent) rather than summing
+                    # guest committed memory (mem_max_gb). This correctly handles
+                    # environments with memory ballooning / overcommitment where
+                    # VMs are allocated more RAM than they actually use.
                     guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
                     if guest_mem_max_gb > 0:
-                        # Sum committed memory of running guests on the target
-                        target_committed_mem_gb = sum(
-                            guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
-                            for gid in tgt_node.get("guests", [])
-                            if guests.get(str(gid), guests.get(gid, {})).get("status") == "running"
-                        )
+                        target_total_mem_gb = tgt_node.get("total_mem_gb", 1)
+                        # Use actual memory usage as reported by Proxmox
+                        target_used_mem_gb = (tgt_node.get("mem_percent", 0) / 100.0) * target_total_mem_gb
                         # Also account for guests already pending migration to this target
+                        # (not yet reflected in actual node memory usage)
+                        pending_mem_gb = 0.0
                         if tgt_name in pending_target_guests:
-                            target_committed_mem_gb += sum(
+                            pending_mem_gb = sum(
                                 pg.get("mem_max_gb", 0)
                                 for pg in pending_target_guests[tgt_name]
                             )
-                        target_total_mem_gb = tgt_node.get("total_mem_gb", 1)
                         # Leave 5% headroom for host OS overhead
-                        if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
-                            skip_reasons_per_target.append(f"{tgt_name}: insufficient memory capacity ({target_committed_mem_gb:.1f}+{guest_mem_max_gb:.1f} > {target_total_mem_gb:.1f}GB)")
+                        if (target_used_mem_gb + pending_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+                            skip_reasons_per_target.append(f"{tgt_name}: insufficient memory capacity ({target_used_mem_gb:.1f}+{guest_mem_max_gb:.1f} > {target_total_mem_gb:.1f}GB)")
                             continue
 
                     # Check storage compatibility (skip target if storage is incompatible)
