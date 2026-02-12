@@ -4721,7 +4721,6 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     setShowPoweredOffGuests,
     clusterMapViewMode,
     setClusterMapViewMode,
-    recommendations,
     maintenanceNodes,
     setSelectedNode,
     setSelectedGuestDetails,
@@ -4795,16 +4794,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       },
       /* @__PURE__ */ React.createElement(Globe, { size: 14 }),
       /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline ml-1" }, "Network")
-    )))), !collapsedSections.clusterMap && /* @__PURE__ */ React.createElement("div", { className: "relative", style: { minHeight: "400px" } }, recommendations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement(MoveRight, { size: 14, className: "text-blue-600 dark:text-blue-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-medium text-blue-700 dark:text-blue-300" }, "Proposed Migration Flows"), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-blue-500 dark:text-blue-400" }, "(", recommendations.length, " migration", recommendations.length !== 1 ? "s" : "", ")")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, (() => {
-      let flows = {};
-      return recommendations.forEach((rec) => {
-        let flowKey = `${rec.source_node}\u2192${rec.target_node}`;
-        flows[flowKey] || (flows[flowKey] = { source: rec.source_node, target: rec.target_node, guests: [], totalImprovement: 0 }), flows[flowKey].guests.push({ vmid: rec.vmid, name: rec.name, type: rec.type }), flows[flowKey].totalImprovement += rec.score_improvement || 0;
-      }), Object.values(flows).map((flow, idx) => {
-        let confColor = flow.totalImprovement > 40 ? "bg-green-500" : flow.totalImprovement > 20 ? "bg-yellow-500" : "bg-gray-400";
-        return /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex items-center gap-1.5 px-2 py-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-[11px] group relative", title: flow.guests.map((g) => `${g.type} ${g.vmid} (${g.name})`).join(", ") }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-700 dark:text-gray-300" }, flow.source), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-0.5" }, /* @__PURE__ */ React.createElement("div", { className: `w-8 h-0.5 ${confColor} rounded` }), /* @__PURE__ */ React.createElement(ArrowRight, { size: 10, className: "text-gray-500 dark:text-gray-400 -ml-0.5" })), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-700 dark:text-gray-300" }, flow.target), /* @__PURE__ */ React.createElement("span", { className: "px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9px] font-medium" }, flow.guests.length, "\xD7"), /* @__PURE__ */ React.createElement("div", { className: "hidden group-hover:block absolute top-full left-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[180px]" }, flow.guests.map((g, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "text-[10px] text-gray-600 dark:text-gray-400 py-0.5" }, "[", g.type, " ", g.vmid, "] ", g.name)), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-green-600 dark:text-green-400 mt-1 pt-1 border-t border-gray-200 dark:border-gray-700" }, "Total improvement: +", flow.totalImprovement.toFixed(0), " pts")));
-      });
-    })())), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8" }, Object.values(data.nodes).map((node) => {
+    )))), !collapsedSections.clusterMap && /* @__PURE__ */ React.createElement("div", { className: "relative", style: { minHeight: "400px" } }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8" }, Object.values(data.nodes).map((node) => {
       let allNodeGuests = Object.values(data.guests || {}).filter((g) => g.node === node.name), poweredOffCount = allNodeGuests.filter((g) => g.status !== "running").length, nodeGuests = showPoweredOffGuests ? allNodeGuests : allNodeGuests.filter((g) => g.status === "running"), maxResources = Math.max(...Object.values(data.guests || {}).filter(
         (g) => showPoweredOffGuests || g.status === "running"
       ).map((g) => {
@@ -6342,7 +6332,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         setShowPoweredOffGuests,
         clusterMapViewMode,
         setClusterMapViewMode,
-        recommendations,
         maintenanceNodes,
         setSelectedNode,
         setSelectedGuestDetails,
