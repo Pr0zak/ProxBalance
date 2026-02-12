@@ -19,6 +19,9 @@ penalty_bp = Blueprint("penalty", __name__, url_prefix=None)
 
 
 # Scoring profile presets — map high-level intent to concrete penalty values
+# Memory penalties are kept deliberately low across all presets because
+# Proxmox VM/CT memory allocations are mostly static.  CPU is the primary
+# fluctuating resource that drives meaningful migration decisions.
 SCORING_PRESETS = {
     "conservative": {
         "label": "Conservative",
@@ -28,9 +31,9 @@ SCORING_PRESETS = {
             "cpu_high_penalty": 15,
             "cpu_very_high_penalty": 40,
             "cpu_extreme_penalty": 80,
-            "mem_high_penalty": 15,
-            "mem_very_high_penalty": 40,
-            "mem_extreme_penalty": 80,
+            "mem_high_penalty": 6,
+            "mem_very_high_penalty": 15,
+            "mem_extreme_penalty": 40,
             "min_score_improvement": 25,
             "weight_current": 0.4,
             "weight_24h": 0.35,
@@ -50,9 +53,9 @@ SCORING_PRESETS = {
             "cpu_high_penalty": 30,
             "cpu_very_high_penalty": 65,
             "cpu_extreme_penalty": 130,
-            "mem_high_penalty": 30,
-            "mem_very_high_penalty": 65,
-            "mem_extreme_penalty": 130,
+            "mem_high_penalty": 10,
+            "mem_very_high_penalty": 25,
+            "mem_extreme_penalty": 60,
             "min_score_improvement": 8,
             "weight_current": 0.6,
             "weight_24h": 0.3,

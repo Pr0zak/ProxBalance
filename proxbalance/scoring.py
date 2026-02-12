@@ -40,20 +40,23 @@ def _get_trend_analysis():
 
 DEFAULT_PENALTY_CONFIG = {
     # Current load penalties (immediate state)
+    # CPU is the primary resource that fluctuates — penalize heavily.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) — only
+    # penalize when approaching host capacity or exceeding thresholds.
     "cpu_high_penalty": 20,           # Penalty when CPU > threshold
     "cpu_very_high_penalty": 50,      # Penalty when CPU > threshold+10
     "cpu_extreme_penalty": 100,       # Penalty when CPU > threshold+20
-    "mem_high_penalty": 20,           # Penalty when Memory > threshold
-    "mem_very_high_penalty": 50,      # Penalty when Memory > threshold+10
-    "mem_extreme_penalty": 100,       # Penalty when Memory > threshold+20
+    "mem_high_penalty": 8,            # Penalty when Memory > threshold
+    "mem_very_high_penalty": 20,      # Penalty when Memory > threshold+10
+    "mem_extreme_penalty": 50,        # Penalty when Memory > threshold+20
 
     # Sustained load penalties (7-day averages)
     "cpu_sustained_high": 40,         # Penalty when 7d avg CPU > 70%
     "cpu_sustained_very_high": 80,    # Penalty when 7d avg CPU > 80%
     "cpu_sustained_critical": 150,    # Penalty when 7d avg CPU > 90%
-    "mem_sustained_high": 40,         # Penalty when 7d avg Memory > 70%
-    "mem_sustained_very_high": 80,    # Penalty when 7d avg Memory > 80%
-    "mem_sustained_critical": 150,    # Penalty when 7d avg Memory > 90%
+    "mem_sustained_high": 10,         # Penalty when 7d avg Memory > 70%
+    "mem_sustained_very_high": 25,    # Penalty when 7d avg Memory > 80%
+    "mem_sustained_critical": 60,     # Penalty when 7d avg Memory > 90%
 
     # IOWait penalties
     "iowait_high_penalty": 20,        # Penalty when immediate IOWait > 10%
@@ -65,25 +68,25 @@ DEFAULT_PENALTY_CONFIG = {
 
     # Trend penalties
     "cpu_trend_rising_penalty": 15,   # Penalty for rising CPU trend
-    "mem_trend_rising_penalty": 15,   # Penalty for rising Memory trend
+    "mem_trend_rising_penalty": 5,    # Penalty for rising Memory trend (low — mem is static)
 
     # Spike penalties (max values in week)
     "cpu_spike_moderate": 5,          # Penalty when max CPU > 70%
     "cpu_spike_high": 10,             # Penalty when max CPU > 80%
     "cpu_spike_very_high": 20,        # Penalty when max CPU > 90%
     "cpu_spike_extreme": 30,          # Penalty when max CPU > 95%
-    "mem_spike_moderate": 5,          # Penalty when max Memory > 75%
-    "mem_spike_high": 10,             # Penalty when max Memory > 85%
-    "mem_spike_very_high": 20,        # Penalty when max Memory > 90%
-    "mem_spike_extreme": 30,          # Penalty when max Memory > 95%
+    "mem_spike_moderate": 2,          # Penalty when max Memory > 85%
+    "mem_spike_high": 5,              # Penalty when max Memory > 90%
+    "mem_spike_very_high": 10,        # Penalty when max Memory > 95%
+    "mem_spike_extreme": 20,          # Penalty when max Memory > 98%
 
     # Predicted post-migration penalties
     "predicted_cpu_over_penalty": 25,        # Penalty when predicted CPU > threshold
     "predicted_cpu_high_penalty": 50,        # Penalty when predicted CPU > threshold+10
     "predicted_cpu_extreme_penalty": 100,    # Penalty when predicted CPU > threshold+20
-    "predicted_mem_over_penalty": 25,        # Penalty when predicted Memory > threshold
-    "predicted_mem_high_penalty": 50,        # Penalty when predicted Memory > threshold+10
-    "predicted_mem_extreme_penalty": 100,    # Penalty when predicted Memory > threshold+20
+    "predicted_mem_over_penalty": 10,        # Penalty when predicted Memory > threshold
+    "predicted_mem_high_penalty": 25,        # Penalty when predicted Memory > threshold+10
+    "predicted_mem_extreme_penalty": 50,     # Penalty when predicted Memory > threshold+20
 
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
@@ -366,11 +369,14 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
         storage_pressure = sum(storage_usages) / len(storage_usages) if storage_usages else 0
 
     # Weighted health score
-    # CPU: 30%, Memory: 30%, IOWait: 20%, Load: 10%, Storage: 10%
+    # CPU dominates because it fluctuates with workload.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) so it
+    # matters mainly for capacity (can-it-fit), not for migration triggers.
+    # CPU: 40%, Memory: 15%, IOWait: 25%, Load: 10%, Storage: 10%
     health_score = (
-        cpu * 0.30 +
-        mem * 0.30 +
-        iowait * 0.20 +
+        cpu * 0.40 +
+        mem * 0.15 +
+        iowait * 0.25 +
         load_per_core * 0.10 +
         storage_pressure * 0.10
     )
@@ -565,12 +571,12 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif long_cpu > 70:
             penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_high", 40)
 
-        if long_mem > 90:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 150)
+        if long_mem > 95:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 60)
+        elif long_mem > 90:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 25)
         elif long_mem > 80:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 80)
-        elif long_mem > 70:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 40)
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 10)
 
     # IOWait penalty - penalize high disk wait times (current always applies)
     if immediate_iowait > 30:
@@ -652,13 +658,13 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif max_cpu_week > 70:
             penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_moderate", 5)
 
-        if max_mem_week > 95:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 30)
+        if max_mem_week > 98:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 20)
+        elif max_mem_week > 95:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 10)
         elif max_mem_week > 90:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 20)
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 5)
         elif max_mem_week > 85:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 10)
-        elif max_mem_week > 75:
             penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
@@ -698,18 +704,21 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     health_score = calculate_node_health_score(target_node, metrics, penalty_config=penalty_config)
 
     # Predicted health after migration
+    # CPU-heavy weighting — memory is static, CPU drives actual migration value
     predicted_health = (
-        predicted["cpu"] * 0.30 +
-        predicted["mem"] * 0.30 +
-        predicted["iowait"] * 0.20 +
-        current_cpu * 0.10 +  # Factor in current state
-        current_mem * 0.10
+        predicted["cpu"] * 0.40 +
+        predicted["mem"] * 0.15 +
+        predicted["iowait"] * 0.25 +
+        current_cpu * 0.15 +  # Factor in current CPU state
+        current_mem * 0.05
     )
 
     # Headroom score (how much capacity remains) - prefer nodes with more headroom
+    # CPU headroom weighted higher — memory capacity is a hard constraint checked
+    # separately; CPU headroom indicates ability to absorb workload fluctuations
     cpu_headroom = 100 - predicted["cpu"]
     mem_headroom = 100 - predicted["mem"]
-    headroom_score = 100 - (cpu_headroom * 0.5 + mem_headroom * 0.5)  # Lower = more headroom
+    headroom_score = 100 - (cpu_headroom * 0.65 + mem_headroom * 0.35)  # Lower = more headroom
 
     # Storage availability score
     storage_score = 0

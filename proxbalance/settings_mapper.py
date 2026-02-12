@@ -93,23 +93,39 @@ def map_simplified_to_penalty_config(settings: Dict[str, Any]) -> Dict[str, Any]
     cfg = dict(DEFAULT_PENALTY_CONFIG)
 
     # --- Scale penalty values by sensitivity ---
-    _penalty_keys = [
+    # CPU and IOWait penalties scale with the sensitivity profile.
+    # Memory penalties are already low by default (memory is static in Proxmox)
+    # and scale with sensitivity but are NOT amplified further.
+    _cpu_penalty_keys = [
         "cpu_high_penalty", "cpu_very_high_penalty", "cpu_extreme_penalty",
-        "mem_high_penalty", "mem_very_high_penalty", "mem_extreme_penalty",
         "cpu_sustained_high", "cpu_sustained_very_high", "cpu_sustained_critical",
-        "mem_sustained_high", "mem_sustained_very_high", "mem_sustained_critical",
+        "cpu_trend_rising_penalty",
+        "cpu_spike_moderate", "cpu_spike_high", "cpu_spike_very_high", "cpu_spike_extreme",
+        "predicted_cpu_over_penalty", "predicted_cpu_high_penalty", "predicted_cpu_extreme_penalty",
+    ]
+    _iowait_penalty_keys = [
         "iowait_high_penalty", "iowait_very_high_penalty", "iowait_extreme_penalty",
         "iowait_sustained_elevated", "iowait_sustained_high", "iowait_sustained_critical",
-        "cpu_trend_rising_penalty", "mem_trend_rising_penalty",
-        "cpu_spike_moderate", "cpu_spike_high", "cpu_spike_very_high", "cpu_spike_extreme",
+    ]
+    _mem_penalty_keys = [
+        "mem_high_penalty", "mem_very_high_penalty", "mem_extreme_penalty",
+        "mem_sustained_high", "mem_sustained_very_high", "mem_sustained_critical",
+        "mem_trend_rising_penalty",
         "mem_spike_moderate", "mem_spike_high", "mem_spike_very_high", "mem_spike_extreme",
-        "predicted_cpu_over_penalty", "predicted_cpu_high_penalty", "predicted_cpu_extreme_penalty",
         "predicted_mem_over_penalty", "predicted_mem_high_penalty", "predicted_mem_extreme_penalty",
     ]
 
-    for key in _penalty_keys:
+    for key in _cpu_penalty_keys + _iowait_penalty_keys:
         default_val = DEFAULT_PENALTY_CONFIG.get(key, 0)
         cfg[key] = int(round(default_val * scale))
+
+    # Memory scales more gently — already reduced defaults, only mild
+    # sensitivity scaling (sqrt dampening so aggressive doesn't over-penalize)
+    import math
+    mem_scale = 1.0 + (scale - 1.0) * 0.5  # e.g. 0.75→0.875, 1.0→1.0, 1.3→1.15
+    for key in _mem_penalty_keys:
+        default_val = DEFAULT_PENALTY_CONFIG.get(key, 0)
+        cfg[key] = int(round(default_val * mem_scale))
 
     # --- Score improvement threshold ---
     cfg["min_score_improvement"] = profile["min_score_improvement"]

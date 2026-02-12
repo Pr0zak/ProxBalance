@@ -307,10 +307,12 @@ def analyze_node_trends(
     mem_sigma = _anomaly_sigma(mem_trend["current_avg"], mem_baseline)
 
     # Overall stability (weighted average)
+    # CPU dominates stability — memory is static in Proxmox (fixed VM/CT
+    # allocations), so CPU volatility is the real indicator of node health.
     overall_stability = int(
-        cpu_trend["stability_score"] * 0.4
-        + mem_trend["stability_score"] * 0.4
-        + iowait_trend["stability_score"] * 0.2
+        cpu_trend["stability_score"] * 0.55
+        + mem_trend["stability_score"] * 0.15
+        + iowait_trend["stability_score"] * 0.30
     )
 
     # Overall direction summary
