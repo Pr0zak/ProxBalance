@@ -58,7 +58,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                 type="number"
                 min="0"
                 max="1440"
-                value={automationConfig.rules?.cooldown_minutes || 30}
+                value={automationConfig.rules?.cooldown_minutes ?? 30}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, cooldown_minutes: parseInt(e.target.value) } })}
                 className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />

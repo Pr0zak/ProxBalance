@@ -698,6 +698,8 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
     """
     Check if a VM was recently migrated and is still in cooldown period.
 
+    Only considers actual completed migrations (skips dry-run and failed).
+
     Args:
         vmid: VM ID to check
         cooldown_minutes: Cooldown period in minutes
@@ -715,10 +717,29 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int) -> bool:
     now = datetime.utcnow()
     cooldown_threshold = now - timedelta(minutes=cooldown_minutes)
 
+    # Check for cooldown reset timestamp (set when cooldown settings change)
+    cooldown_reset_at = history.get('state', {}).get('cooldown_reset_at')
+    if cooldown_reset_at:
+        try:
+            reset_time = datetime.fromisoformat(cooldown_reset_at.rstrip('Z'))
+            # Use the later of cooldown_threshold and reset_time
+            if reset_time > cooldown_threshold:
+                cooldown_threshold = reset_time
+        except (ValueError, TypeError):
+            pass
+
     for migration in reversed(migrations):  # Check most recent first
         if migration.get('vmid') == vmid:
+            # Skip dry-run migrations — no actual migration occurred
+            if migration.get('dry_run', False):
+                continue
+            # Skip failed migrations — VM didn't actually move
+            if migration.get('status') == 'failed':
+                continue
             try:
-                migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+                migration_time = datetime.fromisoformat(
+                    migration.get('timestamp', '').rstrip('Z')
+                )
                 if migration_time > cooldown_threshold:
                     logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()})")
                     return True

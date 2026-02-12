@@ -704,6 +704,22 @@ def automigrate_config():
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(config, f, indent=2)
 
+            # Reset cooldown timestamps when cooldown_minutes changes
+            rules_update = updates.get('rules', {})
+            if 'cooldown_minutes' in rules_update:
+                try:
+                    history_file = os.path.join(BASE_PATH, 'migration_history.json')
+                    history = {"migrations": [], "state": {}}
+                    if os.path.exists(history_file):
+                        with open(history_file, 'r') as f:
+                            history = json.load(f)
+                    history.setdefault('state', {})['cooldown_reset_at'] = datetime.utcnow().isoformat() + 'Z'
+                    with open(history_file, 'w') as f:
+                        json.dump(history, f, indent=2)
+                    print(f"✓ Cooldown reset timestamp updated (cooldown_minutes changed to {rules_update['cooldown_minutes']})", file=sys.stderr)
+                except Exception as cooldown_err:
+                    print(f"Warning: Failed to update cooldown reset timestamp: {cooldown_err}", file=sys.stderr)
+
             # Update systemd timer if check_interval_minutes changed
             if 'check_interval_minutes' in updates:
                 try:
