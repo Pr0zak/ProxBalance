@@ -42,9 +42,6 @@ export default function DashboardPage({
   runNowMessage, setRunNowMessage, runHistory, expandedRun, setExpandedRun,
   // Recommendations
   recommendations, loadingRecommendations, generateRecommendations, recommendationData, penaltyConfig,
-  // Threshold suggestions
-  thresholdSuggestions,
-  cpuThreshold, setCpuThreshold, memThreshold, setMemThreshold, iowaitThreshold, setIowaitThreshold,
   // AI recommendations
   aiEnabled, aiRecommendations, loadingAi, aiAnalysisPeriod, setAiAnalysisPeriod, fetchAiRecommendations,
   // Migrations
@@ -311,13 +308,6 @@ export default function DashboardPage({
           onFeedback={onFeedback}
           setCurrentPage={setCurrentPage}
           setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
-          thresholdSuggestions={thresholdSuggestions}
-          cpuThreshold={cpuThreshold}
-          setCpuThreshold={setCpuThreshold}
-          memThreshold={memThreshold}
-          setMemThreshold={setMemThreshold}
-          iowaitThreshold={iowaitThreshold}
-          setIowaitThreshold={setIowaitThreshold}
           nodeScores={nodeScores}
           API_BASE={API_BASE}
         />

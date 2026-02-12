@@ -5585,20 +5585,12 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     // Navigation
     setCurrentPage,
     setOpenPenaltyConfigOnAutomation,
-    // Thresholds
-    thresholdSuggestions,
-    cpuThreshold,
-    setCpuThreshold,
-    memThreshold,
-    setMemThreshold,
-    iowaitThreshold,
-    setIowaitThreshold,
     // Node scores (for predicted view)
     nodeScores,
     // API
     API_BASE: API_BASE4
   }) {
-    let [recFilterConfidence, setRecFilterConfidence] = useState15(""), [recFilterTargetNode, setRecFilterTargetNode] = useState15(""), [recFilterSourceNode, setRecFilterSourceNode] = useState15(""), [recSortBy, setRecSortBy] = useState15(""), [recSortDir, setRecSortDir] = useState15("desc"), [showRecFilters, setShowRecFilters] = useState15(!1), [showInsights, setShowInsights] = useState15(!1), [showThresholdPopover, setShowThresholdPopover] = useState15(!1), isMobile = useIsMobile_default(), hasThresholdDiff = thresholdSuggestions && thresholdSuggestions.confidence && (Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 || Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3), getFilteredRecs = () => {
+    let [recFilterConfidence, setRecFilterConfidence] = useState15(""), [recFilterTargetNode, setRecFilterTargetNode] = useState15(""), [recFilterSourceNode, setRecFilterSourceNode] = useState15(""), [recSortBy, setRecSortBy] = useState15(""), [recSortDir, setRecSortDir] = useState15("desc"), [showRecFilters, setShowRecFilters] = useState15(!1), [showInsights, setShowInsights] = useState15(!1), isMobile = useIsMobile_default(), getFilteredRecs = () => {
       let filtered = [...recommendations];
       if (recFilterConfidence) {
         let minConf = parseInt(recFilterConfidence);
@@ -5620,26 +5612,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     )), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mt-0.5" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Suggested optimizations"), recommendationData?.ai_enhanced && /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 border border-purple-300 dark:border-purple-600 rounded text-xs font-semibold text-purple-700 dark:text-purple-300" }, "AI Enhanced"), recommendationData?.generated_at && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-500" }, "\u2022 Generated: ", (() => {
       let genTime = new Date(recommendationData.generated_at);
       return formatLocalTime(genTime);
-    })(), " (backend auto-generates every 10-60min based on cluster size)")))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, hasThresholdDiff && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setShowThresholdPopover((prev) => !prev),
-        className: "flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors",
-        title: "Threshold suggestions available"
-      },
-      /* @__PURE__ */ React.createElement(Info, { size: 14 }),
-      "Suggestions",
-      /* @__PURE__ */ React.createElement("span", { className: `px-1 py-0.5 rounded text-[9px] font-bold ${thresholdSuggestions.confidence === "high" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"}` }, thresholdSuggestions.confidence)
-    ), showThresholdPopover && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-40", onClick: () => setShowThresholdPopover(!1) }), /* @__PURE__ */ React.createElement("div", { className: "absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[280px] max-w-[calc(100vw-2rem)]" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1" }, "Threshold Suggestions"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400 mb-2" }, thresholdSuggestions.summary), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5 text-xs mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, cpuThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_cpu_threshold, "%"))), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "Memory"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, memThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_mem_threshold, "%"))), thresholdSuggestions.suggested_iowait_threshold && /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "IOWait"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { className: "font-mono" }, iowaitThreshold, "%"), " \u2192 ", /* @__PURE__ */ React.createElement("span", { className: "font-mono font-semibold text-blue-700 dark:text-blue-300" }, thresholdSuggestions.suggested_iowait_threshold, "%")))), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), thresholdSuggestions.suggested_iowait_threshold && setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold), setShowThresholdPopover(!1);
-        },
-        className: "w-full px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-      },
-      "Apply All"
-    )))), !collapsedSections.recommendations && recommendationData?.generated_at && /* @__PURE__ */ React.createElement(
+    })(), " (backend auto-generates every 10-60min based on cluster size)")))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, !collapsedSections.recommendations && recommendationData?.generated_at && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setShowInsights(!0),
@@ -5648,17 +5621,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       },
       /* @__PURE__ */ React.createElement(Eye, { size: 16 }),
       "Insights"
-    ), recommendations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setCollapsedSections((prev) => ({ ...prev, exportDropdown: !prev.exportDropdown })),
-        className: "flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200",
-        title: "Export recommendations"
-      },
-      /* @__PURE__ */ React.createElement(Download, { size: 16 }),
-      "Export",
-      /* @__PURE__ */ React.createElement(ChevronDown, { size: 14 })
-    ), collapsedSections.exportDropdown && /* @__PURE__ */ React.createElement("div", { className: "absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] max-w-[calc(100vw-2rem)]" }, /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/recommendations/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 14 }), " Recommendations JSON"), /* @__PURE__ */ React.createElement("hr", { className: "my-1 border-gray-200 dark:border-gray-700" }), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=csv", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History CSV"), /* @__PURE__ */ React.createElement("a", { href: "/api/automigrate/history/export?format=json", download: !0, className: "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" }, /* @__PURE__ */ React.createElement(Activity, { size: 14 }), " Migration History JSON"))), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: generateRecommendations2,
@@ -6108,14 +6071,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     generateRecommendations: generateRecommendations2,
     recommendationData,
     penaltyConfig,
-    // Threshold suggestions
-    thresholdSuggestions,
-    cpuThreshold,
-    setCpuThreshold,
-    memThreshold,
-    setMemThreshold,
-    iowaitThreshold,
-    setIowaitThreshold,
     // AI recommendations
     aiEnabled,
     aiRecommendations,
@@ -6435,13 +6390,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         onFeedback,
         setCurrentPage,
         setOpenPenaltyConfigOnAutomation,
-        thresholdSuggestions,
-        cpuThreshold,
-        setCpuThreshold,
-        memThreshold,
-        setMemThreshold,
-        iowaitThreshold,
-        setIowaitThreshold,
         nodeScores,
         API_BASE: API_BASE4
       }
@@ -7181,7 +7129,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   init_constants();
   var { useState: useState23, useEffect: useEffect10 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
-    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState23([]), [recommendationData, setRecommendationData] = useState23(null), [loadingRecommendations, setLoadingRecommendations] = useState23(!1), [feedbackGiven, setFeedbackGiven] = useState23({}), [thresholdSuggestions, setThresholdSuggestions] = useState23(null), [cpuThreshold, setCpuThreshold] = useState23(() => {
+    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState23([]), [recommendationData, setRecommendationData] = useState23(null), [loadingRecommendations, setLoadingRecommendations] = useState23(!1), [feedbackGiven, setFeedbackGiven] = useState23({}), [cpuThreshold, setCpuThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
       return saved ? Number(saved) : 50;
     }), [memThreshold, setMemThreshold] = useState23(() => {
@@ -7190,23 +7138,19 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     }), [iowaitThreshold, setIowaitThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
-    }), [thresholdMode, setThresholdMode] = useState23(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
+    });
     useEffect10(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
     }, [cpuThreshold]), useEffect10(() => {
       localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString());
     }, [memThreshold]), useEffect10(() => {
       localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString());
-    }, [iowaitThreshold]), useEffect10(() => {
-      localStorage.setItem("proxbalance_threshold_mode", thresholdMode);
-    }, [thresholdMode]), useEffect10(() => {
-      thresholdMode === "auto" && thresholdSuggestions && (setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold));
-    }, [thresholdMode, thresholdSuggestions]);
+    }, [iowaitThreshold]);
     let fetchCachedRecommendations2 = async () => {
       if (data)
         try {
           let result = await (await fetch(`${API_BASE4}/recommendations`)).json();
-          result.success ? (setRecommendations(result.recommendations), setRecommendationData(result), result.threshold_suggestions && setThresholdSuggestions(result.threshold_suggestions)) : result.cache_missing && generateRecommendations2();
+          result.success ? (setRecommendations(result.recommendations), setRecommendationData(result)) : result.cache_missing && generateRecommendations2();
         } catch (err) {
           console.error("Error fetching cached recommendations:", err);
         }
@@ -7224,7 +7168,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
               maintenance_nodes: maintenanceNodes ? Array.from(maintenanceNodes) : []
             })
           })).json();
-          result.success && (setRecommendations(result.recommendations), setRecommendationData(result), result.threshold_suggestions && setThresholdSuggestions(result.threshold_suggestions));
+          result.success && (setRecommendations(result.recommendations), setRecommendationData(result));
         } catch (err) {
           console.error("Error generating recommendations:", err);
         } finally {
@@ -7238,15 +7182,12 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       recommendationData,
       loadingRecommendations,
       feedbackGiven,
-      thresholdSuggestions,
       cpuThreshold,
       setCpuThreshold,
       memThreshold,
       setMemThreshold,
       iowaitThreshold,
       setIowaitThreshold,
-      thresholdMode,
-      setThresholdMode,
       fetchCachedRecommendations: fetchCachedRecommendations2,
       fetchRecommendations: fetchCachedRecommendations2,
       generateRecommendations: generateRecommendations2,
@@ -8387,13 +8328,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         generateRecommendations: recs.generateRecommendations,
         recommendationData: recs.recommendationData,
         penaltyConfig: configHook.penaltyConfig,
-        thresholdSuggestions: recs.thresholdSuggestions,
-        cpuThreshold: recs.cpuThreshold,
-        setCpuThreshold: recs.setCpuThreshold,
-        memThreshold: recs.memThreshold,
-        setMemThreshold: recs.setMemThreshold,
-        iowaitThreshold: recs.iowaitThreshold,
-        setIowaitThreshold: recs.setIowaitThreshold,
         aiEnabled: ai.aiEnabled,
         aiRecommendations: ai.aiRecommendations,
         loadingAi: ai.loadingAi,

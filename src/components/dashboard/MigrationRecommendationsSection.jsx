@@ -1,6 +1,6 @@
 import {
   Activity, RefreshCw, CheckCircle, ChevronDown, ChevronUp,
-  Download, ClipboardList, Info, Eye
+  Eye
 } from '../Icons.jsx';
 
 import { formatLocalTime } from '../../utils/formatters.js';
@@ -28,8 +28,6 @@ export default function MigrationRecommendationsSection({
   feedbackGiven, onFeedback,
   // Navigation
   setCurrentPage, setOpenPenaltyConfigOnAutomation,
-  // Thresholds
-  thresholdSuggestions, cpuThreshold, setCpuThreshold, memThreshold, setMemThreshold, iowaitThreshold, setIowaitThreshold,
   // Node scores (for predicted view)
   nodeScores,
   // API
@@ -46,16 +44,7 @@ export default function MigrationRecommendationsSection({
   // Insights drawer state
   const [showInsights, setShowInsights] = useState(false);
 
-  // Threshold suggestions popover state
-  const [showThresholdPopover, setShowThresholdPopover] = useState(false);
-
   const isMobile = useIsMobile();
-
-  // Check if threshold suggestions have meaningful differences
-  const hasThresholdDiff = thresholdSuggestions && thresholdSuggestions.confidence && (
-    Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 ||
-    Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3
-  );
 
   // Apply client-side filters and sorting
   const getFilteredRecs = () => {
@@ -127,65 +116,6 @@ export default function MigrationRecommendationsSection({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Threshold Suggestions Chip */}
-            {hasThresholdDiff && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowThresholdPopover(prev => !prev)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                  title="Threshold suggestions available"
-                >
-                  <Info size={14} />
-                  Suggestions
-                  <span className={`px-1 py-0.5 rounded text-[9px] font-bold ${
-                    thresholdSuggestions.confidence === 'high'
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                      : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                  }`}>
-                    {thresholdSuggestions.confidence}
-                  </span>
-                </button>
-                {showThresholdPopover && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowThresholdPopover(false)} />
-                    <div className="absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 min-w-[280px] max-w-[calc(100vw-2rem)]">
-                      <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-1">Threshold Suggestions</div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">{thresholdSuggestions.summary}</p>
-                      <div className="space-y-1.5 text-xs mb-3">
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                          <span>CPU</span>
-                          <span><span className="font-mono">{cpuThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_cpu_threshold}%</span></span>
-                        </div>
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                          <span>Memory</span>
-                          <span><span className="font-mono">{memThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_mem_threshold}%</span></span>
-                        </div>
-                        {thresholdSuggestions.suggested_iowait_threshold && (
-                          <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                            <span>IOWait</span>
-                            <span><span className="font-mono">{iowaitThreshold}%</span> → <span className="font-mono font-semibold text-blue-700 dark:text-blue-300">{thresholdSuggestions.suggested_iowait_threshold}%</span></span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold);
-                          setMemThreshold(thresholdSuggestions.suggested_mem_threshold);
-                          if (thresholdSuggestions.suggested_iowait_threshold) {
-                            setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold);
-                          }
-                          setShowThresholdPopover(false);
-                        }}
-                        className="w-full px-3 py-1.5 bg-blue-600 dark:bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-                      >
-                        Apply All
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
             {/* Insights Drawer Button */}
             {!collapsedSections.recommendations && recommendationData?.generated_at && (
               <button
@@ -196,38 +126,6 @@ export default function MigrationRecommendationsSection({
                 <Eye size={16} />
                 Insights
               </button>
-            )}
-
-            {/* Export Dropdown */}
-            {recommendations.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => setCollapsedSections(prev => ({ ...prev, exportDropdown: !prev.exportDropdown }))}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 transition-all duration-200"
-                  title="Export recommendations"
-                >
-                  <Download size={16} />
-                  Export
-                  <ChevronDown size={14} />
-                </button>
-                {collapsedSections.exportDropdown && (
-                  <div className="absolute right-0 sm:right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[180px] max-w-[calc(100vw-2rem)]">
-                    <a href="/api/recommendations/export?format=csv" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                      <ClipboardList size={14} /> Recommendations CSV
-                    </a>
-                    <a href="/api/recommendations/export?format=json" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                      <ClipboardList size={14} /> Recommendations JSON
-                    </a>
-                    <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                    <a href="/api/automigrate/history/export?format=csv" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                      <Activity size={14} /> Migration History CSV
-                    </a>
-                    <a href="/api/automigrate/history/export?format=json" download className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                      <Activity size={14} /> Migration History JSON
-                    </a>
-                  </div>
-                )}
-              </div>
             )}
             <button
               onClick={generateRecommendations}

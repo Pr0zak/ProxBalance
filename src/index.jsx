@@ -574,10 +574,6 @@ const ProxmoxBalanceManager = () => {
     recommendations={recs.recommendations} loadingRecommendations={recs.loadingRecommendations}
     generateRecommendations={recs.generateRecommendations}
     recommendationData={recs.recommendationData} penaltyConfig={configHook.penaltyConfig}
-    thresholdSuggestions={recs.thresholdSuggestions}
-    cpuThreshold={recs.cpuThreshold} setCpuThreshold={recs.setCpuThreshold}
-    memThreshold={recs.memThreshold} setMemThreshold={recs.setMemThreshold}
-    iowaitThreshold={recs.iowaitThreshold} setIowaitThreshold={recs.setIowaitThreshold}
     aiEnabled={ai.aiEnabled} aiRecommendations={ai.aiRecommendations}
     loadingAi={ai.loadingAi}
     aiAnalysisPeriod={ai.aiAnalysisPeriod} setAiAnalysisPeriod={ai.setAiAnalysisPeriod}
