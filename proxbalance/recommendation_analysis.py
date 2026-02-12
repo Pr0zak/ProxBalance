@@ -9,15 +9,17 @@ analysis functions used to enrich and validate recommendations.
 from typing import Any, Dict, List, Optional
 
 
-def calculate_confidence(score_improvement: float, target_details: Optional[Dict[str, Any]], guest: Dict[str, Any], penalty_cfg: Dict[str, Any]) -> float:
+def calculate_confidence(score_improvement: float, target_details: Optional[Dict[str, Any]], guest: Dict[str, Any], penalty_cfg: Dict[str, Any],
+                         trend_evidence: Optional[Dict[str, Any]] = None, outcome_stats: Optional[Dict[str, Any]] = None) -> float:
     """
     Calculate multi-factor confidence score (0-100) for a migration recommendation.
 
     Factors:
-    - Score improvement (40%): How much the penalty score improves
-    - Target headroom (25%): How much capacity the target has after migration
-    - Migration complexity (20%): Guest size and storage complexity
+    - Score improvement (35%): How much the penalty score improves
+    - Target headroom (20%): How much capacity the target has after migration
+    - Migration complexity (15%): Guest size and storage complexity
     - Stability signal (15%): Whether trends are favorable
+    - Outcome history (15%): Historical success rate of similar migrations
     """
     min_improvement = penalty_cfg.get("min_score_improvement", 15)
 
@@ -73,18 +75,41 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
     else:
         stability_factor = 60
 
+    # Factor 5: Outcome history (15%) — past success rate influences confidence
+    outcome_factor = 65  # neutral default
+    if outcome_stats and outcome_stats.get("total_completed", 0) >= 5:
+        success_rate = outcome_stats.get("success_rate")
+        beneficial_rate = outcome_stats.get("beneficial_rate")
+        if success_rate is not None:
+            outcome_factor = min(100, success_rate)
+        # Boost if most migrations are actively beneficial (not just neutral)
+        if beneficial_rate is not None and beneficial_rate > 70:
+            outcome_factor = min(100, outcome_factor + 10)
+        # Penalize if accuracy is consistently poor
+        avg_accuracy = outcome_stats.get("avg_accuracy_pct")
+        if avg_accuracy is not None and avg_accuracy < 40:
+            outcome_factor = max(0, outcome_factor - 15)
+
+    # Trend evidence bonus — if trend analysis strongly supports the migration
+    if trend_evidence and trend_evidence.get("available"):
+        factors = trend_evidence.get("decision_factors", [])
+        strong_factors = sum(1 for f in factors if f.get("weight") == "problem" or f.get("weight") == "positive")
+        if strong_factors >= 3:
+            stability_factor = min(100, stability_factor + 15)
+
     # Weighted combination
     confidence = (
-        improvement_factor * 0.40 +
-        headroom_factor * 0.25 +
-        complexity_factor * 0.20 +
-        stability_factor * 0.15
+        improvement_factor * 0.35 +
+        headroom_factor * 0.20 +
+        complexity_factor * 0.15 +
+        stability_factor * 0.15 +
+        outcome_factor * 0.15
     )
 
     return round(min(100, max(0, confidence)), 1)
 
 
-def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt_node: Dict[str, Any], src_details: Dict[str, Any], tgt_details: Optional[Dict[str, Any]], is_maintenance: bool, penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt_node: Dict[str, Any], src_details: Dict[str, Any], tgt_details: Optional[Dict[str, Any]], is_maintenance: bool, penalty_cfg: Dict[str, Any], is_iowait_triggered: bool = False) -> Dict[str, Any]:
     """
     Build a structured, multi-factor reason for a migration recommendation.
 
@@ -185,7 +210,10 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
         })
 
     # Primary reason
-    if cpu_diff > mem_diff:
+    if is_iowait_triggered:
+        primary_reason = "iowait_relief"
+        primary_label = "Relieve I/O pressure"
+    elif cpu_diff > mem_diff:
         primary_reason = "cpu_imbalance"
         primary_label = "Balance CPU load"
     else:
@@ -197,16 +225,23 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     tgt_name = tgt_node.get("name", "target")
     guest_name = guest.get("name", "guest")
 
-    dominant = "CPU" if cpu_diff > mem_diff else "memory"
     trend_note = ""
     if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
         trend_note = " with an upward trend"
 
-    summary = (
-        f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
-        f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
-        f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
-    )
+    if is_iowait_triggered:
+        summary = (
+            f"{guest_name} should move to {tgt_name} because {src_name} has high I/O wait "
+            f"({src_iowait:.0f}%{trend_note}), "
+            f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
+        )
+    else:
+        dominant = "CPU" if cpu_diff > mem_diff else "memory"
+        summary = (
+            f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
+            f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
+            f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
+        )
 
     return {
         "primary_reason": primary_reason,

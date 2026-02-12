@@ -110,6 +110,91 @@ export async function applyPenaltyPreset(presetName) {
 }
 
 // ---------------------------------------------------------------------------
+// Migration Settings (Simplified)
+// ---------------------------------------------------------------------------
+
+export async function fetchMigrationSettings() {
+  try {
+    const response = await fetch(`${API_BASE}/migration-settings`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to load migration settings:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function saveMigrationSettings(settings) {
+  try {
+    const response = await fetch(`${API_BASE}/migration-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to save migration settings:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function resetMigrationSettings() {
+  try {
+    const response = await fetch(`${API_BASE}/migration-settings/reset`, {
+      method: 'POST'
+    });
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to reset migration settings:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Trend Analysis
+// ---------------------------------------------------------------------------
+
+export async function fetchNodeTrends(lookbackDays = 7, cpuThreshold, memThreshold) {
+  try {
+    const params = new URLSearchParams({ lookback_days: lookbackDays });
+    if (cpuThreshold) params.append('cpu_threshold', cpuThreshold);
+    if (memThreshold) params.append('mem_threshold', memThreshold);
+    const response = await fetch(`${API_BASE}/trends/nodes?${params}`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to load node trends:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function fetchNodeTrendDetail(nodeName, lookbackDays = 7) {
+  try {
+    const params = new URLSearchParams({ lookback_days: lookbackDays });
+    const response = await fetch(`${API_BASE}/trends/node/${nodeName}?${params}`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to load node trend detail:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function fetchGuestTrendDetail(vmid, lookbackDays = 7) {
+  try {
+    const params = new URLSearchParams({ lookback_days: lookbackDays });
+    const response = await fetch(`${API_BASE}/trends/guest/${vmid}?${params}`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to load guest trend detail:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pre-Migration Validation
 // ---------------------------------------------------------------------------
 

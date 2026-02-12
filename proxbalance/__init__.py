@@ -57,7 +57,30 @@ from proxbalance.outcomes import (
     record_migration_outcome,
     update_post_migration_metrics,
     get_migration_outcomes,
+    get_outcome_statistics,
 )
 from proxbalance.migrations import get_rollback_info
 from proxbalance.execution_planner import compute_execution_order
 from proxbalance.reporting import build_summary, generate_capacity_advisories
+from proxbalance.metrics_store import (
+    append_node_sample,
+    append_guest_sample,
+    compress_old_samples,
+    get_node_history,
+    get_guest_history,
+    get_data_quality,
+)
+from proxbalance.trend_analysis import (
+    analyze_node_trends,
+    analyze_guest_trends,
+    compare_node_stability,
+    get_cluster_trend_summary,
+)
+from proxbalance.settings_mapper import (
+    DEFAULT_MIGRATION_SETTINGS,
+    get_effective_penalty_config,
+    get_migration_settings,
+    map_simplified_to_penalty_config,
+    detect_legacy_config,
+    migrate_legacy_config,
+)

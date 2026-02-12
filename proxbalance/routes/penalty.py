@@ -1,14 +1,27 @@
-"""Penalty scoring configuration routes."""
+"""Penalty scoring configuration and migration settings routes."""
 
 from flask import Blueprint, jsonify, request
-from proxbalance.config_manager import load_penalty_config, save_penalty_config
+from proxbalance.config_manager import load_penalty_config, save_penalty_config, load_config, save_config
 from proxbalance.scoring import DEFAULT_PENALTY_CONFIG
 from proxbalance.error_handlers import api_route
+from proxbalance.settings_mapper import (
+    DEFAULT_MIGRATION_SETTINGS,
+    SETTING_DESCRIPTIONS,
+    get_effective_penalty_config,
+    get_migration_settings,
+    map_simplified_to_penalty_config,
+    validate_migration_settings,
+    detect_legacy_config,
+    migrate_legacy_config,
+)
 
 penalty_bp = Blueprint("penalty", __name__, url_prefix=None)
 
 
 # Scoring profile presets — map high-level intent to concrete penalty values
+# Memory penalties are kept deliberately low across all presets because
+# Proxmox VM/CT memory allocations are mostly static.  CPU is the primary
+# fluctuating resource that drives meaningful migration decisions.
 SCORING_PRESETS = {
     "conservative": {
         "label": "Conservative",
@@ -18,9 +31,9 @@ SCORING_PRESETS = {
             "cpu_high_penalty": 15,
             "cpu_very_high_penalty": 40,
             "cpu_extreme_penalty": 80,
-            "mem_high_penalty": 15,
-            "mem_very_high_penalty": 40,
-            "mem_extreme_penalty": 80,
+            "mem_high_penalty": 6,
+            "mem_very_high_penalty": 15,
+            "mem_extreme_penalty": 40,
             "min_score_improvement": 25,
             "weight_current": 0.4,
             "weight_24h": 0.35,
@@ -40,9 +53,9 @@ SCORING_PRESETS = {
             "cpu_high_penalty": 30,
             "cpu_very_high_penalty": 65,
             "cpu_extreme_penalty": 130,
-            "mem_high_penalty": 30,
-            "mem_very_high_penalty": 65,
-            "mem_extreme_penalty": 130,
+            "mem_high_penalty": 10,
+            "mem_very_high_penalty": 25,
+            "mem_extreme_penalty": 60,
             "min_score_improvement": 8,
             "weight_current": 0.6,
             "weight_24h": 0.3,
@@ -208,3 +221,165 @@ def reset_penalty_config():
             "success": False,
             "error": "Failed to reset penalty configuration"
         }), 500
+
+
+# ---------------------------------------------------------------------------
+# Simplified Migration Settings endpoints
+# ---------------------------------------------------------------------------
+
+@penalty_bp.route("/api/migration-settings", methods=["GET"])
+@api_route
+def get_migration_settings_endpoint():
+    """Get simplified migration settings and the resulting effective penalty config."""
+    try:
+        config = load_config()
+    except Exception:
+        config = {}
+
+    # Auto-migrate legacy config if needed
+    if detect_legacy_config(config):
+        settings = migrate_legacy_config(config)
+    else:
+        settings = get_migration_settings(config)
+
+    effective_config = get_effective_penalty_config(config)
+
+    return jsonify({
+        "success": True,
+        "settings": settings,
+        "effective_penalty_config": effective_config,
+        "defaults": DEFAULT_MIGRATION_SETTINGS,
+        "descriptions": SETTING_DESCRIPTIONS,
+        "has_expert_overrides": settings.get("expert_overrides") is not None,
+    })
+
+
+@penalty_bp.route("/api/migration-settings", methods=["PUT"])
+@api_route
+def update_migration_settings_endpoint():
+    """Update simplified migration settings."""
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "Missing request body"}), 400
+
+    settings = data.get("settings", data)
+
+    # Validate
+    valid, error_msg = validate_migration_settings(settings)
+    if not valid:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+    # Build clean settings dict
+    new_settings = {
+        "sensitivity": settings.get("sensitivity", DEFAULT_MIGRATION_SETTINGS["sensitivity"]),
+        "trend_weight": settings.get("trend_weight", DEFAULT_MIGRATION_SETTINGS["trend_weight"]),
+        "lookback_days": settings.get("lookback_days", DEFAULT_MIGRATION_SETTINGS["lookback_days"]),
+        "min_confidence": settings.get("min_confidence", DEFAULT_MIGRATION_SETTINGS["min_confidence"]),
+        "protect_workloads": settings.get("protect_workloads", DEFAULT_MIGRATION_SETTINGS["protect_workloads"]),
+    }
+
+    # Preserve expert overrides if present
+    if "expert_overrides" in settings:
+        new_settings["expert_overrides"] = settings["expert_overrides"]
+
+    # Save to config
+    try:
+        config = load_config()
+    except Exception:
+        config = {}
+
+    config["migration_settings"] = new_settings
+
+    # Also update the effective penalty_scoring for backward compatibility
+    effective = map_simplified_to_penalty_config(new_settings)
+    config["penalty_scoring"] = effective
+
+    if save_config(config):
+        return jsonify({
+            "success": True,
+            "message": "Migration settings updated",
+            "settings": new_settings,
+            "effective_penalty_config": effective,
+        })
+    else:
+        return jsonify({"success": False, "error": "Failed to save settings"}), 500
+
+
+@penalty_bp.route("/api/migration-settings/reset", methods=["POST"])
+@api_route
+def reset_migration_settings_endpoint():
+    """Reset migration settings to defaults."""
+    try:
+        config = load_config()
+    except Exception:
+        config = {}
+
+    config["migration_settings"] = dict(DEFAULT_MIGRATION_SETTINGS)
+    effective = map_simplified_to_penalty_config(DEFAULT_MIGRATION_SETTINGS)
+    config["penalty_scoring"] = effective
+
+    if save_config(config):
+        return jsonify({
+            "success": True,
+            "message": "Migration settings reset to defaults",
+            "settings": DEFAULT_MIGRATION_SETTINGS,
+            "effective_penalty_config": effective,
+        })
+    else:
+        return jsonify({"success": False, "error": "Failed to reset settings"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Trend analysis API endpoints
+# ---------------------------------------------------------------------------
+
+@penalty_bp.route("/api/trends/nodes", methods=["GET"])
+@api_route
+def get_trends_nodes():
+    """Get trend analysis summary for all nodes."""
+    from proxbalance.trend_analysis import get_cluster_trend_summary
+
+    lookback = request.args.get("lookback_days", 7, type=int)
+    cpu_threshold = request.args.get("cpu_threshold", 60.0, type=float)
+    mem_threshold = request.args.get("mem_threshold", 70.0, type=float)
+
+    summary = get_cluster_trend_summary(
+        lookback_hours=lookback * 24,
+        cpu_threshold=cpu_threshold,
+        mem_threshold=mem_threshold,
+    )
+
+    return jsonify({"success": True, **summary})
+
+
+@penalty_bp.route("/api/trends/node/<node_name>", methods=["GET"])
+@api_route
+def get_trends_node(node_name):
+    """Get detailed trend analysis for a single node."""
+    from proxbalance.trend_analysis import analyze_node_trends
+
+    lookback = request.args.get("lookback_days", 7, type=int)
+    cpu_threshold = request.args.get("cpu_threshold", 60.0, type=float)
+    mem_threshold = request.args.get("mem_threshold", 70.0, type=float)
+
+    trends = analyze_node_trends(
+        node_name,
+        lookback_hours=lookback * 24,
+        cpu_threshold=cpu_threshold,
+        mem_threshold=mem_threshold,
+    )
+
+    return jsonify({"success": True, **trends})
+
+
+@penalty_bp.route("/api/trends/guest/<vmid>", methods=["GET"])
+@api_route
+def get_trends_guest(vmid):
+    """Get detailed trend analysis for a single guest."""
+    from proxbalance.trend_analysis import analyze_guest_trends
+
+    lookback = request.args.get("lookback_days", 7, type=int)
+
+    trends = analyze_guest_trends(str(vmid), lookback_hours=lookback * 24)
+
+    return jsonify({"success": True, **trends})

@@ -17,6 +17,21 @@ Scoring philosophy:
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Lazy import to avoid circular dependency — used only when trend data is available
+_trend_analysis = None
+
+
+def _get_trend_analysis():
+    """Lazy import of trend_analysis module."""
+    global _trend_analysis
+    if _trend_analysis is None:
+        try:
+            from proxbalance import trend_analysis as ta
+            _trend_analysis = ta
+        except Exception:
+            pass
+    return _trend_analysis
+
 
 # ---------------------------------------------------------------------------
 # Default penalty scoring configuration
@@ -25,20 +40,23 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 DEFAULT_PENALTY_CONFIG = {
     # Current load penalties (immediate state)
+    # CPU is the primary resource that fluctuates — penalize heavily.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) — only
+    # penalize when approaching host capacity or exceeding thresholds.
     "cpu_high_penalty": 20,           # Penalty when CPU > threshold
     "cpu_very_high_penalty": 50,      # Penalty when CPU > threshold+10
     "cpu_extreme_penalty": 100,       # Penalty when CPU > threshold+20
-    "mem_high_penalty": 20,           # Penalty when Memory > threshold
-    "mem_very_high_penalty": 50,      # Penalty when Memory > threshold+10
-    "mem_extreme_penalty": 100,       # Penalty when Memory > threshold+20
+    "mem_high_penalty": 8,            # Penalty when Memory > threshold
+    "mem_very_high_penalty": 20,      # Penalty when Memory > threshold+10
+    "mem_extreme_penalty": 50,        # Penalty when Memory > threshold+20
 
     # Sustained load penalties (7-day averages)
     "cpu_sustained_high": 40,         # Penalty when 7d avg CPU > 70%
     "cpu_sustained_very_high": 80,    # Penalty when 7d avg CPU > 80%
     "cpu_sustained_critical": 150,    # Penalty when 7d avg CPU > 90%
-    "mem_sustained_high": 40,         # Penalty when 7d avg Memory > 70%
-    "mem_sustained_very_high": 80,    # Penalty when 7d avg Memory > 80%
-    "mem_sustained_critical": 150,    # Penalty when 7d avg Memory > 90%
+    "mem_sustained_high": 10,         # Penalty when 7d avg Memory > 70%
+    "mem_sustained_very_high": 25,    # Penalty when 7d avg Memory > 80%
+    "mem_sustained_critical": 60,     # Penalty when 7d avg Memory > 90%
 
     # IOWait penalties
     "iowait_high_penalty": 20,        # Penalty when immediate IOWait > 10%
@@ -50,25 +68,31 @@ DEFAULT_PENALTY_CONFIG = {
 
     # Trend penalties
     "cpu_trend_rising_penalty": 15,   # Penalty for rising CPU trend
-    "mem_trend_rising_penalty": 15,   # Penalty for rising Memory trend
+    "mem_trend_rising_penalty": 5,    # Penalty for rising Memory trend (low — mem is static)
 
     # Spike penalties (max values in week)
     "cpu_spike_moderate": 5,          # Penalty when max CPU > 70%
     "cpu_spike_high": 10,             # Penalty when max CPU > 80%
     "cpu_spike_very_high": 20,        # Penalty when max CPU > 90%
     "cpu_spike_extreme": 30,          # Penalty when max CPU > 95%
-    "mem_spike_moderate": 5,          # Penalty when max Memory > 75%
-    "mem_spike_high": 10,             # Penalty when max Memory > 85%
-    "mem_spike_very_high": 20,        # Penalty when max Memory > 90%
-    "mem_spike_extreme": 30,          # Penalty when max Memory > 95%
+    "mem_spike_moderate": 2,          # Penalty when max Memory > 85%
+    "mem_spike_high": 5,              # Penalty when max Memory > 90%
+    "mem_spike_very_high": 10,        # Penalty when max Memory > 95%
+    "mem_spike_extreme": 20,          # Penalty when max Memory > 98%
 
     # Predicted post-migration penalties
     "predicted_cpu_over_penalty": 25,        # Penalty when predicted CPU > threshold
     "predicted_cpu_high_penalty": 50,        # Penalty when predicted CPU > threshold+10
     "predicted_cpu_extreme_penalty": 100,    # Penalty when predicted CPU > threshold+20
-    "predicted_mem_over_penalty": 25,        # Penalty when predicted Memory > threshold
-    "predicted_mem_high_penalty": 50,        # Penalty when predicted Memory > threshold+10
-    "predicted_mem_extreme_penalty": 100,    # Penalty when predicted Memory > threshold+20
+    "predicted_mem_over_penalty": 10,        # Penalty when predicted Memory > threshold
+    "predicted_mem_high_penalty": 25,        # Penalty when predicted Memory > threshold+10
+    "predicted_mem_extreme_penalty": 50,     # Penalty when predicted Memory > threshold+20
+
+    # Memory overcommit penalties (running guests' allocated memory > physical RAM)
+    # Proxmox commonly overcommits memory via ballooning, so only penalize
+    # meaningfully above 1.2x (moderate) and heavily above 1.5x (severe).
+    "mem_overcommit_penalty": 8,             # Penalty when overcommit ratio > 1.2
+    "mem_overcommit_high_penalty": 25,       # Penalty when overcommit ratio > 1.5
 
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
@@ -79,6 +103,7 @@ DEFAULT_PENALTY_CONFIG = {
     # Score improvement requirements
     "min_score_improvement": 15,      # Minimum score improvement to recommend migration
     "maintenance_score_boost": 100,   # Extra score added to maintenance nodes for evacuation priority
+    "iowait_score_boost": 30,        # Extra score added to IOWait-stressed nodes to trigger migrations
 
     # Time period weighting (for historical data)
     "weight_current": 0.5,            # Weight for current/immediate metrics (50%)
@@ -351,11 +376,14 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
         storage_pressure = sum(storage_usages) / len(storage_usages) if storage_usages else 0
 
     # Weighted health score
-    # CPU: 30%, Memory: 30%, IOWait: 20%, Load: 10%, Storage: 10%
+    # CPU dominates because it fluctuates with workload.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) so it
+    # matters mainly for capacity (can-it-fit), not for migration triggers.
+    # CPU: 40%, Memory: 15%, IOWait: 25%, Load: 10%, Storage: 10%
     health_score = (
-        cpu * 0.30 +
-        mem * 0.30 +
-        iowait * 0.20 +
+        cpu * 0.40 +
+        mem * 0.15 +
+        iowait * 0.25 +
         load_per_core * 0.10 +
         storage_pressure * 0.10
     )
@@ -519,6 +547,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         "predicted_cpu": 0,
         "predicted_mem": 0,
     }
+    cpu_stability_factor = 1.0  # Default: no adjustment (overridden by trend analysis)
 
     # Get configurable threshold offsets
     cpu_offset_1 = penalty_config.get("cpu_threshold_offset_1", 10)
@@ -550,12 +579,12 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif long_cpu > 70:
             penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_high", 40)
 
-        if long_mem > 90:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 150)
+        if long_mem > 95:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 60)
+        elif long_mem > 90:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 25)
         elif long_mem > 80:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 80)
-        elif long_mem > 70:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 40)
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 10)
 
     # IOWait penalty - penalize high disk wait times (current always applies)
     if immediate_iowait > 30:
@@ -574,8 +603,62 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif long_iowait > 10:
             penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
 
-    # Trend penalty - only apply if using historical data (24h or 7d weights > 0)
-    if weight_24h > 0 or weight_7d > 0:
+    # Trend penalty - use quantified trend data from metrics store when available,
+    # fall back to simple rising/falling/stable labels from cluster_cache
+    _ta = _get_trend_analysis()
+    _node_trend_data = None
+    if _ta and (weight_24h > 0 or weight_7d > 0):
+        try:
+            _node_trend_data = _ta.analyze_node_trends(
+                target_name,
+                lookback_hours=168,
+                cpu_threshold=cpu_threshold,
+                mem_threshold=mem_threshold,
+            )
+            cpu_rate = _node_trend_data.get("cpu", {}).get("rate_per_day", 0)
+            mem_rate = _node_trend_data.get("memory", {}).get("rate_per_day", 0)
+            node_stability = _node_trend_data.get("overall_stability", 50)
+
+            # Quantified trend penalties: scale with rate of change
+            base_trend_penalty = penalty_config.get("cpu_trend_rising_penalty", 15)
+            if cpu_rate > 3.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 3)
+            elif cpu_rate > 1.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 2)
+            elif cpu_rate > 0.5:
+                penalty_breakdown["cpu_trend"] = base_trend_penalty
+
+            base_mem_trend_penalty = penalty_config.get("mem_trend_rising_penalty", 15)
+            if mem_rate > 3.0:
+                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 3)
+            elif mem_rate > 1.0:
+                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
+            elif mem_rate > 0.5:
+                penalty_breakdown["mem_trend"] = base_mem_trend_penalty
+
+            # CPU stability factor: scale CPU-related penalties by node volatility.
+            # Stable nodes get CPU penalties *reduced* (the high reading is likely
+            # transient); volatile nodes get penalties *inflated* (unpredictable).
+            if node_stability >= 80:
+                cpu_stability_factor = 0.7   # Excellent — reduce CPU penalties 30%
+            elif node_stability >= 60:
+                cpu_stability_factor = 0.85  # Good — reduce CPU penalties 15%
+            elif node_stability < 40:
+                cpu_stability_factor = 1.3   # Volatile — inflate CPU penalties 30%
+            else:
+                cpu_stability_factor = 1.0   # Moderate — no change
+
+            for _cpu_key in ("current_cpu", "sustained_cpu", "cpu_trend",
+                             "cpu_spikes", "predicted_cpu"):
+                if _cpu_key in penalty_breakdown:
+                    penalty_breakdown[_cpu_key] = int(
+                        round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
+                    )
+        except Exception:
+            _node_trend_data = None
+
+    # Fallback to simple trend labels if metrics store analysis failed
+    if _node_trend_data is None and (weight_24h > 0 or weight_7d > 0):
         if cpu_trend == "rising":
             penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
         if mem_trend == "rising":
@@ -592,13 +675,13 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif max_cpu_week > 70:
             penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_moderate", 5)
 
-        if max_mem_week > 95:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 30)
+        if max_mem_week > 98:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 20)
+        elif max_mem_week > 95:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 10)
         elif max_mem_week > 90:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 20)
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 5)
         elif max_mem_week > 85:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 10)
-        elif max_mem_week > 75:
             penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
@@ -631,6 +714,30 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     elif predicted["mem"] > mem_threshold:
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
 
+    # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
+    # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
+    # 1.2x is moderate (ballooning is active), 1.5x is severe (risk of OOM).
+    overcommit_ratio = target_node.get("mem_overcommit_ratio", 0)
+    if overcommit_ratio > 1.5:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_high_penalty", 25)
+    elif overcommit_ratio > 1.2:
+        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_penalty", 8)
+
+    # Cap total memory penalties to prevent memory from dominating the score.
+    # Memory is mostly static in Proxmox (fixed allocations), so it should not
+    # single-handedly make a node unsuitable — that's what the hard capacity
+    # gate in recommendations.py is for.  CPU and IOWait are the real drivers.
+    mem_penalty_keys = ("current_mem", "sustained_mem", "mem_spikes",
+                        "mem_trend", "predicted_mem", "mem_overcommit")
+    total_mem_penalties = sum(penalty_breakdown.get(k, 0) for k in mem_penalty_keys)
+    mem_penalty_cap = 60  # Maximum combined memory penalty contribution
+    if total_mem_penalties > mem_penalty_cap:
+        # Scale all memory penalties proportionally to fit within the cap
+        scale = mem_penalty_cap / total_mem_penalties
+        for k in mem_penalty_keys:
+            if k in penalty_breakdown and penalty_breakdown[k] > 0:
+                penalty_breakdown[k] = int(round(penalty_breakdown[k] * scale))
+
     # Sum all penalties
     penalties = sum(penalty_breakdown.values())
 
@@ -638,18 +745,21 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     health_score = calculate_node_health_score(target_node, metrics, penalty_config=penalty_config)
 
     # Predicted health after migration
+    # CPU-heavy weighting — memory is static, CPU drives actual migration value
     predicted_health = (
-        predicted["cpu"] * 0.30 +
-        predicted["mem"] * 0.30 +
-        predicted["iowait"] * 0.20 +
-        current_cpu * 0.10 +  # Factor in current state
-        current_mem * 0.10
+        predicted["cpu"] * 0.40 +
+        predicted["mem"] * 0.15 +
+        predicted["iowait"] * 0.25 +
+        current_cpu * 0.15 +  # Factor in current CPU state
+        current_mem * 0.05
     )
 
     # Headroom score (how much capacity remains) - prefer nodes with more headroom
+    # CPU headroom weighted higher — memory capacity is a hard constraint checked
+    # separately; CPU headroom indicates ability to absorb workload fluctuations
     cpu_headroom = 100 - predicted["cpu"]
     mem_headroom = 100 - predicted["mem"]
-    headroom_score = 100 - (cpu_headroom * 0.5 + mem_headroom * 0.5)  # Lower = more headroom
+    headroom_score = 100 - (cpu_headroom * 0.65 + mem_headroom * 0.35)  # Lower = more headroom
 
     # Storage availability score
     storage_score = 0
@@ -708,6 +818,20 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         },
         "total_score": round(total_score, 1),
     }
+
+    # Attach trend analysis data when available for UI transparency
+    if _node_trend_data:
+        details["trend_analysis"] = {
+            "cpu_rate_per_day": _node_trend_data.get("cpu", {}).get("rate_per_day", 0),
+            "cpu_direction": _node_trend_data.get("cpu", {}).get("direction", "unknown"),
+            "mem_rate_per_day": _node_trend_data.get("memory", {}).get("rate_per_day", 0),
+            "mem_direction": _node_trend_data.get("memory", {}).get("direction", "unknown"),
+            "stability_score": _node_trend_data.get("overall_stability", 50),
+            "stability_label": _node_trend_data.get("overall_stability_label", "unknown"),
+            "cpu_stability_factor": cpu_stability_factor,
+            "overall_direction": _node_trend_data.get("overall_direction", "unknown"),
+            "data_quality": _node_trend_data.get("data_quality", {}),
+        }
 
     return total_score, details
 

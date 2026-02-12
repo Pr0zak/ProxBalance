@@ -56,15 +56,30 @@ from proxbalance.recommendation_analysis import (
 from proxbalance.patterns import get_node_seasonal_baseline
 from proxbalance.guest_profiles import get_guest_profile
 
+# Lazy import for trend analysis (may not have data yet)
+_trend_module = None
+
+def _get_trend_module():
+    global _trend_module
+    if _trend_module is None:
+        try:
+            from proxbalance import trend_analysis
+            _trend_module = trend_analysis
+        except Exception:
+            pass
+    return _trend_module
+
 
 # ---------------------------------------------------------------------------
 # Guest selection
 # ---------------------------------------------------------------------------
 
-def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
+def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str, iowait_threshold: float = 30.0) -> List[str]:
     """
-    Intelligently select which guests to migrate from an overloaded node
-    Uses knapsack-style algorithm to minimize migrations while resolving overload
+    Intelligently select which guests to migrate from an overloaded node.
+    Uses knapsack-style algorithm to minimize migrations while resolving overload.
+
+    overload_reason can be: "maintenance", "cpu", "mem", "iowait", or combined.
     """
     node_name = node.get("name")
     metrics = node.get("metrics", {})
@@ -119,11 +134,17 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
         disk_io_mbps = (guest.get("disk_read_bps", 0) + guest.get("disk_write_bps", 0)) / (1024**2)
         migration_cost = guest.get("mem_max_gb", 0) + (disk_io_mbps / 10)  # Factor in I/O activity
 
+        # Disk I/O impact: for IOWait overload, the highest-I/O guest gives the most relief
+        io_impact = disk_io_mbps  # MB/s — direct measure of I/O pressure contribution
+
         # Efficiency score: impact per migration cost (higher is better)
         if overload_reason == "cpu":
             efficiency = cpu_impact / migration_cost if migration_cost > 0 else 0
         elif overload_reason == "mem":
             efficiency = mem_impact / migration_cost if migration_cost > 0 else 0
+        elif overload_reason == "iowait":
+            # For IOWait, prioritize guests generating the most disk I/O
+            efficiency = io_impact / migration_cost if migration_cost > 0 else 0
         else:
             efficiency = (cpu_impact + mem_impact) / (2 * migration_cost) if migration_cost > 0 else 0
 
@@ -132,6 +153,7 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
             "guest": guest,
             "cpu_impact": cpu_impact,
             "mem_impact": mem_impact,
+            "io_impact": io_impact,
             "migration_cost": migration_cost,
             "efficiency": efficiency
         })
@@ -144,6 +166,10 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
     cpu_reduction = 0
     mem_reduction = 0
 
+    # Track IOWait reduction heuristically: each I/O-heavy guest removed reduces IOWait
+    iowait_reduction_needed = max(0, current_iowait - (iowait_threshold - 5)) if overload_reason == "iowait" else 0
+    io_reduction = 0.0
+
     for candidate in candidates:
         # For maintenance mode, don't stop early - evacuate ALL guests
         if overload_reason != "maintenance":
@@ -151,12 +177,16 @@ def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_t
                 break
             if overload_reason == "mem" and mem_reduction >= mem_reduction_needed:
                 break
-            if overload_reason not in ["cpu", "mem"] and (cpu_reduction >= cpu_reduction_needed and mem_reduction >= mem_reduction_needed):
+            if overload_reason == "iowait" and io_reduction >= iowait_reduction_needed:
+                break
+            if overload_reason not in ["cpu", "mem", "iowait"] and (cpu_reduction >= cpu_reduction_needed and mem_reduction >= mem_reduction_needed):
                 break
 
         selected.append(candidate["vmid_key"])
         cpu_reduction += candidate["cpu_impact"]
         mem_reduction += candidate["mem_impact"]
+        # Rough heuristic: each MB/s of disk I/O removed reduces IOWait by ~0.05%
+        io_reduction += candidate.get("io_impact", 0) * 0.05
 
         # Limit to 5 migrations per node (skip limit for maintenance mode)
         if overload_reason != "maintenance" and len(selected) >= 5:
@@ -320,8 +350,23 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     # Phase 4a: Cluster convergence check - suppress if all nodes are balanced
     convergence_threshold = penalty_cfg.get("cluster_convergence_threshold", 8.0)
     convergence_message = _check_cluster_convergence(nodes, penalty_cfg, cpu_threshold, mem_threshold, convergence_threshold)
-    # Only suppress if no maintenance nodes need evacuation
-    if convergence_message and not maintenance_nodes:
+
+    # Pre-scan for IOWait-stressed nodes (needed to decide if convergence should be overridden)
+    iowait_stressed_nodes = set()
+    IOWAIT_SCORE_BOOST = penalty_cfg.get("iowait_score_boost", 30)
+    for _nname, _ndata in nodes.items():
+        if _ndata.get("status") != "online" or _nname in maintenance_nodes:
+            continue
+        _nmetrics = _ndata.get("metrics", {})
+        _current_iow = _nmetrics.get("current_iowait", 0)
+        _avg_iow = _nmetrics.get("avg_iowait", 0) if _nmetrics.get("has_historical") else _current_iow
+        # Require both current AND average to be elevated (avoids reacting to transient spikes)
+        if _current_iow > iowait_threshold and _avg_iow > (iowait_threshold * 0.7):
+            iowait_stressed_nodes.add(_nname)
+            print(f"IOWait trigger: {_nname} iowait={_current_iow:.1f}% (avg={_avg_iow:.1f}%) > threshold={iowait_threshold}%", file=sys.stderr)
+
+    # Only suppress if no maintenance nodes AND no IOWait-stressed nodes need relief
+    if convergence_message and not maintenance_nodes and not iowait_stressed_nodes:
         print(f"Cluster convergence: {convergence_message}", file=sys.stderr)
         summary = _build_summary([], [], nodes, penalty_cfg)
         summary["convergence_message"] = convergence_message
@@ -477,6 +522,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             if src_node_name in maintenance_nodes:
                 current_score += MAINTENANCE_SCORE_BOOST
 
+            # For IOWait-stressed nodes, boost score to help pass min_score_improvement gate
+            if src_node_name in iowait_stressed_nodes:
+                current_score += IOWAIT_SCORE_BOOST
+
             # Find best alternative target
             best_target = None
             best_target_score = 999999
@@ -518,6 +567,29 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         skip_reasons_per_target.append(f"{tgt_name}: anti-affinity conflict")
                         continue
 
+                    # Hard memory capacity gate: skip targets that can't physically
+                    # fit this guest's allocated memory (committed, not just used).
+                    # Only count RUNNING guests — stopped guests don't consume RAM.
+                    guest_mem_max_gb = guest.get("mem_max_gb", guest.get("mem_used_gb", 0))
+                    if guest_mem_max_gb > 0:
+                        # Sum committed memory of running guests on the target
+                        target_committed_mem_gb = sum(
+                            guests.get(str(gid), guests.get(gid, {})).get("mem_max_gb", 0)
+                            for gid in tgt_node.get("guests", [])
+                            if guests.get(str(gid), guests.get(gid, {})).get("status") == "running"
+                        )
+                        # Also account for guests already pending migration to this target
+                        if tgt_name in pending_target_guests:
+                            target_committed_mem_gb += sum(
+                                pg.get("mem_max_gb", 0)
+                                for pg in pending_target_guests[tgt_name]
+                            )
+                        target_total_mem_gb = tgt_node.get("total_mem_gb", 1)
+                        # Leave 5% headroom for host OS overhead
+                        if (target_committed_mem_gb + guest_mem_max_gb) > (target_total_mem_gb * 0.95):
+                            skip_reasons_per_target.append(f"{tgt_name}: insufficient memory capacity ({target_committed_mem_gb:.1f}+{guest_mem_max_gb:.1f} > {target_total_mem_gb:.1f}GB)")
+                            continue
+
                     # Check storage compatibility (skip target if storage is incompatible)
                     if proxmox and not check_storage_compatibility(guest, src_node_name, tgt_name, proxmox, storage_cache):
                         skip_reasons_per_target.append(f"{tgt_name}: storage incompatible")
@@ -550,6 +622,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "target_score": best_target_score,
                     "improvement": score_improvement,
                     "is_maintenance": src_node_name in maintenance_nodes,
+                    "is_iowait_triggered": src_node_name in iowait_stressed_nodes,
                     "source_details": src_details,
                     "target_details": best_target_details,
                 })
@@ -585,8 +658,13 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             traceback.print_exc()
             continue
 
-    # Sort candidates by improvement (best first), prioritizing maintenance evacuations
-    migration_candidates.sort(key=lambda x: (not x["is_maintenance"], -x["improvement"]))
+    # Sort candidates by improvement (best first), prioritizing maintenance evacuations,
+    # then IOWait-triggered migrations, then normal recommendations
+    migration_candidates.sort(key=lambda x: (
+        not x["is_maintenance"],
+        not x.get("is_iowait_triggered", False),
+        -x["improvement"],
+    ))
 
     # Build final recommendations from candidates
     for candidate in migration_candidates:
@@ -605,9 +683,11 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             vmid_int = int(vmid_key) if isinstance(vmid_key, str) else vmid_key
 
             # Build structured reason
+            is_iowait_triggered = candidate.get("is_iowait_triggered", False)
             structured_reason = _build_structured_reason(
                 guest, nodes[src_node_name], nodes[best_target],
-                src_details, tgt_details, candidate["is_maintenance"], penalty_cfg
+                src_details, tgt_details, candidate["is_maintenance"], penalty_cfg,
+                is_iowait_triggered=is_iowait_triggered,
             )
 
             # Keep backward-compatible reason string from structured data
@@ -661,6 +741,18 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                             shared_paths = [mp.get("source", "") for mp in shared_mounts]
                             bind_mount_warning = f"\u2139\ufe0f Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure these paths exist on {best_target}."
 
+            # Build trend evidence for transparency
+            trend_evidence = _build_trend_evidence(
+                src_node_name, best_target, vmid_key,
+                src_details, tgt_details, penalty_cfg,
+                cpu_threshold, mem_threshold,
+            )
+
+            # Build human-readable decision explanation
+            decision_explanation = _build_decision_explanation(
+                guest, src_node_name, best_target, trend_evidence, score_improvement,
+            )
+
             recommendation = {
                 "vmid": vmid_int,
                 "name": guest.get("name", "unknown"),
@@ -682,6 +774,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 "risk_score": risk_info["risk_score"],  # 0-100, lower is safer
                 "risk_level": risk_info["risk_level"],  # low/moderate/high/very_high
                 "risk_factors": risk_info["risk_factors"],  # Detailed breakdown
+                "trend_evidence": trend_evidence,  # Trend-based decision evidence
+                "decision_explanation": decision_explanation,  # Human-readable explanation
             }
 
             # Add mount point metadata and warnings if present
@@ -986,3 +1080,207 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         "forecasts": forecasts,
         "execution_plan": execution_plan,
     }
+
+
+# ---------------------------------------------------------------------------
+# Trend evidence and decision explanation helpers
+# ---------------------------------------------------------------------------
+
+def _build_trend_evidence(
+    src_node_name: str,
+    tgt_node_name: str,
+    vmid_key: str,
+    src_details: Dict,
+    tgt_details: Dict,
+    penalty_cfg: Dict,
+    cpu_threshold: float,
+    mem_threshold: float,
+) -> Dict[str, Any]:
+    """Build the trend_evidence object for a recommendation.
+
+    Gracefully returns minimal evidence if the metrics store has no data.
+    """
+    ta = _get_trend_module()
+    if not ta:
+        return {"available": False, "reason": "Trend analysis module not available"}
+
+    try:
+        lookback = penalty_cfg.get("_lookback_hours", 168)  # default 7 days
+
+        src_trend = ta.analyze_node_trends(src_node_name, lookback, cpu_threshold, mem_threshold)
+        tgt_trend = ta.analyze_node_trends(tgt_node_name, lookback, cpu_threshold, mem_threshold)
+        guest_trend = ta.analyze_guest_trends(str(vmid_key), lookback)
+
+        # Check data quality
+        src_quality = src_trend.get("data_quality", {})
+        tgt_quality = tgt_trend.get("data_quality", {})
+
+        if src_quality.get("total_samples", 0) < 2 and tgt_quality.get("total_samples", 0) < 2:
+            return {
+                "available": False,
+                "reason": "Insufficient historical data. Trends will be available after a few collection cycles.",
+            }
+
+        # Build decision factors list
+        decision_factors = []
+
+        # Source node factors
+        src_cpu_rate = src_trend.get("cpu", {}).get("rate_per_day", 0)
+        src_mem_rate = src_trend.get("memory", {}).get("rate_per_day", 0)
+
+        if src_cpu_rate > 0.5:
+            decision_factors.append({
+                "factor": f"Source node CPU trending up {src_trend['cpu'].get('rate_display', '')} over {lookback // 24}d",
+                "weight": "high" if src_cpu_rate > 2.0 else "medium",
+                "type": "problem",
+            })
+        if src_mem_rate > 0.5:
+            decision_factors.append({
+                "factor": f"Source node memory trending up {src_trend['memory'].get('rate_display', '')} over {lookback // 24}d",
+                "weight": "high" if src_mem_rate > 2.0 else "medium",
+                "type": "problem",
+            })
+        if src_trend.get("cpu_above_baseline"):
+            decision_factors.append({
+                "factor": f"Source node CPU is above seasonal baseline ({src_trend.get('cpu_baseline_sigma', 0):.1f}σ)",
+                "weight": "medium",
+                "type": "problem",
+            })
+
+        # Target node factors
+        tgt_stab = tgt_trend.get("overall_stability", 50)
+        tgt_cpu_rate = tgt_trend.get("cpu", {}).get("rate_per_day", 0)
+
+        if tgt_stab >= 70:
+            decision_factors.append({
+                "factor": f"Target node is stable (score {tgt_stab}/100), predictable performance",
+                "weight": "high",
+                "type": "positive",
+            })
+        if tgt_cpu_rate < -0.5:
+            decision_factors.append({
+                "factor": f"Target node CPU trending down {tgt_trend['cpu'].get('rate_display', '')}",
+                "weight": "medium",
+                "type": "positive",
+            })
+        elif tgt_cpu_rate > 1.0:
+            decision_factors.append({
+                "factor": f"Target node CPU also trending up {tgt_trend['cpu'].get('rate_display', '')}",
+                "weight": "medium",
+                "type": "concern",
+            })
+
+        # Guest factors
+        guest_behavior = guest_trend.get("behavior", "unknown")
+        guest_cpu_rate = guest_trend.get("cpu", {}).get("rate_per_day", 0)
+        guest_migrations = guest_trend.get("migration_count", 0)
+
+        if guest_behavior == "growing":
+            decision_factors.append({
+                "factor": f"Guest CPU growing {guest_trend['cpu'].get('rate_display', '')}, contributing to source overload",
+                "weight": "high",
+                "type": "problem",
+            })
+        elif guest_behavior == "bursty":
+            decision_factors.append({
+                "factor": "Guest is bursty — load spikes may self-resolve",
+                "weight": "low",
+                "type": "concern",
+            })
+
+        if guest_migrations > 0:
+            decision_factors.append({
+                "factor": f"Guest has been migrated {guest_migrations} time(s) before",
+                "weight": "low",
+                "type": "info",
+            })
+
+        # Data quality
+        node_days = max(
+            src_quality.get("coverage_days", 0),
+            tgt_quality.get("coverage_days", 0),
+        )
+        guest_days = guest_trend.get("data_points", 0) / 12  # approx days
+
+        return {
+            "available": True,
+            "source_node_trend": {
+                "cpu_trend": src_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "cpu_direction": src_trend.get("cpu", {}).get("direction", "unknown"),
+                "mem_trend": src_trend.get("memory", {}).get("rate_display", "0%/day"),
+                "mem_direction": src_trend.get("memory", {}).get("direction", "unknown"),
+                "stability_score": src_trend.get("overall_stability", 50),
+                "above_baseline": src_trend.get("cpu_above_baseline", False),
+                "baseline_deviation_sigma": src_trend.get("cpu_baseline_sigma"),
+            },
+            "target_node_trend": {
+                "cpu_trend": tgt_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "cpu_direction": tgt_trend.get("cpu", {}).get("direction", "unknown"),
+                "mem_trend": tgt_trend.get("memory", {}).get("rate_display", "0%/day"),
+                "mem_direction": tgt_trend.get("memory", {}).get("direction", "unknown"),
+                "stability_score": tgt_trend.get("overall_stability", 50),
+                "above_baseline": tgt_trend.get("cpu_above_baseline", False),
+            },
+            "guest_trend": {
+                "cpu_growth_rate": guest_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "behavior": guest_behavior,
+                "peak_hours": guest_trend.get("peak_hours", []),
+                "previous_migrations": guest_migrations,
+            },
+            "decision_factors": decision_factors,
+            "data_quality": {
+                "node_history_days": round(node_days, 1),
+                "guest_history_days": round(guest_days, 1),
+                "confidence_note": "High data availability" if node_days >= 7 else (
+                    "Moderate data" if node_days >= 2 else "Limited data — trends will improve with more collection cycles"
+                ),
+            },
+        }
+
+    except Exception as e:
+        print(f"Warning: Failed to build trend evidence for {vmid_key}: {e}", file=sys.stderr)
+        return {"available": False, "reason": f"Error computing trends: {str(e)}"}
+
+
+def _build_decision_explanation(
+    guest: Dict,
+    src_node: str,
+    tgt_node: str,
+    trend_evidence: Dict,
+    score_improvement: float,
+) -> str:
+    """Build a human-readable 1-2 sentence decision explanation."""
+    if not trend_evidence.get("available"):
+        name = guest.get("name", "Guest")
+        return f"{name} would improve cluster balance by {score_improvement:.0f} points by moving from {src_node} to {tgt_node}."
+
+    parts = []
+    src_trend = trend_evidence.get("source_node_trend", {})
+    tgt_trend = trend_evidence.get("target_node_trend", {})
+    guest_info = trend_evidence.get("guest_trend", {})
+
+    # Source description
+    src_cpu_dir = src_trend.get("cpu_direction", "unknown")
+    if src_cpu_dir in ("sustained_increase", "rising"):
+        parts.append(f"Source node '{src_node}' CPU is trending up ({src_trend.get('cpu_trend', '')})")
+    elif src_trend.get("above_baseline"):
+        parts.append(f"Source node '{src_node}' is above its normal baseline")
+    else:
+        parts.append(f"Source node '{src_node}' has higher load than '{tgt_node}'")
+
+    # Guest description
+    behavior = guest_info.get("behavior", "")
+    name = guest.get("name", "Guest")
+    if behavior == "growing":
+        parts.append(f"{name} is growing ({guest_info.get('cpu_growth_rate', '')})")
+    elif behavior == "bursty":
+        parts.append(f"{name} has bursty workload patterns")
+
+    # Target description
+    tgt_stab = tgt_trend.get("stability_score", 50)
+    if tgt_stab >= 70:
+        parts.append(f"Target '{tgt_node}' is stable with predictable performance")
+    else:
+        parts.append(f"Target '{tgt_node}' has available capacity")
+
+    return ". ".join(parts) + f". Expected improvement: {score_improvement:.0f} points."

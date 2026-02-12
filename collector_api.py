@@ -808,6 +808,21 @@ class ProxmoxAPICollector:
     
     def generate_summary(self) -> Dict:
         """Generate cluster summary"""
+        # Calculate committed (allocated) memory per node from RUNNING guest maxmem values.
+        # Stopped guests don't consume physical RAM, so exclude them to avoid
+        # inflating the overcommit ratio and triggering false penalties.
+        for node_name, node_data in self.nodes.items():
+            committed_mem_gb = 0.0
+            for vmid in node_data.get("guests", []):
+                guest = self.guests.get(str(vmid), {})
+                if guest.get("status") == "running":
+                    committed_mem_gb += guest.get("mem_max_gb", 0)
+            node_data["committed_mem_gb"] = round(committed_mem_gb, 2)
+            total_mem_gb = node_data.get("total_mem_gb", 1)
+            node_data["mem_overcommit_ratio"] = round(
+                committed_mem_gb / total_mem_gb, 2
+            ) if total_mem_gb > 0 else 0.0
+
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])
@@ -949,6 +964,48 @@ def collect_data():
 
         print(f"[{datetime.utcnow()}] Data collection complete. Cache updated.")
         print(f"[{datetime.utcnow()}] Collected data for {data['summary']['total_nodes']} nodes and {data['summary']['total_guests']} guests")
+
+        # --- Persistent Metrics Store (trend-based migration data) ---
+        try:
+            from proxbalance.metrics_store import append_node_sample, append_guest_sample, compress_old_samples
+
+            for node_name, node_data in data.get("nodes", {}).items():
+                if node_data.get("status") != "online":
+                    continue
+                metrics = node_data.get("metrics", {})
+                storage_list = node_data.get("storage", [])
+                avg_storage = 0.0
+                if storage_list:
+                    usage_vals = [s.get("usage_pct", 0) for s in storage_list if s.get("usage_pct") is not None]
+                    avg_storage = sum(usage_vals) / len(usage_vals) if usage_vals else 0.0
+
+                append_node_sample(node_name, {
+                    "cpu": metrics.get("current_cpu", node_data.get("cpu_percent", 0)),
+                    "memory": metrics.get("current_mem", node_data.get("mem_percent", 0)),
+                    "iowait": metrics.get("current_iowait", 0),
+                    "load_avg": metrics.get("avg_load", 0),
+                    "guest_count": len(node_data.get("guests", [])),
+                    "storage_usage_pct": round(avg_storage, 2),
+                })
+
+            for vmid_str, guest_data in data.get("guests", {}).items():
+                if guest_data.get("status") != "running":
+                    continue
+                append_guest_sample(vmid_str, {
+                    "cpu": guest_data.get("cpu_current", 0),
+                    "memory": round(guest_data.get("mem_used_gb", 0) / max(guest_data.get("mem_max_gb", 1), 0.01) * 100, 2),
+                    "disk_read_bps": guest_data.get("disk_read_bps", 0),
+                    "disk_write_bps": guest_data.get("disk_write_bps", 0),
+                    "net_in_bps": guest_data.get("net_in_bps", 0),
+                    "net_out_bps": guest_data.get("net_out_bps", 0),
+                    "node": guest_data.get("node", ""),
+                })
+
+            comp_summary = compress_old_samples()
+            if comp_summary.get("nodes_compressed", 0) > 0 or comp_summary.get("guests_compressed", 0) > 0:
+                print(f"[{datetime.utcnow()}] Metrics store compressed: {comp_summary}")
+        except Exception as e:
+            print(f"Warning: Failed to update metrics store: {e}", file=sys.stderr)
 
         # --- Notifications ---
         # Node status changes

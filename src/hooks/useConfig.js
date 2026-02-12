@@ -22,6 +22,15 @@ export function useConfig(API_BASE, deps = {}) {
   const [activePreset, setActivePreset] = useState('custom');
   const [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState(false);
 
+  // Simplified Migration Settings state
+  const [migrationSettings, setMigrationSettings] = useState(null);
+  const [migrationSettingsDefaults, setMigrationSettingsDefaults] = useState(null);
+  const [migrationSettingsDescriptions, setMigrationSettingsDescriptions] = useState(null);
+  const [effectivePenaltyConfig, setEffectivePenaltyConfig] = useState(null);
+  const [hasExpertOverrides, setHasExpertOverrides] = useState(false);
+  const [savingMigrationSettings, setSavingMigrationSettings] = useState(false);
+  const [migrationSettingsSaved, setMigrationSettingsSaved] = useState(false);
+
   const fetchConfig = async () => {
     try {
       const response = await fetch(`${API_BASE}/config`);
@@ -145,6 +154,79 @@ export function useConfig(API_BASE, deps = {}) {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Simplified Migration Settings
+  // ---------------------------------------------------------------------------
+
+  const fetchMigrationSettings = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/migration-settings`);
+      const result = await response.json();
+      if (result.success) {
+        setMigrationSettings(result.settings);
+        setMigrationSettingsDefaults(result.defaults);
+        setMigrationSettingsDescriptions(result.descriptions);
+        setEffectivePenaltyConfig(result.effective_penalty_config);
+        setHasExpertOverrides(result.has_expert_overrides || false);
+      }
+    } catch (err) {
+      console.error('Failed to load migration settings:', err);
+    }
+  };
+
+  const saveMigrationSettingsAction = async () => {
+    if (!migrationSettings) return;
+    setSavingMigrationSettings(true);
+    setMigrationSettingsSaved(false);
+    try {
+      const response = await fetch(`${API_BASE}/migration-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: migrationSettings })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMigrationSettings(result.settings);
+        setEffectivePenaltyConfig(result.effective_penalty_config);
+        setMigrationSettingsSaved(true);
+        setTimeout(() => setMigrationSettingsSaved(false), 3000);
+        // Also refresh penalty config so expert mode stays in sync
+        fetchPenaltyConfig();
+      } else {
+        if (setError) setError(`Failed to save migration settings: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Failed to save migration settings:', err);
+      if (setError) setError(`Error saving migration settings: ${err.message}`);
+    } finally {
+      setSavingMigrationSettings(false);
+    }
+  };
+
+  const resetMigrationSettingsAction = async () => {
+    setSavingMigrationSettings(true);
+    try {
+      const response = await fetch(`${API_BASE}/migration-settings/reset`, {
+        method: 'POST'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMigrationSettings(result.settings);
+        setEffectivePenaltyConfig(result.effective_penalty_config);
+        setMigrationSettingsSaved(true);
+        setTimeout(() => setMigrationSettingsSaved(false), 3000);
+        fetchPenaltyConfig();
+      } else {
+        if (setError) setError(`Failed to reset migration settings: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Failed to reset migration settings:', err);
+      if (setError) setError(`Error resetting migration settings: ${err.message}`);
+    } finally {
+      setSavingMigrationSettings(false);
+    }
+  };
+
   return {
     config, setConfig,
     autoRefreshInterval, setAutoRefreshInterval,
@@ -167,6 +249,17 @@ export function useConfig(API_BASE, deps = {}) {
     applyPenaltyPreset,
     saveSettings,
     savePenaltyConfig,
-    resetPenaltyConfig
+    resetPenaltyConfig,
+    // Migration settings
+    migrationSettings, setMigrationSettings,
+    migrationSettingsDefaults,
+    migrationSettingsDescriptions,
+    effectivePenaltyConfig,
+    hasExpertOverrides,
+    savingMigrationSettings,
+    migrationSettingsSaved,
+    fetchMigrationSettings,
+    saveMigrationSettingsAction,
+    resetMigrationSettingsAction,
   };
 }

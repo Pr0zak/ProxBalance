@@ -1,7 +1,7 @@
 import {
   HardDrive, Package, X, Activity, AlertCircle, Folder,
   ChevronDown, ChevronUp, AlertTriangle, CheckCircle,
-  BarChart2, RefreshCw, MoveRight
+  BarChart2, RefreshCw, MoveRight, TrendingUp, TrendingDown, Minus
 } from '../Icons.jsx';
 
 export default function GuestDetailsModal({
@@ -376,8 +376,18 @@ export default function GuestDetailsModal({
                             : 'border-gray-200 dark:border-gray-700'
                         }`}>
                           <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900 dark:text-white">{opt.node}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                                {opt.node}
+                                {/* CPU trend arrow */}
+                                {!opt.disqualified && opt.trend_analysis && (() => {
+                                  const dir = opt.trend_analysis.cpu_direction;
+                                  if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={`CPU ${opt.trend_analysis.cpu_rate_per_day > 0 ? '+' : ''}${opt.trend_analysis.cpu_rate_per_day?.toFixed(1)}%/day`} />;
+                                  if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title="CPU rising" />;
+                                  if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="CPU falling" />;
+                                  return <Minus size={10} className="text-gray-400" title="CPU stable" />;
+                                })()}
+                              </span>
                               {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">CURRENT</span>}
                               {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
                               {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
@@ -387,6 +397,24 @@ export default function GuestDetailsModal({
                                   'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                                 }`}>+{opt.improvement.toFixed(0)} pts</span>
                               )}
+                              {/* Stability badge */}
+                              {!opt.disqualified && opt.trend_analysis?.stability_score != null && (() => {
+                                const s = opt.trend_analysis.stability_score;
+                                const label = s >= 80 ? 'Stable' : s >= 60 ? 'Moderate' : s >= 40 ? 'Variable' : 'Volatile';
+                                const color = s >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                  : s >= 60 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                  : s >= 40 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
+                                return <span className={`px-1 py-0 rounded text-[9px] font-medium ${color}`} title={`Stability: ${s}/100`}>{label}</span>;
+                              })()}
+                              {/* Overcommit badge */}
+                              {!opt.disqualified && opt.overcommit_ratio > 0.85 && (() => {
+                                const oc = opt.overcommit_ratio;
+                                const color = oc > 1.2 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                  : oc > 1.0 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                                  : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300';
+                                return <span className={`px-1 py-0 rounded text-[9px] font-medium ${color}`} title={`Memory overcommit: ${(oc * 100).toFixed(0)}% (${opt.committed_mem_gb?.toFixed(1) || '?'}GB committed)`}>OC {(oc * 100).toFixed(0)}%</span>;
+                              })()}
                             </div>
                             <div className="text-right">
                               {opt.disqualified ? (
