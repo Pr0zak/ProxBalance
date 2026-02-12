@@ -35,6 +35,9 @@ def get_recommendations():
     if not cache_data:
         return jsonify({"success": False, "error": "No data available"}), 503
 
+    # Phase 2f: Accept in-flight migration data from automigrate batch runs
+    initial_pending = data.get("pending_target_guests")
+
     try:
         result = generate_recommendations(
             cache_data.get('nodes', {}),
@@ -42,7 +45,8 @@ def get_recommendations():
             cpu_threshold,
             mem_threshold,
             iowait_threshold,
-            maintenance_nodes
+            maintenance_nodes,
+            initial_pending_guests=initial_pending
         )
         recommendations = result.get("recommendations", [])
         skipped_guests = result.get("skipped_guests", [])

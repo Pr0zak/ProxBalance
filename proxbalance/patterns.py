@@ -169,3 +169,62 @@ def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: st
         )
 
     return result
+
+
+def get_node_seasonal_baseline(score_history: List[Dict[str, Any]], node_name: str, current_hour: int) -> Optional[Dict[str, float]]:
+    """
+    Calculate the node's typical CPU/memory at the current hour of day.
+
+    Filters score history snapshots matching the given UTC hour and computes
+    statistics. Requires at least 5 matching data points.
+
+    Args:
+        score_history: List of score snapshot dicts from score_history.json.
+        node_name: The node to analyze.
+        current_hour: The current UTC hour (0-23).
+
+    Returns:
+        Dict with avg_cpu, avg_mem, std_cpu, std_mem, data_points,
+        or None if insufficient data.
+    """
+    from datetime import datetime as dt
+
+    cpu_values: List[float] = []
+    mem_values: List[float] = []
+
+    for snapshot in score_history:
+        node_data = snapshot.get('nodes', {}).get(node_name)
+        if not node_data:
+            continue
+
+        ts_str = snapshot.get('timestamp', '')
+        try:
+            if ts_str.endswith('Z'):
+                ts_str = ts_str[:-1] + '+00:00'
+            ts = dt.fromisoformat(ts_str)
+        except (ValueError, TypeError):
+            continue
+
+        if ts.hour == current_hour:
+            cpu = node_data.get('cpu')
+            mem = node_data.get('mem')
+            if cpu is not None:
+                cpu_values.append(float(cpu))
+            if mem is not None:
+                mem_values.append(float(mem))
+
+    if len(cpu_values) < 5:
+        return None
+
+    avg_cpu = sum(cpu_values) / len(cpu_values)
+    avg_mem = sum(mem_values) / len(mem_values) if mem_values else 0
+    std_cpu = (sum((x - avg_cpu)**2 for x in cpu_values) / len(cpu_values)) ** 0.5
+    std_mem = (sum((x - avg_mem)**2 for x in mem_values) / len(mem_values)) ** 0.5 if mem_values else 0
+
+    return {
+        "avg_cpu": round(avg_cpu, 1),
+        "avg_mem": round(avg_mem, 1),
+        "std_cpu": round(std_cpu, 1),
+        "std_mem": round(std_mem, 1),
+        "data_points": len(cpu_values),
+    }

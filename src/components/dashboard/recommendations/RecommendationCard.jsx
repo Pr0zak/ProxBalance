@@ -174,6 +174,15 @@ export default function RecommendationCard({
                   Target Conflict
                 </span>
               )}
+              {rec.cost_benefit && rec.cost_benefit.ratio != null && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                  rec.cost_benefit.ratio >= 2.0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                  rec.cost_benefit.ratio >= 1.0 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                  'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                }`} title={`Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x — Score improvement: +${rec.cost_benefit.score_improvement?.toFixed(0) || '?'} pts, Est. duration: ${rec.cost_benefit.estimated_duration_minutes?.toFixed(0) || '?'} min`}>
+                  ROI: {rec.cost_benefit.ratio.toFixed(1)}x
+                </span>
+              )}
             </div>
           )}
 

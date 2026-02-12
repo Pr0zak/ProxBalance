@@ -2,6 +2,8 @@ import {
   AlertCircle, Settings, X
 } from './Icons.jsx';
 
+const { useState } = React;
+
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -71,6 +73,8 @@ export default function DashboardPage({
   selectedNode, setSelectedNode, selectedGuestDetails, setSelectedGuestDetails,
   // Node status
   nodeGridColumns, setNodeGridColumns, chartPeriod, setChartPeriod, nodeScores,
+  // Guest profiles & score history
+  guestProfiles, scoreHistory,
   // Maintenance & evacuation
   maintenanceNodes, setMaintenanceNodes, evacuatingNodes, setEvacuatingNodes, planningNodes, setPlanningNodes,
   evacuationPlan, setEvacuationPlan, planNode, setPlanNode,
@@ -92,6 +96,7 @@ export default function DashboardPage({
   API_BASE
 }) {
   // Dashboard Page - data is guaranteed to be available here
+  const [showPredicted, setShowPredicted] = useState(false);
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -159,6 +164,7 @@ export default function DashboardPage({
         <AutomationStatusSection
           automationStatus={automationStatus}
           automationConfig={automationConfig}
+          scoreHistory={scoreHistory}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
           toggleSection={toggleSection}
@@ -176,6 +182,7 @@ export default function DashboardPage({
 
         <GuestTagManagement
           data={data}
+          guestProfiles={guestProfiles}
           collapsedSections={collapsedSections}
           toggleSection={toggleSection}
           guestSearchFilter={guestSearchFilter}
@@ -270,6 +277,8 @@ export default function DashboardPage({
           data={data}
           collapsedSections={collapsedSections}
           toggleSection={toggleSection}
+          showPredicted={showPredicted}
+          setShowPredicted={setShowPredicted}
           recommendationData={recommendationData}
           recommendations={recommendations}
           nodeGridColumns={nodeGridColumns}

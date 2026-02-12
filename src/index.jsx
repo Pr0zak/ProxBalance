@@ -120,6 +120,14 @@ const ProxmoxBalanceManager = () => {
     return () => clearInterval(interval);
   }, [cluster.data]);
 
+  // Fetch guest profiles and score history when cluster data loads
+  useEffect(() => {
+    if (cluster.data) {
+      cluster.fetchGuestProfiles();
+      cluster.fetchScoreHistory();
+    }
+  }, [cluster.data]);
+
   // Handle auto-expansion of Penalty Config when navigating from Migration Recommendations
   useEffect(() => {
     if (ui.currentPage === 'automation' && configHook.openPenaltyConfigOnAutomation) {
@@ -385,12 +393,7 @@ const ProxmoxBalanceManager = () => {
       automigrateLogs={automation.automigrateLogs}
       collapsedSections={ui.collapsedSections}
       config={configHook.config}
-      confirmAllowContainerRestarts={automation.confirmAllowContainerRestarts}
-      confirmApplyPreset={automation.confirmApplyPreset}
-      confirmDisableDryRun={automation.confirmDisableDryRun}
-      confirmEnableAutomation={automation.confirmEnableAutomation}
       confirmRemoveWindow={automation.confirmRemoveWindow}
-      editingPreset={automation.editingPreset}
       editingWindowIndex={automation.editingWindowIndex}
       fetchAutomationStatus={automation.fetchAutomationStatus}
       logRefreshTime={automation.logRefreshTime}
@@ -415,13 +418,8 @@ const ProxmoxBalanceManager = () => {
       setAutomigrateLogs={automation.setAutomigrateLogs}
       setCollapsedSections={ui.setCollapsedSections}
       setConfig={configHook.setConfig}
-      setConfirmAllowContainerRestarts={automation.setConfirmAllowContainerRestarts}
-      setConfirmApplyPreset={automation.setConfirmApplyPreset}
-      setConfirmDisableDryRun={automation.setConfirmDisableDryRun}
-      setConfirmEnableAutomation={automation.setConfirmEnableAutomation}
       setConfirmRemoveWindow={automation.setConfirmRemoveWindow}
       setCurrentPage={ui.setCurrentPage}
-      setEditingPreset={automation.setEditingPreset}
       setEditingWindowIndex={automation.setEditingWindowIndex}
       setError={cluster.setError}
       setLogRefreshTime={automation.setLogRefreshTime}
@@ -604,6 +602,8 @@ const ProxmoxBalanceManager = () => {
     nodeGridColumns={ui.nodeGridColumns} setNodeGridColumns={ui.setNodeGridColumns}
     chartPeriod={cluster.chartPeriod} setChartPeriod={cluster.setChartPeriod}
     nodeScores={cluster.nodeScores}
+    guestProfiles={cluster.guestProfiles}
+    scoreHistory={cluster.scoreHistory}
     maintenanceNodes={evacuation.maintenanceNodes} setMaintenanceNodes={evacuation.setMaintenanceNodes}
     evacuatingNodes={evacuation.evacuatingNodes} setEvacuatingNodes={evacuation.setEvacuatingNodes}
     planningNodes={evacuation.planningNodes} setPlanningNodes={evacuation.setPlanningNodes}

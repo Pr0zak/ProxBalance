@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime
+import json, os
 from proxbalance.config_manager import (
     load_config, CONFIG_FILE, trigger_collection,
 )
@@ -151,6 +152,27 @@ def get_guests_only():
             "collected_at": data.get("collected_at")
         }
     })
+
+
+@analysis_bp.route("/api/score-history", methods=["GET"])
+@api_route
+def get_score_history():
+    """Return cluster health score history for timeline charting"""
+    from proxbalance.forecasting import SCORE_HISTORY_FILE
+    if not os.path.exists(SCORE_HISTORY_FILE):
+        return jsonify({"success": True, "history": []})
+    with open(SCORE_HISTORY_FILE, 'r') as f:
+        history = json.load(f)
+    limit = request.args.get('limit', 168, type=int)
+    entries = history[-limit:] if isinstance(history, list) else []
+    slim = [{
+        "timestamp": e.get("timestamp"),
+        "cluster_health": e.get("cluster_health"),
+        "recommendation_count": e.get("recommendation_count", 0),
+        "nodes": {k: {"suitability": v.get("suitability"), "cpu": v.get("cpu"), "mem": v.get("mem")}
+                  for k, v in e.get("nodes", {}).items()}
+    } for e in entries]
+    return jsonify({"success": True, "history": slim})
 
 
 @analysis_bp.route("/api/refresh", methods=["POST"])

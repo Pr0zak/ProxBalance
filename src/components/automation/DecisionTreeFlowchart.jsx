@@ -162,7 +162,7 @@ export default function DecisionTreeFlowchart({
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate penalty scores for all nodes</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Find VMs on high-penalty nodes</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Match with low-penalty target nodes</div>
-                              <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Apply filters (tags, storage, rollback detection)</div>
+                              <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Apply filters (tags, storage, compatibility)</div>
                               <div className="flex items-start gap-2"><span className="text-indigo-600 dark:text-indigo-400">▸</span> Calculate confidence scores</div>
                             </div>
                           </div>
@@ -173,6 +173,38 @@ export default function DecisionTreeFlowchart({
                       <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                         <div className="flex items-start gap-3">
                           <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">6</div>
+                          <div className="flex-1">
+                            <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                              <span>👁</span> Persistent recommendation?
+                            </div>
+                            <div className="space-y-2 text-xs">
+                              <div className="flex items-center gap-2 p-2 bg-cyan-50 dark:bg-cyan-900/10 rounded-lg">
+                                <span className="text-cyan-600 dark:text-cyan-400 font-bold">OBSERVING</span>
+                                <span className="text-gray-500 dark:text-gray-400">→</span>
+                                <span className="bg-cyan-500 dark:bg-cyan-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">DEFER</span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-1">Not enough consecutive observations</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
+                                <span className="text-green-600 dark:text-green-400 font-bold">READY</span>
+                                <span className="text-gray-500 dark:text-gray-400">→</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-1">Met threshold, continue</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/10 rounded-lg">
+                                <span className="text-gray-600 dark:text-gray-400 font-bold">BYPASSED</span>
+                                <span className="text-gray-500 dark:text-gray-400">→</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-1">Feature disabled or maintenance evacuation</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 7 */}
+                      <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">7</div>
                           <div className="flex-1">
                             <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                               <span>📊</span> Any recommendations above min confidence?
@@ -193,10 +225,40 @@ export default function DecisionTreeFlowchart({
                         </div>
                       </div>
 
-                      {/* Step 7 */}
+                      {/* Step 8 - Intelligent Filters */}
+                      <div className="bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border-2 border-cyan-300 dark:border-cyan-600 p-5 shadow-md">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-gradient-to-br from-cyan-600 to-teal-600 dark:from-cyan-500 dark:to-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">8</div>
+                          <div className="flex-1">
+                            <div className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                              <span>🧠</span> Intelligent Filters <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(per recommendation, based on intelligence level)</span>
+                            </div>
+                            <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg">
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Basic:</span> Cycle prevention, Conflict detection</div>
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Standard:</span> + Cost-benefit analysis, Outcome learning, Guest tracking</div>
+                              <div className="flex items-start gap-2"><span className="text-cyan-600 dark:text-cyan-400 font-bold">Full:</span> + Trend awareness, Pattern suppression, Risk gating</div>
+                            </div>
+                            <div className="mt-2 space-y-2 text-xs">
+                              <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
+                                <span className="text-amber-600 dark:text-amber-400 font-bold">FILTERED</span>
+                                <span className="text-gray-500 dark:text-gray-400">→</span>
+                                <span className="bg-amber-500 dark:bg-amber-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm">SKIP</span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-1">Failed a filter check</span>
+                              </div>
+                              <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg">
+                                <span className="text-green-600 dark:text-green-400 font-bold">✓ PASSED</span>
+                                <span className="text-gray-500 dark:text-gray-400">→</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">Continue ↓</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 9 */}
                       <div className="bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500">
                         <div className="flex items-start gap-3">
-                          <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">7</div>
+                          <div className="bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">9</div>
                           <div className="flex-1">
                             <div className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
                               <span>🧪</span> Is dry run mode enabled?
@@ -217,10 +279,10 @@ export default function DecisionTreeFlowchart({
                         </div>
                       </div>
 
-                      {/* Step 8 - Action Box */}
+                      {/* Step 10 - Action Box */}
                       <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border-2 border-emerald-300 dark:border-emerald-600 p-5 shadow-md">
                         <div className="flex items-start gap-3">
-                          <div className="bg-gradient-to-br from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">8</div>
+                          <div className="bg-gradient-to-br from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">10</div>
                           <div className="flex-1">
                             <div className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                               <span>⚡</span> Execute Migrations
@@ -254,37 +316,6 @@ export default function DecisionTreeFlowchart({
                   </div>
                 </div>
 
-                <div className="mt-4 p-4 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-300 dark:border-blue-600">
-                  <div className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
-                    <span>💡</span> Configuration Profiles
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
-                      <div className="font-bold text-gray-900 dark:text-white mb-1">🛡️ Conservative</div>
-                      <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
-                        <div>• Min confidence: 80+</div>
-                        <div>• Max migrations: 1-2</div>
-                        <div>• Cooldown: 60+ min</div>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
-                      <div className="font-bold text-gray-900 dark:text-white mb-1">⚖️ Balanced</div>
-                      <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
-                        <div>• Min confidence: 70+</div>
-                        <div>• Max migrations: 3-5</div>
-                        <div>• Cooldown: 30-60 min</div>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700">
-                      <div className="font-bold text-gray-900 dark:text-white mb-1">⚡ Aggressive</div>
-                      <div className="text-gray-600 dark:text-gray-400 space-y-0.5">
-                        <div>• Min confidence: 60+</div>
-                        <div>• Max migrations: 5-10</div>
-                        <div>• Cooldown: 15-30 min</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}

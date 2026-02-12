@@ -726,6 +726,20 @@
   function getTimezoneAbbr() {
     return (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", { timeZoneName: "short" }).split(" ").pop();
   }
+  function formatRelativeTime(timestamp) {
+    if (!timestamp) return "";
+    try {
+      let ts = typeof timestamp == "string" ? timestamp.endsWith("Z") || timestamp.includes("+") ? timestamp : timestamp + "Z" : timestamp, date = new Date(ts), diffMs = Date.now() - date, diffMins = Math.floor(diffMs / 6e4);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      let diffHours = Math.floor(diffMs / 36e5);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      let diffDays = Math.floor(diffMs / 864e5);
+      return diffDays < 7 ? `${diffDays}d ago` : date.toLocaleDateString();
+    } catch {
+      return "";
+    }
+  }
 
   // src/components/settings/DataCollectionSection.jsx
   init_constants();
@@ -857,6 +871,28 @@
       },
       savingCollectionSettings ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" }), "Saving...") : collectionSettingsSaved ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), "Settings Saved!") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 16 }), "Apply Collection Settings")
     )))));
+  }
+
+  // src/components/NumberField.jsx
+  var { useState: useState2, useEffect, useRef } = React;
+  function NumberField({ value, onCommit, isFloat, className, ...props }) {
+    let [localVal, setLocalVal] = useState2(String(value ?? "")), committedRef = useRef(value);
+    return useEffect(() => {
+      value !== committedRef.current && (committedRef.current = value, setLocalVal(String(value ?? "")));
+    }, [value]), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        ...props,
+        type: "number",
+        value: localVal,
+        onChange: (e) => setLocalVal(e.target.value),
+        onBlur: () => {
+          let parsed = isFloat ? parseFloat(localVal) : parseInt(localVal, 10);
+          isNaN(parsed) ? setLocalVal(String(value ?? "")) : (committedRef.current = parsed, onCommit(parsed));
+        },
+        className
+      }
+    );
   }
 
   // src/components/settings/NotificationsSection.jsx
@@ -1094,15 +1130,14 @@
         className: "w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" }, "SMTP Port"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "65535",
         value: automationConfig.notifications?.providers?.email?.smtp_port || 587,
-        onChange: (e) => {
+        onCommit: (val) => {
           let providers = { ...automationConfig.notifications?.providers || {} };
-          providers.email = { ...providers.email || {}, smtp_port: parseInt(e.target.value) }, saveAutomationConfig2({ notifications: { ...automationConfig.notifications, providers } });
+          providers.email = { ...providers.email || {}, smtp_port: val }, saveAutomationConfig2({ notifications: { ...automationConfig.notifications, providers } });
         },
         className: "w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
@@ -1343,7 +1378,7 @@ ${details}`);
 
   // src/components/settings/AdvancedSystemSettings.jsx
   init_constants();
-  var { useState: useState2 } = React;
+  var { useState: useState3 } = React;
   function AdvancedSystemSettings({
     showAdvancedSettings,
     setShowAdvancedSettings,
@@ -1771,17 +1806,33 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     )))));
   }
 
+  // src/components/Toggle.jsx
+  function Toggle({ checked, onChange, color = "green" }) {
+    return /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer shrink-0 ml-4" }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        checked,
+        onChange,
+        className: "sr-only peer"
+      }
+    ), /* @__PURE__ */ React.createElement("div", { className: `w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${color === "yellow" ? "peer-checked:bg-yellow-600" : "peer-checked:bg-green-600"}` }));
+  }
+  function ToggleRow({ label, description, checked, onChange, color, children }) {
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, label), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, description)), /* @__PURE__ */ React.createElement(Toggle, { checked, onChange, color })), children);
+  }
+
   // src/components/automation/MainSettingsSection.jsx
-  var { useState: useState3 } = React;
+  var { useState: useState4 } = React;
   function MainSettingsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
-    let [confirmEnableAutomation, setConfirmEnableAutomation] = useState3(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState3(!1), [editingPreset, setEditingPreset] = useState3(null), [confirmApplyPreset, setConfirmApplyPreset] = useState3(null);
+    let [confirmEnableAutomation, setConfirmEnableAutomation] = useState4(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState4(!1);
     return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, mainSettings: !prev.mainSettings })),
         className: "w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       },
-      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Main Settings"),
+      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Core Settings"),
       /* @__PURE__ */ React.createElement(
         ChevronDown,
         {
@@ -1789,182 +1840,120 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.mainSettings && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Enable Automated Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Turn automation on or off")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), !collapsedSections.mainSettings && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Enable Automated Migrations",
+        description: "Turn automation on or off",
         checked: automationConfig.enabled || !1,
         onChange: (e) => {
           e.target.checked ? setConfirmEnableAutomation(!0) : saveAutomationConfig2({ enabled: !1 });
-        },
-        className: "sr-only peer"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), confirmEnableAutomation && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 20, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 mb-2" }, "Enable Automated Migrations?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-orange-800 dark:text-orange-300 mb-3" }, "The system will automatically migrate VMs based on your configured rules."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ enabled: !0 }), setConfirmEnableAutomation(!1);
-        },
-        className: "px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
+        }
       },
-      /* @__PURE__ */ React.createElement(Power, { size: 14 }),
-      "Enable Automation"
+      confirmEnableAutomation && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 20, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 mb-2" }, "Enable Automated Migrations?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-orange-800 dark:text-orange-300 mb-3" }, "The system will automatically migrate VMs based on your configured rules."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ enabled: !0 }), setConfirmEnableAutomation(!1);
+          },
+          className: "px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
+        },
+        /* @__PURE__ */ React.createElement(Power, { size: 14 }),
+        "Enable Automation"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmEnableAutomation(!1),
+          className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel"
+      ))))))
     ), /* @__PURE__ */ React.createElement(
-      "button",
+      ToggleRow,
       {
-        onClick: () => setConfirmEnableAutomation(!1),
-        className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel"
-    ))))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Dry Run Mode"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Test without actual migrations (recommended)")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
+        label: "Dry Run Mode",
+        description: "Test without actual migrations (recommended)",
         checked: automationConfig.dry_run !== !1,
         onChange: (e) => {
           e.target.checked ? saveAutomationConfig2({ dry_run: !0 }) : setConfirmDisableDryRun(!0);
         },
-        className: "sr-only peer"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-yellow-600" }))), confirmDisableDryRun && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-red-900 dark:text-red-200 mb-2 text-lg" }, "DISABLE DRY RUN MODE?"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-800 dark:text-red-300 space-y-2 mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "This will enable REAL automated migrations!"), /* @__PURE__ */ React.createElement("p", null, "VMs will actually be migrated automatically based on your configured rules."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Are you absolutely sure?")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ dry_run: !1 }), setConfirmDisableDryRun(!1);
+        color: "yellow"
+      },
+      confirmDisableDryRun && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-red-900 dark:text-red-200 mb-2 text-lg" }, "DISABLE DRY RUN MODE?"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-red-800 dark:text-red-300 space-y-2 mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "This will enable REAL automated migrations!"), /* @__PURE__ */ React.createElement("p", null, "VMs will actually be migrated automatically based on your configured rules."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Are you absolutely sure?")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ dry_run: !1 }), setConfirmDisableDryRun(!1);
+          },
+          className: "px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
         },
-        className: "px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
-      "Yes, Disable Dry Run"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
+        /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
+        "Yes, Disable Dry Run"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmDisableDryRun(!1),
+          className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel (Keep Dry Run On)"
+      ))))))
+    ), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("label", { className: "block font-semibold text-gray-900 dark:text-white mb-2" }, "Check Interval (minutes)"), /* @__PURE__ */ React.createElement(
+      NumberField,
       {
-        onClick: () => setConfirmDisableDryRun(!1),
-        className: "px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel (Keep Dry Run On)"
-    ))))))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("label", { className: "block font-semibold text-gray-900 dark:text-white mb-2" }, "Check Interval (minutes)"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
         min: "1",
         max: "60",
         value: automationConfig.check_interval_minutes || 5,
-        onChange: (e) => saveAutomationConfig2({ check_interval_minutes: parseInt(e.target.value) }),
+        onCommit: (val) => saveAutomationConfig2({ check_interval_minutes: val }),
         className: "w-32 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400 mt-1" }, "How often to check for migrations")), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("label", { className: "block font-semibold text-gray-900 dark:text-white" }, "Quick Configuration Presets"), /* @__PURE__ */ React.createElement(
-      "button",
+    ), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400 mt-1" }, "How often to check for migrations")), /* @__PURE__ */ React.createElement("div", { className: "pt-2" }, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Migration Rules"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Min Confidence Score"), /* @__PURE__ */ React.createElement(
+      NumberField,
       {
-        onClick: () => setEditingPreset(editingPreset ? null : "info"),
-        className: "text-xs text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 flex items-center gap-1"
-      },
-      /* @__PURE__ */ React.createElement(Settings, { size: 14 }),
-      editingPreset ? "Done Editing" : "Customize Presets"
-    )), (() => {
-      let presets = automationConfig.presets || {
-        conservative: { min_confidence_score: 80, max_migrations_per_run: 1, cooldown_minutes: 120, check_interval_minutes: 30 },
-        balanced: { min_confidence_score: 70, max_migrations_per_run: 3, cooldown_minutes: 60, check_interval_minutes: 15 },
-        aggressive: { min_confidence_score: 60, max_migrations_per_run: 5, cooldown_minutes: 30, check_interval_minutes: 5 }
-      }, presetInfo = {
-        conservative: { icon: Shield, color: "blue", label: "Conservative", desc: "High confidence, low frequency, safest option" },
-        balanced: { icon: Activity, color: "green", label: "Balanced", desc: "Medium confidence and frequency, recommended" },
-        aggressive: { icon: AlertTriangle, color: "orange", label: "Aggressive", desc: "Lower confidence, high frequency, use with care" }
-      };
-      return /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3" }, Object.entries(presets).map(([key, preset]) => {
-        let info = presetInfo[key], Icon = info.icon, editing = editingPreset === key;
-        return /* @__PURE__ */ React.createElement("div", { key, className: `p-3 bg-white dark:bg-gray-700 border-2 border-${info.color}-300 dark:border-${info.color}-600 rounded-lg ${!editing && "hover:bg-" + info.color + "-50 dark:hover:bg-" + info.color + "-900/30"} transition-colors` }, editing ? /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Icon, { size: 16, className: `text-${info.color}-600 dark:text-${info.color}-400` }), /* @__PURE__ */ React.createElement("span", { className: "text-sm font-semibold text-gray-900 dark:text-white" }, info.label)), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => setEditingPreset(null),
-            className: "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          },
-          /* @__PURE__ */ React.createElement(X, { size: 14 })
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Min Confidence"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            min: "0",
-            max: "100",
-            value: preset.min_confidence_score,
-            onChange: (e) => saveAutomationConfig2({
-              presets: {
-                ...presets,
-                [key]: { ...preset, min_confidence_score: parseInt(e.target.value) }
-              }
-            }),
-            className: "w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
-          }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Max Migrations"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            min: "1",
-            max: "20",
-            value: preset.max_migrations_per_run,
-            onChange: (e) => saveAutomationConfig2({
-              presets: {
-                ...presets,
-                [key]: { ...preset, max_migrations_per_run: parseInt(e.target.value) }
-              }
-            }),
-            className: "w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
-          }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Cooldown (min)"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            min: "1",
-            max: "1440",
-            value: preset.cooldown_minutes,
-            onChange: (e) => saveAutomationConfig2({
-              presets: {
-                ...presets,
-                [key]: { ...preset, cooldown_minutes: parseInt(e.target.value) }
-              }
-            }),
-            className: "w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
-          }
-        )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Check Interval (min)"), /* @__PURE__ */ React.createElement(
-          "input",
-          {
-            type: "number",
-            min: "1",
-            max: "1440",
-            value: preset.check_interval_minutes,
-            onChange: (e) => saveAutomationConfig2({
-              presets: {
-                ...presets,
-                [key]: { ...preset, check_interval_minutes: parseInt(e.target.value) }
-              }
-            }),
-            className: "w-full px-2 py-1 text-xs bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded text-gray-900 dark:text-white"
-          }
-        ))) : /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => {
-              editingPreset ? setEditingPreset(key) : confirmApplyPreset === key ? (saveAutomationConfig2({
-                check_interval_minutes: preset.check_interval_minutes,
-                rules: {
-                  ...automationConfig.rules,
-                  min_confidence_score: preset.min_confidence_score,
-                  max_migrations_per_run: preset.max_migrations_per_run,
-                  cooldown_minutes: preset.cooldown_minutes
-                }
-              }), setConfirmApplyPreset(null)) : setConfirmApplyPreset(key);
-            },
-            className: `w-full text-left ${confirmApplyPreset === key ? "ring-2 ring-orange-500 dark:ring-orange-400 bg-orange-50 dark:bg-orange-900/20" : ""}`
-          },
-          /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement(Icon, { size: 18, className: `text-${info.color}-600 dark:text-${info.color}-400` }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, info.label), editingPreset && /* @__PURE__ */ React.createElement(Settings, { size: 14, className: "ml-auto text-gray-500" })),
-          /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400" }, info.desc),
-          editingPreset && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Click to edit"),
-          confirmApplyPreset === key && /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-700 dark:text-orange-300 mt-1 font-semibold" }, "Click again to apply preset")
-        ));
-      }));
-    })(), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-purple-700 dark:text-purple-300 mt-3 italic" }, "\u{1F4A1} ", editingPreset ? 'Edit preset values above, then click "Done Editing" to apply them.' : 'These presets configure multiple settings at once. Click "Customize Presets" to edit their values.'))));
+        min: "0",
+        max: "100",
+        value: automationConfig.rules?.min_confidence_score || 75,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, min_confidence_score: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Migrations Per Run"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "1",
+        max: "20",
+        value: automationConfig.rules?.max_migrations_per_run || 3,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, max_migrations_per_run: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Cooldown Minutes"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "0",
+        max: "1440",
+        value: automationConfig.rules?.cooldown_minutes || 30,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, cooldown_minutes: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations of the same VM")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Concurrent Migrations"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "1",
+        max: "10",
+        value: automationConfig.rules?.max_concurrent_migrations || 1,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Maximum simultaneous migrations")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Grace Period (seconds)"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "0",
+        max: "300",
+        value: automationConfig.rules?.grace_period_seconds !== void 0 ? automationConfig.rules.grace_period_seconds : 30,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, grace_period_seconds: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations for cluster to settle (0 = no wait)"))))));
   }
 
   // src/components/automation/DecisionTreeFlowchart.jsx
@@ -1980,20 +1969,160 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       },
       /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 min-w-0" }, /* @__PURE__ */ React.createElement(Info, { size: 24, className: "text-blue-600 dark:text-blue-400 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "font-bold text-blue-900 dark:text-blue-200 text-left" }, "Migration Decision Flowchart")),
       collapsedSections.decisionTree ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 20, className: "text-blue-600 dark:text-blue-400 shrink-0" }) : /* @__PURE__ */ React.createElement(ChevronUp, { size: 20, className: "text-blue-600 dark:text-blue-400 shrink-0" })
-    ), !collapsedSections.decisionTree && /* @__PURE__ */ React.createElement("div", { className: "px-5 pb-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-800 dark:text-blue-300 space-y-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold text-blue-900 dark:text-blue-200" }, "This decision tree shows all possible paths through the automated migration process:"), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 rounded-lg p-6 border-2 border-blue-300 dark:border-blue-600 shadow-sm" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow" }, "\u{1F680} Automation Run Triggered")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center" }, /* @__PURE__ */ React.createElement("div", { className: "w-0.5 h-6 bg-gradient-to-b from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600" }), /* @__PURE__ */ React.createElement("div", { className: "text-blue-500 dark:text-blue-400" }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "1"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u2699\uFE0F"), " Is automation enabled?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "STOP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "2"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u23F1\uFE0F"), " Is cooldown period elapsed?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "3"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F550}"), " In allowed time window?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 BLACKOUT"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "BLOCKED")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 OUTSIDE"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "4"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F3E5}"), " Is cluster healthy? ", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "(if enabled)")), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "ABORT")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-300 dark:border-indigo-600 p-5 shadow-md" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "5"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F3AF}"), " Generate Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Calculate penalty scores for all nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Find VMs on high-penalty nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Match with low-penalty target nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Apply filters (tags, storage, rollback detection)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Calculate confidence scores"))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "6"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F4CA}"), " Any recommendations above min confidence?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "7"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F9EA}"), " Is dry run mode enabled?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-blue-600 dark:text-blue-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-blue-500 dark:bg-blue-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "LOG ONLY")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Execute \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border-2 border-emerald-300 dark:border-emerald-600 p-5 shadow-md" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "8"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u26A1"), " Execute Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Limit to max migrations per run (default: 3)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Execute migrations sequentially"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " If migration fails + abort_on_failure: STOP batch"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " If migration fails + pause_on_failure: DISABLE automation"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Track migration status and update history")))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center" }, /* @__PURE__ */ React.createElement("div", { className: "w-0.5 h-6 bg-gradient-to-b from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600" }), /* @__PURE__ */ React.createElement("div", { className: "text-emerald-500 dark:text-emerald-400" }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 dark:from-emerald-500 dark:via-green-500 dark:to-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-2xl" }, "\u2713"), " ", /* @__PURE__ */ React.createElement("span", null, "Run Complete"))))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 p-4 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-300 dark:border-blue-600" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F4A1}"), " Configuration Profiles"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-1" }, "\u{1F6E1}\uFE0F Conservative"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400 space-y-0.5" }, /* @__PURE__ */ React.createElement("div", null, "\u2022 Min confidence: 80+"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Max migrations: 1-2"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Cooldown: 60+ min"))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-1" }, "\u2696\uFE0F Balanced"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400 space-y-0.5" }, /* @__PURE__ */ React.createElement("div", null, "\u2022 Min confidence: 70+"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Max migrations: 3-5"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Cooldown: 30-60 min"))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 p-3 rounded border border-blue-200 dark:border-blue-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-1" }, "\u26A1 Aggressive"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400 space-y-0.5" }, /* @__PURE__ */ React.createElement("div", null, "\u2022 Min confidence: 60+"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Max migrations: 5-10"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Cooldown: 15-30 min"))))))));
+    ), !collapsedSections.decisionTree && /* @__PURE__ */ React.createElement("div", { className: "px-5 pb-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-800 dark:text-blue-300 space-y-4" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold text-blue-900 dark:text-blue-200" }, "This decision tree shows all possible paths through the automated migration process:"), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 rounded-lg p-6 border-2 border-blue-300 dark:border-blue-600 shadow-sm" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow" }, "\u{1F680} Automation Run Triggered")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center" }, /* @__PURE__ */ React.createElement("div", { className: "w-0.5 h-6 bg-gradient-to-b from-blue-400 to-blue-500 dark:from-blue-500 dark:to-blue-600" }), /* @__PURE__ */ React.createElement("div", { className: "text-blue-500 dark:text-blue-400" }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "1"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u2699\uFE0F"), " Is automation enabled?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "STOP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "2"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u23F1\uFE0F"), " Is cooldown period elapsed?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "3"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F550}"), " In allowed time window?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 BLACKOUT"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "BLOCKED")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 OUTSIDE"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "4"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F3E5}"), " Is cluster healthy? ", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "(if enabled)")), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-red-600 dark:text-red-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-red-500 dark:bg-red-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "ABORT")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border-2 border-indigo-300 dark:border-indigo-600 p-5 shadow-md" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-500 dark:to-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "5"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F3AF}"), " Generate Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Calculate penalty scores for all nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Find VMs on high-penalty nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Match with low-penalty target nodes"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Apply filters (tags, storage, compatibility)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-indigo-600 dark:text-indigo-400" }, "\u25B8"), " Calculate confidence scores"))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "6"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F441}"), " Persistent recommendation?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-cyan-50 dark:bg-cyan-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-cyan-600 dark:text-cyan-400 font-bold" }, "OBSERVING"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-cyan-500 dark:bg-cyan-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "DEFER"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-1" }, "Not enough consecutive observations")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "READY"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-1" }, "Met threshold, continue")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400 font-bold" }, "BYPASSED"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-1" }, "Feature disabled or maintenance evacuation")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "7"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F4CA}"), " Any recommendations above min confidence?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-orange-600 dark:text-orange-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-orange-500 dark:bg-orange-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-cyan-900/20 dark:to-teal-900/20 rounded-xl border-2 border-cyan-300 dark:border-cyan-600 p-5 shadow-md" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-cyan-600 to-teal-600 dark:from-cyan-500 dark:to-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "8"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F9E0}"), " Intelligent Filters ", /* @__PURE__ */ React.createElement("span", { className: "text-xs font-normal text-gray-500 dark:text-gray-400" }, "(per recommendation, based on intelligence level)")), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-cyan-600 dark:text-cyan-400 font-bold" }, "Basic:"), " Cycle prevention, Conflict detection"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-cyan-600 dark:text-cyan-400 font-bold" }, "Standard:"), " + Cost-benefit analysis, Outcome learning, Guest tracking"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-cyan-600 dark:text-cyan-400 font-bold" }, "Full:"), " + Trend awareness, Pattern suppression, Risk gating")), /* @__PURE__ */ React.createElement("div", { className: "mt-2 space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-amber-600 dark:text-amber-400 font-bold" }, "FILTERED"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-amber-500 dark:bg-amber-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "SKIP"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-1" }, "Failed a filter check")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2713 PASSED"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Continue \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-200 dark:border-blue-700 p-5 shadow-md hover:shadow-lg transition-all hover:border-blue-400 dark:hover:border-blue-500" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "9"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u{1F9EA}"), " Is dry run mode enabled?"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-blue-600 dark:text-blue-400 font-bold" }, "\u2713 YES"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "bg-blue-500 dark:bg-blue-600 text-white px-3 py-1 rounded-md font-semibold shadow-sm" }, "LOG ONLY")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-bold" }, "\u2717 NO"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "\u2192"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300 font-medium" }, "Execute \u2193")))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border-2 border-emerald-300 dark:border-emerald-600 p-5 shadow-md" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-emerald-600 to-green-600 dark:from-emerald-500 dark:to-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm shrink-0 shadow-md" }, "10"), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", null, "\u26A1"), " Execute Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-700 dark:text-gray-300 space-y-1.5 bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Limit to max migrations per run (default: 3)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Execute migrations sequentially"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " If migration fails + abort_on_failure: STOP batch"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " If migration fails + pause_on_failure: DISABLE automation"), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-600 dark:text-emerald-400" }, "\u25B8"), " Track migration status and update history")))))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center" }, /* @__PURE__ */ React.createElement("div", { className: "w-0.5 h-6 bg-gradient-to-b from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600" }), /* @__PURE__ */ React.createElement("div", { className: "text-emerald-500 dark:text-emerald-400" }, "\u25BC")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 dark:from-emerald-500 dark:via-green-500 dark:to-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-base shadow-lg hover:shadow-xl transition-shadow flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-2xl" }, "\u2713"), " ", /* @__PURE__ */ React.createElement("span", null, "Run Complete"))))))));
+  }
+
+  // src/components/automation/SmartMigrationsSection.jsx
+  var { useState: useState5 } = React, INTELLIGENCE_LEVELS = [
+    {
+      key: "basic",
+      label: "Basic",
+      description: "Observation tracking + Cycle detection",
+      detail: "Prevents acting on transient spikes and migration ping-pong"
+    },
+    {
+      key: "standard",
+      label: "Standard",
+      description: "Basic + Cost-benefit + Outcome learning + Guest tracking",
+      detail: "Learns from past migrations and avoids low-value moves",
+      recommended: !0
+    },
+    {
+      key: "full",
+      label: "Full",
+      description: "Standard + Trend analysis + Pattern recognition + Risk gating",
+      detail: "Maximum intelligence with workload pattern recognition"
+    }
+  ];
+  function inferIntelligenceLevel(imConfig) {
+    if (imConfig?.intelligence_level) return imConfig.intelligence_level;
+    let hasFull = imConfig?.trend_awareness_enabled || imConfig?.pattern_suppression_enabled || imConfig?.risk_gating_enabled, hasStandard = imConfig?.cost_benefit_enabled || imConfig?.outcome_learning_enabled || imConfig?.guest_success_tracking_enabled;
+    return hasFull ? "full" : hasStandard ? "standard" : "basic";
+  }
+  function SmartMigrationsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, automationStatus, collapsedSections, setCollapsedSections }) {
+    let [showAdvanced, setShowAdvanced] = useState5(!1), [dismissedSuggestion, setDismissedSuggestion] = useState5(!1), imConfig = automationConfig.rules?.intelligent_migrations, currentLevel = inferIntelligenceLevel(imConfig), suggestedLevel = automationStatus?.intelligent_tracking?.suggested_level, minDataHours = imConfig?.minimum_data_collection_hours !== void 0 ? imConfig.minimum_data_collection_hours : 24, obsPeriods = imConfig?.observation_periods || 3;
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setCollapsedSections((prev) => ({ ...prev, smartMigrations: !prev.smartMigrations })),
+        className: "w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
+      },
+      /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Smart Migrations"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400 mt-1" }, "Track recommendations over time and only act on persistent imbalances")),
+      /* @__PURE__ */ React.createElement(
+        ChevronDown,
+        {
+          size: 24,
+          className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.smartMigrations ? "-rotate-180" : ""}`
+        }
+      )
+    ), !collapsedSections.smartMigrations && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
+      {
+        label: "Enable Smart Migrations",
+        description: "Prevents acting on transient load spikes",
+        checked: imConfig?.enabled !== !1,
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, enabled: e.target.checked } } })
+      }
+    ), imConfig?.enabled !== !1 && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, suggestedLevel && suggestedLevel !== currentLevel && !dismissedSuggestion && /* @__PURE__ */ React.createElement("div", { className: "bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2 flex-1" }, /* @__PURE__ */ React.createElement(Info, { size: 16, className: "text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-blue-800 dark:text-blue-200" }, "You've collected enough data to enable ", /* @__PURE__ */ React.createElement("strong", null, suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)), " intelligence.", suggestedLevel === "standard" && " This adds cost-benefit analysis and outcome learning.", suggestedLevel === "full" && " This adds trend analysis, pattern recognition, and risk gating.", /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: suggestedLevel } } }),
+        className: "ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-semibold"
+      },
+      "Upgrade"
+    ))), /* @__PURE__ */ React.createElement("button", { onClick: () => setDismissedSuggestion(!0), className: "text-blue-400 hover:text-blue-600 shrink-0" }, /* @__PURE__ */ React.createElement(X, { size: 14 }))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Intelligence Level"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3" }, INTELLIGENCE_LEVELS.map((level) => {
+      let isSelected = currentLevel === level.key;
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: level.key,
+          onClick: () => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: level.key } } }),
+          className: `relative text-left p-3 rounded-lg border-2 transition-all ${isSelected ? "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md" : "border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 bg-white dark:bg-gray-700"}`
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement("span", { className: "font-bold text-gray-900 dark:text-white text-sm" }, level.label), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1.5" }, level.recommended && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded" }, "RECOMMENDED"), isSelected && /* @__PURE__ */ React.createElement(CheckCircle, { size: 16, className: "text-blue-500 dark:text-blue-400" }))),
+        /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-300" }, level.description),
+        /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, level.detail)
+      );
+    }))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Required Observation Periods"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "2",
+        max: "10",
+        value: obsPeriods,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Consecutive times a recommendation must appear before acting")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Minimum Data Collection (hours)"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "0",
+        max: "72",
+        value: minDataHours,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "How long the system must observe before first migration (0 = no minimum)"))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "The system will collect data for at least ", minDataHours, " hour", minDataHours !== 1 ? "s" : "", " and require ", obsPeriods, " consistent recommendation", obsPeriods !== 1 ? "s" : "", " before migrating."), /* @__PURE__ */ React.createElement("div", { className: "border-t border-gray-200 dark:border-gray-600 pt-3" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setShowAdvanced(!showAdvanced),
+        className: "flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+      },
+      showAdvanced ? /* @__PURE__ */ React.createElement(ChevronUp, { size: 14 }) : /* @__PURE__ */ React.createElement(ChevronDown, { size: 14 }),
+      "Advanced Tuning"
+    ), showAdvanced && /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Observation Window (hours)"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "1",
+        max: "72",
+        value: imConfig?.observation_window_hours || 24,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_window_hours: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Max age for observation tracking")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Cycle Detection Window (hours)"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "1",
+        max: "168",
+        value: imConfig?.cycle_window_hours || 48,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, cycle_window_hours: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "How far back to check for migration cycles")), (currentLevel === "standard" || currentLevel === "full") && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Min Cost-Benefit Ratio"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "0.1",
+        max: "10.0",
+        step: "0.1",
+        isFloat: !0,
+        value: imConfig?.min_cost_benefit_ratio !== void 0 ? imConfig.min_cost_benefit_ratio : 1,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, min_cost_benefit_ratio: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Minimum improvement-to-cost ratio required")), currentLevel === "full" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Risk Confidence Multiplier"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "0.1",
+        max: "5.0",
+        step: "0.1",
+        isFloat: !0,
+        value: imConfig?.risk_confidence_multiplier !== void 0 ? imConfig.risk_confidence_multiplier : 1.2,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, risk_confidence_multiplier: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Higher values require more confidence for risky moves")))))));
   }
 
   // src/components/automation/SafetyRulesSection.jsx
-  var { useState: useState4 } = React;
+  var { useState: useState6 } = React;
   function SafetyRulesSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
-    let [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState4(!1);
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
+    let [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState6(!1);
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, safetyRules: !prev.safetyRules })),
         className: "w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       },
-      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Safety & Rules"),
+      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Safety & Guardrails"),
       /* @__PURE__ */ React.createElement(
         ChevronDown,
         {
@@ -2001,171 +2130,110 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.safetyRules ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.safetyRules && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Min Confidence Score"), /* @__PURE__ */ React.createElement(
-      "input",
+    ), !collapsedSections.safetyRules && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Tag & Affinity Rules"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "number",
-        min: "0",
-        max: "100",
-        value: automationConfig.rules?.min_confidence_score || 75,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, min_confidence_score: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Migrations Per Run"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "1",
-        max: "20",
-        value: automationConfig.rules?.max_migrations_per_run || 3,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, max_migrations_per_run: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Cooldown Minutes"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "0",
-        max: "1440",
-        value: automationConfig.rules?.cooldown_minutes || 30,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, cooldown_minutes: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations of the same VM")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Concurrent Migrations"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "1",
-        max: "10",
-        value: automationConfig.rules?.max_concurrent_migrations || 1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, max_concurrent_migrations: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Maximum simultaneous migrations")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Grace Period (seconds)"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "0",
-        max: "300",
-        value: automationConfig.rules?.grace_period_seconds !== void 0 ? automationConfig.rules.grace_period_seconds : 30,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, grace_period_seconds: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations for cluster to settle (0 = no wait)")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node CPU %"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "50",
-        max: "100",
-        value: automationConfig.safety_checks?.max_node_cpu_percent || 85,
-        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node Memory %"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "50",
-        max: "100",
-        value: automationConfig.safety_checks?.max_node_memory_percent || 90,
-        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: parseInt(e.target.value) } }),
-        className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-      }
-    ))), /* @__PURE__ */ React.createElement("div", { className: "mt-4 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect 'ignore' Tags"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations. Use for critical VMs that require manual migration planning.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
+        label: "Respect 'ignore' Tags",
+        description: "Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations.",
         checked: automationConfig.rules?.respect_ignore_tags !== !1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Require 'auto_migrate_ok' Tag"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode). All other VMs will be excluded from automated migrations.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Require 'auto_migrate_ok' Tag",
+        description: "Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode).",
         checked: automationConfig.rules?.require_auto_migrate_ok_tag || !1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Respect Anti-Affinity (exclude_* tags)"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Prevents VMs with the same exclude tag from clustering on one node. Example: Two VMs with 'exclude_database' will spread across different nodes for fault tolerance.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Respect Affinity (affinity_* tags)",
+        description: "Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated.",
+        checked: automationConfig.rules?.respect_affinity_rules !== !1,
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })
+      }
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
+      {
+        label: "Respect Anti-Affinity (exclude_* tags)",
+        description: "Prevents VMs with the same exclude tag from clustering on one node.",
         checked: automationConfig.rules?.respect_exclude_affinity !== !1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Allow Container Restarts for Migration"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime during migration.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Allow Container Restarts for Migration",
+        description: "Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime.",
         checked: automationConfig.rules?.allow_container_restarts === !0,
         onChange: (e) => {
           e.target.checked ? setConfirmAllowContainerRestarts(!0) : saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !1 } });
-        },
-        className: "sr-only peer"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), confirmAllowContainerRestarts && /* @__PURE__ */ React.createElement("div", { className: "mt-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 18, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 text-sm mb-1" }, "ALLOW CONTAINER RESTARTS?"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-800 dark:text-orange-300 space-y-1 mb-2" }, /* @__PURE__ */ React.createElement("p", null, "This will allow automated migrations to restart containers that cannot be live-migrated."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Containers will experience brief downtime during migration."), /* @__PURE__ */ React.createElement("p", null, "Are you sure?")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => {
-          saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !0 } }), setConfirmAllowContainerRestarts(!1);
-        },
-        className: "px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+        }
       },
-      /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
-      "Yes, Allow Restarts"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
+      confirmAllowContainerRestarts && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 18, className: "text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-orange-900 dark:text-orange-200 text-sm mb-1" }, "ALLOW CONTAINER RESTARTS?"), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-800 dark:text-orange-300 space-y-1 mb-2" }, /* @__PURE__ */ React.createElement("p", null, "This will allow automated migrations to restart containers that cannot be live-migrated."), /* @__PURE__ */ React.createElement("p", { className: "font-semibold" }, "Containers will experience brief downtime during migration.")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            saveAutomationConfig2({ rules: { ...automationConfig.rules, allow_container_restarts: !0 } }), setConfirmAllowContainerRestarts(!1);
+          },
+          className: "px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+        },
+        /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }),
+        "Yes, Allow Restarts"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setConfirmAllowContainerRestarts(!1),
+          className: "px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1"
+        },
+        /* @__PURE__ */ React.createElement(X, { size: 14 }),
+        "Cancel"
+      ))))))
+    ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white mb-3" }, "Safety Checks"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        onClick: () => setConfirmAllowContainerRestarts(!1),
-        className: "px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1"
-      },
-      /* @__PURE__ */ React.createElement(X, { size: 14 }),
-      "Cancel"
-    ))))))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Rollback Detection"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Prevent migration loops by detecting when a VM would be migrated back to a node it was recently migrated from.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
-        checked: automationConfig.rules?.rollback_detection_enabled !== !1,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, rollback_detection_enabled: e.target.checked } }),
-        className: "sr-only peer"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))), automationConfig.rules?.rollback_detection_enabled !== !1 && /* @__PURE__ */ React.createElement("div", { className: "px-4 pb-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Rollback Detection Window (hours)"), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "number",
-        min: "1",
-        max: "168",
-        value: automationConfig.rules?.rollback_window_hours || 24,
-        onChange: (e) => saveAutomationConfig2({ rules: { ...automationConfig.rules, rollback_window_hours: parseInt(e.target.value) } }),
-        className: "w-32 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-      }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "How far back to check for previous migrations (default: 24 hours)"))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Check Cluster Health Before Migrating"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Verifies cluster is healthy before migrating: cluster has quorum, all nodes CPU < 85%, all nodes memory < 90%. Prevents migrations during cluster stress that could worsen the situation. Recommended for production.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "checkbox",
+        label: "Check Cluster Health Before Migrating",
+        description: "Verifies cluster has quorum and node resources are within limits before migrating.",
         checked: automationConfig.safety_checks?.check_cluster_health !== !1,
-        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Abort Batch if a Migration Fails"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Stops executing remaining migrations in the current batch if any single migration fails. Prevents cascading issues when a migration error might indicate a cluster problem.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node CPU %"), /* @__PURE__ */ React.createElement(
+      NumberField,
       {
-        type: "checkbox",
+        min: "50",
+        max: "100",
+        value: automationConfig.safety_checks?.max_node_cpu_percent || 85,
+        onCommit: (val) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+      }
+    )), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg p-4" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Node Memory %"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "50",
+        max: "100",
+        value: automationConfig.safety_checks?.max_node_memory_percent || 90,
+        onCommit: (val) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } }),
+        className: "w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+      }
+    ))), /* @__PURE__ */ React.createElement(
+      ToggleRow,
+      {
+        label: "Abort Batch if a Migration Fails",
+        description: "Stops remaining migrations in the batch if any single migration fails.",
         checked: automationConfig.safety_checks?.abort_on_failure !== !1,
-        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Pause Automation After Migration Failure"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Automatically disables automated migrations if any migration fails. Prevents cascading failures and requires manual review before resuming automation. Highly recommended for production environments.")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Pause Automation After Migration Failure",
+        description: "Automatically disables automated migrations if any migration fails. Requires manual review before resuming.",
         checked: automationConfig.safety_checks?.pause_on_failure === !0,
-        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } }),
-        className: "sr-only peer"
+        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" }))))))));
+    )))));
   }
 
   // src/components/automation/DistributionBalancingSection.jsx
@@ -2198,71 +2266,50 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
       },
       collapsedSections.distributionBalancingHelp ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "-rotate-90" }), "Show detailed explanation") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16 }), "Hide detailed explanation")
-    ), !collapsedSections.distributionBalancingHelp && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "What is Distribution Balancing?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "Complements performance-based recommendations by focusing on ", /* @__PURE__ */ React.createElement("strong", null, "evening out the number of VMs/CTs across nodes"), ", rather than just CPU, memory, or I/O metrics.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "The Problem It Solves"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "How It Works"), /* @__PURE__ */ React.createElement("ol", { className: "text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1" }, /* @__PURE__ */ React.createElement("li", null, "Counts running guests on each node (e.g., pve4: 19, pve6: 4)"), /* @__PURE__ */ React.createElement("li", null, "If difference \u2265 threshold (default: 2), finds small guests on overloaded node"), /* @__PURE__ */ React.createElement("li", null, "Only considers guests \u2264 max CPU cores (default: 2) and \u2264 max memory (default: 4 GB)"), /* @__PURE__ */ React.createElement("li", null, "Recommends migrating eligible small guests to underloaded nodes"), /* @__PURE__ */ React.createElement("li", null, "Works alongside performance-based recommendations, respects tags and storage compatibility"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "When to Enable"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "\u2713 Many small utility VMs (DNS, monitoring, etc.)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Nodes with very different guest counts (e.g., 19 vs 4)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Performance metrics don't show the imbalance", /* @__PURE__ */ React.createElement("br", null), "\u2713 Want more even workload distribution for management simplicity")))), /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between p-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Enable Distribution Balancing"), /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Automatically balance small workloads across nodes to prevent guest count imbalance")), /* @__PURE__ */ React.createElement("label", { className: "relative inline-flex items-center cursor-pointer" }, /* @__PURE__ */ React.createElement(
-      "input",
+    ), !collapsedSections.distributionBalancingHelp && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "What is Distribution Balancing?"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "Complements performance-based recommendations by focusing on ", /* @__PURE__ */ React.createElement("strong", null, "evening out the number of VMs/CTs across nodes"), ", rather than just CPU, memory, or I/O metrics.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "The Problem It Solves"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "How It Works"), /* @__PURE__ */ React.createElement("ol", { className: "text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1" }, /* @__PURE__ */ React.createElement("li", null, "Counts running guests on each node (e.g., pve4: 19, pve6: 4)"), /* @__PURE__ */ React.createElement("li", null, "If difference \u2265 threshold (default: 2), finds small guests on overloaded node"), /* @__PURE__ */ React.createElement("li", null, "Only considers guests \u2264 max CPU cores (default: 2) and \u2264 max memory (default: 4 GB)"), /* @__PURE__ */ React.createElement("li", null, "Recommends migrating eligible small guests to underloaded nodes"), /* @__PURE__ */ React.createElement("li", null, "Works alongside performance-based recommendations, respects tags and storage compatibility"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "font-semibold text-blue-900 dark:text-blue-100 mb-2" }, "When to Enable"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-800 dark:text-blue-200" }, "\u2713 Many small utility VMs (DNS, monitoring, etc.)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Nodes with very different guest counts (e.g., 19 vs 4)", /* @__PURE__ */ React.createElement("br", null), "\u2713 Performance metrics don't show the imbalance", /* @__PURE__ */ React.createElement("br", null), "\u2713 Want more even workload distribution for management simplicity")))), /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement(
+      ToggleRow,
       {
-        type: "checkbox",
+        label: "Enable Distribution Balancing",
+        description: "Automatically balance small workloads across nodes to prevent guest count imbalance",
         checked: config.distribution_balancing?.enabled || !1,
         onChange: (e) => {
           let enabled = e.target.checked, newConfig = { ...config };
           newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.enabled = enabled, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        className: "sr-only peer"
+        }
       }
-    ), /* @__PURE__ */ React.createElement("div", { className: "w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600" })))), config.distribution_balancing?.enabled && /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Guest Count Threshold"), /* @__PURE__ */ React.createElement(
-      "input",
+    ), config.distribution_balancing?.enabled && /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Guest Count Threshold"), /* @__PURE__ */ React.createElement(
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "10",
         value: config.distribution_balancing?.guest_count_threshold ?? 2,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = 2, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.guest_count_threshold = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
     ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Minimum difference in guest counts to trigger balancing")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max CPU Cores"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         max: "32",
         value: config.distribution_balancing?.max_cpu_cores ?? 2,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = 2, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_cpu_cores = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
     ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Only migrate guests with \u2264 this many CPU cores (0 = no limit)")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Max Memory (GB)"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         max: "256",
         value: config.distribution_balancing?.max_memory_gb ?? 4,
-        onChange: (e) => {
-          let val = e.target.value, numVal = val === "" ? "" : parseInt(val), newConfig = { ...config };
-          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = numVal, setConfig(newConfig), val !== "" && !isNaN(numVal) && saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-        },
-        onBlur: (e) => {
-          if (e.target.value === "") {
-            let newConfig = { ...config };
-            newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = 4, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
-          }
+        onCommit: (val) => {
+          let newConfig = { ...config };
+          newConfig.distribution_balancing || (newConfig.distribution_balancing = {}), newConfig.distribution_balancing.max_memory_gb = val, setConfig(newConfig), saveAutomationConfig2({ distribution_balancing: { ...newConfig.distribution_balancing } });
         },
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
@@ -2270,9 +2317,30 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/TimeWindowsSection.jsx
-  var { useState: useState5 } = React;
+  var { useState: useState7 } = React;
+  function WindowTypeButtons({ currentType, onSelect }) {
+    return /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => onSelect("migration"),
+        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${currentType === "migration" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
+      },
+      /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
+      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
+      " Window"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => onSelect("blackout"),
+        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${currentType === "blackout" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
+      },
+      /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
+      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
+      " Window"
+    ));
+  }
   function TimeWindowsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections, setError }) {
-    let [editingWindowIndex, setEditingWindowIndex] = useState5(null), [showTimeWindowForm, setShowTimeWindowForm] = useState5(!1), [newWindowData, setNewWindowData] = useState5({ name: "", type: "migration", days: [], start_time: "00:00", end_time: "00:00" }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState5(null);
+    let [editingWindowIndex, setEditingWindowIndex] = useState7(null), [showTimeWindowForm, setShowTimeWindowForm] = useState7(!1), [newWindowData, setNewWindowData] = useState7({ name: "", type: "migration", days: [], start_time: "00:00", end_time: "00:00" }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState7(null);
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white mb-4" }, "Time Windows"), /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(Info, { size: 20, className: "text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Timezone for Time Windows"), /* @__PURE__ */ React.createElement(
       "select",
       {
@@ -2374,10 +2442,12 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
             "data-window-index": idx,
             className: `p-3 rounded-lg border ${isMigration ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-700"}`
           },
-          isEditing ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-            "button",
+          isEditing ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement(
+            WindowTypeButtons,
             {
-              onClick: () => {
+              currentType: isMigration ? "migration" : "blackout",
+              onSelect: (type) => {
+                if (type === "migration" === isMigration) return;
                 let newMigrationWindows = [...migrationWindows], newBlackoutWindows = [...blackoutWindows];
                 if (isMigration) {
                   let [removed] = newMigrationWindows.splice(window2.originalIndex, 1);
@@ -2393,39 +2463,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
                     blackout_windows: newBlackoutWindows
                   }
                 }), setEditingWindowIndex(null);
-              },
-              className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${isMigration ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`
-            },
-            /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
-            " Window"
-          ), /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              onClick: () => {
-                let newMigrationWindows = [...migrationWindows], newBlackoutWindows = [...blackoutWindows];
-                if (isMigration) {
-                  let [removed] = newMigrationWindows.splice(window2.originalIndex, 1);
-                  newBlackoutWindows.push(removed);
-                } else {
-                  let [removed] = newBlackoutWindows.splice(window2.originalIndex, 1);
-                  newMigrationWindows.push(removed);
-                }
-                saveAutomationConfig2({
-                  schedule: {
-                    ...automationConfig.schedule,
-                    migration_windows: newMigrationWindows,
-                    blackout_windows: newBlackoutWindows
-                  }
-                }), setEditingWindowIndex(null);
-              },
-              className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${isMigration ? "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300" : "bg-red-600 text-white"}`,
-              title: "Blackout Window"
-            },
-            /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
-            /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
-            " Window"
-          ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
+              }
+            }
+          )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
             "input",
             {
               type: "text",
@@ -2587,27 +2627,13 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           ))
         );
       }));
-    })(), showTimeWindowForm ? /* @__PURE__ */ React.createElement("div", { className: `rounded-lg p-4 mb-3 border ${newWindowData.type === "migration" ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"}` }, /* @__PURE__ */ React.createElement("h4", { className: "font-semibold text-gray-900 dark:text-white mb-3" }, "Add Time Window"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
-      "button",
+    })(), showTimeWindowForm ? /* @__PURE__ */ React.createElement("div", { className: `rounded-lg p-4 mb-3 border ${newWindowData.type === "migration" ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700"}` }, /* @__PURE__ */ React.createElement("h4", { className: "font-semibold text-gray-900 dark:text-white mb-3" }, "Add Time Window"), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Window Type"), /* @__PURE__ */ React.createElement(
+      WindowTypeButtons,
       {
-        onClick: () => setNewWindowData({ ...newWindowData, type: "migration" }),
-        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${newWindowData.type === "migration" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`,
-        title: "Migration Window"
-      },
-      /* @__PURE__ */ React.createElement(Calendar, { size: 14 }),
-      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Migration"),
-      " Window"
-    ), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => setNewWindowData({ ...newWindowData, type: "blackout" }),
-        className: `px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${newWindowData.type === "blackout" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"}`,
-        title: "Blackout Window"
-      },
-      /* @__PURE__ */ React.createElement(Moon, { size: 14 }),
-      /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Blackout"),
-      " Window"
-    ))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
+        currentType: newWindowData.type,
+        onSelect: (type) => setNewWindowData({ ...newWindowData, type })
+      }
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Window Name"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "text",
@@ -2892,7 +2918,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
 
   // src/components/automation/PenaltyScoringSection.jsx
   init_constants();
-  var { useState: useState6 } = React;
+  var { useState: useState8 } = React;
   function PenaltyScoringSection({
     collapsedSections,
     setCollapsedSections,
@@ -2910,7 +2936,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     savePenaltyConfig: savePenaltyConfig2,
     resetPenaltyConfig: resetPenaltyConfig2
   }) {
-    let [simulatorResult, setSimulatorResult] = useState6(null), [simulatingConfig, setSimulatingConfig] = useState6(!1), [showSimulator, setShowSimulator] = useState6(!1), runSimulation = async () => {
+    let [simulatorResult, setSimulatorResult] = useState8(null), [simulatingConfig, setSimulatingConfig] = useState8(!1), [showSimulator, setShowSimulator] = useState8(!1), runSimulation = async () => {
       if (penaltyConfig) {
         setSimulatingConfig(!0), setShowSimulator(!0);
         try {
@@ -3018,124 +3044,114 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       },
       simulatingConfig ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 14, className: "animate-spin" }), " Simulating...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Eye, { size: 14 }), " Simulate")
     )), showSimulator && simulatorResult && !simulatorResult.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Current Settings"), /* @__PURE__ */ React.createElement("div", { className: "text-2xl font-bold text-gray-900 dark:text-white" }, simulatorResult.current_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations")), /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Proposed Settings"), /* @__PURE__ */ React.createElement("div", { className: `text-2xl font-bold ${simulatorResult.proposed_count > simulatorResult.current_count ? "text-orange-600 dark:text-orange-400" : simulatorResult.proposed_count < simulatorResult.current_count ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}` }, simulatorResult.proposed_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations"))), simulatorResult.changes && simulatorResult.changes.length > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Changes"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" }, simulatorResult.changes.map((change, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded-lg font-medium ${change.action === "added" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}` }, change.action === "added" ? "+New" : "-Removed"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, change.type, " ", change.vmid, " (", change.name, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-auto" }, change.source_node, " \u2192 ", change.target_node))))), simulatorResult.node_score_comparison && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Node Score Impact"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-1.5" }, Object.entries(simulatorResult.node_score_comparison).map(([node, scores]) => /* @__PURE__ */ React.createElement("div", { key: node, className: "flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, node), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, scores.current, " \u2192 ", scores.proposed, /* @__PURE__ */ React.createElement("span", { className: `ml-1 font-medium ${scores.delta < 0 ? "text-green-600 dark:text-green-400" : scores.delta > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}` }, "(", scores.delta > 0 ? "+" : "", scores.delta, ")")))))), simulatorResult.changes?.length === 0 && simulatorResult.current_count === simulatorResult.proposed_count && /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 text-center py-2" }, "No changes \u2014 proposed settings produce the same recommendations.")), showSimulator && simulatorResult?.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" }, "Simulation error: ", simulatorResult.error)), /* @__PURE__ */ React.createElement("details", { className: "group" }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none" }, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "transition-transform group-open:rotate-180" }), "Advanced: Customize individual penalty weights"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Time Period Weights"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.", /* @__PURE__ */ React.createElement("br", null), "Example for 6-hour window: Current=0.6, 24h=0.4, 7d=0.0"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Current Weight (default: ", penaltyDefaults.weight_current, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         step: "0.1",
         min: "0",
         max: "1",
+        isFloat: !0,
         value: penaltyConfig.weight_current,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, weight_current: parseFloat(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_current: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "24h Weight (default: ", penaltyDefaults.weight_24h, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         step: "0.1",
         min: "0",
         max: "1",
+        isFloat: !0,
         value: penaltyConfig.weight_24h,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, weight_24h: parseFloat(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_24h: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "7d Weight (default: ", penaltyDefaults.weight_7d, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         step: "0.1",
         min: "0",
         max: "1",
+        isFloat: !0,
         value: penaltyConfig.weight_7d,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, weight_7d: parseFloat(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_7d: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     ))), (() => {
       let sum = (penaltyConfig.weight_current || 0) + (penaltyConfig.weight_24h || 0) + (penaltyConfig.weight_7d || 0), isValid = Math.abs(sum - 1) < 0.01;
       return /* @__PURE__ */ React.createElement("div", { className: `text-sm font-medium ${isValid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, "Sum: ", sum.toFixed(2), " ", isValid ? "\u2713 Valid" : "\u2717 Must equal 1.0");
     })()), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "CPU Penalties"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Applied when target node CPU usage is high. Higher values = avoid nodes with high CPU. Set to 0 to disable penalty."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.cpu_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         value: penaltyConfig.cpu_high_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, cpu_high_penalty: parseInt(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_high_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Very High (default: ", penaltyDefaults.cpu_very_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         value: penaltyConfig.cpu_very_high_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, cpu_very_high_penalty: parseInt(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_very_high_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Extreme (default: ", penaltyDefaults.cpu_extreme_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "0",
         value: penaltyConfig.cpu_extreme_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, cpu_extreme_penalty: parseInt(e.target.value) || 0 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_extreme_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Memory Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.mem_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.mem_high_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, mem_high_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_high_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Very High (default: ", penaltyDefaults.mem_very_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.mem_very_high_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, mem_very_high_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_very_high_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Extreme (default: ", penaltyDefaults.mem_extreme_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.mem_extreme_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, mem_extreme_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_extreme_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "IOWait Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Moderate (default: ", penaltyDefaults.iowait_moderate_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.iowait_moderate_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, iowait_moderate_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_moderate_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.iowait_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.iowait_high_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, iowait_high_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_high_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Severe (default: ", penaltyDefaults.iowait_severe_penalty, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         value: penaltyConfig.iowait_severe_penalty,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, iowait_severe_penalty: parseInt(e.target.value) }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_severe_penalty: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Minimum Score Improvement"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Minimum score improvement (in points) required for a migration to be recommended. This threshold filters out migrations that would provide only marginal benefit.", /* @__PURE__ */ React.createElement("br", null), "Lower values = more sensitive to small improvements (more migrations)", /* @__PURE__ */ React.createElement("br", null), "Higher values = only migrate when there's significant benefit (fewer migrations)"), /* @__PURE__ */ React.createElement("div", { className: "max-w-md" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Minimum Score Improvement (default: ", penaltyDefaults.min_score_improvement || 15, ")"), /* @__PURE__ */ React.createElement(
-      "input",
+      NumberField,
       {
-        type: "number",
         min: "1",
         max: "100",
         value: penaltyConfig.min_score_improvement !== void 0 ? penaltyConfig.min_score_improvement : 15,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, min_score_improvement: parseInt(e.target.value) || 15 }),
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, min_score_improvement: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
       }
     ), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-xs text-gray-500 dark:text-gray-400" }, "Recommended values: Conservative (20-30), Balanced (10-15), Aggressive (5-10)"))))), penaltyConfigSaved && /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-800 dark:text-green-300" }, "Penalty configuration saved successfully!"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 pt-4" }, /* @__PURE__ */ React.createElement(
@@ -3166,12 +3182,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       automigrateLogs,
       collapsedSections,
       config,
-      confirmAllowContainerRestarts,
-      confirmApplyPreset,
-      confirmDisableDryRun,
-      confirmEnableAutomation,
       confirmRemoveWindow,
-      editingPreset,
       editingWindowIndex,
       fetchAutomationStatus: fetchAutomationStatus2,
       logRefreshTime,
@@ -3196,13 +3207,8 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       setAutomigrateLogs,
       setCollapsedSections,
       setConfig,
-      setConfirmAllowContainerRestarts,
-      setConfirmApplyPreset,
-      setConfirmDisableDryRun,
-      setConfirmEnableAutomation,
       setConfirmRemoveWindow,
       setCurrentPage,
-      setEditingPreset,
       setEditingWindowIndex,
       setError,
       setLogRefreshTime,
@@ -3247,20 +3253,20 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         automationConfig,
         saveAutomationConfig: saveAutomationConfig2,
         collapsedSections,
-        setCollapsedSections,
-        confirmEnableAutomation,
-        setConfirmEnableAutomation,
-        confirmDisableDryRun,
-        setConfirmDisableDryRun,
-        editingPreset,
-        setEditingPreset,
-        confirmApplyPreset,
-        setConfirmApplyPreset,
-        penaltyConfig
+        setCollapsedSections
       }
     ), /* @__PURE__ */ React.createElement(
       DecisionTreeFlowchart,
       {
+        collapsedSections,
+        setCollapsedSections
+      }
+    ), /* @__PURE__ */ React.createElement(
+      SmartMigrationsSection,
+      {
+        automationConfig,
+        automationStatus,
+        saveAutomationConfig: saveAutomationConfig2,
         collapsedSections,
         setCollapsedSections
       }
@@ -3270,9 +3276,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         automationConfig,
         saveAutomationConfig: saveAutomationConfig2,
         collapsedSections,
-        setCollapsedSections,
-        confirmAllowContainerRestarts,
-        setConfirmAllowContainerRestarts
+        setCollapsedSections
       }
     ), /* @__PURE__ */ React.createElement(
       PenaltyScoringSection,
@@ -4007,9 +4011,11 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/dashboard/AutomationStatusSection.jsx
+  var { useState: useState9 } = React;
   function AutomationStatusSection({
     automationStatus,
     automationConfig,
+    scoreHistory,
     collapsedSections,
     setCollapsedSections,
     toggleSection,
@@ -4024,7 +4030,11 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     expandedRun,
     setExpandedRun
   }) {
-    return automationStatus ? /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: `p-2.5 rounded-lg shadow-md shrink-0 ${automationStatus.enabled ? "bg-gradient-to-br from-green-600 to-emerald-600" : "bg-gradient-to-br from-gray-500 to-gray-600"}` }, /* @__PURE__ */ React.createElement(Clock, { size: 24, className: "text-white" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { className: "text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate" }, "Automated Migrations"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400 mt-0.5" }, "Scheduled automatic balancing")), /* @__PURE__ */ React.createElement(
+    let [chartTab, setChartTab] = useState9("migrations");
+    return automationStatus ? /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: `p-2.5 rounded-lg shadow-md shrink-0 ${automationStatus.enabled ? "bg-gradient-to-br from-green-600 to-emerald-600" : "bg-gradient-to-br from-gray-500 to-gray-600"}` }, /* @__PURE__ */ React.createElement(Clock, { size: 24, className: "text-white" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { className: "text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate" }, "Automated Migrations"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap" }, /* @__PURE__ */ React.createElement("span", null, "Scheduled automatic balancing"), automationStatus.state?.current_window && /* @__PURE__ */ React.createElement("span", { className: "text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-600 rounded" }, automationStatus.state.current_window), automationStatus.state?.last_run && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-500" }, "Last: ", (() => {
+      let ts = typeof automationStatus.state.last_run == "object" ? automationStatus.state.last_run.timestamp : automationStatus.state.last_run;
+      return formatRelativeTime(ts) || "Never";
+    })()))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => toggleSection("automatedMigrations"),
@@ -4073,7 +4083,15 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         title: automationStatus.enabled ? runningAutomation ? "Running..." : "Run automation check now" : "Enable automation first"
       },
       runningAutomation ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Loader, { size: 14, className: "animate-spin" }), /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Running...")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Play, { size: 14 }), /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Run Now"))
-    )), !collapsedSections.automatedMigrations && /* @__PURE__ */ React.createElement(React.Fragment, null, runNowMessage && /* @__PURE__ */ React.createElement("div", { className: `mb-4 p-3 rounded-lg text-sm ${runNowMessage.type === "success" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300" : runNowMessage.type === "info" ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300" : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2 flex-1" }, runNowMessage.type === "success" ? /* @__PURE__ */ React.createElement(CheckCircle, { size: 16, className: "mt-0.5 flex-shrink-0" }) : runNowMessage.type === "info" ? /* @__PURE__ */ React.createElement(Info, { size: 16, className: "mt-0.5 flex-shrink-0" }) : /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "mt-0.5 flex-shrink-0" }), /* @__PURE__ */ React.createElement("span", { style: { whiteSpace: "pre-line" } }, runNowMessage.text)), /* @__PURE__ */ React.createElement(
+    ), automationStatus.enabled && (() => {
+      if (automationStatus.in_progress_migrations?.some((m) => m.initiated_by === "automated"))
+        return /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Loader, { size: 12, className: "animate-spin" }), " Running");
+      if (automationStatus.next_check) {
+        let ts = automationStatus.next_check.endsWith?.("Z") ? automationStatus.next_check : automationStatus.next_check + "Z", diffMins = Math.floor((new Date(ts) - /* @__PURE__ */ new Date()) / 6e4);
+        return diffMins > 0 ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Next: ", diffMins, "m") : /* @__PURE__ */ React.createElement("span", { className: "text-xs text-green-600 dark:text-green-400 font-semibold" }, "Next: Now");
+      }
+      return automationStatus.check_interval_minutes ? /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Every ", automationStatus.check_interval_minutes, "m") : null;
+    })()), !collapsedSections.automatedMigrations && /* @__PURE__ */ React.createElement(React.Fragment, null, runNowMessage && /* @__PURE__ */ React.createElement("div", { className: `mb-4 p-3 rounded-lg text-sm ${runNowMessage.type === "success" ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300" : runNowMessage.type === "info" ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300" : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2 flex-1" }, runNowMessage.type === "success" ? /* @__PURE__ */ React.createElement(CheckCircle, { size: 16, className: "mt-0.5 flex-shrink-0" }) : runNowMessage.type === "info" ? /* @__PURE__ */ React.createElement(Info, { size: 16, className: "mt-0.5 flex-shrink-0" }) : /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "mt-0.5 flex-shrink-0" }), /* @__PURE__ */ React.createElement("span", { style: { whiteSpace: "pre-line" } }, runNowMessage.text)), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setRunNowMessage(null),
@@ -4081,17 +4099,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         "aria-label": "Close message"
       },
       /* @__PURE__ */ React.createElement(X, { size: 16 })
-    ))), automationStatus.dry_run && automationStatus.enabled && /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "text-yellow-600 dark:text-yellow-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-yellow-700 dark:text-yellow-300" }, "DRY RUN MODE"), /* @__PURE__ */ React.createElement("span", { className: "text-yellow-600 dark:text-yellow-400" }, "- No actual migrations will be performed"))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Automation Status"), /* @__PURE__ */ React.createElement("div", { className: `flex items-center gap-2 ${automationStatus.timer_active ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}` }, /* @__PURE__ */ React.createElement("div", { className: `w-2 h-2 rounded-full ${automationStatus.timer_active ? "bg-green-500 animate-pulse" : "bg-gray-400"}` }), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-semibold flex items-center gap-1", title: automationStatus.timer_active ? "Active" : "Inactive" }, automationStatus.timer_active ? /* @__PURE__ */ React.createElement(CheckCircle, { size: 14, className: "text-green-500" }) : /* @__PURE__ */ React.createElement(XCircle, { size: 14, className: "text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, automationStatus.timer_active ? "Active" : "Inactive")))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Next Check"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, (() => {
-      if (automationStatus.in_progress_migrations && automationStatus.in_progress_migrations.some((m) => m.initiated_by === "automated"))
-        return /* @__PURE__ */ React.createElement("span", { className: "px-2 py-0.5 rounded-lg border text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 flex items-center gap-1", title: "Running" }, /* @__PURE__ */ React.createElement(Loader, { size: 12, className: "animate-spin" }), /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Running"));
-      if (automationStatus.next_check && automationStatus.enabled) {
-        let diffMs = new Date(automationStatus.next_check) - /* @__PURE__ */ new Date(), diffMins = Math.floor(diffMs / 6e4);
-        return diffMins > 0 ? /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-300 font-medium" }, "in ", diffMins, " ", diffMins === 1 ? "min" : "mins") : /* @__PURE__ */ React.createElement("div", { className: "text-xs text-green-600 dark:text-green-400 font-semibold" }, "Now");
-      }
-      return /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Every ", automationStatus.check_interval_minutes, " ", automationStatus.check_interval_minutes === 1 ? "min" : "mins");
-    })()))), (() => {
-      let migrations = automationStatus.recent_migrations || [];
-      if (migrations.length === 0) return null;
+    ))), automationStatus.dry_run && automationStatus.enabled && /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "text-yellow-600 dark:text-yellow-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-yellow-700 dark:text-yellow-300" }, "DRY RUN MODE"), /* @__PURE__ */ React.createElement("span", { className: "text-yellow-600 dark:text-yellow-400" }, "- No actual migrations will be performed"))), automationStatus.intelligent_tracking?.enabled && automationStatus.intelligent_tracking?.learning_progress && (() => {
+      let lp = automationStatus.intelligent_tracking.learning_progress, pct = lp.min_required_hours > 0 ? Math.min(100, Math.round(lp.data_collection_hours / lp.min_required_hours * 100)) : 100;
+      if (pct >= 100) return null;
+      let level = automationStatus.intelligent_tracking.intelligence_level;
+      return /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-3 px-1 text-xs" }, /* @__PURE__ */ React.createElement(Info, { size: 14, className: "text-blue-500 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-0.5" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Learning: ", Math.round(lp.data_collection_hours), "h / ", lp.min_required_hours, "h"), level && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-semibold rounded capitalize" }, level), lp.guest_profiles_count > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-500" }, lp.guest_profiles_count, " profiles"), lp.outcomes_count > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-500" }, lp.outcomes_count, " outcomes")), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1" }, /* @__PURE__ */ React.createElement("div", { className: "h-1 rounded-full bg-blue-500 transition-all", style: { width: `${pct}%` } }))), /* @__PURE__ */ React.createElement("span", { className: "text-blue-600 dark:text-blue-400 font-semibold shrink-0" }, pct, "%"));
+    })(), (() => {
+      let migrations = automationStatus.recent_migrations || [], hasHistory = migrations.length > 0, hasHealth = scoreHistory && scoreHistory.length > 1;
+      if (!hasHistory && !hasHealth) return null;
       let dailyStats = Array.from({ length: 7 }, (_, i) => {
         let date = /* @__PURE__ */ new Date();
         return date.setDate(date.getDate() - (6 - i)), date.setHours(0, 0, 0, 0), date;
@@ -4099,52 +4114,47 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         let dayStart = new Date(date), dayEnd = new Date(date);
         dayEnd.setHours(23, 59, 59, 999);
         let dayMigrations = migrations.filter((m) => {
-          let timestamp = m.timestamp;
-          !timestamp.endsWith("Z") && !timestamp.includes("+") && (timestamp += "Z");
-          let migDate = new Date(timestamp);
-          return migDate >= dayStart && migDate <= dayEnd;
-        }), successful = dayMigrations.filter((m) => m.status === "completed").length, failed = dayMigrations.filter((m) => m.status === "failed").length, skipped = dayMigrations.filter((m) => m.status === "skipped").length;
+          let ts = m.timestamp;
+          !ts.endsWith("Z") && !ts.includes("+") && (ts += "Z");
+          let d = new Date(ts);
+          return d >= dayStart && d <= dayEnd;
+        });
         return {
           date,
           total: dayMigrations.length,
-          successful,
-          failed,
-          skipped,
+          successful: dayMigrations.filter((m) => m.status === "completed").length,
+          failed: dayMigrations.filter((m) => m.status === "failed").length,
+          skipped: dayMigrations.filter((m) => m.status === "skipped").length,
           label: date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         };
-      }), maxMigrations = Math.max(...dailyStats.map((d) => d.total), 1);
-      return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4" }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white mb-3" }, "Migration History (Last 7 Days)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-end justify-between gap-1 h-32" }, dailyStats.map((day, idx) => {
+      }), maxMigrations = Math.max(...dailyStats.map((d) => d.total), 1), healthPoints = [], healthMin = 0, healthMax = 100, healthRange = 1;
+      hasHealth && (healthPoints = scoreHistory.map((e) => e.cluster_health).filter((v) => v != null), healthPoints.length >= 2 && (healthMin = Math.min(...healthPoints), healthMax = Math.max(...healthPoints), healthRange = healthMax - healthMin || 1));
+      let activeTab = hasHistory && hasHealth ? chartTab : hasHistory ? "migrations" : "health";
+      return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 mb-4" }, hasHistory && hasHealth && /* @__PURE__ */ React.createElement("div", { className: "flex border-b border-gray-200 dark:border-gray-600 px-3" }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setChartTab("migrations"),
+          className: `px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === "migrations" ? "border-blue-500 text-blue-600 dark:text-blue-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`
+        },
+        "Migration History"
+      ), /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => setChartTab("health"),
+          className: `px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === "health" ? "border-blue-500 text-blue-600 dark:text-blue-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`
+        },
+        "Cluster Health"
+      )), /* @__PURE__ */ React.createElement("div", { className: "p-4" }, activeTab === "migrations" && hasHistory && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white mb-3" }, "Last 7 Days"), /* @__PURE__ */ React.createElement("div", { className: "flex items-end justify-between gap-1 h-32" }, dailyStats.map((day, idx) => {
         let heightPercent = day.total / maxMigrations * 100;
-        return /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex-1 flex flex-col items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-full flex flex-col-reverse gap-0.5", style: { height: "100px" } }, day.total > 0 ? /* @__PURE__ */ React.createElement(React.Fragment, null, day.successful > 0 && /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "w-full bg-green-500 dark:bg-green-600 rounded-t",
-            style: { height: `${day.successful / day.total * heightPercent}%` },
-            title: `${day.successful} successful`
-          }
-        ), day.failed > 0 && /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "w-full bg-red-500 dark:bg-red-600",
-            style: { height: `${day.failed / day.total * heightPercent}%` },
-            title: `${day.failed} failed`
-          }
-        ), day.skipped > 0 && /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "w-full bg-yellow-500 dark:bg-yellow-600 rounded-b",
-            style: { height: `${day.skipped / day.total * heightPercent}%` },
-            title: `${day.skipped} skipped`
-          }
-        )) : /* @__PURE__ */ React.createElement("div", { className: "w-full h-1 bg-gray-200 dark:bg-gray-700 rounded" })), /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-900 dark:text-white" }, day.total > 0 ? day.total : ""), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-500 dark:text-gray-400 text-center" }, day.label));
-      })), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-4 mt-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-green-500 dark:bg-green-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Success")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-red-500 dark:bg-red-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Failed")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-yellow-500 dark:bg-yellow-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Skipped"))));
-    })(), automationStatus.state && /* @__PURE__ */ React.createElement("div", { className: "space-y-2 mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Current Window:"), /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-white" }, automationStatus.state.current_window || "Loading...")), automationStatus.state.last_run && /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Last Run:"), /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-white" }, (() => {
-      let timestamp = automationStatus.state.last_run;
-      return typeof timestamp == "object" && timestamp !== null && (timestamp = timestamp.timestamp), timestamp && typeof timestamp == "string" ? (!timestamp.endsWith("Z") && !timestamp.includes("+") && (timestamp += "Z"), new Date(timestamp).toLocaleString()) : "Never";
-    })())), automationStatus.next_check && /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-sm" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Next Run:"), /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-white" }, (() => {
-      let timestamp = automationStatus.next_check;
-      return timestamp && typeof timestamp == "string" ? (!timestamp.endsWith("Z") && !timestamp.includes("+") && (timestamp += "Z"), new Date(timestamp).toLocaleString()) : "Unknown";
-    })()))), automationStatus.in_progress_migrations && automationStatus.in_progress_migrations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 14, className: "animate-spin text-blue-600 dark:text-blue-400" }), "Migrations In Progress"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, automationStatus.in_progress_migrations.map((migration, idx) => {
+        return /* @__PURE__ */ React.createElement("div", { key: idx, className: "flex-1 flex flex-col items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-full flex flex-col-reverse gap-0.5", style: { height: "100px" } }, day.total > 0 ? /* @__PURE__ */ React.createElement(React.Fragment, null, day.successful > 0 && /* @__PURE__ */ React.createElement("div", { className: "w-full bg-green-500 dark:bg-green-600 rounded-t", style: { height: `${day.successful / day.total * heightPercent}%` }, title: `${day.successful} successful` }), day.failed > 0 && /* @__PURE__ */ React.createElement("div", { className: "w-full bg-red-500 dark:bg-red-600", style: { height: `${day.failed / day.total * heightPercent}%` }, title: `${day.failed} failed` }), day.skipped > 0 && /* @__PURE__ */ React.createElement("div", { className: "w-full bg-yellow-500 dark:bg-yellow-600 rounded-b", style: { height: `${day.skipped / day.total * heightPercent}%` }, title: `${day.skipped} skipped` })) : /* @__PURE__ */ React.createElement("div", { className: "w-full h-1 bg-gray-200 dark:bg-gray-600 rounded" })), /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-900 dark:text-white" }, day.total > 0 ? day.total : ""), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-500 dark:text-gray-400 text-center" }, day.label));
+      })), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-4 mt-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-green-500 dark:bg-green-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Success")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-red-500 dark:bg-red-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Failed")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("div", { className: "w-3 h-3 bg-yellow-500 dark:bg-yellow-600 rounded" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Skipped")))), activeTab === "health" && hasHealth && healthPoints.length >= 2 && (() => {
+        let linePoints = healthPoints.map((v, i) => {
+          let x = 4 + i / (healthPoints.length - 1) * 392, y = 76 - (v - healthMin) / healthRange * 72;
+          return `${x},${y}`;
+        }).join(" "), areaPoints = `4,76 ${linePoints} 396,76`, latest = healthPoints[healthPoints.length - 1], trend = latest - healthPoints[0];
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white" }, "Cluster Health"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "font-bold text-gray-900 dark:text-white" }, latest.toFixed(1), "%"), /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${trend >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, trend >= 0 ? "+" : "", trend.toFixed(1)))), /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 400 80", className: "w-full", style: { height: "80px" }, preserveAspectRatio: "none" }, /* @__PURE__ */ React.createElement("defs", null, /* @__PURE__ */ React.createElement("linearGradient", { id: "healthGrad", x1: "0", y1: "0", x2: "0", y2: "1" }, /* @__PURE__ */ React.createElement("stop", { offset: "0%", stopColor: "#3b82f6" }), /* @__PURE__ */ React.createElement("stop", { offset: "100%", stopColor: "#3b82f6", stopOpacity: "0" }))), /* @__PURE__ */ React.createElement("polygon", { points: areaPoints, fill: "url(#healthGrad)", opacity: "0.3" }), /* @__PURE__ */ React.createElement("polyline", { points: linePoints, fill: "none", stroke: "#3b82f6", strokeWidth: "2", strokeLinejoin: "round" })), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-[10px] text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, new Date(scoreHistory[0].timestamp).toLocaleDateString()), /* @__PURE__ */ React.createElement("span", null, new Date(scoreHistory[scoreHistory.length - 1].timestamp).toLocaleDateString())));
+      })()));
+    })(), automationStatus.in_progress_migrations && automationStatus.in_progress_migrations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 14, className: "animate-spin text-blue-600 dark:text-blue-400" }), "Migrations In Progress"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, automationStatus.in_progress_migrations.map((migration, idx) => {
       let elapsedTime = "N/A";
       if (migration.starttime && typeof migration.starttime == "number" && migration.starttime > 0)
         try {
@@ -4157,7 +4167,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           console.error("Error calculating elapsed time:", err);
         }
       let isAutomated = migration.initiated_by === "automated";
-      return /* @__PURE__ */ React.createElement("div", { key: idx, className: `text-sm rounded p-2 border-2 animate-pulse ${isAutomated ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600" : "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-900 dark:text-white font-medium" }, migration.name, " (", migration.vmid, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-xs" }, migration.source_node, " \u2192 ", migration.target_node || "?"), migration.type === "VM" ? /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded border border-green-300 dark:border-green-600", title: "Live migration (no downtime)" }, "LIVE") : /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-semibold rounded border border-orange-300 dark:border-orange-600", title: "Migration with restart (brief downtime)" }, "RESTART"), !isAutomated && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold rounded border border-purple-300 dark:border-purple-600" }, "MANUAL")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${isAutomated ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"}` }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), "Running"), /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement("div", { key: idx, className: `text-sm rounded-lg p-3 border-2 animate-pulse ${isAutomated ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600" : "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-900 dark:text-white font-medium" }, migration.name, " (", migration.vmid, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-xs" }, migration.source_node, " \u2192 ", migration.target_node || "?"), migration.type === "VM" ? /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded border border-green-300 dark:border-green-600", title: "Live migration (no downtime)" }, "LIVE") : /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-semibold rounded border border-orange-300 dark:border-orange-600", title: "Migration with restart (brief downtime)" }, "RESTART"), !isAutomated && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold rounded border border-purple-300 dark:border-purple-600" }, "MANUAL")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${isAutomated ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"}` }, /* @__PURE__ */ React.createElement(RefreshCw, { size: 12, className: "animate-spin" }), " Running"), /* @__PURE__ */ React.createElement(
         "button",
         {
           onClick: () => setCancelMigrationModal(migration),
@@ -4165,29 +4175,23 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           title: "Cancel migration"
         },
         /* @__PURE__ */ React.createElement(X, { size: 12 }),
-        "Cancel"
-      ))), /* @__PURE__ */ React.createElement("div", { className: `mt-1 text-xs flex items-center gap-3 ${isAutomated ? "text-gray-600 dark:text-gray-400" : "text-purple-600 dark:text-purple-400"}` }, migration.starttime && migration.starttime > 0 ? /* @__PURE__ */ React.createElement("span", null, "Started: ", new Date(migration.starttime * 1e3).toLocaleTimeString()) : /* @__PURE__ */ React.createElement("span", null, "Started: Unknown"), /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${isAutomated ? "text-blue-600 dark:text-blue-400" : "text-purple-600 dark:text-purple-400"}` }, "Elapsed: ", elapsedTime)), migration.progress && /* @__PURE__ */ React.createElement("div", { className: "mt-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between text-xs mb-1" }, /* @__PURE__ */ React.createElement("span", { className: isAutomated ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-purple-600 dark:text-purple-400 font-semibold" }, "Progress: ", migration.progress.percentage, "%", migration.progress.speed_mib_s && /* @__PURE__ */ React.createElement("span", { className: "ml-2 font-normal text-[10px]" }, "(", migration.progress.speed_mib_s.toFixed(1), " MiB/s)")), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-[10px]" }, migration.progress.human_readable)), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2" }, /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: `h-2 rounded-full transition-all duration-300 ${isAutomated ? "bg-blue-600 dark:bg-blue-500" : "bg-purple-600 dark:bg-purple-500"}`,
-          style: { width: `${migration.progress.percentage}%` }
-        }
-      ))));
+        " Cancel"
+      ))), /* @__PURE__ */ React.createElement("div", { className: `mt-1 text-xs flex items-center gap-3 ${isAutomated ? "text-gray-600 dark:text-gray-400" : "text-purple-600 dark:text-purple-400"}` }, migration.starttime && migration.starttime > 0 ? /* @__PURE__ */ React.createElement("span", null, "Started: ", new Date(migration.starttime * 1e3).toLocaleTimeString()) : /* @__PURE__ */ React.createElement("span", null, "Started: Unknown"), /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${isAutomated ? "text-blue-600 dark:text-blue-400" : "text-purple-600 dark:text-purple-400"}` }, "Elapsed: ", elapsedTime)), migration.progress && /* @__PURE__ */ React.createElement("div", { className: "mt-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between text-xs mb-1" }, /* @__PURE__ */ React.createElement("span", { className: `${isAutomated ? "text-blue-600 dark:text-blue-400" : "text-purple-600 dark:text-purple-400"} font-semibold` }, "Progress: ", migration.progress.percentage, "%", migration.progress.speed_mib_s && /* @__PURE__ */ React.createElement("span", { className: "ml-2 font-normal text-[10px]" }, "(", migration.progress.speed_mib_s.toFixed(1), " MiB/s)")), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-[10px]" }, migration.progress.human_readable)), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2" }, /* @__PURE__ */ React.createElement("div", { className: `h-2 rounded-full transition-all duration-300 ${isAutomated ? "bg-blue-600 dark:bg-blue-500" : "bg-purple-600 dark:bg-purple-500"}`, style: { width: `${migration.progress.percentage}%` } }))));
     }))), automationStatus.state?.last_run && typeof automationStatus.state.last_run == "object" && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, lastRunSummary: !prev.lastRunSummary })),
         className: "w-full flex items-center justify-between mb-3 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 16, className: "text-blue-600 dark:text-blue-400" }), /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300" }, "Last Run Summary"), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, new Date(automationStatus.state.last_run.timestamp).toLocaleString())),
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(ClipboardList, { size: 16, className: "text-blue-600 dark:text-blue-400" }), /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300" }, "Last Run Summary"), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, formatRelativeTime(automationStatus.state.last_run.timestamp))),
       collapsedSections.lastRunSummary ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 18, className: "text-gray-500" }) : /* @__PURE__ */ React.createElement(ChevronUp, { size: 18, className: "text-gray-500" })
-    ), !collapsedSections.lastRunSummary && /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Status"), /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${automationStatus.state.last_run.status === "success" ? "text-green-600 dark:text-green-400" : automationStatus.state.last_run.status === "partial" ? "text-yellow-600 dark:text-yellow-400" : automationStatus.state.last_run.status === "failed" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}` }, automationStatus.state.last_run.status === "success" ? "\u2713 Success" : automationStatus.state.last_run.status === "partial" ? "\u25D0 Partial" : automationStatus.state.last_run.status === "failed" ? "\u2717 Failed" : automationStatus.state.last_run.status === "no_action" ? "\u25CB No Action" : automationStatus.state.last_run.status)), /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.migrations_successful || 0, " / ", automationStatus.state.last_run.migrations_executed || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Duration"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.duration_seconds ? `${Math.floor(automationStatus.state.last_run.duration_seconds / 60)}m ${automationStatus.state.last_run.duration_seconds % 60}s` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Mode"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.mode === "dry_run" ? "\u{1F9EA} Dry Run" : "\u{1F680} Live"))), automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3 mb-3 max-h-64 overflow-y-auto" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Decisions Made:"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, [...automationStatus.state.last_run.decisions].sort((a, b) => {
-      let getOrder = (d) => d.action === "executed" || d.action === "pending" || d.action === "failed" ? 0 : d.action === "skipped" ? 1 : 2, orderA = getOrder(a), orderB = getOrder(b);
-      return orderA !== orderB ? orderA - orderB : (a.priority_rank || 999) - (b.priority_rank || 999);
+    ), !collapsedSections.lastRunSummary && /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Status"), /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${automationStatus.state.last_run.status === "success" ? "text-green-600 dark:text-green-400" : automationStatus.state.last_run.status === "partial" ? "text-yellow-600 dark:text-yellow-400" : automationStatus.state.last_run.status === "failed" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}` }, automationStatus.state.last_run.status === "success" ? "Success" : automationStatus.state.last_run.status === "partial" ? "Partial" : automationStatus.state.last_run.status === "failed" ? "Failed" : automationStatus.state.last_run.status === "no_action" ? "No Action" : automationStatus.state.last_run.status)), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Migrations"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.migrations_successful || 0, " / ", automationStatus.state.last_run.migrations_executed || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Duration"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.duration_seconds ? `${Math.floor(automationStatus.state.last_run.duration_seconds / 60)}m ${automationStatus.state.last_run.duration_seconds % 60}s` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-600 dark:text-gray-400 mb-1" }, "Mode"), /* @__PURE__ */ React.createElement("div", { className: "text-sm font-bold text-gray-900 dark:text-white" }, automationStatus.state.last_run.mode === "dry_run" ? "Dry Run" : "Live"))), automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3 mb-3 max-h-64 overflow-y-auto" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Decisions Made:"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, [...automationStatus.state.last_run.decisions].sort((a, b) => {
+      let getOrder = (d) => d.action === "executed" || d.action === "pending" || d.action === "failed" ? 0 : d.action === "observing" || d.action === "deferred" ? 1 : d.action === "skipped" ? 2 : 3;
+      return getOrder(a) - getOrder(b) || (a.priority_rank || 999) - (b.priority_rank || 999);
     }).map((decision, idx) => {
-      let isExecuted = decision.action === "executed" || decision.action === "failed", isPending = decision.action === "pending", borderColor = isExecuted ? "border-green-500" : isPending ? "border-blue-500" : decision.action === "skipped" ? "border-yellow-500" : "border-gray-400";
-      return /* @__PURE__ */ React.createElement("div", { key: idx, className: `text-xs ${isExecuted ? "bg-green-50 dark:bg-green-900/20" : isPending ? "bg-blue-50 dark:bg-blue-900/20" : "bg-gray-50 dark:bg-gray-700"} rounded p-2 border-l-4 ${borderColor} ${isPending ? "animate-pulse" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-wrap" }, decision.priority_rank && /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded font-bold text-[10px] ${decision.priority_rank === 1 ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200" : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"}` }, "#", decision.priority_rank), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, decision.action === "filtered" ? "\u2297" : decision.action === "skipped" ? "\u23ED" : decision.action === "pending" ? "\u{1F504}" : decision.action === "executed" ? "\u2705" : "\u2717", " ", decision.name || `VM/CT ${decision.vmid}`), decision.type && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" }, decision.type), decision.distribution_balancing && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", title: "Distribution Balancing" }, "\u2696\uFE0F Balance")), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, decision.source_node, " \u2192 ", decision.target_node, decision.target_node_score && ` (score: ${decision.target_node_score})`)), /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-[10px] font-semibold ${decision.action === "executed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : decision.action === "pending" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : decision.action === "skipped" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : decision.action === "filtered" ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}` }, decision.action)), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-gray-600 dark:text-gray-400" }, decision.selected_reason || decision.reason), decision.confidence_score && /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]" }, "Confidence: ", decision.confidence_score, "%"), decision.error && /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-red-600 dark:text-red-400 text-[10px]" }, "Error: ", decision.error));
-    }))), automationStatus.state.last_run.safety_checks && /* @__PURE__ */ React.createElement("div", { className: "bg-white/60 dark:bg-gray-800/60 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Safety Checks:"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14, className: "text-green-600 dark:text-green-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Migration Window"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, automationStatus.state.last_run.safety_checks.migration_window))), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14, className: "text-green-600 dark:text-green-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Cluster Health"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, automationStatus.state.last_run.safety_checks.cluster_health))), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, "Running migrations:"), " ", automationStatus.state.last_run.safety_checks.running_migrations || 0))))), automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 recent-auto-migrations" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300" }, "Recent Auto-Migrations"), /* @__PURE__ */ React.createElement(
+      let isExecuted = decision.action === "executed" || decision.action === "failed", isPending = decision.action === "pending", borderColor = isExecuted ? "border-green-500" : isPending ? "border-blue-500" : decision.action === "observing" ? "border-cyan-500" : decision.action === "deferred" ? "border-amber-500" : decision.action === "skipped" ? "border-yellow-500" : "border-gray-400", bgColor = isExecuted ? "bg-green-50 dark:bg-green-900/20" : isPending ? "bg-blue-50 dark:bg-blue-900/20" : decision.action === "observing" ? "bg-cyan-50 dark:bg-cyan-900/20" : decision.action === "deferred" ? "bg-amber-50 dark:bg-amber-900/20" : "bg-gray-50 dark:bg-gray-700";
+      return /* @__PURE__ */ React.createElement("div", { key: idx, className: `text-xs ${bgColor} rounded p-2 border-l-4 ${borderColor} ${isPending ? "animate-pulse" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-wrap" }, decision.priority_rank && /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded font-bold text-[10px] ${decision.priority_rank === 1 ? "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200" : "bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300"}` }, "#", decision.priority_rank), /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, decision.action === "filtered" ? "\u2297" : decision.action === "skipped" ? "\u23ED" : decision.action === "pending" ? "\u{1F504}" : decision.action === "executed" ? "\u2705" : decision.action === "observing" ? "\u{1F441}" : decision.action === "deferred" ? "\u{1F550}" : "\u2717", " ", decision.name || `VM/CT ${decision.vmid}`), decision.type && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" }, decision.type), decision.distribution_balancing && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", title: "Distribution Balancing" }, "Balance")), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, decision.source_node, " \u2192 ", decision.target_node, decision.target_node_score && ` (score: ${decision.target_node_score})`)), /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-[10px] font-semibold ${decision.action === "executed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : decision.action === "pending" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : decision.action === "observing" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" : decision.action === "deferred" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : decision.action === "skipped" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : decision.action === "filtered" ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}` }, decision.action)), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-gray-600 dark:text-gray-400" }, decision.selected_reason || decision.reason), decision.confidence_score && /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]" }, "Confidence: ", decision.confidence_score, "%"), decision.reasoning && /* @__PURE__ */ React.createElement("div", { className: "mt-1 flex flex-wrap gap-2 text-[10px] text-gray-500 dark:text-gray-400" }, decision.reasoning.score_improvement != null && /* @__PURE__ */ React.createElement("span", null, "Score: +", Number(decision.reasoning.score_improvement).toFixed(1)), decision.reasoning.cost_benefit != null && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-600" }, "|"), /* @__PURE__ */ React.createElement("span", null, "Cost-benefit: ", Number(decision.reasoning.cost_benefit).toFixed(1), "x")), decision.reasoning.observation_count != null && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-600" }, "|"), /* @__PURE__ */ React.createElement("span", null, "Observed ", decision.reasoning.observation_count, "/", decision.reasoning.required_observations)), decision.reasoning.hours_tracked != null && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-600" }, "|"), /* @__PURE__ */ React.createElement("span", null, Number(decision.reasoning.hours_tracked).toFixed(1), "h tracked")), decision.reasoning.guest_behavior && decision.reasoning.guest_behavior !== "unknown" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-600" }, "|"), /* @__PURE__ */ React.createElement("span", null, decision.reasoning.guest_behavior))), decision.error && /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-red-600 dark:text-red-400 text-[10px]" }, "Error: ", decision.error));
+    }))), automationStatus.state.last_run.safety_checks && /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Safety Checks:"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14, className: "text-green-600 dark:text-green-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Migration Window"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, automationStatus.state.last_run.safety_checks.migration_window))), /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14, className: "text-green-600 dark:text-green-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-900 dark:text-white" }, "Cluster Health"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, automationStatus.state.last_run.safety_checks.cluster_health))), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, "Running migrations:"), " ", automationStatus.state.last_run.safety_checks.running_migrations || 0))), automationStatus.state?.activity_log && automationStatus.state.activity_log.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Activity Log \u2014 Skipped (", automationStatus.state.activity_log.length, "):"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5" }, automationStatus.state.activity_log.map((activity, aidx) => /* @__PURE__ */ React.createElement("div", { key: aidx, className: "text-xs bg-white dark:bg-gray-700 rounded p-2 border-l-4 border-yellow-400 dark:border-yellow-600 flex items-start gap-2" }, /* @__PURE__ */ React.createElement(MinusCircle, { size: 12, className: "text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-gray-900 dark:text-white" }, activity.name), activity.vmid && /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-1" }, "(", activity.vmid, ")"), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400 mt-0.5" }, activity.reason)))))), (!automationStatus.state.last_run.decisions || automationStatus.state.last_run.decisions.length === 0) && (!automationStatus.state?.activity_log || automationStatus.state.activity_log.length === 0) && automationStatus.filter_reasons && automationStatus.filter_reasons.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Filtered (", automationStatus.filter_reasons.length, "):"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5" }, automationStatus.filter_reasons.map((reason, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, className: "text-xs bg-white dark:bg-gray-700 rounded p-2 border-l-4 border-yellow-400 dark:border-yellow-600 flex items-start gap-2" }, /* @__PURE__ */ React.createElement(MinusCircle, { size: 12, className: "text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, reason))))))), automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 recent-auto-migrations" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300" }, "Recent Auto-Migrations"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => {
@@ -4201,16 +4205,12 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
             m.target_node || "",
             m.suitability_rating || m.target_node_score || "",
             (m.reason || "").replace(/,/g, ";"),
-            // Replace commas in reason
             m.confidence_score || "",
             m.status || "",
             m.duration_seconds || "",
             m.dry_run ? "Yes" : "No",
             (m.window_name || "").replace(/,/g, ";")
-          ]), csv = [
-            headers.join(","),
-            ...rows.map((row) => row.join(","))
-          ].join(`
+          ]), csv = [headers.join(","), ...rows.map((row) => row.join(","))].join(`
 `), blob = new Blob([csv], { type: "text/csv" }), url = window.URL.createObjectURL(blob), a = document.createElement("a");
           a.href = url, a.download = `proxbalance-migrations-${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.csv`, document.body.appendChild(a), a.click(), document.body.removeChild(a), window.URL.revokeObjectURL(url);
         },
@@ -4218,7 +4218,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         title: "Export migration history to CSV"
       },
       /* @__PURE__ */ React.createElement(Download, { size: 12 }),
-      "Export CSV"
+      " Export CSV"
     )), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, (() => {
       let seen = /* @__PURE__ */ new Map(), uniqueMigrations = [], sortedMigrations = [...automationStatus.recent_migrations].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       for (let migration of sortedMigrations) {
@@ -4227,55 +4227,22 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       }
       return uniqueMigrations.slice(0, 3);
     })().map((migration) => {
-      let timeDisplay = "";
-      if (migration.timestamp)
-        try {
-          let timestamp = migration.timestamp.endsWith("Z") ? migration.timestamp : migration.timestamp + "Z", migrationDate = new Date(timestamp), diffMs = /* @__PURE__ */ new Date() - migrationDate, diffMins = Math.floor(diffMs / 6e4), diffHours = Math.floor(diffMs / 36e5), diffDays = Math.floor(diffMs / 864e5);
-          diffMins < 1 ? timeDisplay = "Just now" : diffMins < 60 ? timeDisplay = `${diffMins}m ago` : diffHours < 24 ? timeDisplay = `${diffHours}h ago` : diffDays < 7 ? timeDisplay = `${diffDays}d ago` : timeDisplay = migrationDate.toLocaleDateString();
-        } catch {
-          timeDisplay = "";
-        }
-      return /* @__PURE__ */ React.createElement("div", { key: migration.id, className: "text-sm bg-white dark:bg-gray-700 rounded p-2 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-900 dark:text-white font-medium" }, migration.name, " (", migration.vmid, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-xs" }, migration.source_node, " \u2192 ", migration.target_node, (migration.suitability_rating !== void 0 || migration.target_node_score !== void 0) && (() => {
+      let timeDisplay = formatRelativeTime(migration.timestamp);
+      return /* @__PURE__ */ React.createElement("div", { key: migration.id, className: "text-sm bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 flex-1 flex-wrap" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-900 dark:text-white font-medium" }, migration.name, " (", migration.vmid, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 text-xs" }, migration.source_node, " \u2192 ", migration.target_node, (migration.suitability_rating !== void 0 || migration.target_node_score !== void 0) && (() => {
         let suitabilityPercent = migration.suitability_rating !== void 0 ? migration.suitability_rating : Math.max(0, Math.round(100 - Math.min(migration.target_node_score || 0, 100)));
-        return /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-[10px] inline-flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Score:"), " ", /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${suitabilityPercent >= 70 ? "text-green-600 dark:text-green-400" : suitabilityPercent >= 50 ? "text-yellow-600 dark:text-yellow-400" : suitabilityPercent >= 30 ? "text-orange-600 dark:text-orange-400" : "text-red-600 dark:text-red-400"}` }, suitabilityPercent, "%"), /* @__PURE__ */ React.createElement("span", { className: "relative group inline-block" }, /* @__PURE__ */ React.createElement(Info, { size: 10, className: "text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" }), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-semibold mb-1 text-blue-400" }, "Scoring Breakdown"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] space-y-0.5" }, /* @__PURE__ */ React.createElement("div", null, "Target: ", migration.target_node), /* @__PURE__ */ React.createElement("div", null, "Penalty Score: ", migration.target_node_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Suitability: ", suitabilityPercent, "%"), /* @__PURE__ */ React.createElement("div", { className: "border-t border-gray-700 pt-1 mt-1" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-400" }, "Lower penalty = better target"), /* @__PURE__ */ React.createElement("div", null, "\u2022 CPU Load \xD7 30%"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Memory Load \xD7 30%"), /* @__PURE__ */ React.createElement("div", null, "\u2022 IOWait \xD7 20%"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Load Avg \xD7 10%"), /* @__PURE__ */ React.createElement("div", null, "\u2022 Storage Pressure \xD7 10%"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-gray-400" }, "+ Penalties for high usage/trends")), migration.target_node_score > 100 && /* @__PURE__ */ React.createElement("div", { className: "border-t border-gray-700 pt-1 mt-1 text-red-400" }, "\u26A0 Penalty score >100 indicates heavy load/trends")))));
-      })()), migration.dry_run && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded" }, "DRY RUN")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 shrink-0" }, timeDisplay && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, timeDisplay), /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${migration.status === "completed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : migration.status === "failed" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : migration.status === "skipped" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : migration.status === "timeout" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400"}` }, migration.status === "completed" && /* @__PURE__ */ React.createElement(CheckCircle, { size: 12 }), migration.status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 12 }), migration.status === "skipped" && /* @__PURE__ */ React.createElement(AlertTriangle, { size: 12 }), migration.status === "timeout" && /* @__PURE__ */ React.createElement(Clock, { size: 12 }), migration.status))), migration.reason && /* @__PURE__ */ React.createElement("div", { className: "mt-1 flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-600 dark:text-gray-400" }, migration.reason), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500" }, migration.confidence_score !== void 0 && /* @__PURE__ */ React.createElement("span", { title: "Penalty point reduction achieved by this migration" }, "Improvement: +", (migration.confidence_score / 2).toFixed(1)), migration.duration_seconds !== void 0 && migration.duration_seconds > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 dark:text-gray-600" }, "\u2022"), /* @__PURE__ */ React.createElement("span", { title: "Migration Duration" }, "Duration: ", migration.duration_seconds, "s")))), migration.status === "failed" && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded flex items-start gap-2" }, /* @__PURE__ */ React.createElement(XCircle, { size: 14, className: "text-red-600 dark:text-red-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-red-800 dark:text-red-300 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Error:"), " ", migration.error || "Migration failed (check logs for details)")), (() => {
-        if (!automationConfig?.rules?.rollback_detection_enabled)
-          return null;
-        let rollbackWindowHours = automationConfig?.rules?.rollback_window_hours || 24, rollbackWindow = rollbackWindowHours * 60 * 60 * 1e3, currentTime = new Date(migration.timestamp.endsWith("Z") ? migration.timestamp : migration.timestamp + "Z");
-        return automationStatus.recent_migrations.find((m) => {
-          if (m.vmid !== migration.vmid || m.id === migration.id) return !1;
-          let isRollback = m.source_node === migration.target_node && m.target_node === migration.source_node, mTime = new Date(m.timestamp.endsWith("Z") ? m.timestamp : m.timestamp + "Z"), withinWindow = Math.abs(mTime - currentTime) < rollbackWindow;
-          return isRollback && withinWindow;
-        }) ? /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14, className: "text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-orange-800 dark:text-orange-300" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Rollback Detected:"), " This VM was migrated back to its original node within ", rollbackWindowHours, " hour", rollbackWindowHours !== 1 ? "s" : "", ". This may indicate a problem with the target node or migration configuration.")) : null;
-      })());
-    }))), runHistory.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Clock, { size: 14 }), "Past Automation Runs"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, runHistory.slice(0, 5).map((run, idx) => {
-      let isExpanded = expandedRun === run.timestamp, timeDisplay = "";
-      try {
-        let timestamp = run.timestamp.endsWith("Z") ? run.timestamp : run.timestamp + "Z", runDate = new Date(timestamp), diffMs = /* @__PURE__ */ new Date() - runDate, diffMins = Math.floor(diffMs / 6e4), diffHours = Math.floor(diffMs / 36e5), diffDays = Math.floor(diffMs / 864e5);
-        diffMins < 1 ? timeDisplay = "Just now" : diffMins < 60 ? timeDisplay = `${diffMins}m ago` : diffHours < 24 ? timeDisplay = `${diffHours}h ago` : diffDays < 7 ? timeDisplay = `${diffDays}d ago` : timeDisplay = runDate.toLocaleDateString();
-      } catch {
-        timeDisplay = "";
-      }
-      return /* @__PURE__ */ React.createElement("div", { key: idx, className: "bg-gray-50 dark:bg-gray-800/50 rounded p-3 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-[10px] inline-flex items-center gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "relative group inline-block" }, /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${suitabilityPercent >= 70 ? "text-green-600 dark:text-green-400" : suitabilityPercent >= 50 ? "text-yellow-600 dark:text-yellow-400" : suitabilityPercent >= 30 ? "text-orange-600 dark:text-orange-400" : "text-red-600 dark:text-red-400"}` }, suitabilityPercent, "%"), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1.5 bg-gray-900 dark:bg-gray-800 text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" }, /* @__PURE__ */ React.createElement("div", null, "Target: ", migration.target_node), /* @__PURE__ */ React.createElement("div", null, "Penalty: ", migration.target_node_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Suitability: ", suitabilityPercent, "%"))));
+      })()), migration.dry_run && /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded" }, "DRY RUN")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 shrink-0" }, timeDisplay && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, timeDisplay), /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${migration.status === "completed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : migration.status === "failed" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : migration.status === "skipped" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : migration.status === "timeout" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400"}` }, migration.status === "completed" && /* @__PURE__ */ React.createElement(CheckCircle, { size: 12 }), migration.status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 12 }), migration.status === "skipped" && /* @__PURE__ */ React.createElement(AlertTriangle, { size: 12 }), migration.status === "timeout" && /* @__PURE__ */ React.createElement(Clock, { size: 12 }), migration.status))), migration.reason && /* @__PURE__ */ React.createElement("div", { className: "mt-1 flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-600 dark:text-gray-400" }, migration.reason), migration.duration_seconds !== void 0 && migration.duration_seconds > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-500" }, migration.duration_seconds, "s")), migration.status === "failed" && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded flex items-start gap-2" }, /* @__PURE__ */ React.createElement(XCircle, { size: 14, className: "text-red-600 dark:text-red-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-red-800 dark:text-red-300 flex-1" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Error:"), " ", migration.error || "Migration failed (check logs for details)")));
+    }))), (runHistory.length > 0 || automationStatus.state?.activity_log?.length > 0) && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Clock, { size: 14 }), "Run History"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, runHistory.slice(0, 5).map((run, idx) => {
+      let isExpanded = expandedRun === run.timestamp, timeDisplay = formatRelativeTime(run.timestamp);
+      return /* @__PURE__ */ React.createElement("div", { key: idx, className: "bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: "flex items-center justify-between cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded p-1 transition-colors",
+          className: "flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 rounded p-1 transition-colors",
           onClick: () => setExpandedRun(isExpanded ? null : run.timestamp)
         },
-        /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, isExpanded ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 14, className: "text-gray-600 dark:text-gray-400" }) : /* @__PURE__ */ React.createElement(ChevronRight, { size: 14, className: "text-gray-600 dark:text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-700 dark:text-gray-200" }, timeDisplay), /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${run.status === "success" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : run.status === "partial" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" : run.status === "no_action" ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}` }, run.status)),
+        /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, isExpanded ? /* @__PURE__ */ React.createElement(ChevronDown, { size: 14, className: "text-gray-600 dark:text-gray-400" }) : /* @__PURE__ */ React.createElement(ChevronRight, { size: 14, className: "text-gray-600 dark:text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-700 dark:text-gray-200" }, timeDisplay), /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded text-[10px] font-semibold ${run.status === "success" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : run.status === "partial" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" : run.status === "no_action" ? "bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}` }, run.status)),
         /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300" }, /* @__PURE__ */ React.createElement("span", null, run.migrations_executed || 0, " migration", run.migrations_executed !== 1 ? "s" : ""), /* @__PURE__ */ React.createElement("span", null, run.duration_seconds || 0, "s"))
-      ), isExpanded && run.decisions && run.decisions.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pl-5 space-y-1" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1" }, "Decisions (", run.decisions.length, ")"), run.decisions.map((decision, didx) => /* @__PURE__ */ React.createElement("div", { key: didx, className: `text-xs p-1.5 rounded ${decision.action === "executed" ? "bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700" : decision.action === "pending" ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700" : decision.action === "skipped" ? "bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700" : "bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, decision.action === "executed" && /* @__PURE__ */ React.createElement(CheckCircle, { size: 10, className: "text-green-600 dark:text-green-400" }), decision.action === "pending" && /* @__PURE__ */ React.createElement(RefreshCw, { size: 10, className: "text-blue-600 dark:text-blue-400" }), decision.action === "skipped" && /* @__PURE__ */ React.createElement(Minus, { size: 10, className: "text-yellow-600 dark:text-yellow-400" }), decision.action === "filtered" && /* @__PURE__ */ React.createElement(XCircle, { size: 10, className: "text-gray-600 dark:text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-gray-100" }, decision.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "(", decision.vmid, ")"), decision.distribution_balancing && /* @__PURE__ */ React.createElement("span", { className: "ml-1", title: "Distribution Balancing" }, "\u2696\uFE0F")), decision.priority_rank && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-semibold text-gray-500 dark:text-gray-400" }, "#", decision.priority_rank)), decision.reason && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-600 dark:text-gray-300 mt-0.5" }, decision.reason)))));
-    }))), automationStatus.state?.activity_log && automationStatus.state.activity_log.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3" }, "Activity Log (Last Check)"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, automationStatus.state.activity_log.slice(0, 10).map((activity, idx) => {
-      let timeDisplay = "";
-      if (activity.timestamp)
-        try {
-          let timestamp = activity.timestamp.endsWith("Z") ? activity.timestamp : activity.timestamp + "Z", activityDate = new Date(timestamp), diffMs = /* @__PURE__ */ new Date() - activityDate, diffMins = Math.floor(diffMs / 6e4), diffHours = Math.floor(diffMs / 36e5);
-          diffMins < 1 ? timeDisplay = "Just now" : diffMins < 60 ? timeDisplay = `${diffMins}m ago` : diffHours < 24 ? timeDisplay = `${diffHours}h ago` : timeDisplay = activityDate.toLocaleDateString();
-        } catch {
-          timeDisplay = "";
-        }
-      let isSkipped = activity.action === "skipped";
-      return /* @__PURE__ */ React.createElement("div", { key: idx, className: "text-xs bg-white dark:bg-gray-700 rounded p-2 border border-gray-200 dark:border-gray-600 flex items-center gap-2", title: activity.reason }, isSkipped && /* @__PURE__ */ React.createElement(MinusCircle, { size: 14, className: "text-yellow-600 dark:text-yellow-400 shrink-0" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-white" }, activity.name), /* @__PURE__ */ React.createElement("span", { className: "px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded" }, "SKIPPED")), /* @__PURE__ */ React.createElement("div", { className: "text-gray-600 dark:text-gray-400 mt-0.5 truncate" }, activity.reason)), timeDisplay && /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400 shrink-0" }, timeDisplay));
+      ), isExpanded && /* @__PURE__ */ React.createElement(React.Fragment, null, run.decisions && run.decisions.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pl-5 space-y-1" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1" }, "Decisions (", run.decisions.length, ")"), run.decisions.map((decision, didx) => /* @__PURE__ */ React.createElement("div", { key: didx, className: `text-xs p-1.5 rounded ${decision.action === "executed" ? "bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700" : decision.action === "pending" ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700" : decision.action === "observing" ? "bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700" : decision.action === "deferred" ? "bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700" : decision.action === "skipped" ? "bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700" : "bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, decision.action === "executed" && /* @__PURE__ */ React.createElement(CheckCircle, { size: 10, className: "text-green-600 dark:text-green-400" }), decision.action === "pending" && /* @__PURE__ */ React.createElement(RefreshCw, { size: 10, className: "text-blue-600 dark:text-blue-400" }), decision.action === "observing" && /* @__PURE__ */ React.createElement(Info, { size: 10, className: "text-cyan-600 dark:text-cyan-400" }), decision.action === "deferred" && /* @__PURE__ */ React.createElement(Clock, { size: 10, className: "text-amber-600 dark:text-amber-400" }), decision.action === "skipped" && /* @__PURE__ */ React.createElement(Minus, { size: 10, className: "text-yellow-600 dark:text-yellow-400" }), decision.action === "filtered" && /* @__PURE__ */ React.createElement(XCircle, { size: 10, className: "text-gray-600 dark:text-gray-400" }), /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-900 dark:text-gray-100" }, decision.name), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "(", decision.vmid, ")"), decision.distribution_balancing && /* @__PURE__ */ React.createElement("span", { className: "ml-1", title: "Distribution Balancing" }, "\u2696\uFE0F")), decision.priority_rank && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-semibold text-gray-500 dark:text-gray-400" }, "#", decision.priority_rank)), decision.reason && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-600 dark:text-gray-300 mt-0.5" }, decision.reason), decision.reasoning && /* @__PURE__ */ React.createElement("div", { className: "mt-0.5 flex flex-wrap gap-1.5 text-[9px] text-gray-500 dark:text-gray-400" }, decision.reasoning.score_improvement != null && /* @__PURE__ */ React.createElement("span", null, "+", Number(decision.reasoning.score_improvement).toFixed(1), "pts"), decision.reasoning.cost_benefit != null && /* @__PURE__ */ React.createElement("span", null, "CB:", Number(decision.reasoning.cost_benefit).toFixed(1), "x"), decision.reasoning.observation_count != null && /* @__PURE__ */ React.createElement("span", null, decision.reasoning.observation_count, "/", decision.reasoning.required_observations, " obs")))))));
     }))))) : null;
   }
 
@@ -4301,7 +4268,8 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     ignoredGuests,
     excludeGuests,
     affinityGuests,
-    autoMigrateOkGuests
+    autoMigrateOkGuests,
+    guestProfiles
   }) {
     return data ? /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 mb-3 sm:mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 sm:gap-3 min-w-0" }, /* @__PURE__ */ React.createElement("div", { className: "p-1.5 sm:p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0" }, /* @__PURE__ */ React.createElement(Tag, { size: 18, className: "text-white sm:hidden" }), /* @__PURE__ */ React.createElement(Tag, { size: 24, className: "text-white hidden sm:block" })), /* @__PURE__ */ React.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ React.createElement("h2", { className: "text-base sm:text-2xl font-bold text-gray-900 dark:text-white" }, "Guest Tag Management"), /* @__PURE__ */ React.createElement("p", { className: "text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 hidden sm:block" }, "Manage ignore tags and affinity rules for all guests"))), /* @__PURE__ */ React.createElement(
       "button",
@@ -4443,7 +4411,17 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           },
           /* @__PURE__ */ React.createElement("td", { className: "p-3" }, /* @__PURE__ */ React.createElement("span", { className: `px-2 py-1 text-xs rounded font-medium ${guest.type === "VM" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" : "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300"}` }, guest.type)),
           /* @__PURE__ */ React.createElement("td", { className: "hidden sm:table-cell p-3 text-sm font-mono text-gray-900 dark:text-white" }, guest.vmid),
-          /* @__PURE__ */ React.createElement("td", { className: "p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-900 dark:text-white" }, guest.name), guestHasTags && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1 mt-1 sm:hidden" }, guest.tags.has_ignore && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded font-medium" }, "ignore"), guest.tags.all_tags?.includes("auto_migrate_ok") && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded font-medium" }, "auto_migrate"), guest.tags.exclude_groups?.map((tag) => /* @__PURE__ */ React.createElement("span", { key: tag, className: "text-[10px] px-1.5 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded font-medium" }, tag)), guest.tags.affinity_groups?.map((tag) => /* @__PURE__ */ React.createElement("span", { key: tag, className: "text-[10px] px-1.5 py-0.5 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded font-medium" }, tag)))),
+          /* @__PURE__ */ React.createElement("td", { className: "p-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-900 dark:text-white flex items-center gap-1.5" }, guest.name, (() => {
+            let profile = guestProfiles?.[String(guest.vmid)];
+            if (!profile || profile.confidence === "low") return null;
+            let cls = {
+              steady: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+              bursty: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+              growing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+              cyclical: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+            }[profile.behavior];
+            return cls ? /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded text-[9px] font-semibold ${cls}`, title: `${profile.behavior} workload (${profile.confidence} confidence, ${profile.data_points} data points)` }, profile.behavior.charAt(0).toUpperCase() + profile.behavior.slice(1)) : null;
+          })()), guestHasTags && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1 mt-1 sm:hidden" }, guest.tags.has_ignore && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded font-medium" }, "ignore"), guest.tags.all_tags?.includes("auto_migrate_ok") && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 rounded font-medium" }, "auto_migrate"), guest.tags.exclude_groups?.map((tag) => /* @__PURE__ */ React.createElement("span", { key: tag, className: "text-[10px] px-1.5 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded font-medium" }, tag)), guest.tags.affinity_groups?.map((tag) => /* @__PURE__ */ React.createElement("span", { key: tag, className: "text-[10px] px-1.5 py-0.5 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded font-medium" }, tag)))),
           /* @__PURE__ */ React.createElement("td", { className: "p-3 text-sm text-gray-600 dark:text-gray-400" }, guest.node),
           /* @__PURE__ */ React.createElement("td", { className: "p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1 px-2 py-1 text-xs rounded font-medium ${guest.status === "migrating" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" : guest.status === "running" ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300" : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"}`, title: guest.status.charAt(0).toUpperCase() + guest.status.slice(1) }, guest.status === "migrating" ? /* @__PURE__ */ React.createElement(Loader, { size: 12, className: "animate-spin" }) : guest.status === "running" ? /* @__PURE__ */ React.createElement(Play, { size: 12 }) : /* @__PURE__ */ React.createElement(Power, { size: 12 }), /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, guest.status)), canMigrate && /* @__PURE__ */ React.createElement(
             "button",
@@ -4926,11 +4904,11 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/utils/useIsMobile.js
-  var { useState: useState7, useEffect } = React, useIsMobile = (breakpoint = 768) => {
-    let [isMobile, setIsMobile] = useState7(
+  var { useState: useState10, useEffect: useEffect2 } = React, useIsMobile = (breakpoint = 768) => {
+    let [isMobile, setIsMobile] = useState10(
       typeof window < "u" && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
     );
-    return useEffect(() => {
+    return useEffect2(() => {
       let mql = window.matchMedia(`(max-width: ${breakpoint}px)`), handler = (e) => setIsMobile(e.matches);
       return mql.addEventListener("change", handler), () => mql.removeEventListener("change", handler);
     }, [breakpoint]), isMobile;
@@ -4946,7 +4924,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: `h-2 rounded-full transition-all ${summary.cluster_health >= 70 ? "bg-green-500" : summary.cluster_health >= 50 ? "bg-yellow-500" : summary.cluster_health >= 30 ? "bg-orange-500" : "bg-red-500"}`,
         style: { width: `${summary.cluster_health}%` }
       }
-    )), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, summary.total_recommendations, " migration", summary.total_recommendations !== 1 ? "s" : "", " recommended"), summary.reasons_breakdown?.length > 0 && /* @__PURE__ */ React.createElement("span", null, "(", summary.reasons_breakdown.join(", "), ")"), summary.total_improvement > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "+", summary.total_improvement.toFixed(0), " pts total improvement"), summary.predicted_health > summary.cluster_health && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400" }, "Predicted health after: ", summary.predicted_health, "/100")));
+    )), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, summary.total_recommendations, " migration", summary.total_recommendations !== 1 ? "s" : "", " recommended"), summary.reasons_breakdown?.length > 0 && /* @__PURE__ */ React.createElement("span", null, "(", summary.reasons_breakdown.join(", "), ")"), summary.total_improvement > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium" }, "+", summary.total_improvement.toFixed(0), " pts total improvement"), summary.predicted_health > summary.cluster_health && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400" }, "Predicted health after: ", summary.predicted_health, "/100"), summary.convergence_message && /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400 font-medium flex items-center gap-1" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 12 }), " Converged")));
   }
 
   // src/components/dashboard/recommendations/AlertsBanner.jsx
@@ -5036,7 +5014,8 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       /* @__PURE__ */ React.createElement("option", { value: "" }, "Sort: Default"),
       /* @__PURE__ */ React.createElement("option", { value: "score_improvement" }, "Score Improvement"),
       /* @__PURE__ */ React.createElement("option", { value: "confidence_score" }, "Confidence"),
-      /* @__PURE__ */ React.createElement("option", { value: "risk_score" }, "Risk Score")
+      /* @__PURE__ */ React.createElement("option", { value: "risk_score" }, "Risk Score"),
+      /* @__PURE__ */ React.createElement("option", { value: "cost_benefit_ratio" }, "Cost-Benefit Ratio")
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -5105,7 +5084,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       },
       /* @__PURE__ */ React.createElement(XCircle, { size: 10 }),
       "Target Conflict"
-    )), rec.score_details && !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement(
+    ), rec.cost_benefit && rec.cost_benefit.ratio != null && /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${rec.cost_benefit.ratio >= 2 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : rec.cost_benefit.ratio >= 1 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`, title: `Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x \u2014 Score improvement: +${rec.cost_benefit.score_improvement?.toFixed(0) || "?"} pts, Est. duration: ${rec.cost_benefit.estimated_duration_minutes?.toFixed(0) || "?"} min` }, "ROI: ", rec.cost_benefit.ratio.toFixed(1), "x")), rec.score_details && !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: (e) => {
@@ -5265,14 +5244,14 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
 
   // src/components/dashboard/recommendations/insights/EngineDiagnostics.jsx
   function EngineDiagnostics({ recommendationData, recommendations }) {
-    return recommendationData?.generated_at ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Generation Time"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.count || recommendations.length)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Guests Evaluated"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, (recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Skipped"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.skipped_guests?.length || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "AI Enhanced"), /* @__PURE__ */ React.createElement("div", { className: `font-semibold ${recommendationData.ai_enhanced ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}` }, recommendationData.ai_enhanced ? "Yes" : "No")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Conflicts / Advisories"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.conflicts?.length || 0, " / ", recommendationData.capacity_advisories?.length || 0))), recommendationData.parameters && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Thresholds: "), /* @__PURE__ */ React.createElement("span", { className: "font-mono text-gray-700 dark:text-gray-300" }, "CPU ", recommendationData.parameters.cpu_threshold, "% | Mem ", recommendationData.parameters.mem_threshold, "% | IOWait ", recommendationData.parameters.iowait_threshold, "%"), recommendationData.parameters.maintenance_nodes?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-yellow-600 dark:text-yellow-400" }, "| Maintenance: ", recommendationData.parameters.maintenance_nodes.join(", "))), recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 block mb-1" }, "Skip Reasons:"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => /* @__PURE__ */ React.createElement("span", { key: reason, className: "px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300 font-mono" }, reason, ": ", count))))) : null;
+    return recommendationData?.generated_at ? /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Generation Time"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : "N/A")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Recommendations"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.count || recommendations.length)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Guests Evaluated"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, (recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0))), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Skipped"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.skipped_guests?.length || 0)), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "AI Enhanced"), /* @__PURE__ */ React.createElement("div", { className: `font-semibold ${recommendationData.ai_enhanced ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}` }, recommendationData.ai_enhanced ? "Yes" : "No")), /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-900/50 rounded p-2 border border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-gray-500 dark:text-gray-400 mb-0.5" }, "Conflicts / Advisories"), /* @__PURE__ */ React.createElement("div", { className: "font-mono font-semibold text-gray-900 dark:text-white" }, recommendationData.conflicts?.length || 0, " / ", recommendationData.capacity_advisories?.length || 0))), recommendationData.summary?.convergence_message && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-green-700 dark:text-green-300 font-medium" }, "Cluster Converged: "), /* @__PURE__ */ React.createElement("span", { className: "text-green-600 dark:text-green-400" }, recommendationData.summary.convergence_message)), recommendationData.parameters && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "Thresholds: "), /* @__PURE__ */ React.createElement("span", { className: "font-mono text-gray-700 dark:text-gray-300" }, "CPU ", recommendationData.parameters.cpu_threshold, "% | Mem ", recommendationData.parameters.mem_threshold, "% | IOWait ", recommendationData.parameters.iowait_threshold, "%"), recommendationData.parameters.maintenance_nodes?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-yellow-600 dark:text-yellow-400" }, "| Maintenance: ", recommendationData.parameters.maintenance_nodes.join(", "))), recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "p-2 bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 block mb-1" }, "Skip Reasons:"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => /* @__PURE__ */ React.createElement("span", { key: reason, className: "px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300 font-mono" }, reason, ": ", count))))) : null;
   }
 
   // src/components/dashboard/recommendations/insights/WorkloadPatterns.jsx
-  var { useState: useState8, useEffect: useEffect2 } = React;
+  var { useState: useState11, useEffect: useEffect3 } = React;
   function WorkloadPatterns({ API_BASE: API_BASE4, active }) {
-    let [patterns, setPatterns] = useState8(null), [loading, setLoading] = useState8(!1);
-    return useEffect2(() => {
+    let [patterns, setPatterns] = useState11(null), [loading, setLoading] = useState11(!1);
+    return useEffect3(() => {
       !active || patterns || loading || (setLoading(!0), fetch(`${API_BASE4}/workload-patterns?hours=168`).then((r) => r.json()).then((res) => {
         res.success && setPatterns(res.patterns || []);
       }).catch(() => {
@@ -5304,10 +5283,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/MigrationOutcomes.jsx
-  var { useState: useState9, useEffect: useEffect3 } = React;
+  var { useState: useState12, useEffect: useEffect4 } = React;
   function MigrationOutcomes({ API_BASE: API_BASE4, active }) {
-    let [outcomes, setOutcomes] = useState9(null), [loading, setLoading] = useState9(!1);
-    return useEffect3(() => {
+    let [outcomes, setOutcomes] = useState12(null), [loading, setLoading] = useState12(!1);
+    return useEffect4(() => {
       !active || outcomes || loading || (setLoading(!0), (async () => {
         try {
           let { fetchMigrationOutcomes: fetchMigrationOutcomes2, refreshMigrationOutcomes: refreshMigrationOutcomes2 } = await import("../../../api/client.js");
@@ -5326,10 +5305,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/RecommendationHistory.jsx
-  var { useState: useState10, useEffect: useEffect4 } = React;
+  var { useState: useState13, useEffect: useEffect5 } = React;
   function RecommendationHistory({ API_BASE: API_BASE4, active }) {
-    let [historyData, setHistoryData] = useState10(null), [loading, setLoading] = useState10(!1), [hours, setHours] = useState10(24);
-    if (useEffect4(() => {
+    let [historyData, setHistoryData] = useState13(null), [loading, setLoading] = useState13(!1), [hours, setHours] = useState13(24);
+    if (useEffect5(() => {
       if (!active) return;
       let cancelled = !1;
       return setLoading(!0), fetch(`${API_BASE4}/score-history?hours=${hours}`).then((r) => r.json()).then((res) => {
@@ -5354,7 +5333,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/dashboard/recommendations/InsightsDrawer.jsx
-  var { useState: useState11, useEffect: useEffect5, useRef } = React, TABS = [
+  var { useState: useState14, useEffect: useEffect6, useRef: useRef2 } = React, TABS = [
     { id: "impact", label: "Impact", icon: BarChart2 },
     { id: "diagnostics", label: "Diagnostics", icon: Terminal },
     { id: "patterns", label: "Patterns", icon: Activity },
@@ -5371,14 +5350,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     API_BASE: API_BASE4,
     isMobile
   }) {
-    let [activeTab, setActiveTab] = useState11("impact"), drawerRef = useRef(null);
-    return useEffect5(() => {
+    let [activeTab, setActiveTab] = useState14("impact"), drawerRef = useRef2(null);
+    return useEffect6(() => {
       if (!open) return;
       let handleKey = (e) => {
         e.key === "Escape" && onClose();
       };
       return window.addEventListener("keydown", handleKey), () => window.removeEventListener("keydown", handleKey);
-    }, [open]), useEffect5(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
+    }, [open]), useEffect6(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
       document.body.style.overflow = "";
     }), [open]), open ? /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60]" }, /* @__PURE__ */ React.createElement(
       "div",
@@ -5425,7 +5404,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/dashboard/MigrationRecommendationsSection.jsx
-  var { useState: useState12 } = React;
+  var { useState: useState15 } = React;
   function MigrationRecommendationsSection({
     // Data
     data,
@@ -5467,14 +5446,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     // API
     API_BASE: API_BASE4
   }) {
-    let [recFilterConfidence, setRecFilterConfidence] = useState12(""), [recFilterTargetNode, setRecFilterTargetNode] = useState12(""), [recFilterSourceNode, setRecFilterSourceNode] = useState12(""), [recSortBy, setRecSortBy] = useState12(""), [recSortDir, setRecSortDir] = useState12("desc"), [showRecFilters, setShowRecFilters] = useState12(!1), [showInsights, setShowInsights] = useState12(!1), [showThresholdPopover, setShowThresholdPopover] = useState12(!1), isMobile = useIsMobile_default(), hasThresholdDiff = thresholdSuggestions && thresholdSuggestions.confidence && (Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 || Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3), getFilteredRecs = () => {
+    let [recFilterConfidence, setRecFilterConfidence] = useState15(""), [recFilterTargetNode, setRecFilterTargetNode] = useState15(""), [recFilterSourceNode, setRecFilterSourceNode] = useState15(""), [recSortBy, setRecSortBy] = useState15(""), [recSortDir, setRecSortDir] = useState15("desc"), [showRecFilters, setShowRecFilters] = useState15(!1), [showInsights, setShowInsights] = useState15(!1), [showThresholdPopover, setShowThresholdPopover] = useState15(!1), isMobile = useIsMobile_default(), hasThresholdDiff = thresholdSuggestions && thresholdSuggestions.confidence && (Math.abs((thresholdSuggestions.suggested_cpu_threshold || 60) - (cpuThreshold || 60)) >= 3 || Math.abs((thresholdSuggestions.suggested_mem_threshold || 70) - (memThreshold || 70)) >= 3), getFilteredRecs = () => {
       let filtered = [...recommendations];
       if (recFilterConfidence) {
         let minConf = parseInt(recFilterConfidence);
         filtered = filtered.filter((r) => (r.confidence_score || 0) >= minConf);
       }
       return recFilterSourceNode && (filtered = filtered.filter((r) => r.source_node === recFilterSourceNode)), recFilterTargetNode && (filtered = filtered.filter((r) => r.target_node === recFilterTargetNode)), recSortBy && filtered.sort((a, b) => {
-        let va = a[recSortBy] || 0, vb = b[recSortBy] || 0;
+        let getValue = (rec) => recSortBy === "cost_benefit_ratio" ? rec.cost_benefit?.ratio || 0 : rec[recSortBy] || 0, va = getValue(a), vb = getValue(b);
         return recSortDir === "asc" ? va - vb : vb - va;
       }), filtered;
     };
@@ -5908,6 +5887,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/DashboardPage.jsx
+  var { useState: useState16 } = React;
   function DashboardPage({
     // Data & loading
     data,
@@ -6058,6 +6038,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     chartPeriod,
     setChartPeriod,
     nodeScores,
+    // Guest profiles & score history
+    guestProfiles,
+    scoreHistory,
     // Maintenance & evacuation
     maintenanceNodes,
     setMaintenanceNodes,
@@ -6104,7 +6087,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     // API base
     API_BASE: API_BASE4
   }) {
-    let ignoredGuests = Object.values(data.guests || {}).filter((g) => g.tags?.has_ignore), excludeGuests = Object.values(data.guests || {}).filter((g) => g.tags?.exclude_groups?.length > 0), affinityGuests = Object.values(data.guests || {}).filter((g) => g.tags?.affinity_groups?.length > 0 || g.tags?.all_tags?.some((t) => t.startsWith("affinity_"))), autoMigrateOkGuests = Object.values(data.guests || {}).filter((g) => g.tags?.all_tags?.includes("auto_migrate_ok")), violations = checkAffinityViolations();
+    let [showPredicted, setShowPredicted] = useState16(!1), ignoredGuests = Object.values(data.guests || {}).filter((g) => g.tags?.has_ignore), excludeGuests = Object.values(data.guests || {}).filter((g) => g.tags?.exclude_groups?.length > 0), affinityGuests = Object.values(data.guests || {}).filter((g) => g.tags?.affinity_groups?.length > 0 || g.tags?.all_tags?.some((t) => t.startsWith("affinity_"))), autoMigrateOkGuests = Object.values(data.guests || {}).filter((g) => g.tags?.all_tags?.includes("auto_migrate_ok")), violations = checkAffinityViolations();
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-7xl mx-auto" }, tokenAuthError && /* @__PURE__ */ React.createElement("div", { className: "mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-600 dark:border-red-400 p-4 rounded-r-lg shadow-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 24, className: "text-red-600 dark:text-red-400 shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-bold text-red-900 dark:text-red-200 mb-1" }, "API Token Authentication Failed"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-red-800 dark:text-red-300 mb-3" }, "ProxBalance cannot connect to the Proxmox API due to invalid or misconfigured token credentials. This prevents cluster data collection and monitoring."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -6146,6 +6129,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       {
         automationStatus,
         automationConfig,
+        scoreHistory,
         collapsedSections,
         setCollapsedSections,
         toggleSection,
@@ -6164,6 +6148,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       GuestTagManagement,
       {
         data,
+        guestProfiles,
         collapsedSections,
         toggleSection,
         guestSearchFilter,
@@ -6263,6 +6248,8 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         data,
         collapsedSections,
         toggleSection,
+        showPredicted,
+        setShowPredicted,
         recommendationData,
         recommendations,
         nodeGridColumns,
@@ -6412,7 +6399,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/IconLegend.jsx
-  var { useState: useState13 } = React, iconGroups = [
+  var { useState: useState17 } = React, iconGroups = [
     {
       label: "Actions",
       icons: [
@@ -6509,7 +6496,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     }
   ];
   function IconLegend({ darkMode, onClose }) {
-    let [searchTerm, setSearchTerm] = useState13(""), filteredGroups = iconGroups.map((group) => ({
+    let [searchTerm, setSearchTerm] = useState17(""), filteredGroups = iconGroups.map((group) => ({
       ...group,
       icons: group.icons.filter(
         (icon) => icon.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -6545,24 +6532,24 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useDarkMode.js
-  var { useState: useState14 } = React;
+  var { useState: useState18 } = React;
   function useDarkMode(initialDark = !0) {
-    let [darkMode, setDarkMode] = useState14(initialDark);
+    let [darkMode, setDarkMode] = useState18(initialDark);
     return { darkMode, setDarkMode, toggleDarkMode: () => {
       setDarkMode(!darkMode), document.documentElement.classList.toggle("dark");
     } };
   }
 
   // src/hooks/useUIState.js
-  var { useState: useState15, useEffect: useEffect6 } = React;
+  var { useState: useState19, useEffect: useEffect7 } = React;
   function useUIState() {
-    let [currentPage, setCurrentPage] = useState15("dashboard"), [showSettings, setShowSettings] = useState15(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState15(!1), [showIconLegend, setShowIconLegend] = useState15(!1), [scrollToApiConfig, setScrollToApiConfig] = useState15(!1), [logoBalancing, setLogoBalancing] = useState15(!1), [countdownTick, setCountdownTick] = useState15(0), [refreshElapsed, setRefreshElapsed] = useState15(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState15(() => {
+    let [currentPage, setCurrentPage] = useState19("dashboard"), [showSettings, setShowSettings] = useState19(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState19(!1), [showIconLegend, setShowIconLegend] = useState19(!1), [scrollToApiConfig, setScrollToApiConfig] = useState19(!1), [logoBalancing, setLogoBalancing] = useState19(!1), [countdownTick, setCountdownTick] = useState19(0), [refreshElapsed, setRefreshElapsed] = useState19(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState19(() => {
       let saved = localStorage.getItem("dashboardHeaderCollapsed");
       return saved ? JSON.parse(saved) : !1;
-    }), [nodeGridColumns, setNodeGridColumns] = useState15(() => {
+    }), [nodeGridColumns, setNodeGridColumns] = useState19(() => {
       let saved = localStorage.getItem("nodeGridColumns");
       return saved ? parseInt(saved) : 3;
-    }), [collapsedSections, setCollapsedSections] = useState15(() => {
+    }), [collapsedSections, setCollapsedSections] = useState19(() => {
       let defaults = {
         clusterMap: !1,
         maintenance: !0,
@@ -6572,6 +6559,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         taggedGuests: !0,
         analysisDetails: !0,
         mainSettings: !1,
+        smartMigrations: !0,
         safetyRules: !1,
         additionalRules: !1,
         automatedMigrations: !0,
@@ -6586,32 +6574,32 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         notificationSettings: !0
       }, saved = localStorage.getItem("collapsedSections");
       return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
-    }), [clusterMapViewMode, setClusterMapViewMode] = useState15(() => {
+    }), [clusterMapViewMode, setClusterMapViewMode] = useState19(() => {
       let saved = localStorage.getItem("clusterMapViewMode");
       return saved === "usage" ? "cpu" : saved || "cpu";
-    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState15(() => {
+    }), [showPoweredOffGuests, setShowPoweredOffGuests] = useState19(() => {
       let saved = localStorage.getItem("showPoweredOffGuests");
       return saved === null ? !0 : saved === "true";
-    }), [guestModalCollapsed, setGuestModalCollapsed] = useState15({
+    }), [guestModalCollapsed, setGuestModalCollapsed] = useState19({
       mountPoints: !0,
       passthroughDisks: !0
     });
-    return useEffect6(() => {
+    return useEffect7(() => {
       localStorage.setItem("collapsedSections", JSON.stringify(collapsedSections));
-    }, [collapsedSections]), useEffect6(() => {
+    }, [collapsedSections]), useEffect7(() => {
       localStorage.setItem("nodeGridColumns", nodeGridColumns.toString());
-    }, [nodeGridColumns]), useEffect6(() => {
+    }, [nodeGridColumns]), useEffect7(() => {
       localStorage.setItem("clusterMapViewMode", clusterMapViewMode);
-    }, [clusterMapViewMode]), useEffect6(() => {
+    }, [clusterMapViewMode]), useEffect7(() => {
       localStorage.setItem("showPoweredOffGuests", showPoweredOffGuests.toString());
-    }, [showPoweredOffGuests]), useEffect6(() => {
+    }, [showPoweredOffGuests]), useEffect7(() => {
       localStorage.setItem("dashboardHeaderCollapsed", JSON.stringify(dashboardHeaderCollapsed));
-    }, [dashboardHeaderCollapsed]), useEffect6(() => {
+    }, [dashboardHeaderCollapsed]), useEffect7(() => {
       let interval = setInterval(() => {
         setCountdownTick((prev) => prev + 1);
       }, 1e3);
       return () => clearInterval(interval);
-    }, []), useEffect6(() => {
+    }, []), useEffect7(() => {
     }, [showSettings]), {
       currentPage,
       setCurrentPage,
@@ -6652,9 +6640,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAuth.js
-  var { useState: useState16 } = React;
+  var { useState: useState20 } = React;
   function useAuth(API_BASE4) {
-    let [canMigrate, setCanMigrate] = useState16(!0), [permissionReason, setPermissionReason] = useState16(""), [proxmoxTokenId, setProxmoxTokenId] = useState16(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState16(""), [validatingToken, setValidatingToken] = useState16(!1), [tokenValidationResult, setTokenValidationResult] = useState16(null), [tokenAuthError, setTokenAuthError] = useState16(!1);
+    let [canMigrate, setCanMigrate] = useState20(!0), [permissionReason, setPermissionReason] = useState20(""), [proxmoxTokenId, setProxmoxTokenId] = useState20(""), [proxmoxTokenSecret, setProxmoxTokenSecret] = useState20(""), [validatingToken, setValidatingToken] = useState20(!1), [tokenValidationResult, setTokenValidationResult] = useState20(null), [tokenAuthError, setTokenAuthError] = useState20(!1);
     return {
       canMigrate,
       setCanMigrate,
@@ -6711,9 +6699,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useConfig.js
-  var { useState: useState17, useEffect: useEffect7 } = React;
+  var { useState: useState21, useEffect: useEffect8 } = React;
   function useConfig(API_BASE4, deps = {}) {
-    let { setError } = deps, [config, setConfig] = useState17(null), [autoRefreshInterval, setAutoRefreshInterval] = useState17(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState17(60), [tempUiInterval, setTempUiInterval] = useState17(60), [savingSettings, setSavingSettings] = useState17(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState17(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState17(!1), [logLevel, setLogLevel] = useState17("INFO"), [verboseLogging, setVerboseLogging] = useState17(!1), [penaltyConfig, setPenaltyConfig] = useState17(null), [penaltyDefaults, setPenaltyDefaults] = useState17(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState17(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState17(!1), [penaltyPresets, setPenaltyPresets] = useState17(null), [activePreset, setActivePreset] = useState17("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState17(!1);
+    let { setError } = deps, [config, setConfig] = useState21(null), [autoRefreshInterval, setAutoRefreshInterval] = useState21(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState21(60), [tempUiInterval, setTempUiInterval] = useState21(60), [savingSettings, setSavingSettings] = useState21(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState21(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState21(!1), [logLevel, setLogLevel] = useState21("INFO"), [verboseLogging, setVerboseLogging] = useState21(!1), [penaltyConfig, setPenaltyConfig] = useState21(null), [penaltyDefaults, setPenaltyDefaults] = useState21(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState21(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState21(!1), [penaltyPresets, setPenaltyPresets] = useState21(null), [activePreset, setActivePreset] = useState21("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState21(!1);
     return {
       config,
       setConfig,
@@ -6825,9 +6813,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useClusterData.js
-  var { useState: useState18, useMemo } = React;
+  var { useState: useState22, useMemo } = React;
   function useClusterData(API_BASE4, deps = {}) {
-    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState18(null), [loading, setLoading] = useState18(!1), [error, setError] = useState18(null), [lastUpdate, setLastUpdate] = useState18(null), [nextUpdate, setNextUpdate] = useState18(null), [backendCollected, setBackendCollected] = useState18(null), [clusterHealth, setClusterHealth] = useState18(null), [nodeScores, setNodeScores] = useState18(null), [chartPeriod, setChartPeriod] = useState18("1h"), [charts, setCharts] = useState18({}), [chartJsLoaded, setChartJsLoaded] = useState18(!1), [chartJsLoading, setChartJsLoading] = useState18(!1), fetchAnalysis2 = async () => {
+    let { setTokenAuthError, checkPermissions: checkPermissions2, autoRefreshInterval } = deps, [data, setData] = useState22(null), [loading, setLoading] = useState22(!1), [error, setError] = useState22(null), [lastUpdate, setLastUpdate] = useState22(null), [nextUpdate, setNextUpdate] = useState22(null), [backendCollected, setBackendCollected] = useState22(null), [clusterHealth, setClusterHealth] = useState22(null), [nodeScores, setNodeScores] = useState22(null), [chartPeriod, setChartPeriod] = useState22("1h"), [charts, setCharts] = useState22({}), [chartJsLoaded, setChartJsLoaded] = useState22(!1), [chartJsLoading, setChartJsLoading] = useState22(!1), [guestProfiles, setGuestProfiles] = useState22(null), [scoreHistory, setScoreHistory] = useState22(null), fetchAnalysis2 = async () => {
       setLoading(!0), setError(null);
       try {
         let response = await fetch(`${API_BASE4}/analyze`);
@@ -6947,8 +6935,26 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setCharts,
       chartJsLoaded,
       chartJsLoading,
+      guestProfiles,
+      scoreHistory,
       fetchAnalysis: fetchAnalysis2,
       fetchGuestLocations: fetchGuestLocations2,
+      fetchGuestProfiles: async () => {
+        try {
+          let result = await (await fetch(`${API_BASE4}/guest-profiles`)).json();
+          result.success && setGuestProfiles(result.profiles);
+        } catch (err) {
+          console.error("Error fetching guest profiles:", err);
+        }
+      },
+      fetchScoreHistory: async (limit = 168) => {
+        try {
+          let result = await (await fetch(`${API_BASE4}/score-history?limit=${limit}`)).json();
+          result.success && setScoreHistory(result.history);
+        } catch (err) {
+          console.error("Error fetching score history:", err);
+        }
+      },
       handleRefresh,
       fetchNodeScores: fetchNodeScores2,
       generateSparkline,
@@ -6975,27 +6981,27 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/hooks/useRecommendations.js
   init_constants();
-  var { useState: useState19, useEffect: useEffect8 } = React;
+  var { useState: useState23, useEffect: useEffect9 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
-    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState19([]), [recommendationData, setRecommendationData] = useState19(null), [loadingRecommendations, setLoadingRecommendations] = useState19(!1), [feedbackGiven, setFeedbackGiven] = useState19({}), [thresholdSuggestions, setThresholdSuggestions] = useState19(null), [cpuThreshold, setCpuThreshold] = useState19(() => {
+    let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState23([]), [recommendationData, setRecommendationData] = useState23(null), [loadingRecommendations, setLoadingRecommendations] = useState23(!1), [feedbackGiven, setFeedbackGiven] = useState23({}), [thresholdSuggestions, setThresholdSuggestions] = useState23(null), [cpuThreshold, setCpuThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
       return saved ? Number(saved) : 50;
-    }), [memThreshold, setMemThreshold] = useState19(() => {
+    }), [memThreshold, setMemThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_mem_threshold");
       return saved ? Number(saved) : 60;
-    }), [iowaitThreshold, setIowaitThreshold] = useState19(() => {
+    }), [iowaitThreshold, setIowaitThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
-    }), [thresholdMode, setThresholdMode] = useState19(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
-    useEffect8(() => {
+    }), [thresholdMode, setThresholdMode] = useState23(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
+    useEffect9(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
-    }, [cpuThreshold]), useEffect8(() => {
+    }, [cpuThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString());
-    }, [memThreshold]), useEffect8(() => {
+    }, [memThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString());
-    }, [iowaitThreshold]), useEffect8(() => {
+    }, [iowaitThreshold]), useEffect9(() => {
       localStorage.setItem("proxbalance_threshold_mode", thresholdMode);
-    }, [thresholdMode]), useEffect8(() => {
+    }, [thresholdMode]), useEffect9(() => {
       thresholdMode === "auto" && thresholdSuggestions && (setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold));
     }, [thresholdMode, thresholdSuggestions]);
     let fetchCachedRecommendations2 = async () => {
@@ -7068,9 +7074,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAIRecommendations.js
-  var { useState: useState20 } = React;
+  var { useState: useState24 } = React;
   function useAIRecommendations(API_BASE4, deps = {}) {
-    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState20(!1), [aiProvider, setAiProvider] = useState20("none"), [openaiKey, setOpenaiKey] = useState20(""), [openaiModel, setOpenaiModel] = useState20("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState20(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState20([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState20(!1), [anthropicKey, setAnthropicKey] = useState20(""), [anthropicModel, setAnthropicModel] = useState20("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState20(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState20([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState20(!1), [localUrl, setLocalUrl] = useState20("http://localhost:11434"), [localModel, setLocalModel] = useState20("llama2"), [localModelCustom, setLocalModelCustom] = useState20(""), [localAvailableModels, setLocalAvailableModels] = useState20([]), [localLoadingModels, setLocalLoadingModels] = useState20(!1), [aiRecommendations, setAiRecommendations] = useState20(null), [loadingAi, setLoadingAi] = useState20(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState20("24h");
+    let { data, setError } = deps, [aiEnabled, setAiEnabled] = useState24(!1), [aiProvider, setAiProvider] = useState24("none"), [openaiKey, setOpenaiKey] = useState24(""), [openaiModel, setOpenaiModel] = useState24("gpt-4o"), [openaiModelCustom, setOpenaiModelCustom] = useState24(""), [openaiAvailableModels, setOpenaiAvailableModels] = useState24([]), [openaiLoadingModels, setOpenaiLoadingModels] = useState24(!1), [anthropicKey, setAnthropicKey] = useState24(""), [anthropicModel, setAnthropicModel] = useState24("claude-3-5-sonnet-20241022"), [anthropicModelCustom, setAnthropicModelCustom] = useState24(""), [anthropicAvailableModels, setAnthropicAvailableModels] = useState24([]), [anthropicLoadingModels, setAnthropicLoadingModels] = useState24(!1), [localUrl, setLocalUrl] = useState24("http://localhost:11434"), [localModel, setLocalModel] = useState24("llama2"), [localModelCustom, setLocalModelCustom] = useState24(""), [localAvailableModels, setLocalAvailableModels] = useState24([]), [localLoadingModels, setLocalLoadingModels] = useState24(!1), [aiRecommendations, setAiRecommendations] = useState24(null), [loadingAi, setLoadingAi] = useState24(!1), [aiAnalysisPeriod, setAiAnalysisPeriod] = useState24("24h");
     return {
       aiEnabled,
       setAiEnabled,
@@ -7174,9 +7180,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useMigrations.js
-  var { useState: useState21 } = React;
+  var { useState: useState25 } = React;
   function useMigrations(API_BASE4, deps = {}) {
-    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState21({}), [activeMigrations, setActiveMigrations] = useState21({}), [guestsMigrating, setGuestsMigrating] = useState21({}), [migrationProgress, setMigrationProgress] = useState21({}), [completedMigrations, setCompletedMigrations] = useState21({}), [showBatchConfirmation, setShowBatchConfirmation] = useState21(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState21([]), [showMigrationDialog, setShowMigrationDialog] = useState21(!1), [selectedGuest, setSelectedGuest] = useState21(null), [migrationTarget, setMigrationTarget] = useState21(""), [confirmMigration, setConfirmMigration] = useState21(null), [cancelMigrationModal, setCancelMigrationModal] = useState21(null), [cancellingMigration, setCancellingMigration] = useState21(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState21(null), [loadingGuestOptions, setLoadingGuestOptions] = useState21(!1), [showTagModal, setShowTagModal] = useState21(!1), [tagModalGuest, setTagModalGuest] = useState21(null), [newTag, setNewTag] = useState21(""), [tagOperation, setTagOperation] = useState21(""), [confirmRemoveTag, setConfirmRemoveTag] = useState21(null), [confirmHostChange, setConfirmHostChange] = useState21(null), [guestSortField, setGuestSortField] = useState21("tags"), [guestSortDirection, setGuestSortDirection] = useState21("desc"), [guestPageSize, setGuestPageSize] = useState21(10), [guestCurrentPage, setGuestCurrentPage] = useState21(1), [guestSearchFilter, setGuestSearchFilter] = useState21(""), [selectedNode, setSelectedNode] = useState21(null), [selectedGuestDetails, setSelectedGuestDetails] = useState21(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
+    let { setData, setError, fetchGuestLocations: fetchGuestLocations2 } = deps, [migrationStatus, setMigrationStatus] = useState25({}), [activeMigrations, setActiveMigrations] = useState25({}), [guestsMigrating, setGuestsMigrating] = useState25({}), [migrationProgress, setMigrationProgress] = useState25({}), [completedMigrations, setCompletedMigrations] = useState25({}), [showBatchConfirmation, setShowBatchConfirmation] = useState25(!1), [pendingBatchMigrations, setPendingBatchMigrations] = useState25([]), [showMigrationDialog, setShowMigrationDialog] = useState25(!1), [selectedGuest, setSelectedGuest] = useState25(null), [migrationTarget, setMigrationTarget] = useState25(""), [confirmMigration, setConfirmMigration] = useState25(null), [cancelMigrationModal, setCancelMigrationModal] = useState25(null), [cancellingMigration, setCancellingMigration] = useState25(!1), [guestMigrationOptions, setGuestMigrationOptions] = useState25(null), [loadingGuestOptions, setLoadingGuestOptions] = useState25(!1), [showTagModal, setShowTagModal] = useState25(!1), [tagModalGuest, setTagModalGuest] = useState25(null), [newTag, setNewTag] = useState25(""), [tagOperation, setTagOperation] = useState25(""), [confirmRemoveTag, setConfirmRemoveTag] = useState25(null), [confirmHostChange, setConfirmHostChange] = useState25(null), [guestSortField, setGuestSortField] = useState25("tags"), [guestSortDirection, setGuestSortDirection] = useState25("desc"), [guestPageSize, setGuestPageSize] = useState25(10), [guestCurrentPage, setGuestCurrentPage] = useState25(1), [guestSearchFilter, setGuestSearchFilter] = useState25(""), [selectedNode, setSelectedNode] = useState25(null), [selectedGuestDetails, setSelectedGuestDetails] = useState25(null), trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
       let key = `${vmid}-${targetNode}`;
       setActiveMigrations((prev) => ({
         ...prev,
@@ -7493,15 +7499,15 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useAutomation.js
-  var { useState: useState22 } = React;
+  var { useState: useState26 } = React;
   function useAutomation(API_BASE4, deps = {}) {
-    let { setError } = deps, [automationStatus, setAutomationStatus] = useState22({
+    let { setError } = deps, [automationStatus, setAutomationStatus] = useState26({
       enabled: !1,
       timer_active: !1,
       check_interval_minutes: 0,
       dry_run: !1,
       state: {}
-    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState22(!1), [runHistory, setRunHistory] = useState22([]), [loadingRunHistory, setLoadingRunHistory] = useState22(!1), [expandedRun, setExpandedRun] = useState22(null), [automationConfig, setAutomationConfig] = useState22({
+    }), [loadingAutomationStatus, setLoadingAutomationStatus] = useState26(!1), [runHistory, setRunHistory] = useState26([]), [loadingRunHistory, setLoadingRunHistory] = useState26(!1), [expandedRun, setExpandedRun] = useState26(null), [automationConfig, setAutomationConfig] = useState26({
       enabled: !1,
       dry_run: !1,
       check_interval_minutes: 5,
@@ -7515,19 +7521,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         max_node_memory_percent: 85,
         min_free_disk_gb: 20
       },
-      time_windows: [],
-      presets: {
-        conservative: { min_confidence_score: 80, max_migrations_per_run: 1, cooldown_minutes: 120, check_interval_minutes: 30 },
-        balanced: { min_confidence_score: 70, max_migrations_per_run: 3, cooldown_minutes: 60, check_interval_minutes: 15 },
-        aggressive: { min_confidence_score: 60, max_migrations_per_run: 5, cooldown_minutes: 30, check_interval_minutes: 5 }
-      }
-    }), [savingAutomationConfig, setSavingAutomationConfig] = useState22(!1), [editingPreset, setEditingPreset] = useState22(null), [testResult, setTestResult] = useState22(null), [testingAutomation, setTestingAutomation] = useState22(!1), [runningAutomation, setRunningAutomation] = useState22(!1), [runNowMessage, setRunNowMessage] = useState22(null), [automigrateLogs, setAutomigrateLogs] = useState22(null), [logRefreshTime, setLogRefreshTime] = useState22(null), [migrationLogsTab, setMigrationLogsTab] = useState22("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState22(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState22(5), [showTimeWindowForm, setShowTimeWindowForm] = useState22(!1), [editingWindowIndex, setEditingWindowIndex] = useState22(null), [newWindowData, setNewWindowData] = useState22({
+      time_windows: []
+    }), [savingAutomationConfig, setSavingAutomationConfig] = useState26(!1), [testResult, setTestResult] = useState26(null), [testingAutomation, setTestingAutomation] = useState26(!1), [runningAutomation, setRunningAutomation] = useState26(!1), [runNowMessage, setRunNowMessage] = useState26(null), [automigrateLogs, setAutomigrateLogs] = useState26(null), [logRefreshTime, setLogRefreshTime] = useState26(null), [migrationLogsTab, setMigrationLogsTab] = useState26("history"), [migrationHistoryPage, setMigrationHistoryPage] = useState26(1), [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState26(5), [showTimeWindowForm, setShowTimeWindowForm] = useState26(!1), [editingWindowIndex, setEditingWindowIndex] = useState26(null), [newWindowData, setNewWindowData] = useState26({
       name: "",
       type: "migration",
       days: [],
       start_time: "00:00",
       end_time: "00:00"
-    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState22(null), [confirmEnableAutomation, setConfirmEnableAutomation] = useState22(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState22(!1), [confirmApplyPreset, setConfirmApplyPreset] = useState22(null), [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState22(!1), fetchAutomationStatus2 = async () => {
+    }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState26(null), fetchAutomationStatus2 = async () => {
       setLoadingAutomationStatus(!0);
       try {
         let result = await (await fetch(`${API_BASE4}/automigrate/status`)).json();
@@ -7548,8 +7549,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       automationConfig,
       setAutomationConfig,
       savingAutomationConfig,
-      editingPreset,
-      setEditingPreset,
       testResult,
       setTestResult,
       testingAutomation,
@@ -7574,14 +7573,6 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setNewWindowData,
       confirmRemoveWindow,
       setConfirmRemoveWindow,
-      confirmEnableAutomation,
-      setConfirmEnableAutomation,
-      confirmDisableDryRun,
-      setConfirmDisableDryRun,
-      confirmApplyPreset,
-      setConfirmApplyPreset,
-      confirmAllowContainerRestarts,
-      setConfirmAllowContainerRestarts,
       fetchAutomationStatus: fetchAutomationStatus2,
       fetchRunHistory: async (limit = 10) => {
         setLoadingRunHistory(!0);
@@ -7684,13 +7675,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useEvacuation.js
-  var { useState: useState23, useEffect: useEffect9 } = React;
+  var { useState: useState27, useEffect: useEffect10 } = React;
   function useEvacuation(deps = {}) {
-    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState23(() => {
+    let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState27(() => {
       let saved = localStorage.getItem("maintenanceNodes");
       return saved ? new Set(JSON.parse(saved)) : /* @__PURE__ */ new Set();
-    }), [evacuatingNodes, setEvacuatingNodes] = useState23(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState23({}), [evacuationPlan, setEvacuationPlan] = useState23(null), [planNode, setPlanNode] = useState23(null), [planningNodes, setPlanningNodes] = useState23(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState23({}), [guestTargets, setGuestTargets] = useState23({}), [showConfirmModal, setShowConfirmModal] = useState23(!1);
-    return useEffect9(() => {
+    }), [evacuatingNodes, setEvacuatingNodes] = useState27(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState27({}), [evacuationPlan, setEvacuationPlan] = useState27(null), [planNode, setPlanNode] = useState27(null), [planningNodes, setPlanningNodes] = useState27(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState27({}), [guestTargets, setGuestTargets] = useState27({}), [showConfirmModal, setShowConfirmModal] = useState27(!1);
+    return useEffect10(() => {
       if (localStorage.setItem("maintenanceNodes", JSON.stringify(Array.from(maintenanceNodes))), automationConfig !== null && saveAutomationConfig2) {
         let maintenanceArray = Array.from(maintenanceNodes), currentMaintenance = automationConfig.maintenance_nodes || [];
         JSON.stringify(maintenanceArray.sort()) !== JSON.stringify(currentMaintenance.sort()) && saveAutomationConfig2({ maintenance_nodes: maintenanceArray });
@@ -7718,9 +7709,9 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useUpdates.js
-  var { useState: useState24 } = React;
+  var { useState: useState28 } = React;
   function useUpdates(API_BASE4, deps = {}) {
-    let { setError } = deps, [systemInfo, setSystemInfo] = useState24(null), [updating, setUpdating] = useState24(!1), [updateLog, setUpdateLog] = useState24([]), [updateResult, setUpdateResult] = useState24(null), [updateError, setUpdateError] = useState24(null), [showUpdateModal, setShowUpdateModal] = useState24(!1), [showBranchModal, setShowBranchModal] = useState24(!1), [availableBranches, setAvailableBranches] = useState24([]), [loadingBranches, setLoadingBranches] = useState24(!1), [switchingBranch, setSwitchingBranch] = useState24(!1), [branchPreview, setBranchPreview] = useState24(null), [loadingPreview, setLoadingPreview] = useState24(!1), [rollingBack, setRollingBack] = useState24(!1), fetchSystemInfo2 = async () => {
+    let { setError } = deps, [systemInfo, setSystemInfo] = useState28(null), [updating, setUpdating] = useState28(!1), [updateLog, setUpdateLog] = useState28([]), [updateResult, setUpdateResult] = useState28(null), [updateError, setUpdateError] = useState28(null), [showUpdateModal, setShowUpdateModal] = useState28(!1), [showBranchModal, setShowBranchModal] = useState28(!1), [availableBranches, setAvailableBranches] = useState28([]), [loadingBranches, setLoadingBranches] = useState28(!1), [switchingBranch, setSwitchingBranch] = useState28(!1), [branchPreview, setBranchPreview] = useState28(null), [loadingPreview, setLoadingPreview] = useState28(!1), [rollingBack, setRollingBack] = useState28(!1), fetchSystemInfo2 = async () => {
       try {
         let result = await (await fetch(`${API_BASE4}/system/info`)).json();
         result.success && setSystemInfo(result);
@@ -7823,7 +7814,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/index.jsx
   init_constants();
-  var { useState: useState25, useEffect: useEffect10, useMemo: useMemo2, useCallback, useRef: useRef2 } = React, ProxmoxBalanceManager = () => {
+  var { useState: useState29, useEffect: useEffect11, useMemo: useMemo2, useCallback, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
     let isMobile = useIsMobile_default(640), { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(!0), ui = useUIState(), auth = useAuth(API_BASE), automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) }), evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig }), configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) }), updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) }), cluster = useClusterData(API_BASE, {
       setTokenAuthError: auth.setTokenAuthError,
       checkPermissions: auth.checkPermissions,
@@ -7839,41 +7830,43 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setError: cluster.setError,
       fetchGuestLocations: cluster.fetchGuestLocations
     });
-    useEffect10(() => {
+    useEffect11(() => {
       document.documentElement.classList.add("dark"), configHook.fetchConfig().then((cfg) => {
         cfg && (ai.initFromConfig(cfg), auth.setProxmoxTokenId(cfg.proxmox_api_token_id || ""), auth.setProxmoxTokenSecret(cfg.proxmox_api_token_secret || ""));
       }), updates.fetchSystemInfo(), automation.fetchAutomationStatus(), automation.fetchAutomationConfig(), automation.fetchRunHistory(), auth.checkPermissions(), configHook.fetchPenaltyConfig();
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       if (cluster.data) {
         let splashScreen = document.getElementById("loading-screen");
         splashScreen && (splashScreen.classList.add("hidden"), setTimeout(() => {
           splashScreen.style.display = "none";
         }, 500));
       }
-    }, [cluster.data]), useEffect10(() => {
+    }, [cluster.data]), useEffect11(() => {
       let interval = setInterval(() => {
         automation.fetchAutomationStatus(), automation.fetchRunHistory();
       }, 1e4);
       return () => clearInterval(interval);
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       cluster.fetchAnalysis();
-    }, []), useEffect10(() => {
+    }, []), useEffect11(() => {
       let interval = setInterval(() => {
         cluster.fetchAnalysis();
       }, configHook.autoRefreshInterval);
       return () => clearInterval(interval);
-    }, [configHook.autoRefreshInterval]), useEffect10(() => {
+    }, [configHook.autoRefreshInterval]), useEffect11(() => {
       cluster.data && !recs.loadingRecommendations && (recs.fetchCachedRecommendations(), cluster.fetchNodeScores(
         { cpu: recs.cpuThreshold, mem: recs.memThreshold, iowait: recs.iowaitThreshold },
         evacuation.maintenanceNodes
       ));
-    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect10(() => {
+    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect11(() => {
       if (!cluster.data) return;
       let interval = setInterval(() => {
         recs.fetchCachedRecommendations();
       }, 12e4);
       return () => clearInterval(interval);
-    }, [cluster.data]), useEffect10(() => {
+    }, [cluster.data]), useEffect11(() => {
+      cluster.data && (cluster.fetchGuestProfiles(), cluster.fetchScoreHistory());
+    }, [cluster.data]), useEffect11(() => {
       ui.currentPage === "automation" && configHook.openPenaltyConfigOnAutomation && requestAnimationFrame(() => {
         ui.setCollapsedSections((prev) => ({ ...prev, penaltyScoring: !1 })), setTimeout(() => {
           let penaltySection = document.getElementById("penalty-config-section");
@@ -7884,18 +7877,18 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           configHook.setOpenPenaltyConfigOnAutomation(!1);
         }, 300);
       });
-    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect10(() => {
+    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect11(() => {
       ui.scrollToApiConfig && ui.currentPage === "settings" && (ui.setShowAdvancedSettings(!0), setTimeout(() => {
         let element = document.getElementById("proxmox-api-config");
         element && (element.scrollIntoView({ behavior: "smooth", block: "start" }), element.classList.add("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg"), setTimeout(() => {
           element.classList.remove("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg");
         }, 3e3)), ui.setScrollToApiConfig(!1);
       }, 400));
-    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect10(() => {
+    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect11(() => {
       !ui.collapsedSections.nodeStatus && !cluster.chartJsLoaded && cluster.loadChartJs();
-    }, [ui.collapsedSections.nodeStatus]), useEffect10(() => {
+    }, [ui.collapsedSections.nodeStatus]), useEffect11(() => {
       migrations.selectedGuestDetails && ui.setGuestModalCollapsed({ mountPoints: !0, passthroughDisks: !0 });
-    }, [migrations.selectedGuestDetails?.vmid]), useEffect10(() => {
+    }, [migrations.selectedGuestDetails?.vmid]), useEffect11(() => {
       if (!cluster.data || !cluster.data.nodes || ui.collapsedSections.nodeStatus || !cluster.chartJsLoaded || typeof Chart > "u") return;
       Object.values(cluster.charts).forEach((chart) => {
         try {
@@ -8083,12 +8076,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         automigrateLogs: automation.automigrateLogs,
         collapsedSections: ui.collapsedSections,
         config: configHook.config,
-        confirmAllowContainerRestarts: automation.confirmAllowContainerRestarts,
-        confirmApplyPreset: automation.confirmApplyPreset,
-        confirmDisableDryRun: automation.confirmDisableDryRun,
-        confirmEnableAutomation: automation.confirmEnableAutomation,
         confirmRemoveWindow: automation.confirmRemoveWindow,
-        editingPreset: automation.editingPreset,
         editingWindowIndex: automation.editingWindowIndex,
         fetchAutomationStatus: automation.fetchAutomationStatus,
         logRefreshTime: automation.logRefreshTime,
@@ -8113,13 +8101,8 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         setAutomigrateLogs: automation.setAutomigrateLogs,
         setCollapsedSections: ui.setCollapsedSections,
         setConfig: configHook.setConfig,
-        setConfirmAllowContainerRestarts: automation.setConfirmAllowContainerRestarts,
-        setConfirmApplyPreset: automation.setConfirmApplyPreset,
-        setConfirmDisableDryRun: automation.setConfirmDisableDryRun,
-        setConfirmEnableAutomation: automation.setConfirmEnableAutomation,
         setConfirmRemoveWindow: automation.setConfirmRemoveWindow,
         setCurrentPage: ui.setCurrentPage,
-        setEditingPreset: automation.setEditingPreset,
         setEditingWindowIndex: automation.setEditingWindowIndex,
         setError: cluster.setError,
         setLogRefreshTime: automation.setLogRefreshTime,
@@ -8263,6 +8246,8 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         chartPeriod: cluster.chartPeriod,
         setChartPeriod: cluster.setChartPeriod,
         nodeScores: cluster.nodeScores,
+        guestProfiles: cluster.guestProfiles,
+        scoreHistory: cluster.scoreHistory,
         maintenanceNodes: evacuation.maintenanceNodes,
         setMaintenanceNodes: evacuation.setMaintenanceNodes,
         evacuatingNodes: evacuation.evacuatingNodes,

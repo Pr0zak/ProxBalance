@@ -36,7 +36,14 @@ from proxbalance.forecasting import (
     save_score_snapshot,
     SCORE_HISTORY_FILE,
 )
-from proxbalance.patterns import analyze_workload_patterns
+from proxbalance.patterns import analyze_workload_patterns, get_node_seasonal_baseline
+from proxbalance.guest_profiles import (
+    load_guest_profiles,
+    save_guest_profiles,
+    update_guest_profile,
+    classify_guest_behavior,
+    get_guest_profile,
+)
 from proxbalance.recommendations import (
     select_guests_to_migrate,
     build_storage_cache,

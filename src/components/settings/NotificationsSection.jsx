@@ -1,6 +1,7 @@
 import {
   Bell, CheckCircle
 } from '../Icons.jsx';
+import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
@@ -258,11 +259,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP Port</label>
-                                <input type="number" min="1" max="65535"
+                                <NumberField min="1" max="65535"
                                   value={automationConfig.notifications?.providers?.email?.smtp_port || 587}
-                                  onChange={(e) => {
+                                  onCommit={(val) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), smtp_port: parseInt(e.target.value) };
+                                    providers.email = { ...(providers.email || {}), smtp_port: val };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />

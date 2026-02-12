@@ -31,6 +31,8 @@ CONFIG_FILE = os.path.join(BASE_PATH, 'config.json')
 SESSIONS_DIR = os.path.join(BASE_PATH, 'evacuation_sessions')
 OUTCOMES_FILE = os.path.join(BASE_PATH, 'migration_outcomes.json')
 SCORE_HISTORY_FILE = os.path.join(BASE_PATH, 'score_history.json')
+RECOMMENDATION_TRACKING_FILE = os.path.join(BASE_PATH, 'recommendation_tracking.json')
+GUEST_PROFILES_FILE = os.path.join(BASE_PATH, 'guest_profiles.json')
 
 
 # ---------------------------------------------------------------------------
@@ -53,3 +55,4 @@ POST_CAPTURE_DELAY_SECONDS = 300  # 5 minutes
 # ---------------------------------------------------------------------------
 
 SCORE_HISTORY_MAX_ENTRIES = 720  # ~30 days at hourly snapshots
+MAX_GUEST_PROFILE_SAMPLES = 168  # 7 days of hourly samples

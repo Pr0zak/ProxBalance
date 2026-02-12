@@ -65,6 +65,7 @@ export default function RecommendationFilters({
             <option value="score_improvement">Score Improvement</option>
             <option value="confidence_score">Confidence</option>
             <option value="risk_score">Risk Score</option>
+            <option value="cost_benefit_ratio">Cost-Benefit Ratio</option>
           </select>
           <button
             onClick={() => setRecSortDir(d => d === 'desc' ? 'asc' : 'desc')}
