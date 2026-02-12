@@ -213,7 +213,6 @@ export default function DashboardPage({
           setShowPoweredOffGuests={setShowPoweredOffGuests}
           clusterMapViewMode={clusterMapViewMode}
           setClusterMapViewMode={setClusterMapViewMode}
-          recommendations={recommendations}
           maintenanceNodes={maintenanceNodes}
           setSelectedNode={setSelectedNode}
           setSelectedGuestDetails={setSelectedGuestDetails}
