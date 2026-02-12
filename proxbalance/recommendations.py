@@ -11,7 +11,7 @@ import os
 import sys
 import json
 import traceback
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime, timezone
 
 from proxbalance.scoring import (
@@ -20,8 +20,6 @@ from proxbalance.scoring import (
     calculate_target_node_score,
     calculate_intelligent_thresholds,
     calculate_migration_risk,
-    project_trend,
-    analyze_workload_patterns,
     DEFAULT_PENALTY_CONFIG,
 )
 from proxbalance.config_manager import (
@@ -31,13 +29,39 @@ from proxbalance.config_manager import (
     DISK_PREFIXES,
     BASE_PATH,
 )
+from proxbalance.forecasting import (
+    project_trend,
+    generate_forecast_recommendations as _generate_forecast_recommendations,
+    save_score_snapshot as _save_score_snapshot,
+    SCORE_HISTORY_FILE,
+)
+from proxbalance.execution_planner import compute_execution_order as _compute_execution_order
+from proxbalance.reporting import (
+    build_summary as _build_summary,
+    generate_capacity_advisories as _generate_capacity_advisories,
+)
+from proxbalance.storage import (
+    build_storage_cache,
+    check_storage_compatibility,
+)
+from proxbalance.distribution import (
+    calculate_node_guest_counts,
+    find_distribution_candidates,
+)
+from proxbalance.recommendation_analysis import (
+    calculate_confidence as _calculate_confidence,
+    build_structured_reason as _build_structured_reason,
+    detect_migration_conflicts as _detect_migration_conflicts,
+)
+from proxbalance.patterns import get_node_seasonal_baseline
+from proxbalance.guest_profiles import get_guest_profile
 
 
 # ---------------------------------------------------------------------------
 # Guest selection
 # ---------------------------------------------------------------------------
 
-def select_guests_to_migrate(node: Dict, guests: Dict, cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
+def select_guests_to_migrate(node: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float, mem_threshold: float, overload_reason: str) -> List[str]:
     """
     Intelligently select which guests to migrate from an overloaded node
     Uses knapsack-style algorithm to minimize migrations while resolving overload
@@ -142,1360 +166,98 @@ def select_guests_to_migrate(node: Dict, guests: Dict, cpu_threshold: float, mem
 
 
 # ---------------------------------------------------------------------------
-# Storage helpers
+# Intelligent migration helper functions
 # ---------------------------------------------------------------------------
 
-def build_storage_cache(nodes: Dict, proxmox) -> Dict[str, set]:
+def _check_cluster_convergence(nodes: Dict[str, Any], penalty_cfg: Dict[str, Any],
+                                cpu_threshold: float, mem_threshold: float,
+                                convergence_threshold: float) -> Optional[str]:
     """
-    Build a cache of available storage for all nodes.
-
-    Args:
-        nodes: Dictionary of nodes
-        proxmox: ProxmoxAPI client
-
-    Returns:
-        Dictionary mapping node names to sets of available storage IDs
+    Check if the cluster is already well-balanced enough that migrations
+    would provide negligible benefit. Returns a message if converged, None otherwise.
     """
-    storage_cache = {}
+    online_nodes = {k: v for k, v in nodes.items() if v.get('status') == 'online'}
+    if len(online_nodes) < 2:
+        return None
 
-    if not proxmox:
-        return storage_cache
+    weight_current = penalty_cfg.get('weight_current', 0.5)
+    weight_24h = penalty_cfg.get('weight_24h', 0.3)
+    weight_7d = penalty_cfg.get('weight_7d', 0.2)
 
-    for node_name in nodes:
-        try:
-            storage_list = proxmox.nodes(node_name).storage.get()
-            available_storage = set()
-            for storage in storage_list:
-                if storage.get('enabled', 1) and storage.get('active', 0):
-                    available_storage.add(storage.get('storage'))
-            storage_cache[node_name] = available_storage
-            print(f"Cached {len(available_storage)} storage volumes for node {node_name}", file=sys.stderr)
-        except Exception as e:
-            print(f"Warning: Could not get storage for node {node_name}: {e}", file=sys.stderr)
-            storage_cache[node_name] = set()
-
-    return storage_cache
-
-
-def check_storage_compatibility(guest: Dict, src_node_name: str, tgt_node_name: str, proxmox, storage_cache: Dict[str, set] = None) -> bool:
-    """
-    Check if target node has all storage volumes required by the guest.
-
-    Args:
-        guest: Guest dictionary with vmid and type
-        src_node_name: Source node name
-        tgt_node_name: Target node name
-        proxmox: ProxmoxAPI client
-        storage_cache: Optional pre-built cache of node storage (for performance)
-
-    Returns:
-        True if target has all required storage, False otherwise
-    """
-    try:
-        vmid = guest.get('vmid')
-        guest_type = guest.get('type', 'VM')
-
-        # Get guest configuration to extract storage volumes
-        guest_config = None
-        try:
-            if guest_type == 'VM':
-                guest_config = proxmox.nodes(src_node_name).qemu(vmid).config.get()
-            else:  # CT
-                guest_config = proxmox.nodes(src_node_name).lxc(vmid).config.get()
-        except Exception as e:
-            print(f"Warning: Could not get config for guest {vmid}: {e}", file=sys.stderr)
-            return True  # Allow migration if we can't determine storage (avoid blocking valid migrations)
-
-        if not guest_config:
-            return True
-
-        # Extract storage volumes from config
-        storage_volumes = set()
-        for key, value in guest_config.items():
-            # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-            if key.startswith(DISK_PREFIXES):
-                # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
-                if isinstance(value, str) and ':' in value:
-                    storage_id = value.split(':')[0]
-                    storage_volumes.add(storage_id)
-
-        if not storage_volumes:
-            return True  # No storage requirements, allow migration
-
-        # Get target node storage (use cache if available, otherwise query API)
-        available_storage = set()
-        if storage_cache and tgt_node_name in storage_cache:
-            # Use cached storage data (much faster!)
-            available_storage = storage_cache[tgt_node_name]
+    cpus = []
+    mems = []
+    for node in online_nodes.values():
+        metrics = node.get('metrics', {})
+        if metrics.get('has_historical'):
+            cpu = (metrics.get('current_cpu', 0) * weight_current +
+                   metrics.get('avg_cpu', 0) * weight_24h +
+                   metrics.get('avg_cpu_week', 0) * weight_7d)
+            mem = (metrics.get('current_mem', 0) * weight_current +
+                   metrics.get('avg_mem', 0) * weight_24h +
+                   metrics.get('avg_mem_week', 0) * weight_7d)
         else:
-            # Fallback to API query if cache not available
-            try:
-                target_storage_list = proxmox.nodes(tgt_node_name).storage.get()
-                for storage in target_storage_list:
-                    if storage.get('enabled', 1) and storage.get('active', 0):
-                        available_storage.add(storage.get('storage'))
-            except Exception as e:
-                print(f"Warning: Could not get storage for node {tgt_node_name}: {e}", file=sys.stderr)
-                return True  # Allow migration if we can't determine target storage
+            cpu = metrics.get('current_cpu', 0)
+            mem = metrics.get('current_mem', 0)
+        cpus.append(cpu)
+        mems.append(mem)
 
-        # Check if all required storage is available on target
-        missing_storage = storage_volumes - available_storage
+    cpu_spread = max(cpus) - min(cpus)
+    mem_spread = max(mems) - min(mems)
 
-        if missing_storage:
-            print(f"Storage incompatibility: Guest {vmid} requires storage {missing_storage} not available on {tgt_node_name}", file=sys.stderr)
-            return False
+    # Only suppress if NO node exceeds thresholds
+    any_over_threshold = any(c > cpu_threshold for c in cpus) or any(m > mem_threshold for m in mems)
 
-        return True
+    if not any_over_threshold and cpu_spread < convergence_threshold and mem_spread < convergence_threshold:
+        return (f"Cluster is well-balanced (CPU spread: {cpu_spread:.1f}%, "
+                f"memory spread: {mem_spread:.1f}%, threshold: {convergence_threshold:.0f}%)")
 
-    except Exception as e:
-        print(f"Error checking storage compatibility for guest {guest.get('vmid')}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return True  # Allow migration on error to avoid blocking valid migrations
+    return None
 
 
-# ---------------------------------------------------------------------------
-# Distribution balancing helpers
-# ---------------------------------------------------------------------------
-
-def calculate_node_guest_counts(nodes: Dict, guests: Dict) -> Dict[str, int]:
+def _calculate_cost_benefit(recommendation: Dict[str, Any], guest: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Calculate the number of running guests on each node.
-
-    Args:
-        nodes: Dictionary of node data
-        guests: Dictionary of guest data
-
-    Returns:
-        Dictionary mapping node names to running guest counts
+    Calculate cost-benefit ratio for a migration recommendation.
+    Benefit: score improvement and confidence.
+    Cost: estimated migration duration and disruption.
     """
-    guest_counts = {}
+    score_improvement = recommendation.get('score_improvement', 0)
+    confidence = recommendation.get('confidence_score', 50)
+    benefit = (score_improvement * 0.7 + confidence * 0.3)
 
-    # Initialize all nodes with 0 counts
-    for node_name in nodes.keys():
-        guest_counts[node_name] = 0
+    mem_gb = guest.get('mem_max_gb', 0)
+    disk_io = (guest.get('disk_read_bps', 0) + guest.get('disk_write_bps', 0)) / (1024**2)
+    is_ct = guest.get('type') == 'CT'
 
-    # Count running guests per node
-    for guest_id, guest in guests.items():
-        if guest.get('status') == 'running':
-            node = guest.get('node')
-            if node in guest_counts:
-                guest_counts[node] += 1
+    # Duration estimate: ~1 min per 4GB RAM + I/O penalty
+    est_duration = max(1, mem_gb / 4) + (disk_io / 50)
+    if is_ct:
+        est_duration *= 0.5
 
-    return guest_counts
+    # Disruption factor
+    disruption = 1.0
+    if is_ct and not guest.get('mount_points', {}).get('has_shared_mount'):
+        disruption = 1.5
+    if mem_gb > 32:
+        disruption *= 1.3
 
+    cost = est_duration * disruption
+    ratio = benefit / max(cost, 0.1)
 
-def find_distribution_candidates(
-    nodes: Dict,
-    guests: Dict,
-    guest_count_threshold: int = 2,
-    max_cpu_cores: int = 2,
-    max_memory_gb: int = 4
-) -> List[Dict]:
-    """
-    Find small guests on overloaded nodes that could be migrated for distribution balancing.
-
-    Args:
-        nodes: Dictionary of node data
-        guests: Dictionary of guest data
-        guest_count_threshold: Minimum difference in guest counts to trigger balancing
-        max_cpu_cores: Maximum CPU cores for a guest to be considered (0 = no limit)
-        max_memory_gb: Maximum memory in GB for a guest to be considered (0 = no limit)
-
-    Returns:
-        List of candidate dictionaries with guest and migration details
-    """
-    guest_counts = calculate_node_guest_counts(nodes, guests)
-
-    # Find nodes with max and min guest counts
-    if not guest_counts:
-        return []
-
-    max_count = max(guest_counts.values())
-    min_count = min(guest_counts.values())
-
-    # Only proceed if difference exceeds threshold
-    if (max_count - min_count) < guest_count_threshold:
-        return []
-
-    # Find overloaded and underloaded nodes
-    overloaded_nodes = [node for node, count in guest_counts.items() if count == max_count]
-    underloaded_nodes = [node for node, count in guest_counts.items() if count == min_count]
-
-    if not overloaded_nodes or not underloaded_nodes:
-        return []
-
-    candidates = []
-
-    # Find small guests on overloaded nodes
-    for guest_id, guest in guests.items():
-        if guest.get('status') != 'running':
-            continue
-
-        current_node = guest.get('node')
-        if current_node not in overloaded_nodes:
-            continue
-
-        # Skip guests with ignore tag
-        tags = guest.get('tags', {})
-        if isinstance(tags, dict) and tags.get('has_ignore', False):
-            print(f"Skipping {guest_id} ({guest.get('name')}) - has ignore tag", file=sys.stderr)
-            continue
-
-        # Check guest size constraints
-        # Try both field names for compatibility with different cache formats
-        cpu_cores = guest.get('cpu_cores', guest.get('maxcpu', 0))
-
-        # Try mem_max_gb first, then fall back to maxmem in bytes
-        memory_gb = guest.get('mem_max_gb', 0)
-        if memory_gb == 0:
-            memory_bytes = guest.get('maxmem', 0)
-            memory_gb = memory_bytes / (1024**3) if memory_bytes > 0 else 0
-
-        # Apply size filters (0 means no limit)
-        if max_cpu_cores > 0 and cpu_cores > max_cpu_cores:
-            print(f"Skipping {guest_id} ({guest.get('name')}) - CPU cores {cpu_cores} > {max_cpu_cores}", file=sys.stderr)
-            continue
-        if max_memory_gb > 0 and memory_gb > max_memory_gb:
-            print(f"Skipping {guest_id} ({guest.get('name')}) - Memory {memory_gb:.2f} GB > {max_memory_gb} GB", file=sys.stderr)
-            continue
-
-        # This guest is a candidate for distribution balancing
-        for target_node in underloaded_nodes:
-            if target_node == current_node:
-                continue
-
-            candidates.append({
-                'guest_id': guest_id,
-                'guest_name': guest.get('name', f'VM {guest_id}'),
-                'guest_type': guest.get('type', 'unknown'),
-                'source_node': current_node,
-                'target_node': target_node,
-                'source_count': guest_counts[current_node],
-                'target_count': guest_counts[target_node],
-                'cpu_cores': cpu_cores,
-                'memory_gb': round(memory_gb, 2),
-                'reason': f"\u2696\ufe0f DISTRIBUTION BALANCING: {current_node} ({guest_counts[current_node]} guests) \u2192 {target_node} ({guest_counts[target_node]} guests)"
-            })
-
-    return candidates
+    return {
+        "ratio": round(ratio, 2),
+        "benefit_score": round(benefit, 1),
+        "cost_score": round(cost, 1),
+        "est_duration_minutes": round(est_duration, 1),
+        "viable": ratio >= 1.0,
+    }
 
 
 # ---------------------------------------------------------------------------
 # Main recommendation engine
 # ---------------------------------------------------------------------------
 
-def _calculate_confidence(score_improvement: float, target_details: Dict, guest: Dict, penalty_cfg: Dict) -> float:
-    """
-    Calculate multi-factor confidence score (0-100) for a migration recommendation.
 
-    Factors:
-    - Score improvement (40%): How much the penalty score improves
-    - Target headroom (25%): How much capacity the target has after migration
-    - Migration complexity (20%): Guest size and storage complexity
-    - Stability signal (15%): Whether trends are favorable
-    """
-    min_improvement = penalty_cfg.get("min_score_improvement", 15)
-
-    # Factor 1: Score improvement (40%) — maps improvement to 0-100
-    if score_improvement >= 60:
-        improvement_factor = 100
-    elif score_improvement >= 40:
-        improvement_factor = 75
-    elif score_improvement >= 25:
-        improvement_factor = 55
-    elif score_improvement >= min_improvement:
-        improvement_factor = 30 + ((score_improvement - min_improvement) / max(1, 25 - min_improvement)) * 25
-    else:
-        improvement_factor = max(0, (score_improvement / max(1, min_improvement)) * 30)
-
-    # Factor 2: Target headroom (25%) — more room = higher confidence
-    target_metrics = target_details.get("metrics", {}) if target_details else {}
-    cpu_headroom = target_metrics.get("cpu_headroom", 50)
-    mem_headroom = target_metrics.get("mem_headroom", 50)
-    avg_headroom = (cpu_headroom + mem_headroom) / 2
-    headroom_factor = min(100, avg_headroom * 1.5)  # 67% headroom = 100
-
-    # Factor 3: Migration complexity (20%) — smaller/simpler = higher confidence
-    guest_mem_gb = guest.get("mem_max_gb", 0)
-    guest_cores = guest.get("cpu_cores", 1)
-    has_bind_mounts = guest.get("mount_points", {}).get("has_unshared_bind_mount", False)
-
-    if has_bind_mounts:
-        complexity_factor = 20  # Bind mounts add significant risk
-    elif guest_mem_gb > 32 or guest_cores > 8:
-        complexity_factor = 40  # Large VM
-    elif guest_mem_gb > 16 or guest_cores > 4:
-        complexity_factor = 60  # Medium VM
-    elif guest_mem_gb > 4:
-        complexity_factor = 80  # Small-medium VM
-    else:
-        complexity_factor = 100  # Small VM, easy migration
-
-    # Factor 4: Stability signal (15%) — favorable trends = higher confidence
-    if target_details:
-        cpu_trend = target_metrics.get("cpu_trend", "stable")
-        mem_trend = target_metrics.get("mem_trend", "stable")
-        total_penalties = target_details.get("total_penalties", 0)
-
-        if cpu_trend == "rising" or mem_trend == "rising":
-            stability_factor = 30  # Target has rising trends
-        elif total_penalties > 50:
-            stability_factor = 50  # Target already has significant penalties
-        elif total_penalties > 20:
-            stability_factor = 70
-        else:
-            stability_factor = 100  # Clean target
-    else:
-        stability_factor = 60
-
-    # Weighted combination
-    confidence = (
-        improvement_factor * 0.40 +
-        headroom_factor * 0.25 +
-        complexity_factor * 0.20 +
-        stability_factor * 0.15
-    )
-
-    return round(min(100, max(0, confidence)), 1)
-
-
-def _build_structured_reason(guest: Dict, src_node: Dict, tgt_node: Dict, src_details: Dict, tgt_details: Dict, is_maintenance: bool, penalty_cfg: Dict) -> Dict:
-    """
-    Build a structured, multi-factor reason for a migration recommendation.
-
-    Returns a dict with:
-    - primary_reason: machine-readable reason key
-    - primary_label: human-readable short label
-    - contributing_factors: list of factor dicts
-    - summary: one-sentence human-readable explanation
-    """
-    if is_maintenance:
-        return {
-            "primary_reason": "maintenance_evacuation",
-            "primary_label": "Maintenance evacuation",
-            "contributing_factors": [
-                {"factor": "maintenance", "label": f"Source node {src_node.get('name')} is in maintenance mode"}
-            ],
-            "summary": f"{guest.get('name')} must be evacuated because {src_node.get('name')} is entering maintenance."
-        }
-
-    src_metrics = src_node.get("metrics", {})
-    tgt_metrics = tgt_node.get("metrics", {})
-    factors = []
-
-    # Get penalty config weights
-    weight_current = penalty_cfg.get("weight_current", 0.5)
-    weight_24h = penalty_cfg.get("weight_24h", 0.3)
-    weight_7d = penalty_cfg.get("weight_7d", 0.2)
-
-    # Calculate weighted metrics
-    def _weighted(m, key_current, key_24h, key_7d):
-        if m.get("has_historical"):
-            return (m.get(key_current, 0) * weight_current +
-                    m.get(key_24h, 0) * weight_24h +
-                    m.get(key_7d, 0) * weight_7d)
-        return m.get(key_current, 0)
-
-    src_cpu = _weighted(src_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
-    src_mem = _weighted(src_metrics, "current_mem", "avg_mem", "avg_mem_week")
-    tgt_cpu = _weighted(tgt_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
-    tgt_mem = _weighted(tgt_metrics, "current_mem", "avg_mem", "avg_mem_week")
-
-    # Identify dominant factor
-    cpu_diff = src_cpu - tgt_cpu
-    mem_diff = src_mem - tgt_mem
-
-    # Source CPU high
-    if src_cpu > 60:
-        factors.append({
-            "factor": "source_cpu",
-            "value": round(src_cpu, 1),
-            "severity": "high" if src_cpu > 80 else "medium",
-            "label": f"Source CPU at {src_cpu:.0f}%"
-        })
-
-    # Source memory high
-    if src_mem > 65:
-        factors.append({
-            "factor": "source_mem",
-            "value": round(src_mem, 1),
-            "severity": "high" if src_mem > 85 else "medium",
-            "label": f"Source memory at {src_mem:.0f}%"
-        })
-
-    # Target has headroom
-    if tgt_details:
-        tgt_det_metrics = tgt_details.get("metrics", {})
-        cpu_headroom = tgt_det_metrics.get("cpu_headroom", 50)
-        mem_headroom = tgt_det_metrics.get("mem_headroom", 50)
-        if cpu_headroom > 30:
-            factors.append({
-                "factor": "target_cpu_headroom",
-                "value": round(cpu_headroom, 1),
-                "severity": "positive",
-                "label": f"Target has {cpu_headroom:.0f}% CPU headroom"
-            })
-        if mem_headroom > 30:
-            factors.append({
-                "factor": "target_mem_headroom",
-                "value": round(mem_headroom, 1),
-                "severity": "positive",
-                "label": f"Target has {mem_headroom:.0f}% memory headroom"
-            })
-
-    # Trends
-    if src_metrics.get("cpu_trend") == "rising":
-        factors.append({"factor": "source_cpu_trend", "severity": "medium", "label": "Source CPU trending upward"})
-    if src_metrics.get("mem_trend") == "rising":
-        factors.append({"factor": "source_mem_trend", "severity": "medium", "label": "Source memory trending upward"})
-
-    # IOWait
-    src_iowait = src_metrics.get("current_iowait", 0)
-    if src_iowait > 15:
-        factors.append({
-            "factor": "source_iowait",
-            "value": round(src_iowait, 1),
-            "severity": "high" if src_iowait > 25 else "medium",
-            "label": f"Source IOWait at {src_iowait:.0f}%"
-        })
-
-    # Primary reason
-    if cpu_diff > mem_diff:
-        primary_reason = "cpu_imbalance"
-        primary_label = "Balance CPU load"
-    else:
-        primary_reason = "mem_imbalance"
-        primary_label = "Balance memory load"
-
-    # Build human-readable summary
-    src_name = src_node.get("name", "source")
-    tgt_name = tgt_node.get("name", "target")
-    guest_name = guest.get("name", "guest")
-
-    dominant = "CPU" if cpu_diff > mem_diff else "memory"
-    trend_note = ""
-    if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
-        trend_note = " with an upward trend"
-
-    summary = (
-        f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
-        f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
-        f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
-    )
-
-    return {
-        "primary_reason": primary_reason,
-        "primary_label": primary_label,
-        "contributing_factors": factors,
-        "summary": summary
-    }
-
-
-def _build_summary(recommendations: List[Dict], skipped_guests: List[Dict], nodes: Dict, penalty_cfg: Dict) -> Dict:
-    """
-    Build a recommendation digest / summary for the UI.
-    """
-    total_improvement = sum(r.get("score_improvement", 0) for r in recommendations)
-    maintenance_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "maintenance_evacuation")
-    cpu_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "cpu_imbalance")
-    mem_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "mem_imbalance")
-    other_count = len(recommendations) - maintenance_count - cpu_count - mem_count
-
-    # Calculate average cluster health
-    online_nodes = [n for n in nodes.values() if n.get("status") == "online"]
-    if online_nodes:
-        avg_cpu = sum(n.get("metrics", {}).get("current_cpu", 0) for n in online_nodes) / len(online_nodes)
-        avg_mem = sum(n.get("metrics", {}).get("current_mem", 0) for n in online_nodes) / len(online_nodes)
-        # Simple health score: 100 - weighted average of resource usage
-        cluster_health = round(max(0, 100 - (avg_cpu * 0.5 + avg_mem * 0.5)), 1)
-    else:
-        avg_cpu = 0
-        avg_mem = 0
-        cluster_health = 0
-
-    # Estimate post-migration health
-    predicted_health = round(min(100, cluster_health + (total_improvement * 0.3 / max(1, len(online_nodes)))), 1)
-
-    # Build breakdown of reasons
-    reasons_breakdown = []
-    if cpu_count > 0:
-        reasons_breakdown.append(f"{cpu_count} to balance CPU")
-    if mem_count > 0:
-        reasons_breakdown.append(f"{mem_count} to balance memory")
-    if maintenance_count > 0:
-        reasons_breakdown.append(f"{maintenance_count} for maintenance evacuation")
-    if other_count > 0:
-        reasons_breakdown.append(f"{other_count} for other reasons")
-
-    # Skipped breakdown
-    skip_reasons = {}
-    for s in skipped_guests:
-        reason = s.get("reason", "unknown")
-        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
-
-    # Urgency assessment
-    if maintenance_count > 0:
-        urgency = "high"
-        urgency_label = "Maintenance evacuations pending"
-    elif any(r.get("score_improvement", 0) >= 50 for r in recommendations):
-        urgency = "medium"
-        urgency_label = "Significant imbalance detected"
-    elif len(recommendations) > 0:
-        urgency = "low"
-        urgency_label = "Minor optimizations available"
-    else:
-        urgency = "none"
-        urgency_label = "Cluster is balanced"
-
-    # --- Batch Impact Assessment ---
-    import statistics
-
-    # "Before" state: current node metrics for online nodes
-    before_node_scores = {}
-    for node_name, node in nodes.items():
-        if node.get("status") != "online":
-            continue
-        metrics = node.get("metrics", {})
-        before_node_scores[node_name] = {
-            "cpu": round(metrics.get("current_cpu", 0), 1),
-            "mem": round(metrics.get("current_mem", 0), 1),
-            "guest_count": len(node.get("guests", [])),
-        }
-
-    # "After" state: simulate all recommended migrations
-    after_node_scores = {n: dict(d) for n, d in before_node_scores.items()}
-
-    for rec in recommendations:
-        source = rec.get("source_node") or rec.get("current_node")
-        target = rec.get("target_node")
-
-        if not source or not target:
-            continue
-        if source not in after_node_scores or target not in after_node_scores:
-            continue
-
-        # Estimate guest memory contribution from allocated mem_gb
-        guest_mem_gb = rec.get("mem_gb", 0)
-        source_total_mem = nodes.get(source, {}).get("total_mem_gb", 1) or 1
-        target_total_mem = nodes.get(target, {}).get("total_mem_gb", 1) or 1
-        mem_delta_source = (guest_mem_gb / source_total_mem) * 100
-        mem_delta_target = (guest_mem_gb / target_total_mem) * 100
-
-        # Estimate guest CPU contribution from score_details predicted metrics
-        cpu_delta_target = 0.0
-        score_details = rec.get("score_details") or {}
-        target_det = score_details.get("target", {}) if isinstance(score_details, dict) else {}
-        target_met = target_det.get("metrics", {}) if isinstance(target_det, dict) else {}
-
-        predicted_cpu = target_met.get("predicted_cpu")
-        immediate_cpu = target_met.get("immediate_cpu")
-        if predicted_cpu is not None and immediate_cpu is not None:
-            cpu_delta_target = max(0.0, predicted_cpu - immediate_cpu)
-
-        # Fallback: rough estimate from memory ratio when no score_details
-        if cpu_delta_target == 0.0 and guest_mem_gb > 0:
-            cpu_delta_target = mem_delta_target * 0.5
-
-        # Scale CPU delta from target to source based on core count ratio
-        source_cores = nodes.get(source, {}).get("cpu_cores", 1) or 1
-        target_cores = nodes.get(target, {}).get("cpu_cores", 1) or 1
-        cpu_delta_source = cpu_delta_target * (target_cores / source_cores)
-
-        # Apply: remove guest from source, add to target
-        after_node_scores[source]["cpu"] = round(max(0, after_node_scores[source]["cpu"] - cpu_delta_source), 1)
-        after_node_scores[source]["mem"] = round(max(0, after_node_scores[source]["mem"] - mem_delta_source), 1)
-        after_node_scores[source]["guest_count"] = max(0, after_node_scores[source]["guest_count"] - 1)
-
-        after_node_scores[target]["cpu"] = round(min(100, after_node_scores[target]["cpu"] + cpu_delta_target), 1)
-        after_node_scores[target]["mem"] = round(min(100, after_node_scores[target]["mem"] + mem_delta_target), 1)
-        after_node_scores[target]["guest_count"] += 1
-
-    # Compute score variance (combined CPU + memory load spread across nodes)
-    def _calc_variance(node_scores):
-        if len(node_scores) < 2:
-            return 0.0
-        combined = [(s["cpu"] + s["mem"]) / 2.0 for s in node_scores.values()]
-        return round(statistics.variance(combined), 1)
-
-    before_variance = _calc_variance(before_node_scores)
-    after_variance = _calc_variance(after_node_scores)
-
-    # Determine if every node's combined load improved or held steady
-    all_nodes_improved = True
-    for name in before_node_scores:
-        if name not in after_node_scores:
-            continue
-        before_load = (before_node_scores[name]["cpu"] + before_node_scores[name]["mem"]) / 2.0
-        after_load = (after_node_scores[name]["cpu"] + after_node_scores[name]["mem"]) / 2.0
-        if after_load > before_load + 0.5:  # small tolerance for rounding
-            all_nodes_improved = False
-            break
-
-    variance_reduction_pct = (
-        round((1.0 - after_variance / before_variance) * 100, 1)
-        if before_variance > 0 else 0.0
-    )
-
-    batch_impact = {
-        "before": {
-            "node_scores": before_node_scores,
-            "score_variance": before_variance,
-        },
-        "after": {
-            "node_scores": after_node_scores,
-            "score_variance": after_variance,
-        },
-        "improvement": {
-            "health_delta": round(predicted_health - cluster_health, 1),
-            "variance_reduction_pct": variance_reduction_pct,
-            "all_nodes_improved": all_nodes_improved,
-        },
-    }
-
-    return {
-        "total_recommendations": len(recommendations),
-        "total_skipped": len(skipped_guests),
-        "total_improvement": round(total_improvement, 1),
-        "reasons_breakdown": reasons_breakdown,
-        "cluster_health": cluster_health,
-        "predicted_health": predicted_health,
-        "avg_cpu": round(avg_cpu, 1),
-        "avg_mem": round(avg_mem, 1),
-        "urgency": urgency,
-        "urgency_label": urgency_label,
-        "skip_reasons": skip_reasons,
-        "batch_impact": batch_impact,
-    }
-
-
-def _generate_capacity_advisories(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict) -> List[Dict]:
-    """
-    Generate capacity planning advisories based on cluster-wide resource utilization.
-
-    Returns advisory messages when the cluster is approaching saturation,
-    when migration headroom is limited, or when nodes are uniformly stressed.
-    """
-    advisories = []
-
-    online_nodes = {n: d for n, d in nodes.items() if d.get("status") == "online"}
-    if not online_nodes:
-        return advisories
-
-    node_count = len(online_nodes)
-
-    # Collect metrics
-    cpu_values = []
-    mem_values = []
-    for name, node in online_nodes.items():
-        m = node.get("metrics", {})
-        cpu_values.append(m.get("current_cpu", 0))
-        mem_values.append(m.get("current_mem", 0))
-
-    avg_cpu = sum(cpu_values) / node_count
-    avg_mem = sum(mem_values) / node_count
-    max_cpu = max(cpu_values)
-    max_mem = max(mem_values)
-
-    cpu_threshold = penalty_cfg.get("cpu_threshold", 60)
-    mem_threshold = penalty_cfg.get("mem_threshold", 70)
-
-    nodes_above_cpu = sum(1 for v in cpu_values if v > cpu_threshold)
-    nodes_above_mem = sum(1 for v in mem_values if v > mem_threshold)
-
-    # Advisory 1: Cluster-wide saturation
-    if avg_cpu > 70 or avg_mem > 80:
-        severity = "critical" if (avg_cpu > 85 or avg_mem > 90) else "warning"
-        suggestions = [
-            "Add a new node to increase cluster capacity",
-            "Review guest resource allocations for over-provisioning",
-            "Consider offloading low-priority workloads",
-        ]
-        advisories.append({
-            "type": "capacity_saturation",
-            "severity": severity,
-            "message": f"Cluster-wide utilization is high (avg CPU: {avg_cpu:.0f}%, avg Memory: {avg_mem:.0f}%). "
-                       f"Rebalancing can improve individual node health but overall capacity is constrained.",
-            "metrics": {
-                "cluster_cpu_avg": round(avg_cpu, 1),
-                "cluster_mem_avg": round(avg_mem, 1),
-                "nodes_above_cpu_threshold": nodes_above_cpu,
-                "nodes_above_mem_threshold": nodes_above_mem,
-            },
-            "suggestions": suggestions,
-        })
-
-    # Advisory 2: Limited migration headroom (most nodes above threshold)
-    if nodes_above_cpu >= node_count - 1 and node_count > 1:
-        advisories.append({
-            "type": "limited_cpu_headroom",
-            "severity": "warning",
-            "message": f"{nodes_above_cpu} of {node_count} nodes are above the CPU threshold ({cpu_threshold}%). "
-                       f"Migration can redistribute load but won't reduce total CPU usage.",
-            "metrics": {
-                "nodes_above_cpu_threshold": nodes_above_cpu,
-                "total_nodes": node_count,
-                "cpu_threshold": cpu_threshold,
-            },
-            "suggestions": ["Add compute capacity", "Reduce CPU-intensive workloads"],
-        })
-
-    if nodes_above_mem >= node_count - 1 and node_count > 1:
-        advisories.append({
-            "type": "limited_mem_headroom",
-            "severity": "warning",
-            "message": f"{nodes_above_mem} of {node_count} nodes are above the memory threshold ({mem_threshold}%). "
-                       f"Consider adding RAM or a new node.",
-            "metrics": {
-                "nodes_above_mem_threshold": nodes_above_mem,
-                "total_nodes": node_count,
-                "mem_threshold": mem_threshold,
-            },
-            "suggestions": ["Add memory to constrained nodes", "Add a new node"],
-        })
-
-    # Advisory 3: Single-node bottleneck
-    for name, node in online_nodes.items():
-        m = node.get("metrics", {})
-        cpu = m.get("current_cpu", 0)
-        mem = m.get("current_mem", 0)
-
-        if cpu > 90 or mem > 95:
-            advisories.append({
-                "type": "node_bottleneck",
-                "severity": "critical",
-                "message": f"Node {name} is critically loaded (CPU: {cpu:.0f}%, Memory: {mem:.0f}%). "
-                           f"Immediate action recommended.",
-                "metrics": {
-                    "node": name,
-                    "cpu": round(cpu, 1),
-                    "mem": round(mem, 1),
-                },
-                "suggestions": [
-                    f"Migrate guests off {name} immediately",
-                    f"Check for runaway processes on {name}",
-                ],
-            })
-
-    # Advisory 4: Minimal cluster (only 1-2 nodes)
-    if node_count <= 2 and len(recommendations) > 0:
-        advisories.append({
-            "type": "small_cluster",
-            "severity": "info",
-            "message": f"Cluster has only {node_count} node(s). Migration options are limited. "
-                       f"Adding nodes would improve resilience and balancing options.",
-            "metrics": {"node_count": node_count},
-            "suggestions": ["Add at least one more node for better redundancy"],
-        })
-
-    return advisories
-
-
-def _detect_migration_conflicts(recommendations: List[Dict], nodes: Dict, guests: Dict,
-                                 cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict) -> List[Dict]:
-    """
-    Post-generation validation: detect conflicts among recommended migrations.
-
-    Groups recommendations by target node and simulates the combined
-    post-migration load. If the combined load exceeds thresholds, flags
-    the conflict with a resolution suggestion.
-    """
-    if len(recommendations) < 2:
-        return []
-
-    conflicts = []
-
-    # Group recommendations by target node
-    target_groups = {}
-    for rec in recommendations:
-        target = rec.get("target_node")
-        if not target:
-            continue
-        if target not in target_groups:
-            target_groups[target] = []
-        target_groups[target].append(rec)
-
-    for target_node, recs in target_groups.items():
-        if len(recs) < 2:
-            continue  # No conflict possible with a single migration
-
-        node = nodes.get(target_node, {})
-        if not node or node.get("status") != "online":
-            continue
-
-        metrics = node.get("metrics", {})
-        current_cpu = metrics.get("current_cpu", 0)
-        current_mem = metrics.get("current_mem", 0)
-        node_total_mem = node.get("total_mem_gb", 1) or 1
-        node_cores = node.get("cpu_cores", 1) or 1
-
-        # Simulate combined post-migration load
-        combined_cpu = current_cpu
-        combined_mem = current_mem
-        incoming = []
-
-        for rec in recs:
-            vmid_key = str(rec.get("vmid"))
-            guest = guests.get(vmid_key, {})
-            mem_gb = rec.get("mem_gb", 0) or guest.get("mem_max_gb", 0)
-            mem_impact = (mem_gb / node_total_mem * 100) if node_total_mem > 0 else 0
-
-            # Estimate CPU impact from score_details or rough heuristic
-            cpu_impact = 0
-            score_details = rec.get("score_details") or {}
-            tgt_met = {}
-            if isinstance(score_details, dict):
-                tgt_det = score_details.get("target", {})
-                if isinstance(tgt_det, dict):
-                    tgt_met = tgt_det.get("metrics", {})
-            predicted_cpu = tgt_met.get("predicted_cpu")
-            immediate_cpu = tgt_met.get("immediate_cpu")
-            if predicted_cpu is not None and immediate_cpu is not None:
-                cpu_impact = max(0, predicted_cpu - immediate_cpu)
-            elif mem_gb > 0:
-                cpu_impact = mem_impact * 0.5  # rough fallback
-
-            combined_cpu += cpu_impact
-            combined_mem += mem_impact
-            incoming.append({
-                "vmid": rec.get("vmid"),
-                "name": rec.get("name", "unknown"),
-                "predicted_cpu_impact": round(cpu_impact, 1),
-                "predicted_mem_impact": round(mem_impact, 1),
-            })
-
-        # Check if combined load exceeds thresholds
-        cpu_exceeded = combined_cpu > cpu_threshold
-        mem_exceeded = combined_mem > mem_threshold
-
-        if cpu_exceeded or mem_exceeded:
-            # Find best alternative target for the lowest-improvement recommendation
-            recs_sorted = sorted(recs, key=lambda r: r.get("score_improvement", 0))
-            weakest = recs_sorted[0]
-
-            resolution = f"Consider deferring migration of {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')})"
-
-            # Try to find an alternative target
-            for alt_name, alt_node in nodes.items():
-                if alt_name == target_node or alt_node.get("status") != "online":
-                    continue
-                alt_cpu = alt_node.get("metrics", {}).get("current_cpu", 0)
-                alt_mem = alt_node.get("metrics", {}).get("current_mem", 0)
-                if alt_cpu < cpu_threshold - 10 and alt_mem < mem_threshold - 10:
-                    resolution = f"Consider moving {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')}) to {alt_name} instead"
-                    break
-
-            conflict = {
-                "target_node": target_node,
-                "incoming_guests": incoming,
-                "combined_predicted_cpu": round(combined_cpu, 1),
-                "combined_predicted_mem": round(combined_mem, 1),
-                "cpu_threshold": cpu_threshold,
-                "mem_threshold": mem_threshold,
-                "exceeds_cpu": cpu_exceeded,
-                "exceeds_mem": mem_exceeded,
-                "resolution": resolution,
-            }
-            conflicts.append(conflict)
-
-            # Tag affected recommendations with conflict info
-            for rec in recs:
-                rec["has_conflict"] = True
-                rec["conflict_target"] = target_node
-
-    return conflicts
-
-
-SCORE_HISTORY_FILE = os.path.join(BASE_PATH, 'score_history.json')
-SCORE_HISTORY_MAX_ENTRIES = 720  # ~30 days at hourly snapshots
-
-
-def _compute_execution_order(recommendations: List[Dict], nodes: Dict) -> Dict:
-    """
-    Determine optimal execution order for multiple migrations based on
-    dependencies and resource sequencing.
-
-    Algorithm:
-    1. Build a directed dependency graph: if recommendation A frees capacity
-       on node X (A.source_node == X) and recommendation B sends a guest TO
-       node X (B.target_node == X), then A should execute before B.
-    2. Detect and break circular dependencies by removing the edge for the
-       recommendation with the lower score_improvement.
-    3. Compute topological order using Kahn's algorithm.
-    4. Group independent migrations into parallel execution sets.
-    5. Within each group, sort by highest confidence / lowest risk first.
-
-    Args:
-        recommendations: List of recommendation dicts from generate_recommendations.
-        nodes: Dictionary of node data.
-
-    Returns:
-        Dictionary with ordered_recommendations, parallel_groups,
-        total_steps, and can_parallelize.
-    """
-    n = len(recommendations)
-
-    # Trivial cases: 0 or 1 recommendations
-    if n == 0:
-        return {
-            "ordered_recommendations": [],
-            "parallel_groups": [],
-            "total_steps": 0,
-            "can_parallelize": False,
-        }
-
-    if n == 1:
-        rec = recommendations[0]
-        return {
-            "ordered_recommendations": [
-                {
-                    "step": 1,
-                    "parallel_group": 1,
-                    "vmid": rec.get("vmid"),
-                    "name": rec.get("name", "unknown"),
-                    "source_node": rec.get("source_node") or rec.get("current_node", ""),
-                    "target_node": rec.get("target_node", ""),
-                    "reason_for_order": "Only migration in plan",
-                }
-            ],
-            "parallel_groups": [[0]],
-            "total_steps": 1,
-            "can_parallelize": False,
-        }
-
-    # --- Step 1: Build dependency graph ---
-    # adjacency list: edges[i] contains set of j where i must execute before j
-    edges = {i: set() for i in range(n)}
-    # reverse adjacency: who depends on i
-    in_degree = {i: 0 for i in range(n)}
-
-    # Index recommendations by source_node for quick lookup
-    # If rec A frees capacity on node X (source_node == X), and rec B
-    # needs to send a guest TO X (target_node == X), then A -> B
-    source_by_node = {}  # node_name -> list of rec indices that FREE capacity on that node
-    target_by_node = {}  # node_name -> list of rec indices that SEND TO that node
-
-    for i, rec in enumerate(recommendations):
-        src = rec.get("source_node") or rec.get("current_node", "")
-        tgt = rec.get("target_node", "")
-
-        if src:
-            if src not in source_by_node:
-                source_by_node[src] = []
-            source_by_node[src].append(i)
-
-        if tgt:
-            if tgt not in target_by_node:
-                target_by_node[tgt] = []
-            target_by_node[tgt].append(i)
-
-    # For each node X: if rec A frees capacity on X (source_node == X)
-    # and rec B sends to X (target_node == X), add edge A -> B
-    for node_name in source_by_node:
-        if node_name not in target_by_node:
-            continue
-        for a_idx in source_by_node[node_name]:
-            for b_idx in target_by_node[node_name]:
-                if a_idx == b_idx:
-                    continue
-                # A frees capacity, B needs it -> A before B
-                edges[a_idx].add(b_idx)
-                in_degree[b_idx] += 1
-
-    # --- Step 2: Detect and break circular dependencies ---
-    # Use iterative cycle detection: repeatedly try topological sort;
-    # if stuck, break the weakest edge in the remaining graph.
-    def _break_cycles(edges, in_degree, recs):
-        """Break cycles by removing edges from lower-improvement recommendations."""
-        working_edges = {i: set(s) for i, s in edges.items()}
-        working_in = dict(in_degree)
-
-        max_iterations = n * n  # safety bound
-        iteration = 0
-
-        while iteration < max_iterations:
-            iteration += 1
-            # Try to find a node with in_degree 0
-            queue = [i for i in working_in if working_in[i] == 0]
-            if not queue:
-                # All remaining nodes are in cycles; break the weakest edge
-                # Find the node in the cycle with the lowest score_improvement
-                remaining = [i for i in working_in if working_in.get(i, -1) >= 0]
-                if not remaining:
-                    break
-
-                # Find the edge to break: pick the dependency where the
-                # "depended-upon" rec has the lowest improvement
-                worst_edge = None
-                worst_improvement = float('inf')
-                for i in remaining:
-                    if i not in working_edges:
-                        continue
-                    for j in working_edges[i]:
-                        if j not in working_in or working_in[j] < 0:
-                            continue
-                        imp = recs[i].get("score_improvement", 0)
-                        if imp < worst_improvement:
-                            worst_improvement = imp
-                            worst_edge = (i, j)
-
-                if worst_edge is None:
-                    break
-
-                # Remove this edge
-                a, b = worst_edge
-                working_edges[a].discard(b)
-                working_in[b] = max(0, working_in[b] - 1)
-                # Also update the original structures
-                edges[a].discard(b)
-                in_degree[b] = max(0, in_degree[b] - 1)
-                continue
-
-            # Process the zero-in-degree node to verify progress
-            node = queue[0]
-            working_in[node] = -1  # mark as processed
-            for neighbor in list(working_edges.get(node, [])):
-                if neighbor in working_in and working_in[neighbor] >= 0:
-                    working_in[neighbor] -= 1
-            working_edges.pop(node, None)
-
-            # Check if all nodes are processed
-            if all(working_in.get(i, -1) < 0 for i in range(n)):
-                break
-
-    _break_cycles(edges, in_degree, recommendations)
-
-    # --- Step 3: Topological sort (Kahn's algorithm) with parallel grouping ---
-    # Nodes with the same "depth" can run in parallel
-    topo_order = []
-    parallel_groups = []
-    current_in = dict(in_degree)
-
-    group_num = 0
-    while True:
-        # Find all nodes with in_degree 0
-        ready = [i for i in range(n) if current_in.get(i, -1) == 0]
-        if not ready:
-            break
-
-        group_num += 1
-
-        # Sort within group: highest confidence first, then lowest risk, then highest improvement
-        def _sort_key(idx):
-            rec = recommendations[idx]
-            confidence = rec.get("confidence_score", 50)
-            risk = rec.get("risk_score", 50)
-            improvement = rec.get("score_improvement", 0)
-            return (-confidence, risk, -improvement)
-
-        ready.sort(key=_sort_key)
-
-        group_indices = []
-        for idx in ready:
-            topo_order.append(idx)
-            group_indices.append(idx)
-            current_in[idx] = -1  # mark processed
-
-        parallel_groups.append(group_indices)
-
-        # Decrease in_degree for successors
-        for idx in ready:
-            for neighbor in edges.get(idx, set()):
-                if current_in.get(neighbor, -1) >= 0:
-                    current_in[neighbor] -= 1
-
-    # Handle any nodes not reached (should not happen after cycle breaking, but safety)
-    unprocessed = [i for i in range(n) if current_in.get(i, -1) >= 0]
-    if unprocessed:
-        group_num += 1
-        unprocessed.sort(key=lambda idx: -recommendations[idx].get("score_improvement", 0))
-        topo_order.extend(unprocessed)
-        parallel_groups.append(unprocessed)
-        for idx in unprocessed:
-            current_in[idx] = -1
-
-    # --- Step 4: Build ordered output ---
-    ordered = []
-    step = 0
-    for group_idx, group in enumerate(parallel_groups):
-        group_id = group_idx + 1
-        for rec_idx in group:
-            step += 1
-            rec = recommendations[rec_idx]
-            src = rec.get("source_node") or rec.get("current_node", "")
-            tgt = rec.get("target_node", "")
-
-            # Determine reason for ordering
-            predecessors = [j for j in range(n) if rec_idx in edges.get(j, set())]
-            if predecessors:
-                pred_nodes = set()
-                for p in predecessors:
-                    pred_src = recommendations[p].get("source_node") or recommendations[p].get("current_node", "")
-                    if pred_src == tgt:
-                        pred_nodes.add(pred_src)
-                if pred_nodes:
-                    reason = "Waits for capacity to be freed on {}".format(", ".join(sorted(pred_nodes)))
-                else:
-                    reason = "Depends on prior migration(s)"
-            elif group_id == 1:
-                # First group — check if this rec frees capacity for later ones
-                successors_nodes = set()
-                for s in edges.get(rec_idx, set()):
-                    s_tgt = recommendations[s].get("target_node", "")
-                    if s_tgt == src:
-                        successors_nodes.add(src)
-                if successors_nodes:
-                    reason = "Frees capacity on {}".format(", ".join(sorted(successors_nodes)))
-                else:
-                    reason = "No dependencies — can run first"
-            else:
-                reason = "Independent — grouped for parallel execution"
-
-            ordered.append({
-                "step": step,
-                "parallel_group": group_id,
-                "vmid": rec.get("vmid"),
-                "name": rec.get("name", "unknown"),
-                "source_node": src,
-                "target_node": tgt,
-                "reason_for_order": reason,
-            })
-
-    can_parallelize = any(len(g) > 1 for g in parallel_groups)
-
-    return {
-        "ordered_recommendations": ordered,
-        "parallel_groups": parallel_groups,
-        "total_steps": step,
-        "can_parallelize": can_parallelize,
-    }
-
-
-def _generate_forecast_recommendations(nodes: Dict, score_history_data: List, cpu_threshold: float, mem_threshold: float) -> List[Dict]:
-    """
-    Generate forecast recommendations by projecting metric trends into the future.
-
-    Reads historical score snapshots and uses linear regression to identify nodes
-    whose CPU or memory metrics are trending toward their thresholds. Generates
-    proactive warnings before the threshold is actually crossed.
-
-    Args:
-        nodes: Current node data dict.
-        score_history_data: List of score history snapshot dicts (from score_history.json).
-        cpu_threshold: Current CPU threshold (e.g. 60.0).
-        mem_threshold: Current memory threshold (e.g. 70.0).
-
-    Returns:
-        List of forecast dicts with type, node, metric, projections, and severity.
-    """
-    forecasts = []
-
-    if not score_history_data or len(score_history_data) < 3:
-        return forecasts
-
-    # Filter to last 7 days of data
-    now_ts = datetime.now(timezone.utc).timestamp()
-    seven_days_ago = now_ts - (7 * 24 * 3600)
-
-    recent_history = []
-    for entry in score_history_data:
-        ts_str = entry.get("timestamp", "")
-        try:
-            entry_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-            if entry_dt.timestamp() >= seven_days_ago:
-                recent_history.append((entry_dt.timestamp(), entry))
-        except (ValueError, TypeError):
-            continue
-
-    if len(recent_history) < 3:
-        return forecasts
-
-    # Sort by timestamp
-    recent_history.sort(key=lambda x: x[0])
-
-    # Get all online, non-maintenance node names
-    online_nodes = set()
-    for node_name, node in nodes.items():
-        if node.get("status") == "online":
-            online_nodes.add(node_name)
-
-    if not online_nodes:
-        return forecasts
-
-    # For each online node, extract CPU and memory time series
-    for node_name in online_nodes:
-        cpu_values = []
-        cpu_timestamps = []
-        mem_values = []
-        mem_timestamps = []
-
-        for ts, entry in recent_history:
-            node_data = entry.get("nodes", {}).get(node_name)
-            if not node_data:
-                continue
-
-            cpu_val = node_data.get("cpu")
-            mem_val = node_data.get("mem")
-
-            if cpu_val is not None:
-                cpu_values.append(float(cpu_val))
-                cpu_timestamps.append(ts)
-
-            if mem_val is not None:
-                mem_values.append(float(mem_val))
-                mem_timestamps.append(ts)
-
-        # Project CPU trend
-        if len(cpu_values) >= 3:
-            cpu_projection = project_trend(cpu_values, cpu_timestamps, hours_ahead=48)
-            current_cpu = cpu_projection["current_value"]
-            projected_cpu = cpu_projection["projected_value"]
-
-            # Only generate forecast if currently below threshold but projected to cross
-            if current_cpu < cpu_threshold and projected_cpu >= cpu_threshold and cpu_projection["trend_rate_per_day"] > 0:
-                # Estimate hours until crossing
-                rate_per_hour = cpu_projection["trend_rate_per_day"] / 24.0
-                if rate_per_hour > 0:
-                    hours_to_crossing = (cpu_threshold - current_cpu) / rate_per_hour
-                else:
-                    hours_to_crossing = 48.0  # fallback
-
-                # Determine severity based on time to crossing
-                if hours_to_crossing < 12:
-                    severity = "critical"
-                elif hours_to_crossing <= 36:
-                    severity = "warning"
-                else:
-                    severity = "info"
-
-                hours_display = round(hours_to_crossing)
-                forecasts.append({
-                    "type": "forecast",
-                    "node": node_name,
-                    "metric": "cpu",
-                    "current_value": round(current_cpu, 1),
-                    "threshold": cpu_threshold,
-                    "projected_value": round(projected_cpu, 1),
-                    "trend_rate_per_day": cpu_projection["trend_rate_per_day"],
-                    "estimated_hours_to_crossing": round(hours_to_crossing, 1),
-                    "confidence": cpu_projection["confidence"],
-                    "r_squared": cpu_projection["r_squared"],
-                    "message": f"CPU on {node_name} trending toward {cpu_threshold:.0f}% threshold — projected to cross in ~{hours_display} hours",
-                    "severity": severity,
-                })
-
-        # Project memory trend
-        if len(mem_values) >= 3:
-            mem_projection = project_trend(mem_values, mem_timestamps, hours_ahead=48)
-            current_mem = mem_projection["current_value"]
-            projected_mem = mem_projection["projected_value"]
-
-            # Only generate forecast if currently below threshold but projected to cross
-            if current_mem < mem_threshold and projected_mem >= mem_threshold and mem_projection["trend_rate_per_day"] > 0:
-                # Estimate hours until crossing
-                rate_per_hour = mem_projection["trend_rate_per_day"] / 24.0
-                if rate_per_hour > 0:
-                    hours_to_crossing = (mem_threshold - current_mem) / rate_per_hour
-                else:
-                    hours_to_crossing = 48.0  # fallback
-
-                # Determine severity based on time to crossing
-                if hours_to_crossing < 12:
-                    severity = "critical"
-                elif hours_to_crossing <= 36:
-                    severity = "warning"
-                else:
-                    severity = "info"
-
-                hours_display = round(hours_to_crossing)
-                forecasts.append({
-                    "type": "forecast",
-                    "node": node_name,
-                    "metric": "memory",
-                    "current_value": round(current_mem, 1),
-                    "threshold": mem_threshold,
-                    "projected_value": round(projected_mem, 1),
-                    "trend_rate_per_day": mem_projection["trend_rate_per_day"],
-                    "estimated_hours_to_crossing": round(hours_to_crossing, 1),
-                    "confidence": mem_projection["confidence"],
-                    "r_squared": mem_projection["r_squared"],
-                    "message": f"Memory on {node_name} trending toward {mem_threshold:.0f}% threshold — projected to cross in ~{hours_display} hours",
-                    "severity": severity,
-                })
-
-    # Sort by severity (critical first) then by hours to crossing (soonest first)
-    severity_order = {"critical": 0, "warning": 1, "info": 2}
-    forecasts.sort(key=lambda f: (severity_order.get(f["severity"], 3), f["estimated_hours_to_crossing"]))
-
-    return forecasts
-
-
-def _save_score_snapshot(nodes: Dict, recommendations: List[Dict], penalty_cfg: Dict):
-    """
-    Save a point-in-time snapshot of per-node scores to score_history.json.
-
-    Each snapshot records score, suitability, CPU%, and memory% for every
-    online node, plus the cluster health and recommendation count.
-    Keeps at most SCORE_HISTORY_MAX_ENTRIES entries (oldest trimmed first).
-    """
-    try:
-        node_snapshots = {}
-        online_scores = []
-
-        for node_name, node in nodes.items():
-            if node.get("status") != "online":
-                continue
-            metrics = node.get("metrics", {})
-            score = calculate_node_health_score(node, metrics, penalty_config=penalty_cfg)
-            suitability = round(max(0, 100 - min(score, 100)), 1)
-            cpu = round(metrics.get("current_cpu", 0), 1)
-            mem = round(metrics.get("current_mem", 0), 1)
-
-            node_snapshots[node_name] = {
-                "score": round(score, 2),
-                "suitability": suitability,
-                "cpu": cpu,
-                "mem": mem,
-            }
-            online_scores.append(score)
-
-        # Cluster health: average suitability across online nodes
-        cluster_health = 0.0
-        if online_scores:
-            avg_score = sum(online_scores) / len(online_scores)
-            cluster_health = round(max(0, 100 - avg_score), 1)
-
-        snapshot = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "nodes": node_snapshots,
-            "cluster_health": cluster_health,
-            "recommendation_count": len(recommendations),
-        }
-
-        # Load existing history
-        history = []
-        if os.path.exists(SCORE_HISTORY_FILE):
-            try:
-                with open(SCORE_HISTORY_FILE, 'r') as f:
-                    history = json.load(f)
-                if not isinstance(history, list):
-                    history = []
-            except (json.JSONDecodeError, IOError):
-                history = []
-
-        history.append(snapshot)
-
-        # Trim to max entries
-        if len(history) > SCORE_HISTORY_MAX_ENTRIES:
-            history = history[-SCORE_HISTORY_MAX_ENTRIES:]
-
-        with open(SCORE_HISTORY_FILE, 'w') as f:
-            json.dump(history, f)
-
-    except Exception as e:
-        print(f"Warning: Failed to save score snapshot: {e}", file=sys.stderr)
-
-
-def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: set = None) -> Dict:
+def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None) -> Dict[str, Any]:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
 
@@ -1526,7 +288,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
 
     recommendations = []
     skipped_guests = []
-    pending_target_guests = {}
+    pending_target_guests = dict(initial_pending_guests) if initial_pending_guests else {}
 
     # Get Proxmox client for storage compatibility checks
     proxmox = None
@@ -1554,6 +316,41 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
 
     # Maintenance nodes get priority evacuation regardless of score
     MAINTENANCE_SCORE_BOOST = penalty_cfg.get("maintenance_score_boost", 100)  # Extra improvement to prioritize evacuation
+
+    # Phase 4a: Cluster convergence check - suppress if all nodes are balanced
+    convergence_threshold = penalty_cfg.get("cluster_convergence_threshold", 8.0)
+    convergence_message = _check_cluster_convergence(nodes, penalty_cfg, cpu_threshold, mem_threshold, convergence_threshold)
+    # Only suppress if no maintenance nodes need evacuation
+    if convergence_message and not maintenance_nodes:
+        print(f"Cluster convergence: {convergence_message}", file=sys.stderr)
+        summary = _build_summary([], [], nodes, penalty_cfg)
+        summary["convergence_message"] = convergence_message
+        return {
+            "recommendations": [],
+            "skipped_guests": [],
+            "summary": summary,
+            "conflicts": [],
+            "capacity_advisories": [],
+            "forecasts": [],
+            "execution_plan": {},
+        }
+
+    # Phase 4d: Load score history for seasonal baseline (once, outside loop)
+    seasonal_cfg = penalty_cfg.get("seasonal_baseline", {})
+    seasonal_enabled = seasonal_cfg.get("enabled", False)
+    sigma_threshold = seasonal_cfg.get("sigma_threshold", 2.0)
+    score_history_data = None
+    seasonal_skip_nodes = set()  # Cache per-node seasonal baseline decisions
+
+    if seasonal_enabled:
+        try:
+            if os.path.exists(SCORE_HISTORY_FILE):
+                with open(SCORE_HISTORY_FILE, 'r') as f:
+                    score_history_data = json.load(f)
+                if not isinstance(score_history_data, list) or len(score_history_data) < 5:
+                    score_history_data = None
+        except Exception as e:
+            print(f"Warning: Could not load score history for seasonal baseline: {e}", file=sys.stderr)
 
     # Step 1: Calculate current score for each guest on its current node
     # Step 2: Calculate potential scores on all other nodes
@@ -1650,8 +447,31 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                         shared_paths = [mp.get("source", "") for mp in shared_mounts]
                         bind_mount_warning = f"Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure paths exist on target node."
 
+            # Phase 4d: Seasonal baseline — skip if source node load is within normal for this time
+            if seasonal_enabled and score_history_data and src_node_name not in maintenance_nodes:
+                if src_node_name not in seasonal_skip_nodes:
+                    current_hour = datetime.now(timezone.utc).hour
+                    baseline = get_node_seasonal_baseline(score_history_data, src_node_name, current_hour)
+                    if baseline and baseline.get("data_points", 0) >= 5:
+                        src_cpu = src_node.get("cpu_percent", 0)
+                        baseline_upper = baseline["avg_cpu"] + (sigma_threshold * baseline["std_cpu"])
+                        if src_cpu <= baseline_upper and src_cpu <= cpu_threshold:
+                            seasonal_skip_nodes.add(src_node_name)
+
+                if src_node_name in seasonal_skip_nodes:
+                    skipped_guests.append({
+                        "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                        "name": guest_name, "type": guest_type, "node": src_node_name,
+                        "reason": "seasonal_baseline",
+                        "detail": f"Source node {src_node_name} load is within seasonal baseline for current hour."
+                    })
+                    continue
+
+            # Load guest behavioral profile for profile-aware scoring (Phase 3c)
+            guest_profile = get_guest_profile(vmid_key)
+
             # Calculate current score (how well current node suits this guest)
-            current_score, src_details = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True)
+            current_score, src_details = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile)
 
             # For maintenance nodes, artificially inflate current score to prioritize evacuation
             if src_node_name in maintenance_nodes:
@@ -1704,7 +524,7 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                         continue
 
                     # Calculate target suitability score with details
-                    score, tgt_details = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True)
+                    score, tgt_details = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile)
 
                     if score < best_target_score:
                         best_target_score = score
@@ -1869,6 +689,9 @@ def generate_recommendations(nodes: Dict, guests: Dict, cpu_threshold: float = 6
                 recommendation["mount_point_info"] = mount_point_info
             if bind_mount_warning:
                 recommendation["bind_mount_warning"] = bind_mount_warning
+
+            # Phase 4b: Calculate cost-benefit ratio
+            recommendation["cost_benefit"] = _calculate_cost_benefit(recommendation, guest)
 
             recommendations.append(recommendation)
 

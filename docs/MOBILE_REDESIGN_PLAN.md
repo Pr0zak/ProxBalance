@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The ProxBalance web interface is currently desktop-optimized with minimal responsive design. Analysis reveals **zero** `sm:` breakpoint usage, only ~13 `md:` occurrences, and **30+** bare multi-column grid layouts without mobile fallbacks across 21,000+ lines of JSX. Tables, the header, footer, modals, and the cluster map all assume wide viewports.
+The ProxBalance web interface is currently desktop-optimized with minimal responsive design. Analysis reveals **zero** `sm:` breakpoint usage, only ~13 `md:` occurrences, and **30+** bare multi-column grid layouts without mobile fallbacks. Tables, the header, footer, modals, and the cluster map all assume wide viewports.
 
 This plan defines a 6-phase implementation to make the interface fully usable on mobile devices (375px+) while preserving the existing desktop experience.
 
@@ -24,9 +24,9 @@ This plan defines a 6-phase implementation to make the interface fully usable on
 |-------|----------|-------|----------------|
 | Bare `grid-cols-2` (no responsive fallback) | High | 19+ | All component files |
 | Bare `grid-cols-3` (no responsive fallback) | Critical | 6+ | Settings, Automation, Dashboard |
-| Bare `grid-cols-4` (no responsive fallback) | High | 3+ | Automation, app.jsx |
+| Bare `grid-cols-4` (no responsive fallback) | High | 3+ | Automation |
 | Header bar overflows (logo + stats + buttons) | Critical | 1 | DashboardPage.jsx |
-| Fixed footer overflows on narrow screens | High | 1 | app.jsx |
+| Fixed footer overflows on narrow screens | High | 1 | index.jsx |
 | Tables too wide (7-8 columns) | High | 3 | Dashboard, Automation |
 | Fixed-size node cards (`w-32 h-40`) | Medium | 1 | DashboardPage.jsx |
 | Modals exceeding viewport (`max-w-4xl`) | Medium | ~15 | All component files |
@@ -37,12 +37,14 @@ This plan defines a 6-phase implementation to make the interface fully usable on
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/app.jsx` | ~11,800 | Main SPA (contains duplicates of component code) |
-| `src/components/DashboardPage.jsx` | 5,322 | Dashboard UI, charts, tables, cluster map |
-| `src/components/AutomationPage.jsx` | 2,588 | Automation config, migration history |
-| `src/components/SettingsPage.jsx` | 1,857 | Settings panel, notification config |
-| `src/index.jsx` | 2,362 | Entry point, page routing |
+| `src/index.jsx` | ~658 | Root component, hook composition, page routing |
+| `src/components/DashboardPage.jsx` | ~416 | Dashboard wrapper (delegates to 13 sub-components in `dashboard/`) |
+| `src/components/AutomationPage.jsx` | ~223 | Automation wrapper (delegates to 6 sub-components in `automation/`) |
+| `src/components/SettingsPage.jsx` | ~213 | Settings wrapper (delegates to 5 sub-components in `settings/`) |
+| `src/hooks/` | 11 files | Custom React hooks (state management) |
 | `index.html` | ~100 | SPA shell (Tailwind CDN config) |
+
+> **Note**: `src/app.jsx` was deleted during the modular refactoring. All UI is now in the componentized files above.
 
 ---
 
@@ -74,9 +76,9 @@ const useIsMobile = (breakpoint = 768) => {
 
 **Used in**: Table card-view rendering, cluster map card sizing, mobile navigation state.
 
-### Duplicate Code in `app.jsx`
+### Componentized Architecture
 
-`src/app.jsx` (~11,800 lines) contains older/duplicate versions of code that has been refactored into the component files. The component files (`DashboardPage.jsx`, `SettingsPage.jsx`, `AutomationPage.jsx`) are the actively used versions imported in `index.jsx`. Changes must be applied to **both** locations until `app.jsx` is fully deprecated.
+The frontend was fully componentized during the modular refactoring. `src/app.jsx` has been deleted. All UI lives in the page wrapper components (`DashboardPage.jsx`, `SettingsPage.jsx`, `AutomationPage.jsx`) which delegate to 24 sub-components. State is managed by 11 custom hooks in `src/hooks/`. Changes only need to be applied to the relevant component file.
 
 ---
 
@@ -88,7 +90,7 @@ const useIsMobile = (breakpoint = 768) => {
 
 ### 1A. Fixed Footer Overflow Fix
 
-**File**: `src/app.jsx` ~line 11737
+**File**: `src/index.jsx`
 
 The footer is `fixed bottom-0` with a single-row flex layout containing timestamps, branch info, commit hash, and update status. On mobile, this overflows.
 
@@ -100,7 +102,7 @@ The footer is `fixed bottom-0` with a single-row flex layout containing timestam
 
 ### 1B. Modal Max-Width Safety
 
-**Files**: All component files + `app.jsx`
+**Files**: All component files
 
 Ensure every modal overlay container has `p-4` padding so modal content never touches screen edges. Most already do -- audit and fix any that don't.
 
@@ -358,9 +360,8 @@ Phases 1, 2, and 3 are fully independent and could be done in any order or in pa
 
 | File | Phases | Estimated Edits | Complexity |
 |------|--------|----------------|------------|
-| `src/components/DashboardPage.jsx` | 1,2,3,4,5 | ~50 class edits + card view | High |
-| `src/app.jsx` | 1,2,3,4 | ~45 class edits (mirrors component changes) | High |
-| `src/index.jsx` | 2 | Mobile nav bar (~30 lines) | Medium |
+| `src/components/DashboardPage.jsx` + `dashboard/` | 1,2,3,4,5 | ~50 class edits + card view | High |
+| `src/index.jsx` | 1,2 | Footer fix + mobile nav bar | Medium |
 | `src/components/AutomationPage.jsx` | 3,4 | ~15 class edits + card view | Medium |
 | `src/components/SettingsPage.jsx` | 2,3 | ~12 class edits | Low |
 | `src/utils/useIsMobile.js` (new) | 4 | New file, ~20 lines | Low |

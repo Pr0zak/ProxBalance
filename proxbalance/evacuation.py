@@ -14,6 +14,7 @@ import time
 import threading
 import traceback
 import uuid
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from proxbalance.config_manager import (
     SESSIONS_DIR,
@@ -21,17 +22,21 @@ from proxbalance.config_manager import (
     DISK_PREFIXES,
     trigger_collection,
 )
+from proxbalance.storage import (
+    get_node_storage,
+    verify_storage_availability,
+)
 
 
 # ---------------------------------------------------------------------------
 # Session file helpers
 # ---------------------------------------------------------------------------
 
-def _get_session_file(session_id):
+def _get_session_file(session_id: str) -> str:
     """Get the file path for a session"""
     return os.path.join(SESSIONS_DIR, f"{session_id}.json")
 
-def _read_session(session_id):
+def _read_session(session_id: str) -> Optional[Dict[str, Any]]:
     """Read session from file"""
     session_file = _get_session_file(session_id)
     if os.path.exists(session_file):
@@ -42,7 +47,7 @@ def _read_session(session_id):
             print(f"Error reading session {session_id}: {e}", file=sys.stderr)
     return None
 
-def _write_session(session_id, session_data):
+def _write_session(session_id: str, session_data: Dict[str, Any]) -> None:
     """Write session to file"""
     session_file = _get_session_file(session_id)
     try:
@@ -56,7 +61,7 @@ def _write_session(session_id, session_data):
 # Evacuation progress helpers
 # ---------------------------------------------------------------------------
 
-def _update_evacuation_progress(session_id, processed, successful, failed, result):
+def _update_evacuation_progress(session_id: str, processed: int, successful: int, failed: int, result: Dict[str, Any]) -> None:
     """Helper to update evacuation session progress"""
     session = _read_session(session_id)
     if session:
@@ -71,7 +76,7 @@ def _update_evacuation_progress(session_id, processed, successful, failed, resul
 # Evacuation status query
 # ---------------------------------------------------------------------------
 
-def get_evacuation_status(session_id):
+def get_evacuation_status(session_id: str) -> Tuple[Dict[str, Any], int]:
     """Get the status of an ongoing evacuation.
 
     Args:
@@ -97,170 +102,11 @@ def get_evacuation_status(session_id):
 
 
 # ---------------------------------------------------------------------------
-# Storage verification helpers
-# ---------------------------------------------------------------------------
-
-def get_node_storage(proxmox, node):
-    """Get all available storage on a specific node.
-
-    Args:
-        proxmox: ProxmoxAPI client instance.
-        node: Node name to query.
-
-    Returns:
-        Tuple of (result_dict, http_status_code).
-    """
-    try:
-        # Get all storage for the node
-        storage_list = proxmox.nodes(node).storage.get()
-
-        # Filter for storage that is enabled and available
-        available_storage = []
-        for storage in storage_list:
-            storage_id = storage.get('storage')
-            enabled = storage.get('enabled', 1)
-            active = storage.get('active', 0)
-
-            # Only include enabled and active storage
-            if enabled and active:
-                available_storage.append({
-                    'storage': storage_id,
-                    'type': storage.get('type'),
-                    'content': storage.get('content', '').split(','),
-                    'available': storage.get('avail', 0),
-                    'used': storage.get('used', 0),
-                    'total': storage.get('total', 0),
-                    'shared': storage.get('shared', 0)
-                })
-
-        return {
-            "success": True,
-            "node": node,
-            "storage": available_storage
-        }, 200
-    except Exception as e:
-        return {"success": False, "error": str(e)}, 500
-
-
-def verify_storage_availability(proxmox, source_node, target_nodes, guest_vmids):
-    """Verify that storage volumes are available on target nodes.
-
-    Args:
-        proxmox: ProxmoxAPI client instance.
-        source_node: Name of the source node.
-        target_nodes: List of target node names.
-        guest_vmids: List of VM/CT IDs to check.
-
-    Returns:
-        Tuple of (result_dict, http_status_code).
-    """
-    try:
-        if not source_node or not target_nodes:
-            return {"success": False, "error": "Missing required parameters"}, 400
-
-        # Get storage info for all target nodes
-        target_storage_map = {}
-        for target_node in target_nodes:
-            try:
-                storage_list = proxmox.nodes(target_node).storage.get()
-                # Create set of available storage IDs
-                available = set()
-                for storage in storage_list:
-                    if storage.get('enabled', 1) and storage.get('active', 0):
-                        available.add(storage.get('storage'))
-                target_storage_map[target_node] = available
-            except Exception as e:
-                print(f"Error getting storage for {target_node}: {e}", file=sys.stderr)
-                target_storage_map[target_node] = set()
-
-        # Check each guest's storage requirements
-        guest_storage_info = []
-        for vmid in guest_vmids:
-            try:
-                # Try to get guest config (qemu or lxc)
-                guest_config = None
-                guest_type = None
-                try:
-                    guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
-                    guest_type = "qemu"
-                except:
-                    try:
-                        guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
-                        guest_type = "lxc"
-                    except:
-                        guest_storage_info.append({
-                            "vmid": vmid,
-                            "type": "unknown",
-                            "storage_volumes": [],
-                            "compatible_targets": [],
-                            "incompatible_targets": target_nodes,
-                            "error": "Cannot determine guest type"
-                        })
-                        continue
-
-                # Extract storage from config
-                storage_volumes = set()
-
-                # Check all config keys for storage references
-                for key, value in guest_config.items():
-                    # Disk keys like scsi0, ide0, virtio0, mp0, rootfs
-                    if key.startswith(DISK_PREFIXES):
-                        # Value format is typically "storage:vm-disk-id" or "storage:subvol-id"
-                        if isinstance(value, str) and ':' in value:
-                            storage_id = value.split(':')[0]
-                            storage_volumes.add(storage_id)
-
-                # Find which targets have all required storage
-                compatible_targets = []
-                incompatible_targets = []
-
-                for target_node in target_nodes:
-                    target_storage = target_storage_map.get(target_node, set())
-                    missing_storage = storage_volumes - target_storage
-
-                    if not missing_storage:
-                        compatible_targets.append(target_node)
-                    else:
-                        incompatible_targets.append({
-                            "node": target_node,
-                            "missing_storage": list(missing_storage)
-                        })
-
-                guest_storage_info.append({
-                    "vmid": vmid,
-                    "type": guest_type,
-                    "storage_volumes": list(storage_volumes),
-                    "compatible_targets": compatible_targets,
-                    "incompatible_targets": incompatible_targets
-                })
-
-            except Exception as e:
-                guest_storage_info.append({
-                    "vmid": vmid,
-                    "type": "unknown",
-                    "storage_volumes": [],
-                    "compatible_targets": [],
-                    "incompatible_targets": target_nodes,
-                    "error": str(e)
-                })
-
-        return {
-            "success": True,
-            "source_node": source_node,
-            "target_storage": {node: list(storage) for node, storage in target_storage_map.items()},
-            "guests": guest_storage_info
-        }, 200
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}, 500
-
-
-# ---------------------------------------------------------------------------
 # Main evacuation orchestration
 # ---------------------------------------------------------------------------
 
-def evacuate_node(proxmox, source_node, maintenance_nodes=None, confirm=False,
-                  guest_actions=None, target_node=None, guest_targets=None):
+def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[List[str]] = None, confirm: bool = False,
+                  guest_actions: Optional[Dict[str, str]] = None, target_node: Optional[str] = None, guest_targets: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, Any], int]:
     """Plan and optionally execute evacuation of all guests from a node.
 
     When *confirm* is ``False`` (the default), only the migration plan is
@@ -604,7 +450,7 @@ def evacuate_node(proxmox, source_node, maintenance_nodes=None, confirm=False,
 # Background evacuation execution
 # ---------------------------------------------------------------------------
 
-def _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox):
+def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int], available_nodes: List[Dict[str, Any]], guest_actions: Dict[str, str], proxmox: Any) -> None:
     """Execute evacuation in background thread.
 
     Iterates over all guests on the source node, determines their type and

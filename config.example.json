@@ -73,7 +73,18 @@
       "respect_exclude_tags": true,
       "respect_exclude_affinity": true,
       "respect_affinity_rules": true,
-      "require_auto_migrate_ok_tag": false
+      "require_auto_migrate_ok_tag": false,
+      "intelligent_migrations": {
+        "enabled": true,
+        "intelligence_level": "standard",
+        "observation_periods": 3,
+        "observation_window_hours": 24,
+        "minimum_data_collection_hours": 24,
+        "risk_confidence_multiplier": 1.2,
+        "min_cost_benefit_ratio": 1.0,
+        "cycle_window_hours": 48,
+        "stale_retention_hours": 48
+      }
     },
     "safety_checks": {
       "check_cluster_health": true,
