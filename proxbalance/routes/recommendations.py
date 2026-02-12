@@ -1,15 +1,15 @@
 """
 Recommendations and node scoring routes.
 
-Handles recommendation generation, caching, threshold suggestions,
+Handles recommendation generation, caching,
 node suitability scoring, per-guest migration options, and recommendation feedback.
 """
 
-from flask import Blueprint, jsonify, request, current_app, make_response
-import json, os, sys, time, csv, io
+from flask import Blueprint, jsonify, request, current_app
+import json, os, sys, time
 from datetime import datetime
 from proxbalance.config_manager import load_config, load_penalty_config, BASE_PATH
-from proxbalance.scoring import calculate_intelligent_thresholds, calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns
+from proxbalance.scoring import calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
 
@@ -56,9 +56,6 @@ def get_recommendations():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": f"Recommendation error: {str(e)}"}), 500
-
-    # Calculate intelligent threshold suggestions
-    threshold_suggestions = calculate_intelligent_thresholds(cache_data.get('nodes', {}))
 
     # AI Enhancement: If enabled, enhance recommendations with AI insights
     ai_enhanced = False
@@ -121,7 +118,6 @@ def get_recommendations():
         "forecasts": forecasts,
         "execution_plan": execution_plan,
         "count": len(recommendations),
-        "threshold_suggestions": threshold_suggestions,
         "ai_enhanced": ai_enhanced,
         "generation_time_ms": round((time.time() - start_time) * 1000),
         "generated_at": datetime.utcnow().isoformat() + 'Z',
@@ -547,22 +543,6 @@ def get_recommendations_diagnostics():
     return jsonify({
         "success": True,
         "diagnostics": diagnostics
-    })
-
-
-@recommendations_bp.route("/api/recommendations/threshold-suggestions", methods=["GET"])
-@api_route
-def get_threshold_suggestions():
-    """Get intelligent threshold suggestions based on cluster analysis"""
-    cache_data = read_cache()
-    if not cache_data:
-        return jsonify({"success": False, "error": "No data available"}), 503
-
-    suggestions = calculate_intelligent_thresholds(cache_data.get('nodes', {}))
-
-    return jsonify({
-        "success": True,
-        **suggestions
     })
 
 
@@ -1167,133 +1147,6 @@ def get_recommendation_feedback():
         "reason_counts": reason_counts,
         "recent": recent,
     })
-
-
-@recommendations_bp.route("/api/recommendations/export", methods=["GET"])
-@api_route
-def export_recommendations():
-    """Export recommendations in CSV or JSON format"""
-    export_format = request.args.get("format", "json").lower()
-    if export_format not in ("json", "csv"):
-        return jsonify({"success": False, "error": "Invalid format. Use 'json' or 'csv'."}), 400
-
-    recommendations_cache_file = os.path.join(BASE_PATH, 'recommendations_cache.json')
-
-    if not os.path.exists(recommendations_cache_file):
-        return jsonify({"success": False, "error": "No cached recommendations available."}), 404
-
-    with open(recommendations_cache_file, 'r') as f:
-        cached_data = json.load(f)
-
-    recommendations = cached_data.get("recommendations", [])
-
-    if export_format == "csv":
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow([
-            "vmid", "name", "type", "source_node", "target_node",
-            "reason", "score_improvement", "confidence_score",
-            "priority", "risk_level", "risk_score", "mem_gb"
-        ])
-        for rec in recommendations:
-            writer.writerow([
-                rec.get("vmid", ""),
-                rec.get("name", ""),
-                rec.get("type", ""),
-                rec.get("source_node", ""),
-                rec.get("target_node", ""),
-                rec.get("reason", ""),
-                rec.get("score_improvement", ""),
-                rec.get("confidence_score", ""),
-                rec.get("priority", ""),
-                rec.get("risk_level", ""),
-                rec.get("risk_score", ""),
-                rec.get("mem_gb", ""),
-            ])
-
-        response = make_response(output.getvalue())
-        response.headers["Content-Type"] = "text/csv"
-        response.headers["Content-Disposition"] = 'attachment; filename="recommendations.csv"'
-        return response
-    else:
-        response = make_response(json.dumps(recommendations, indent=2))
-        response.headers["Content-Type"] = "application/json"
-        response.headers["Content-Disposition"] = 'attachment; filename="recommendations.json"'
-        return response
-
-
-@recommendations_bp.route("/api/automigrate/history/export", methods=["GET"])
-@api_route
-def export_migration_history():
-    """Export migration history in CSV or JSON format"""
-    export_format = request.args.get("format", "json").lower()
-    if export_format not in ("json", "csv"):
-        return jsonify({"success": False, "error": "Invalid format. Use 'json' or 'csv'."}), 400
-
-    history_file = os.path.join(BASE_PATH, 'migration_history.json')
-
-    if not os.path.exists(history_file):
-        return jsonify({"success": False, "error": "No migration history available."}), 404
-
-    with open(history_file, 'r') as f:
-        history = json.load(f)
-
-    if not isinstance(history, list):
-        history = []
-
-    # Apply date range filters if provided
-    date_from = request.args.get("from")
-    date_to = request.args.get("to")
-
-    if date_from:
-        try:
-            from_dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
-            history = [
-                m for m in history
-                if datetime.fromisoformat(m.get("timestamp", "1970-01-01T00:00:00").replace("Z", "+00:00")) >= from_dt
-            ]
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "error": "Invalid 'from' date format. Use ISO 8601."}), 400
-
-    if date_to:
-        try:
-            to_dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
-            history = [
-                m for m in history
-                if datetime.fromisoformat(m.get("timestamp", "9999-12-31T23:59:59").replace("Z", "+00:00")) <= to_dt
-            ]
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "error": "Invalid 'to' date format. Use ISO 8601."}), 400
-
-    if export_format == "csv":
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow([
-            "timestamp", "vmid", "name", "type", "source_node",
-            "target_node", "status", "score_improvement", "initiated_by"
-        ])
-        for m in history:
-            writer.writerow([
-                m.get("timestamp", ""),
-                m.get("vmid", ""),
-                m.get("name", ""),
-                m.get("type", ""),
-                m.get("source_node", ""),
-                m.get("target_node", ""),
-                m.get("status", ""),
-                m.get("score_improvement", ""),
-                m.get("initiated_by", ""),
-            ])
-
-        response = make_response(output.getvalue())
-        response.headers["Content-Type"] = "text/csv"
-        response.headers["Content-Disposition"] = 'attachment; filename="migration_history.csv"'
-        return response
-    else:
-        response = make_response(json.dumps(history, indent=2))
-        response.headers["Content-Type"] = "application/json"
-        response.headers["Content-Disposition"] = 'attachment; filename="migration_history.json"'
-        return response
 
 
 # ---------------------------------------------------------------------------

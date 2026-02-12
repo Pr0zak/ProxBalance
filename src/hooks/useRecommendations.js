@@ -9,7 +9,6 @@ export function useRecommendations(API_BASE, deps = {}) {
   const [recommendationData, setRecommendationData] = useState(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState({});
-  const [thresholdSuggestions, setThresholdSuggestions] = useState(null);
 
   const [cpuThreshold, setCpuThreshold] = useState(() => {
     const saved = localStorage.getItem('proxbalance_cpu_threshold');
@@ -23,11 +22,6 @@ export function useRecommendations(API_BASE, deps = {}) {
     const saved = localStorage.getItem('proxbalance_iowait_threshold');
     return saved ? Number(saved) : DEFAULT_IOWAIT_THRESHOLD;
   });
-  const [thresholdMode, setThresholdMode] = useState(() => {
-    const saved = localStorage.getItem('proxbalance_threshold_mode');
-    return saved || 'manual';
-  });
-
   // Save thresholds to localStorage
   useEffect(() => {
     localStorage.setItem('proxbalance_cpu_threshold', cpuThreshold.toString());
@@ -41,19 +35,6 @@ export function useRecommendations(API_BASE, deps = {}) {
     localStorage.setItem('proxbalance_iowait_threshold', iowaitThreshold.toString());
   }, [iowaitThreshold]);
 
-  useEffect(() => {
-    localStorage.setItem('proxbalance_threshold_mode', thresholdMode);
-  }, [thresholdMode]);
-
-  // Auto-apply suggested thresholds when in auto mode
-  useEffect(() => {
-    if (thresholdMode === 'auto' && thresholdSuggestions) {
-      setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold);
-      setMemThreshold(thresholdSuggestions.suggested_mem_threshold);
-      setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold);
-    }
-  }, [thresholdMode, thresholdSuggestions]);
-
   // Fetch cached recommendations (GET - fast, no regeneration)
   const fetchCachedRecommendations = async () => {
     if (!data) return;
@@ -63,9 +44,6 @@ export function useRecommendations(API_BASE, deps = {}) {
       if (result.success) {
         setRecommendations(result.recommendations);
         setRecommendationData(result);
-        if (result.threshold_suggestions) {
-          setThresholdSuggestions(result.threshold_suggestions);
-        }
       } else if (result.cache_missing) {
         generateRecommendations();
       }
@@ -93,9 +71,6 @@ export function useRecommendations(API_BASE, deps = {}) {
       if (result.success) {
         setRecommendations(result.recommendations);
         setRecommendationData(result);
-        if (result.threshold_suggestions) {
-          setThresholdSuggestions(result.threshold_suggestions);
-        }
       }
     } catch (err) {
       console.error('Error generating recommendations:', err);
@@ -135,11 +110,9 @@ export function useRecommendations(API_BASE, deps = {}) {
     recommendationData,
     loadingRecommendations,
     feedbackGiven,
-    thresholdSuggestions,
     cpuThreshold, setCpuThreshold,
     memThreshold, setMemThreshold,
     iowaitThreshold, setIowaitThreshold,
-    thresholdMode, setThresholdMode,
     fetchCachedRecommendations,
     fetchRecommendations,
     generateRecommendations,

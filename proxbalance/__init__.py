@@ -24,7 +24,6 @@ from proxbalance.config_manager import (
 from proxbalance.cache import CacheManager
 from proxbalance.scoring import (
     DEFAULT_PENALTY_CONFIG,
-    calculate_intelligent_thresholds,
     calculate_node_health_score,
     predict_post_migration_load,
     calculate_target_node_score,
