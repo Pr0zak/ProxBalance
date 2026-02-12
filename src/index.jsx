@@ -69,6 +69,7 @@ const ProxmoxBalanceManager = () => {
     automation.fetchRunHistory();
     auth.checkPermissions();
     configHook.fetchPenaltyConfig();
+    configHook.fetchMigrationSettings();
   }, []);
 
   // Hide splash screen when data loads
@@ -414,6 +415,17 @@ const ProxmoxBalanceManager = () => {
       iowaitThreshold={recs.iowaitThreshold}
       savePenaltyConfig={configHook.savePenaltyConfig}
       resetPenaltyConfig={configHook.resetPenaltyConfig}
+      migrationSettings={configHook.migrationSettings}
+      setMigrationSettings={configHook.setMigrationSettings}
+      migrationSettingsDefaults={configHook.migrationSettingsDefaults}
+      migrationSettingsDescriptions={configHook.migrationSettingsDescriptions}
+      effectivePenaltyConfig={configHook.effectivePenaltyConfig}
+      hasExpertOverrides={configHook.hasExpertOverrides}
+      savingMigrationSettings={configHook.savingMigrationSettings}
+      migrationSettingsSaved={configHook.migrationSettingsSaved}
+      saveMigrationSettingsAction={configHook.saveMigrationSettingsAction}
+      resetMigrationSettingsAction={configHook.resetMigrationSettingsAction}
+      fetchMigrationSettingsAction={configHook.fetchMigrationSettings}
       saveAutomationConfig={automation.saveAutomationConfig}
       setAutomigrateLogs={automation.setAutomigrateLogs}
       setCollapsedSections={ui.setCollapsedSections}

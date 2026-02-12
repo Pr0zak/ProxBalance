@@ -1,7 +1,7 @@
 import {
   CheckCircle, XCircle, AlertTriangle, Info, ArrowRight,
   Terminal, Folder, RotateCcw, Play, Lock, RefreshCw,
-  ThumbsUp, ThumbsDown
+  ThumbsUp, ThumbsDown, TrendingUp, TrendingDown, Minus, Zap, Activity
 } from '../../Icons.jsx';
 
 export default function RecommendationCard({
@@ -73,6 +73,13 @@ export default function RecommendationCard({
                       ({rec.score_details.source.metrics.current_cpu?.toFixed(0) || '?'}% CPU)
                     </span>
                   )}
+                  {rec.trend_evidence?.available && (() => {
+                    const dir = rec.trend_evidence.source_node_trend?.cpu_direction;
+                    if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-600 ml-0.5" title="CPU rising fast" />;
+                    if (dir === 'rising') return <TrendingUp size={10} className="text-orange-500 ml-0.5" title="CPU rising" />;
+                    if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500 ml-0.5" title="CPU falling" />;
+                    return null;
+                  })()}
                 </span>
                 <ArrowRight size={16} className="text-gray-400 dark:text-gray-500" />
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold">
@@ -83,6 +90,13 @@ export default function RecommendationCard({
                       ({rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || '?'}% CPU)
                     </span>
                   )}
+                  {rec.trend_evidence?.available && (() => {
+                    const dir = rec.trend_evidence.target_node_trend?.cpu_direction;
+                    if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-orange-500 ml-0.5" title="CPU rising" />;
+                    if (dir === 'rising') return <TrendingUp size={10} className="text-yellow-500 ml-0.5" title="CPU rising slightly" />;
+                    if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500 ml-0.5" title="CPU falling" />;
+                    return <Minus size={10} className="text-gray-400 ml-0.5" title="CPU stable" />;
+                  })()}
                 </span>
                 {rec.score_improvement !== undefined && (() => {
                   const maxImprovement = 80;
@@ -275,6 +289,137 @@ export default function RecommendationCard({
               </div>
             </div>
           )}
+
+          {/* Decision Explanation (one-liner, always visible when trend data available) */}
+          {rec.decision_explanation && (
+            <div className="mt-1.5 text-xs text-gray-600 dark:text-gray-400 italic">
+              {rec.decision_explanation}
+            </div>
+          )}
+
+          {/* "Why This Migration?" Expandable Section */}
+          {rec.trend_evidence?.available && !isCompleted && (
+            <div className="mt-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const trendKey = `trend-${idx}`;
+                  setCollapsedSections(prev => ({ ...prev, [trendKey]: !prev[trendKey] }));
+                }}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                <Activity size={12} />
+                {collapsedSections[`trend-${idx}`] ? 'Hide trend analysis' : 'Why this migration?'}
+              </button>
+              {collapsedSections[`trend-${idx}`] && (
+                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded text-xs space-y-3">
+                  {/* Source vs Target Trend Summary */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1">
+                        Source: {rec.source_node}
+                        {(() => {
+                          const dir = rec.trend_evidence.source_node_trend?.cpu_direction;
+                          if (dir === 'sustained_increase' || dir === 'rising')
+                            return <TrendingUp size={12} className="text-red-500" />;
+                          if (dir === 'sustained_decrease' || dir === 'falling')
+                            return <TrendingDown size={12} className="text-green-500" />;
+                          return <Minus size={12} className="text-gray-400" />;
+                        })()}
+                      </div>
+                      <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                        <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
+                        <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
+                        <div>Stability: {rec.trend_evidence.source_node_trend?.stability_score || '?'}/100</div>
+                        {rec.trend_evidence.source_node_trend?.above_baseline && (
+                          <div className="text-orange-600 dark:text-orange-400 font-medium">
+                            Above baseline ({rec.trend_evidence.source_node_trend.baseline_deviation_sigma?.toFixed(1) || '?'}σ)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1">
+                        Target: {rec.target_node}
+                        {(() => {
+                          const dir = rec.trend_evidence.target_node_trend?.cpu_direction;
+                          if (dir === 'sustained_increase' || dir === 'rising')
+                            return <TrendingUp size={12} className="text-orange-500" />;
+                          if (dir === 'sustained_decrease' || dir === 'falling')
+                            return <TrendingDown size={12} className="text-green-500" />;
+                          return <Minus size={12} className="text-gray-400" />;
+                        })()}
+                      </div>
+                      <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                        <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
+                        <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
+                        <div>Stability: {rec.trend_evidence.target_node_trend?.stability_score || '?'}/100</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guest Behavior */}
+                  {rec.trend_evidence.guest_trend && (
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
+                      <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Guest Behavior</div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          rec.trend_evidence.guest_trend.behavior === 'growing' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                          rec.trend_evidence.guest_trend.behavior === 'bursty' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                          rec.trend_evidence.guest_trend.behavior === 'steady' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                          'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                        }`}>{rec.trend_evidence.guest_trend.behavior || 'unknown'}</span>
+                        <span className="text-gray-500 dark:text-gray-400">CPU: {rec.trend_evidence.guest_trend.cpu_growth_rate || 'N/A'}</span>
+                        {rec.trend_evidence.guest_trend.previous_migrations > 0 && (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            | Migrated {rec.trend_evidence.guest_trend.previous_migrations}x before
+                          </span>
+                        )}
+                        {rec.trend_evidence.guest_trend.peak_hours?.length > 0 && (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            | Peak hours: {rec.trend_evidence.guest_trend.peak_hours.map(h => `${h}:00`).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Decision Factors */}
+                  {rec.trend_evidence.decision_factors?.length > 0 && (
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
+                      <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Decision Factors</div>
+                      <div className="space-y-1">
+                        {rec.trend_evidence.decision_factors.map((f, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <span className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${
+                              f.type === 'problem' ? 'bg-red-500' :
+                              f.type === 'positive' ? 'bg-green-500' :
+                              f.type === 'concern' ? 'bg-yellow-500' :
+                              'bg-gray-400'
+                            }`} />
+                            <span className="text-gray-600 dark:text-gray-400">
+                              {f.factor}
+                              {f.weight === 'high' && <span className="ml-1 text-[9px] font-bold text-gray-400 dark:text-gray-500">(HIGH)</span>}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Data Quality */}
+                  {rec.trend_evidence.data_quality && (
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 pt-1">
+                      Based on {rec.trend_evidence.data_quality.node_history_days || 0} days of node history,{' '}
+                      {rec.trend_evidence.data_quality.guest_history_days || 0} days of guest history.{' '}
+                      {rec.trend_evidence.data_quality.confidence_note}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-1">
             <div className="flex flex-wrap items-center gap-3">
               <button

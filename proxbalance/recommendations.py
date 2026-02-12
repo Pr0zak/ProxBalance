@@ -56,6 +56,19 @@ from proxbalance.recommendation_analysis import (
 from proxbalance.patterns import get_node_seasonal_baseline
 from proxbalance.guest_profiles import get_guest_profile
 
+# Lazy import for trend analysis (may not have data yet)
+_trend_module = None
+
+def _get_trend_module():
+    global _trend_module
+    if _trend_module is None:
+        try:
+            from proxbalance import trend_analysis
+            _trend_module = trend_analysis
+        except Exception:
+            pass
+    return _trend_module
+
 
 # ---------------------------------------------------------------------------
 # Guest selection
@@ -661,6 +674,18 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                             shared_paths = [mp.get("source", "") for mp in shared_mounts]
                             bind_mount_warning = f"\u2139\ufe0f Container has {len(shared_mounts)} shared bind mount(s): {', '.join(shared_paths[:2])}{'...' if len(shared_paths) > 2 else ''}. Ensure these paths exist on {best_target}."
 
+            # Build trend evidence for transparency
+            trend_evidence = _build_trend_evidence(
+                src_node_name, best_target, vmid_key,
+                src_details, tgt_details, penalty_cfg,
+                cpu_threshold, mem_threshold,
+            )
+
+            # Build human-readable decision explanation
+            decision_explanation = _build_decision_explanation(
+                guest, src_node_name, best_target, trend_evidence, score_improvement,
+            )
+
             recommendation = {
                 "vmid": vmid_int,
                 "name": guest.get("name", "unknown"),
@@ -682,6 +707,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 "risk_score": risk_info["risk_score"],  # 0-100, lower is safer
                 "risk_level": risk_info["risk_level"],  # low/moderate/high/very_high
                 "risk_factors": risk_info["risk_factors"],  # Detailed breakdown
+                "trend_evidence": trend_evidence,  # Trend-based decision evidence
+                "decision_explanation": decision_explanation,  # Human-readable explanation
             }
 
             # Add mount point metadata and warnings if present
@@ -986,3 +1013,207 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         "forecasts": forecasts,
         "execution_plan": execution_plan,
     }
+
+
+# ---------------------------------------------------------------------------
+# Trend evidence and decision explanation helpers
+# ---------------------------------------------------------------------------
+
+def _build_trend_evidence(
+    src_node_name: str,
+    tgt_node_name: str,
+    vmid_key: str,
+    src_details: Dict,
+    tgt_details: Dict,
+    penalty_cfg: Dict,
+    cpu_threshold: float,
+    mem_threshold: float,
+) -> Dict[str, Any]:
+    """Build the trend_evidence object for a recommendation.
+
+    Gracefully returns minimal evidence if the metrics store has no data.
+    """
+    ta = _get_trend_module()
+    if not ta:
+        return {"available": False, "reason": "Trend analysis module not available"}
+
+    try:
+        lookback = penalty_cfg.get("_lookback_hours", 168)  # default 7 days
+
+        src_trend = ta.analyze_node_trends(src_node_name, lookback, cpu_threshold, mem_threshold)
+        tgt_trend = ta.analyze_node_trends(tgt_node_name, lookback, cpu_threshold, mem_threshold)
+        guest_trend = ta.analyze_guest_trends(str(vmid_key), lookback)
+
+        # Check data quality
+        src_quality = src_trend.get("data_quality", {})
+        tgt_quality = tgt_trend.get("data_quality", {})
+
+        if src_quality.get("total_samples", 0) < 2 and tgt_quality.get("total_samples", 0) < 2:
+            return {
+                "available": False,
+                "reason": "Insufficient historical data. Trends will be available after a few collection cycles.",
+            }
+
+        # Build decision factors list
+        decision_factors = []
+
+        # Source node factors
+        src_cpu_rate = src_trend.get("cpu", {}).get("rate_per_day", 0)
+        src_mem_rate = src_trend.get("memory", {}).get("rate_per_day", 0)
+
+        if src_cpu_rate > 0.5:
+            decision_factors.append({
+                "factor": f"Source node CPU trending up {src_trend['cpu'].get('rate_display', '')} over {lookback // 24}d",
+                "weight": "high" if src_cpu_rate > 2.0 else "medium",
+                "type": "problem",
+            })
+        if src_mem_rate > 0.5:
+            decision_factors.append({
+                "factor": f"Source node memory trending up {src_trend['memory'].get('rate_display', '')} over {lookback // 24}d",
+                "weight": "high" if src_mem_rate > 2.0 else "medium",
+                "type": "problem",
+            })
+        if src_trend.get("cpu_above_baseline"):
+            decision_factors.append({
+                "factor": f"Source node CPU is above seasonal baseline ({src_trend.get('cpu_baseline_sigma', 0):.1f}σ)",
+                "weight": "medium",
+                "type": "problem",
+            })
+
+        # Target node factors
+        tgt_stab = tgt_trend.get("overall_stability", 50)
+        tgt_cpu_rate = tgt_trend.get("cpu", {}).get("rate_per_day", 0)
+
+        if tgt_stab >= 70:
+            decision_factors.append({
+                "factor": f"Target node is stable (score {tgt_stab}/100), predictable performance",
+                "weight": "high",
+                "type": "positive",
+            })
+        if tgt_cpu_rate < -0.5:
+            decision_factors.append({
+                "factor": f"Target node CPU trending down {tgt_trend['cpu'].get('rate_display', '')}",
+                "weight": "medium",
+                "type": "positive",
+            })
+        elif tgt_cpu_rate > 1.0:
+            decision_factors.append({
+                "factor": f"Target node CPU also trending up {tgt_trend['cpu'].get('rate_display', '')}",
+                "weight": "medium",
+                "type": "concern",
+            })
+
+        # Guest factors
+        guest_behavior = guest_trend.get("behavior", "unknown")
+        guest_cpu_rate = guest_trend.get("cpu", {}).get("rate_per_day", 0)
+        guest_migrations = guest_trend.get("migration_count", 0)
+
+        if guest_behavior == "growing":
+            decision_factors.append({
+                "factor": f"Guest CPU growing {guest_trend['cpu'].get('rate_display', '')}, contributing to source overload",
+                "weight": "high",
+                "type": "problem",
+            })
+        elif guest_behavior == "bursty":
+            decision_factors.append({
+                "factor": "Guest is bursty — load spikes may self-resolve",
+                "weight": "low",
+                "type": "concern",
+            })
+
+        if guest_migrations > 0:
+            decision_factors.append({
+                "factor": f"Guest has been migrated {guest_migrations} time(s) before",
+                "weight": "low",
+                "type": "info",
+            })
+
+        # Data quality
+        node_days = max(
+            src_quality.get("coverage_days", 0),
+            tgt_quality.get("coverage_days", 0),
+        )
+        guest_days = guest_trend.get("data_points", 0) / 12  # approx days
+
+        return {
+            "available": True,
+            "source_node_trend": {
+                "cpu_trend": src_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "cpu_direction": src_trend.get("cpu", {}).get("direction", "unknown"),
+                "mem_trend": src_trend.get("memory", {}).get("rate_display", "0%/day"),
+                "mem_direction": src_trend.get("memory", {}).get("direction", "unknown"),
+                "stability_score": src_trend.get("overall_stability", 50),
+                "above_baseline": src_trend.get("cpu_above_baseline", False),
+                "baseline_deviation_sigma": src_trend.get("cpu_baseline_sigma"),
+            },
+            "target_node_trend": {
+                "cpu_trend": tgt_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "cpu_direction": tgt_trend.get("cpu", {}).get("direction", "unknown"),
+                "mem_trend": tgt_trend.get("memory", {}).get("rate_display", "0%/day"),
+                "mem_direction": tgt_trend.get("memory", {}).get("direction", "unknown"),
+                "stability_score": tgt_trend.get("overall_stability", 50),
+                "above_baseline": tgt_trend.get("cpu_above_baseline", False),
+            },
+            "guest_trend": {
+                "cpu_growth_rate": guest_trend.get("cpu", {}).get("rate_display", "0%/day"),
+                "behavior": guest_behavior,
+                "peak_hours": guest_trend.get("peak_hours", []),
+                "previous_migrations": guest_migrations,
+            },
+            "decision_factors": decision_factors,
+            "data_quality": {
+                "node_history_days": round(node_days, 1),
+                "guest_history_days": round(guest_days, 1),
+                "confidence_note": "High data availability" if node_days >= 7 else (
+                    "Moderate data" if node_days >= 2 else "Limited data — trends will improve with more collection cycles"
+                ),
+            },
+        }
+
+    except Exception as e:
+        print(f"Warning: Failed to build trend evidence for {vmid_key}: {e}", file=sys.stderr)
+        return {"available": False, "reason": f"Error computing trends: {str(e)}"}
+
+
+def _build_decision_explanation(
+    guest: Dict,
+    src_node: str,
+    tgt_node: str,
+    trend_evidence: Dict,
+    score_improvement: float,
+) -> str:
+    """Build a human-readable 1-2 sentence decision explanation."""
+    if not trend_evidence.get("available"):
+        name = guest.get("name", "Guest")
+        return f"{name} would improve cluster balance by {score_improvement:.0f} points by moving from {src_node} to {tgt_node}."
+
+    parts = []
+    src_trend = trend_evidence.get("source_node_trend", {})
+    tgt_trend = trend_evidence.get("target_node_trend", {})
+    guest_info = trend_evidence.get("guest_trend", {})
+
+    # Source description
+    src_cpu_dir = src_trend.get("cpu_direction", "unknown")
+    if src_cpu_dir in ("sustained_increase", "rising"):
+        parts.append(f"Source node '{src_node}' CPU is trending up ({src_trend.get('cpu_trend', '')})")
+    elif src_trend.get("above_baseline"):
+        parts.append(f"Source node '{src_node}' is above its normal baseline")
+    else:
+        parts.append(f"Source node '{src_node}' has higher load than '{tgt_node}'")
+
+    # Guest description
+    behavior = guest_info.get("behavior", "")
+    name = guest.get("name", "Guest")
+    if behavior == "growing":
+        parts.append(f"{name} is growing ({guest_info.get('cpu_growth_rate', '')})")
+    elif behavior == "bursty":
+        parts.append(f"{name} has bursty workload patterns")
+
+    # Target description
+    tgt_stab = tgt_trend.get("stability_score", 50)
+    if tgt_stab >= 70:
+        parts.append(f"Target '{tgt_node}' is stable with predictable performance")
+    else:
+        parts.append(f"Target '{tgt_node}' has available capacity")
+
+    return ". ".join(parts) + f". Expected improvement: {score_improvement:.0f} points."

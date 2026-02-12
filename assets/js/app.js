@@ -14,8 +14,8 @@
     return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
   var __export = (target, all) => {
-    for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: !0 });
+    for (var name2 in all)
+      __defProp(target, name2, { get: all[name2], enumerable: !0 });
   }, __copyProps = (to, from, except, desc) => {
     if (from && typeof from == "object" || typeof from == "function")
       for (let key of __getOwnPropNames(from))
@@ -60,8 +60,12 @@
     fetchGuestLocation: () => fetchGuestLocation,
     fetchGuestLocations: () => fetchGuestLocations,
     fetchGuestMigrationOptions: () => fetchGuestMigrationOptions,
+    fetchGuestTrendDetail: () => fetchGuestTrendDetail,
     fetchMigrationOutcomes: () => fetchMigrationOutcomes,
+    fetchMigrationSettings: () => fetchMigrationSettings,
     fetchNodeScores: () => fetchNodeScores,
+    fetchNodeTrendDetail: () => fetchNodeTrendDetail,
+    fetchNodeTrends: () => fetchNodeTrends,
     fetchPenaltyConfig: () => fetchPenaltyConfig,
     fetchRecommendationDiagnostics: () => fetchRecommendationDiagnostics,
     fetchRollbackInfo: () => fetchRollbackInfo,
@@ -73,10 +77,12 @@
     generateRecommendations: () => generateRecommendations,
     handleUpdate: () => handleUpdate,
     refreshMigrationOutcomes: () => refreshMigrationOutcomes,
+    resetMigrationSettings: () => resetMigrationSettings,
     resetPenaltyConfig: () => resetPenaltyConfig,
     rollbackBranch: () => rollbackBranch,
     runAutomationNow: () => runAutomationNow,
     saveAutomationConfig: () => saveAutomationConfig,
+    saveMigrationSettings: () => saveMigrationSettings,
     savePenaltyConfig: () => savePenaltyConfig,
     saveSettings: () => saveSettings,
     simulatePenaltyConfig: () => simulatePenaltyConfig,
@@ -147,6 +153,57 @@
       })).json();
     } catch (err) {
       return console.error("Failed to apply penalty preset:", err), { error: !0, message: err.message };
+    }
+  }
+  async function fetchMigrationSettings() {
+    try {
+      return await (await fetch(`${API_BASE}/migration-settings`)).json();
+    } catch (err) {
+      return console.error("Failed to load migration settings:", err), { error: !0, message: err.message };
+    }
+  }
+  async function saveMigrationSettings(settings) {
+    try {
+      return await (await fetch(`${API_BASE}/migration-settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings })
+      })).json();
+    } catch (err) {
+      return console.error("Failed to save migration settings:", err), { error: !0, message: err.message };
+    }
+  }
+  async function resetMigrationSettings() {
+    try {
+      return await (await fetch(`${API_BASE}/migration-settings/reset`, {
+        method: "POST"
+      })).json();
+    } catch (err) {
+      return console.error("Failed to reset migration settings:", err), { error: !0, message: err.message };
+    }
+  }
+  async function fetchNodeTrends(lookbackDays = 7, cpuThreshold, memThreshold) {
+    try {
+      let params = new URLSearchParams({ lookback_days: lookbackDays });
+      return cpuThreshold && params.append("cpu_threshold", cpuThreshold), memThreshold && params.append("mem_threshold", memThreshold), await (await fetch(`${API_BASE}/trends/nodes?${params}`)).json();
+    } catch (err) {
+      return console.error("Failed to load node trends:", err), { error: !0, message: err.message };
+    }
+  }
+  async function fetchNodeTrendDetail(nodeName, lookbackDays = 7) {
+    try {
+      let params = new URLSearchParams({ lookback_days: lookbackDays });
+      return await (await fetch(`${API_BASE}/trends/node/${nodeName}?${params}`)).json();
+    } catch (err) {
+      return console.error("Failed to load node trend detail:", err), { error: !0, message: err.message };
+    }
+  }
+  async function fetchGuestTrendDetail(vmid, lookbackDays = 7) {
+    try {
+      let params = new URLSearchParams({ lookback_days: lookbackDays });
+      return await (await fetch(`${API_BASE}/trends/guest/${vmid}?${params}`)).json();
+    } catch (err) {
+      return console.error("Failed to load guest trend detail:", err), { error: !0, message: err.message };
     }
   }
   async function validateMigration(vmid, sourceNode, targetNode, guestType) {
@@ -572,7 +629,7 @@
 
   // src/components/Icons.jsx
   var AlertCircle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "8", x2: "12", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "16", x2: "12.01", y2: "16" })), Server = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "2", y: "2", width: "20", height: "8", rx: "2" }), /* @__PURE__ */ React.createElement("rect", { x: "2", y: "14", width: "20", height: "8", rx: "2" })), HardDrive = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "22", y1: "12", x2: "2", y2: "12" }), /* @__PURE__ */ React.createElement("path", { d: "M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" })), Activity = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "22 12 18 12 15 21 9 3 6 12 2 12" })), RefreshCw = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "23 4 23 10 17 10" }), /* @__PURE__ */ React.createElement("path", { d: "M20.49 15a9 9 0 1 1-2.12-9.36L23 10" })), Play = ({ size }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" }, /* @__PURE__ */ React.createElement("polygon", { points: "5 3 19 12 5 21 5 3" })), CheckCircle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M22 11.08V12a10 10 0 1 1-5.93-9.14" }), /* @__PURE__ */ React.createElement("polyline", { points: "22 4 12 14.01 9 11.01" })), XCircle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "15", y1: "9", x2: "9", y2: "15" }), /* @__PURE__ */ React.createElement("line", { x1: "9", y1: "9", x2: "15", y2: "15" })), ClipboardList = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "8", y: "2", width: "8", height: "4", rx: "1", ry: "1" }), /* @__PURE__ */ React.createElement("path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }), /* @__PURE__ */ React.createElement("line", { x1: "9", y1: "12", x2: "15", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "9", y1: "16", x2: "15", y2: "16" })), Tag = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" }), /* @__PURE__ */ React.createElement("line", { x1: "7", y1: "7", x2: "7.01", y2: "7" })), AlertTriangle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "9", x2: "12", y2: "13" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })), Info = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })), Shield = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" })), Clock = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("polyline", { points: "12 6 12 12 16 14" })), Sun = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "5" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "1", x2: "12", y2: "3" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "21", x2: "12", y2: "23" }), /* @__PURE__ */ React.createElement("line", { x1: "4.22", y1: "4.22", x2: "5.64", y2: "5.64" }), /* @__PURE__ */ React.createElement("line", { x1: "18.36", y1: "18.36", x2: "19.78", y2: "19.78" }), /* @__PURE__ */ React.createElement("line", { x1: "1", y1: "12", x2: "3", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "21", y1: "12", x2: "23", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "4.22", y1: "19.78", x2: "5.64", y2: "18.36" }), /* @__PURE__ */ React.createElement("line", { x1: "18.36", y1: "5.64", x2: "19.78", y2: "4.22" })), Moon = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" })), Settings = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" }), /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "3" })), X = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "18", y1: "6", x2: "6", y2: "18" }), /* @__PURE__ */ React.createElement("line", { x1: "6", y1: "6", x2: "18", y2: "18" })), Save = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" }), /* @__PURE__ */ React.createElement("polyline", { points: "17 21 17 13 7 13 7 21" }), /* @__PURE__ */ React.createElement("polyline", { points: "7 3 7 8 15 8" })), Upload = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), /* @__PURE__ */ React.createElement("polyline", { points: "17 8 12 3 7 8" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "3", x2: "12", y2: "15" })), ChevronDown = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "6 9 12 15 18 9" })), ChevronUp = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "18 15 12 9 6 15" })), ChevronRight = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "9 18 15 12 9 6" })), GitHub = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "currentColor", className }, /* @__PURE__ */ React.createElement("path", { d: "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" })), GitBranch = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "6", y1: "3", x2: "6", y2: "15" }), /* @__PURE__ */ React.createElement("circle", { cx: "18", cy: "6", r: "3" }), /* @__PURE__ */ React.createElement("circle", { cx: "6", cy: "18", r: "3" }), /* @__PURE__ */ React.createElement("path", { d: "M18 9a9 9 0 0 1-9 9" })), ArrowLeft = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "19", y1: "12", x2: "5", y2: "12" }), /* @__PURE__ */ React.createElement("polyline", { points: "12 19 5 12 12 5" })), Lock = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }), /* @__PURE__ */ React.createElement("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" })), Download = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), /* @__PURE__ */ React.createElement("polyline", { points: "7 10 12 15 17 10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "15", x2: "12", y2: "3" })), MoveRight = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M18 8L22 12L18 16" }), /* @__PURE__ */ React.createElement("path", { d: "M2 12H22" })), Loader = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "2", x2: "12", y2: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "18", x2: "12", y2: "22" }), /* @__PURE__ */ React.createElement("line", { x1: "4.93", y1: "4.93", x2: "7.76", y2: "7.76" }), /* @__PURE__ */ React.createElement("line", { x1: "16.24", y1: "16.24", x2: "19.07", y2: "19.07" }), /* @__PURE__ */ React.createElement("line", { x1: "2", y1: "12", x2: "6", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "18", y1: "12", x2: "22", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "4.93", y1: "19.07", x2: "7.76", y2: "16.24" }), /* @__PURE__ */ React.createElement("line", { x1: "16.24", y1: "7.76", x2: "19.07", y2: "4.93" })), Plus = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "5", x2: "12", y2: "19" }), /* @__PURE__ */ React.createElement("line", { x1: "5", y1: "12", x2: "19", y2: "12" })), List = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "8", y1: "6", x2: "21", y2: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "8", y1: "12", x2: "21", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "8", y1: "18", x2: "21", y2: "18" }), /* @__PURE__ */ React.createElement("line", { x1: "3", y1: "6", x2: "3.01", y2: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "3", y1: "12", x2: "3.01", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "3", y1: "18", x2: "3.01", y2: "18" })), Terminal = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "4 17 10 11 4 5" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "19", x2: "20", y2: "19" })), ArrowRight = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "5", y1: "12", x2: "19", y2: "12" }), /* @__PURE__ */ React.createElement("polyline", { points: "12 5 19 12 12 19" })), History = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }), /* @__PURE__ */ React.createElement("path", { d: "M3 3v5h5" }), /* @__PURE__ */ React.createElement("polyline", { points: "12 7 12 12 15 15" })), Pause = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "6", y: "4", width: "4", height: "16" }), /* @__PURE__ */ React.createElement("rect", { x: "14", y: "4", width: "4", height: "16" })), Package = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "16.5", y1: "9.4", x2: "7.5", y2: "4.21" }), /* @__PURE__ */ React.createElement("path", { d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" }), /* @__PURE__ */ React.createElement("polyline", { points: "3.27 6.96 12 12.01 20.73 6.96" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "22.08", x2: "12", y2: "12" })), Bell = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" }), /* @__PURE__ */ React.createElement("path", { d: "M13.73 21a2 2 0 0 1-3.46 0" })), MinusCircle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "8", y1: "12", x2: "16", y2: "12" })), Folder = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" })), Minus = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "5", y1: "12", x2: "19", y2: "12" })), Edit = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }), /* @__PURE__ */ React.createElement("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })), Trash = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "3 6 5 6 21 6" }), /* @__PURE__ */ React.createElement("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" })), Copy = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "9", y: "9", width: "13", height: "13", rx: "2", ry: "2" }), /* @__PURE__ */ React.createElement("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })), ChevronLeft = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "15 18 9 12 15 6" })), ChevronsLeft = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "11 17 6 12 11 7" }), /* @__PURE__ */ React.createElement("polyline", { points: "18 17 13 12 18 7" })), ChevronsRight = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "13 17 18 12 13 7" }), /* @__PURE__ */ React.createElement("polyline", { points: "6 17 11 12 6 7" })), RotateCcw = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "1 4 1 10 7 10" }), /* @__PURE__ */ React.createElement("path", { d: "M3.51 15a9 9 0 1 0 2.13-9.36L1 10" })), Check = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "20 6 9 17 4 12" })), Cpu = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "4", y: "4", width: "16", height: "16", rx: "2", ry: "2" }), /* @__PURE__ */ React.createElement("rect", { x: "9", y: "9", width: "6", height: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "9", y1: "1", x2: "9", y2: "4" }), /* @__PURE__ */ React.createElement("line", { x1: "15", y1: "1", x2: "15", y2: "4" }), /* @__PURE__ */ React.createElement("line", { x1: "9", y1: "20", x2: "9", y2: "23" }), /* @__PURE__ */ React.createElement("line", { x1: "15", y1: "20", x2: "15", y2: "23" }), /* @__PURE__ */ React.createElement("line", { x1: "20", y1: "9", x2: "23", y2: "9" }), /* @__PURE__ */ React.createElement("line", { x1: "20", y1: "14", x2: "23", y2: "14" }), /* @__PURE__ */ React.createElement("line", { x1: "1", y1: "9", x2: "4", y2: "9" }), /* @__PURE__ */ React.createElement("line", { x1: "1", y1: "14", x2: "4", y2: "14" })), MemoryStick = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M6 19v-2" }), /* @__PURE__ */ React.createElement("path", { d: "M10 19v-2" }), /* @__PURE__ */ React.createElement("path", { d: "M14 19v-2" }), /* @__PURE__ */ React.createElement("path", { d: "M18 19v-2" }), /* @__PURE__ */ React.createElement("path", { d: "M8 11V9" }), /* @__PURE__ */ React.createElement("path", { d: "M16 11V7" }), /* @__PURE__ */ React.createElement("path", { d: "M12 11V5" }), /* @__PURE__ */ React.createElement("path", { d: "M2 15h20" }), /* @__PURE__ */ React.createElement("path", { d: "M2 17a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4H2z" })), Globe = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })), Search = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ React.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), Eye = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }), /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "3" })), EyeOff = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }), /* @__PURE__ */ React.createElement("line", { x1: "1", y1: "1", x2: "23", y2: "23" })), Zap = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polygon", { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" })), Database = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("ellipse", { cx: "12", cy: "5", rx: "9", ry: "3" }), /* @__PURE__ */ React.createElement("path", { d: "M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" }), /* @__PURE__ */ React.createElement("path", { d: "M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" })), HelpCircle = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })), Filter = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polygon", { points: "22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" })), Wifi = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M5 12.55a11 11 0 0 1 14.08 0" }), /* @__PURE__ */ React.createElement("path", { d: "M1.42 9a16 16 0 0 1 21.16 0" }), /* @__PURE__ */ React.createElement("path", { d: "M8.53 16.11a6 6 0 0 1 6.95 0" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "20", x2: "12.01", y2: "20" })), Power = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M18.36 6.64a9 9 0 1 1-12.73 0" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "2", x2: "12", y2: "12" })), Square = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "3", width: "18", height: "18", rx: "2", ry: "2" })), UserPlus = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }), /* @__PURE__ */ React.createElement("circle", { cx: "8.5", cy: "7", r: "4" }), /* @__PURE__ */ React.createElement("line", { x1: "20", y1: "8", x2: "20", y2: "14" }), /* @__PURE__ */ React.createElement("line", { x1: "23", y1: "11", x2: "17", y2: "11" })), Users = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }), /* @__PURE__ */ React.createElement("circle", { cx: "9", cy: "7", r: "4" }), /* @__PURE__ */ React.createElement("path", { d: "M23 21v-2a4 4 0 0 0-3-3.87" }), /* @__PURE__ */ React.createElement("path", { d: "M16 3.13a4 4 0 0 1 0 7.75" })), Calendar = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "4", width: "18", height: "18", rx: "2", ry: "2" }), /* @__PURE__ */ React.createElement("line", { x1: "16", y1: "2", x2: "16", y2: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "8", y1: "2", x2: "8", y2: "6" }), /* @__PURE__ */ React.createElement("line", { x1: "3", y1: "10", x2: "21", y2: "10" }));
-  var ThumbsUp = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" })), ThumbsDown = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" })), BarChart2 = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "18", y1: "20", x2: "18", y2: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "20", x2: "12", y2: "4" }), /* @__PURE__ */ React.createElement("line", { x1: "6", y1: "20", x2: "6", y2: "14" })), ProxBalanceLogo = ({ size = 32 }) => /* @__PURE__ */ React.createElement("img", { src: "/assets/logo_icon_v2.svg?v=2", alt: "ProxBalance Logo", width: size, height: size });
+  var ThumbsUp = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" })), ThumbsDown = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("path", { d: "M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" })), BarChart2 = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("line", { x1: "18", y1: "20", x2: "18", y2: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "20", x2: "12", y2: "4" }), /* @__PURE__ */ React.createElement("line", { x1: "6", y1: "20", x2: "6", y2: "14" })), TrendingUp = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "23 6 13.5 15.5 8.5 10.5 1 18" }), /* @__PURE__ */ React.createElement("polyline", { points: "17 6 23 6 23 12" })), TrendingDown = ({ size, className }) => /* @__PURE__ */ React.createElement("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className }, /* @__PURE__ */ React.createElement("polyline", { points: "23 18 13.5 8.5 8.5 13.5 1 6" }), /* @__PURE__ */ React.createElement("polyline", { points: "17 18 23 18 23 12" })), ProxBalanceLogo = ({ size = 32 }) => /* @__PURE__ */ React.createElement("img", { src: "/assets/logo_icon_v2.svg?v=2", alt: "ProxBalance Logo", width: size, height: size });
 
   // src/components/settings/AIProviderSection.jsx
   init_constants();
@@ -2918,10 +2975,21 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
 
   // src/components/automation/PenaltyScoringSection.jsx
   init_constants();
-  var { useState: useState8 } = React;
+  var { useState: useState8, useEffect: useEffect2, useCallback } = React, SENSITIVITY_LABELS = { 1: "Conservative", 2: "Balanced", 3: "Aggressive" }, SENSITIVITY_DESCRIPTIONS = {
+    1: "High bar for migrations. Only recommends moves with clear, sustained problems. Best for production clusters where stability is paramount.",
+    2: "Moderate sensitivity. Recommends migrations when trends show growing problems. Suitable for most clusters.",
+    3: "Low bar for migrations. Recommends moves proactively for even modest improvements. Best for clusters that benefit from frequent rebalancing."
+  }, LOOKBACK_OPTIONS = [
+    { value: 1, label: "1 day" },
+    { value: 3, label: "3 days" },
+    { value: 7, label: "7 days" },
+    { value: 14, label: "14 days" },
+    { value: 30, label: "30 days" }
+  ];
   function PenaltyScoringSection({
     collapsedSections,
     setCollapsedSections,
+    // Legacy penalty config props (used in expert mode)
     penaltyConfig,
     setPenaltyConfig,
     penaltyDefaults,
@@ -2934,13 +3002,38 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     memThreshold,
     iowaitThreshold,
     savePenaltyConfig: savePenaltyConfig2,
-    resetPenaltyConfig: resetPenaltyConfig2
+    resetPenaltyConfig: resetPenaltyConfig2,
+    // Simplified migration settings props
+    migrationSettings,
+    setMigrationSettings,
+    migrationSettingsDefaults,
+    migrationSettingsDescriptions,
+    effectivePenaltyConfig,
+    hasExpertOverrides,
+    savingMigrationSettings,
+    migrationSettingsSaved,
+    saveMigrationSettingsAction,
+    resetMigrationSettingsAction,
+    fetchMigrationSettingsAction
   }) {
-    let [simulatorResult, setSimulatorResult] = useState8(null), [simulatingConfig, setSimulatingConfig] = useState8(!1), [showSimulator, setShowSimulator] = useState8(!1), runSimulation = async () => {
-      if (penaltyConfig) {
+    let [showExpertMode, setShowExpertMode] = useState8(!1), [showSimulator, setShowSimulator] = useState8(!1), [simulatorResult, setSimulatorResult] = useState8(null), [simulatingConfig, setSimulatingConfig] = useState8(!1);
+    useEffect2(() => {
+      !migrationSettings && fetchMigrationSettingsAction && fetchMigrationSettingsAction();
+    }, []);
+    let settings = migrationSettings || {
+      sensitivity: 2,
+      trend_weight: 60,
+      lookback_days: 7,
+      min_confidence: 75,
+      protect_workloads: !0
+    }, updateSetting = (key, value) => {
+      setMigrationSettings && setMigrationSettings((prev) => ({ ...prev, [key]: value }));
+    }, runSimulation = async () => {
+      let configToSim = showExpertMode ? penaltyConfig : effectivePenaltyConfig;
+      if (configToSim) {
         setSimulatingConfig(!0), setShowSimulator(!0);
         try {
-          let { simulatePenaltyConfig: simulatePenaltyConfig2 } = await Promise.resolve().then(() => (init_client(), client_exports)), result = await simulatePenaltyConfig2(penaltyConfig, {
+          let { simulatePenaltyConfig: simulatePenaltyConfig2 } = await Promise.resolve().then(() => (init_client(), client_exports)), result = await simulatePenaltyConfig2(configToSim, {
             cpu_threshold: cpuThreshold || 60,
             mem_threshold: memThreshold || 70,
             iowait_threshold: iowaitThreshold || 30
@@ -2952,46 +3045,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           setSimulatingConfig(!1);
         }
       }
-    }, SLIDER_GROUPS = [
-      {
-        label: "CPU Sensitivity",
-        description: "How aggressively to penalize high CPU usage",
-        keys: ["cpu_high_penalty", "cpu_very_high_penalty", "cpu_extreme_penalty"],
-        min: 0,
-        max: 100
-      },
-      {
-        label: "Memory Sensitivity",
-        description: "How aggressively to penalize high memory usage",
-        keys: ["mem_high_penalty", "mem_very_high_penalty", "mem_extreme_penalty"],
-        min: 0,
-        max: 100
-      },
-      {
-        label: "IOWait Sensitivity",
-        description: "How aggressively to penalize disk I/O contention",
-        keys: ["iowait_moderate_penalty", "iowait_high_penalty", "iowait_severe_penalty"],
-        min: 0,
-        max: 100
-      }
-    ], getGroupAverage = (keys) => {
-      if (!penaltyConfig) return 0;
-      let values = keys.map((k) => penaltyConfig[k] || 0);
-      return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-    }, setGroupValues = (keys, avg) => {
-      if (!penaltyConfig || !penaltyDefaults) return;
-      let updated = { ...penaltyConfig }, defaultValues = keys.map((k) => penaltyDefaults[k] || 1), defaultAvg = defaultValues.reduce((a, b) => a + b, 0) / defaultValues.length, ratio = defaultAvg > 0 ? avg / defaultAvg : 1;
-      keys.forEach((k, i) => {
-        updated[k] = Math.max(0, Math.round((penaltyDefaults[k] || 0) * ratio));
-      }), setPenaltyConfig(updated);
-    };
+    }, isSaving = savingMigrationSettings || savingPenaltyConfig, isSaved = migrationSettingsSaved || penaltyConfigSaved;
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { id: "penalty-config-section", className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setCollapsedSections((prev) => ({ ...prev, penaltyScoring: !prev.penaltyScoring })),
         className: "w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       },
-      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Penalty Scoring Configuration"),
+      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Migration Settings"),
       /* @__PURE__ */ React.createElement(
         ChevronDown,
         {
@@ -2999,43 +3060,65 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.penaltyScoring ? "-rotate-180" : ""}`
         }
       )
-    ), !collapsedSections.penaltyScoring && penaltyConfig && penaltyDefaults && /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Configure penalty weights used by the scoring algorithm when evaluating migration targets. Lower penalties favor that condition."), penaltyPresets && applyPenaltyPreset2 && /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white mb-1" }, "Scoring Profile"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-3" }, "Choose a preset to quickly configure all penalty weights, or customize individual values below."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 mb-2" }, ["conservative", "balanced", "aggressive"].map((preset) => {
-      let info = penaltyPresets[preset] || { label: preset.charAt(0).toUpperCase() + preset.slice(1) }, isActive = activePreset === preset;
+    ), !collapsedSections.penaltyScoring && /* @__PURE__ */ React.createElement("div", { className: "space-y-5" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 dark:text-gray-400" }, "Configure how ProxBalance analyzes performance trends and decides when to recommend migrations."), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Migration Sensitivity"), /* @__PURE__ */ React.createElement("span", { className: "relative group inline-block" }, /* @__PURE__ */ React.createElement(Info, { size: 14, className: "text-gray-400 hover:text-blue-500 cursor-help" }), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50" }, "Controls how aggressively ProxBalance recommends migrations"))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-3" }, SENSITIVITY_DESCRIPTIONS[settings.sensitivity]), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, [1, 2, 3].map((level) => {
+      let isActive = settings.sensitivity === level;
       return /* @__PURE__ */ React.createElement(
         "button",
         {
-          key: preset,
-          onClick: () => applyPenaltyPreset2(preset),
-          disabled: savingPenaltyConfig,
-          className: `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-300 dark:ring-blue-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"}`
+          key: level,
+          onClick: () => updateSetting("sensitivity", level),
+          disabled: isSaving,
+          className: `px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${{
+            1: isActive ? "bg-green-600 text-white ring-2 ring-green-300 dark:ring-green-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-300 dark:border-gray-600",
+            2: isActive ? "bg-blue-600 text-white ring-2 ring-blue-300 dark:ring-blue-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-300 dark:border-gray-600",
+            3: isActive ? "bg-orange-600 text-white ring-2 ring-orange-300 dark:ring-orange-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-300 dark:border-gray-600"
+          }[level]}`
         },
-        info.label,
+        SENSITIVITY_LABELS[level],
         isActive && /* @__PURE__ */ React.createElement("span", { className: "ml-1.5 text-xs opacity-80" }, "(active)")
       );
-    }), activePreset === "custom" && /* @__PURE__ */ React.createElement("span", { className: "px-4 py-2 rounded-lg text-sm font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-600" }, "Custom")), penaltyPresets[activePreset]?.description && /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400 mt-1" }, penaltyPresets[activePreset].description), activePreset === "custom" && /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "You have customized penalty weights. Select a preset above to reset to a standard profile.")), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white mb-1" }, "Sensitivity Tuning"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-4" }, "Adjust overall sensitivity for each metric category. Moving a slider scales all related penalty weights proportionally."), /* @__PURE__ */ React.createElement("div", { className: "space-y-4" }, SLIDER_GROUPS.map((group) => {
-      let avg = getGroupAverage(group.keys), defaultAvg = Math.round(group.keys.map((k) => penaltyDefaults[k] || 0).reduce((a, b) => a + b, 0) / group.keys.length);
-      return /* @__PURE__ */ React.createElement("div", { key: group.label }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement("label", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, group.label), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-mono text-gray-500 dark:text-gray-400" }, avg, " ", avg !== defaultAvg && /* @__PURE__ */ React.createElement("span", { className: "text-blue-500" }, "(default: ", defaultAvg, ")"))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, group.description), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-6" }, "Low"), /* @__PURE__ */ React.createElement(
-        "input",
-        {
-          type: "range",
-          min: group.min,
-          max: group.max,
-          value: avg,
-          onChange: (e) => setGroupValues(group.keys, parseInt(e.target.value)),
-          className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-        }
-      ), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-8" }, "High")));
-    }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement("label", { className: "text-sm font-medium text-gray-700 dark:text-gray-300" }, "Migration Threshold"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-mono text-gray-500 dark:text-gray-400" }, penaltyConfig.min_score_improvement || 15, " pts", (penaltyConfig.min_score_improvement || 15) !== (penaltyDefaults.min_score_improvement || 15) && /* @__PURE__ */ React.createElement("span", { className: "text-blue-500 ml-1" }, "(default: ", penaltyDefaults.min_score_improvement || 15, ")"))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Minimum score improvement required to recommend a migration"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-6" }, "5"), /* @__PURE__ */ React.createElement(
+    }))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Trend Weight"), /* @__PURE__ */ React.createElement("span", { className: "relative group inline-block" }, /* @__PURE__ */ React.createElement(Info, { size: 14, className: "text-gray-400 hover:text-blue-500 cursor-help" }), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50", style: { minWidth: "240px" } }, "Controls how much historical trends matter vs. current snapshot. Higher values give more weight to sustained patterns over time."))), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-3" }, settings.trend_weight <= 20 ? "Mostly snapshot-based: decisions rely primarily on current metrics." : settings.trend_weight <= 45 ? "Snapshot-leaning: current metrics are weighted more, but trends factor in." : settings.trend_weight <= 65 ? "Balanced: decisions use a mix of current metrics and historical trends." : settings.trend_weight <= 85 ? "Trend-leaning: historical patterns are weighted more heavily than current snapshot." : "Mostly trend-based: decisions rely primarily on sustained historical patterns."), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 whitespace-nowrap w-16" }, "Snapshot"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "range",
-        min: 5,
-        max: 50,
-        value: penaltyConfig.min_score_improvement || 15,
-        onChange: (e) => setPenaltyConfig({ ...penaltyConfig, min_score_improvement: parseInt(e.target.value) }),
+        min: 0,
+        max: 100,
+        step: 5,
+        value: settings.trend_weight,
+        onChange: (e) => updateSetting("trend_weight", parseInt(e.target.value)),
         className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
       }
-    ), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-8" }, "50"))))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "What-If Simulator"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Preview how your current settings would affect recommendations before saving.")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 whitespace-nowrap w-12 text-right" }, "Trends"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-mono text-gray-600 dark:text-gray-300 w-10 text-right" }, settings.trend_weight, "%"))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Analysis Lookback")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mb-3" }, "How many days of performance history to analyze when detecting trends. Longer periods provide more stable analysis but are slower to react to changes."), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, LOOKBACK_OPTIONS.map(({ value, label }) => {
+      let isActive = settings.lookback_days === value;
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: value,
+          onClick: () => updateSetting("lookback_days", value),
+          disabled: isSaving,
+          className: `px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isActive ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-300 dark:ring-blue-700" : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"}`
+        },
+        label
+      );
+    }))), /* @__PURE__ */ React.createElement("details", { className: "group" }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none" }, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "transition-transform group-open:rotate-180" }), "Advanced Settings"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Minimum Confidence"), /* @__PURE__ */ React.createElement("span", { className: "relative group inline-block" }, /* @__PURE__ */ React.createElement(Info, { size: 14, className: "text-gray-400 hover:text-blue-500 cursor-help" }), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50", style: { minWidth: "220px" } }, "Minimum confidence score required before recommending a migration. Higher values mean more data is needed before acting."))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-8" }, "50%"), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "range",
+        min: 50,
+        max: 95,
+        step: 5,
+        value: settings.min_confidence,
+        onChange: (e) => updateSetting("min_confidence", parseInt(e.target.value)),
+        className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+      }
+    ), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-400 w-8" }, "95%"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-mono text-gray-600 dark:text-gray-300 w-10 text-right" }, settings.min_confidence, "%"))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Shield, { size: 16, className: "text-blue-500" }), /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Protect Running Workloads")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Avoid migrating guests during their detected peak usage hours to minimize disruption.")), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => updateSetting("protect_workloads", !settings.protect_workloads),
+        className: `relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4 ${settings.protect_workloads ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"}`
+      },
+      /* @__PURE__ */ React.createElement("span", { className: `inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.protect_workloads ? "translate-x-6" : "translate-x-1"}` })
+    ))), /* @__PURE__ */ React.createElement("div", { className: "p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "What-If Simulator"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Preview how your current settings would affect recommendations before saving.")), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: runSimulation,
@@ -3043,7 +3126,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "px-3 py-1.5 bg-indigo-600 dark:bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
       },
       simulatingConfig ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 14, className: "animate-spin" }), " Simulating...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Eye, { size: 14 }), " Simulate")
-    )), showSimulator && simulatorResult && !simulatorResult.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Current Settings"), /* @__PURE__ */ React.createElement("div", { className: "text-2xl font-bold text-gray-900 dark:text-white" }, simulatorResult.current_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations")), /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Proposed Settings"), /* @__PURE__ */ React.createElement("div", { className: `text-2xl font-bold ${simulatorResult.proposed_count > simulatorResult.current_count ? "text-orange-600 dark:text-orange-400" : simulatorResult.proposed_count < simulatorResult.current_count ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}` }, simulatorResult.proposed_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations"))), simulatorResult.changes && simulatorResult.changes.length > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Changes"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" }, simulatorResult.changes.map((change, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded-lg font-medium ${change.action === "added" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}` }, change.action === "added" ? "+New" : "-Removed"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, change.type, " ", change.vmid, " (", change.name, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-auto" }, change.source_node, " \u2192 ", change.target_node))))), simulatorResult.node_score_comparison && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Node Score Impact"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-1.5" }, Object.entries(simulatorResult.node_score_comparison).map(([node, scores]) => /* @__PURE__ */ React.createElement("div", { key: node, className: "flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, node), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, scores.current, " \u2192 ", scores.proposed, /* @__PURE__ */ React.createElement("span", { className: `ml-1 font-medium ${scores.delta < 0 ? "text-green-600 dark:text-green-400" : scores.delta > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}` }, "(", scores.delta > 0 ? "+" : "", scores.delta, ")")))))), simulatorResult.changes?.length === 0 && simulatorResult.current_count === simulatorResult.proposed_count && /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 text-center py-2" }, "No changes \u2014 proposed settings produce the same recommendations.")), showSimulator && simulatorResult?.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" }, "Simulation error: ", simulatorResult.error)), /* @__PURE__ */ React.createElement("details", { className: "group" }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none" }, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "transition-transform group-open:rotate-180" }), "Advanced: Customize individual penalty weights"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Time Period Weights"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.", /* @__PURE__ */ React.createElement("br", null), "Example for 6-hour window: Current=0.6, 24h=0.4, 7d=0.0"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Current Weight (default: ", penaltyDefaults.weight_current, ")"), /* @__PURE__ */ React.createElement(
+    )), showSimulator && simulatorResult && !simulatorResult.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Current Settings"), /* @__PURE__ */ React.createElement("div", { className: "text-2xl font-bold text-gray-900 dark:text-white" }, simulatorResult.current_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations")), /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400 mb-1" }, "Proposed Settings"), /* @__PURE__ */ React.createElement("div", { className: `text-2xl font-bold ${simulatorResult.proposed_count > simulatorResult.current_count ? "text-orange-600 dark:text-orange-400" : simulatorResult.proposed_count < simulatorResult.current_count ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}` }, simulatorResult.proposed_count), /* @__PURE__ */ React.createElement("div", { className: "text-xs text-gray-500 dark:text-gray-400" }, "recommendations"))), simulatorResult.changes && simulatorResult.changes.length > 0 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Changes"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1 max-h-40 overflow-y-auto" }, simulatorResult.changes.map((change, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: `px-1.5 py-0.5 rounded-lg font-medium ${change.action === "added" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"}` }, change.action === "added" ? "+New" : "-Removed"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, change.type, " ", change.vmid, " (", change.name, ")"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400 ml-auto" }, change.source_node, " \u2192 ", change.target_node))))), simulatorResult.node_score_comparison && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h5", { className: "text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5" }, "Node Score Impact"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-1.5" }, Object.entries(simulatorResult.node_score_comparison).map(([node, scores]) => /* @__PURE__ */ React.createElement("div", { key: node, className: "flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg" }, /* @__PURE__ */ React.createElement("span", { className: "font-medium text-gray-700 dark:text-gray-300" }, node), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, scores.current, " \u2192 ", scores.proposed, /* @__PURE__ */ React.createElement("span", { className: `ml-1 font-medium ${scores.delta < 0 ? "text-green-600 dark:text-green-400" : scores.delta > 0 ? "text-red-600 dark:text-red-400" : "text-gray-500"}` }, "(", scores.delta > 0 ? "+" : "", scores.delta, ")")))))), simulatorResult.changes?.length === 0 && simulatorResult.current_count === simulatorResult.proposed_count && /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 text-center py-2" }, "No changes \u2014 proposed settings produce the same recommendations.")), showSimulator && simulatorResult?.error && /* @__PURE__ */ React.createElement("div", { className: "mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" }, "Simulation error: ", simulatorResult.error)))), /* @__PURE__ */ React.createElement("details", { className: "group", open: showExpertMode, onToggle: (e) => setShowExpertMode(e.target.open) }, /* @__PURE__ */ React.createElement("summary", { className: "cursor-pointer text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 flex items-center gap-1 list-none" }, /* @__PURE__ */ React.createElement(ChevronDown, { size: 16, className: "transition-transform group-open:rotate-180" }), "Expert Mode: Raw Penalty Weights"), /* @__PURE__ */ React.createElement("div", { className: "mt-3 space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 16, className: "text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" }), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-yellow-700 dark:text-yellow-300" }, "These values are automatically managed by the simplified settings above. Manual changes here will override automatic mapping and your settings will be saved as expert overrides."))), penaltyConfig && penaltyDefaults && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Time Period Weights"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, "Current Weight (default: ", penaltyDefaults.weight_current, ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         step: "0.1",
@@ -3052,9 +3135,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         isFloat: !0,
         value: penaltyConfig.weight_current,
         onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_current: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "24h Weight (default: ", penaltyDefaults.weight_24h, ")"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, "24h Weight (default: ", penaltyDefaults.weight_24h, ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         step: "0.1",
@@ -3063,9 +3146,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         isFloat: !0,
         value: penaltyConfig.weight_24h,
         onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_24h: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "7d Weight (default: ", penaltyDefaults.weight_7d, ")"), /* @__PURE__ */ React.createElement(
+    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, "7d Weight (default: ", penaltyDefaults.weight_7d, ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         step: "0.1",
@@ -3074,103 +3157,78 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         isFloat: !0,
         value: penaltyConfig.weight_7d,
         onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, weight_7d: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
     ))), (() => {
       let sum = (penaltyConfig.weight_current || 0) + (penaltyConfig.weight_24h || 0) + (penaltyConfig.weight_7d || 0), isValid = Math.abs(sum - 1) < 0.01;
-      return /* @__PURE__ */ React.createElement("div", { className: `text-sm font-medium ${isValid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, "Sum: ", sum.toFixed(2), " ", isValid ? "\u2713 Valid" : "\u2717 Must equal 1.0");
-    })()), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "CPU Penalties"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Applied when target node CPU usage is high. Higher values = avoid nodes with high CPU. Set to 0 to disable penalty."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.cpu_high_penalty, ")"), /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement("div", { className: `text-xs font-medium ${isValid ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}` }, "Sum: ", sum.toFixed(2), " ", isValid ? "\u2713 Valid" : "\u2717 Must equal 1.0");
+    })()), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "CPU Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [["cpu_high_penalty", "High"], ["cpu_very_high_penalty", "Very High"], ["cpu_extreme_penalty", "Extreme"]].map(([key, label]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, label, " (default: ", penaltyDefaults[key], ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "0",
-        value: penaltyConfig.cpu_high_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_high_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        value: penaltyConfig[key],
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, [key]: val }),
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Very High (default: ", penaltyDefaults.cpu_very_high_penalty, ")"), /* @__PURE__ */ React.createElement(
+    ))))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Memory Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [["mem_high_penalty", "High"], ["mem_very_high_penalty", "Very High"], ["mem_extreme_penalty", "Extreme"]].map(([key, label]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, label, " (default: ", penaltyDefaults[key], ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "0",
-        value: penaltyConfig.cpu_very_high_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_very_high_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        value: penaltyConfig[key],
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, [key]: val }),
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Extreme (default: ", penaltyDefaults.cpu_extreme_penalty, ")"), /* @__PURE__ */ React.createElement(
+    ))))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "IOWait Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [["iowait_moderate_penalty", "Moderate"], ["iowait_high_penalty", "High"], ["iowait_severe_penalty", "Severe"]].map(([key, label]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, label, " (default: ", penaltyDefaults[key], ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "0",
-        value: penaltyConfig.cpu_extreme_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, cpu_extreme_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        value: penaltyConfig[key],
+        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, [key]: val }),
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Memory Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.mem_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.mem_high_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_high_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Very High (default: ", penaltyDefaults.mem_very_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.mem_very_high_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_very_high_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Extreme (default: ", penaltyDefaults.mem_extreme_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.mem_extreme_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, mem_extreme_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "IOWait Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Moderate (default: ", penaltyDefaults.iowait_moderate_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.iowait_moderate_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_moderate_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "High (default: ", penaltyDefaults.iowait_high_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.iowait_high_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_high_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Severe (default: ", penaltyDefaults.iowait_severe_penalty, ")"), /* @__PURE__ */ React.createElement(
-      NumberField,
-      {
-        value: penaltyConfig.iowait_severe_penalty,
-        onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, iowait_severe_penalty: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-      }
-    )))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white" }, "Minimum Score Improvement"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Minimum score improvement (in points) required for a migration to be recommended. This threshold filters out migrations that would provide only marginal benefit.", /* @__PURE__ */ React.createElement("br", null), "Lower values = more sensitive to small improvements (more migrations)", /* @__PURE__ */ React.createElement("br", null), "Higher values = only migrate when there's significant benefit (fewer migrations)"), /* @__PURE__ */ React.createElement("div", { className: "max-w-md" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm text-gray-700 dark:text-gray-300 mb-1" }, "Minimum Score Improvement (default: ", penaltyDefaults.min_score_improvement || 15, ")"), /* @__PURE__ */ React.createElement(
+    ))))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Minimum Score Improvement"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-600 dark:text-gray-400" }, "Minimum score improvement (in points) required for a migration to be recommended."), /* @__PURE__ */ React.createElement("div", { className: "max-w-md" }, /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "1",
         max: "100",
         value: penaltyConfig.min_score_improvement !== void 0 ? penaltyConfig.min_score_improvement : 15,
         onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, min_score_improvement: val }),
-        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    ), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-xs text-gray-500 dark:text-gray-400" }, "Recommended values: Conservative (20-30), Balanced (10-15), Aggressive (5-10)"))))), penaltyConfigSaved && /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-800 dark:text-green-300" }, "Penalty configuration saved successfully!"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 pt-4" }, /* @__PURE__ */ React.createElement(
+    ))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 pt-2" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: savePenaltyConfig2,
         disabled: savingPenaltyConfig,
-        className: `flex-1 px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${penaltyConfigSaved ? "bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600" : "bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600"}`
+        className: "flex-1 px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 text-sm"
       },
-      savingPenaltyConfig ? "Saving..." : penaltyConfigSaved ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14 }), " Saved!") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 14 }), " Save Penalty Config")
+      savingPenaltyConfig ? "Saving..." : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 14 }), " Save Expert Overrides")
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: resetPenaltyConfig2,
         disabled: savingPenaltyConfig,
+        className: "px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
+      },
+      /* @__PURE__ */ React.createElement(RotateCcw, { size: 14 }),
+      " Reset Expert"
+    ))))), isSaved && /* @__PURE__ */ React.createElement("div", { className: "p-3 bg-green-100 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-800 dark:text-green-300 text-sm" }, "Settings saved successfully!"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 pt-2" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: saveMigrationSettingsAction,
+        disabled: isSaving,
+        className: `flex-1 px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${migrationSettingsSaved ? "bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600" : "bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600"}`
+      },
+      isSaving ? "Saving..." : migrationSettingsSaved ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 14 }), " Saved!") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 14 }), " Save Settings")
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: resetMigrationSettingsAction,
+        disabled: isSaving,
         className: "flex-1 px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
       },
       /* @__PURE__ */ React.createElement(RotateCcw, { size: 14 }),
-      "Reset to Defaults"
+      " Reset to Defaults"
     )))));
   }
 
@@ -3203,6 +3261,17 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       iowaitThreshold,
       savePenaltyConfig: savePenaltyConfig2,
       resetPenaltyConfig: resetPenaltyConfig2,
+      migrationSettings,
+      setMigrationSettings,
+      migrationSettingsDefaults,
+      migrationSettingsDescriptions,
+      effectivePenaltyConfig,
+      hasExpertOverrides,
+      savingMigrationSettings,
+      migrationSettingsSaved,
+      saveMigrationSettingsAction,
+      resetMigrationSettingsAction,
+      fetchMigrationSettingsAction,
       saveAutomationConfig: saveAutomationConfig2,
       setAutomigrateLogs,
       setCollapsedSections,
@@ -3295,7 +3364,18 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         memThreshold,
         iowaitThreshold,
         savePenaltyConfig: savePenaltyConfig2,
-        resetPenaltyConfig: resetPenaltyConfig2
+        resetPenaltyConfig: resetPenaltyConfig2,
+        migrationSettings,
+        setMigrationSettings,
+        migrationSettingsDefaults,
+        migrationSettingsDescriptions,
+        effectivePenaltyConfig,
+        hasExpertOverrides,
+        savingMigrationSettings,
+        migrationSettingsSaved,
+        saveMigrationSettingsAction,
+        resetMigrationSettingsAction,
+        fetchMigrationSettingsAction
       }
     ), /* @__PURE__ */ React.createElement(
       DistributionBalancingSection,
@@ -4861,7 +4941,10 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       /* @__PURE__ */ React.createElement("option", { value: "1y" }, "1 Year")
     )))), collapsedSections.nodeStatus ? /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3" }, Object.values(data.nodes).map((node) => {
       let predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name], before = showPredicted && recommendationData?.summary?.batch_impact?.before?.node_scores?.[node.name];
-      return /* @__PURE__ */ React.createElement("div", { key: node.name, className: `border rounded p-3 hover:shadow-md transition-shadow ${showPredicted && predicted ? "border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800" : "border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white" }, node.name), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, showPredicted && predicted && before && /* @__PURE__ */ React.createElement("span", { className: `text-[9px] font-medium px-1 py-0.5 rounded ${predicted.cpu < before.cpu - 0.5 ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" : predicted.cpu > before.cpu + 0.5 ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}` }, predicted.guest_count !== before.guest_count ? `${predicted.guest_count > before.guest_count ? "+" : ""}${predicted.guest_count - before.guest_count} guest${Math.abs(predicted.guest_count - before.guest_count) !== 1 ? "s" : ""}` : "no change"), /* @__PURE__ */ React.createElement("span", { className: `w-2 h-2 rounded-full ${node.status === "online" ? "bg-green-500" : "bg-red-500"}`, title: node.status }))), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "CPU:"), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.cpu_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"}` }, predicted.cpu.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-blue-600 dark:text-blue-400" }, (node.cpu_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
+      return /* @__PURE__ */ React.createElement("div", { key: node.name, className: `border rounded p-3 hover:shadow-md transition-shadow ${showPredicted && predicted ? "border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800" : "border-gray-200 dark:border-gray-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold text-gray-900 dark:text-white" }, node.name), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, showPredicted && predicted && before && /* @__PURE__ */ React.createElement("span", { className: `text-[9px] font-medium px-1 py-0.5 rounded ${predicted.cpu < before.cpu - 0.5 ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" : predicted.cpu > before.cpu + 0.5 ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}` }, predicted.guest_count !== before.guest_count ? `${predicted.guest_count > before.guest_count ? "+" : ""}${predicted.guest_count - before.guest_count} guest${Math.abs(predicted.guest_count - before.guest_count) !== 1 ? "s" : ""}` : "no change"), /* @__PURE__ */ React.createElement("span", { className: `w-2 h-2 rounded-full ${node.status === "online" ? "bg-green-500" : "bg-red-500"}`, title: node.status }))), /* @__PURE__ */ React.createElement("div", { className: "space-y-1.5 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400 flex items-center gap-0.5" }, "CPU:", (() => {
+        let trend = node.metrics?.cpu_trend, ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis, dir = ta?.cpu_direction || trend;
+        return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-red-500", title: ta ? `CPU ${ta.cpu_rate_per_day > 0 ? "+" : ""}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : "Rising fast" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-400", title: ta ? `CPU ${ta.cpu_rate_per_day > 0 ? "+" : ""}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : "Rising" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500", title: "Falling" }) : null;
+      })()), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.cpu_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"}` }, predicted.cpu.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-blue-600 dark:text-blue-400" }, (node.cpu_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
         "polyline",
         {
           fill: "none",
@@ -4870,7 +4953,10 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
           className: "text-blue-500",
           points: generateSparkline(node.cpu_percent || 0, 100, 30, 0.3)
         }
-      ))), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, "Memory:"), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.mem_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.mem < (node.mem_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.mem > (node.mem_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-purple-600 dark:text-purple-400"}` }, predicted.mem.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-purple-600 dark:text-purple-400" }, (node.mem_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
+      ))), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center relative z-10" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400 flex items-center gap-0.5" }, "Memory:", (() => {
+        let trend = node.metrics?.mem_trend, ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis, dir = ta?.mem_direction || trend;
+        return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-red-500", title: ta ? `Mem ${ta.mem_rate_per_day > 0 ? "+" : ""}${ta.mem_rate_per_day?.toFixed(1)}%/day` : "Rising fast" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-400", title: "Rising" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500", title: "Falling" }) : null;
+      })()), showPredicted && predicted ? /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400 line-through mr-1" }, (node.mem_percent || 0).toFixed(0), "%"), /* @__PURE__ */ React.createElement("span", { className: `${predicted.mem < (node.mem_percent || 0) - 0.5 ? "text-green-600 dark:text-green-400" : predicted.mem > (node.mem_percent || 0) + 0.5 ? "text-orange-600 dark:text-orange-400" : "text-purple-600 dark:text-purple-400"}` }, predicted.mem.toFixed(1), "%")) : /* @__PURE__ */ React.createElement("span", { className: "font-semibold text-purple-600 dark:text-purple-400" }, (node.mem_percent || 0).toFixed(1), "%")), /* @__PURE__ */ React.createElement("svg", { className: "absolute inset-0 w-full h-full opacity-25", preserveAspectRatio: "none", viewBox: "0 0 100 100", style: { top: "-2px", height: "calc(100% + 4px)" } }, /* @__PURE__ */ React.createElement(
         "polyline",
         {
           fill: "none",
@@ -4904,11 +4990,11 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/utils/useIsMobile.js
-  var { useState: useState10, useEffect: useEffect2 } = React, useIsMobile = (breakpoint = 768) => {
+  var { useState: useState10, useEffect: useEffect3 } = React, useIsMobile = (breakpoint = 768) => {
     let [isMobile, setIsMobile] = useState10(
       typeof window < "u" && window.matchMedia(`(max-width: ${breakpoint}px)`).matches
     );
-    return useEffect2(() => {
+    return useEffect3(() => {
       let mql = window.matchMedia(`(max-width: ${breakpoint}px)`), handler = (e) => setIsMobile(e.matches);
       return mql.addEventListener("change", handler), () => mql.removeEventListener("change", handler);
     }, [breakpoint]), isMobile;
@@ -5072,7 +5158,13 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         title: `Target changed from ${changedTarget.old_target} \u2192 ${changedTarget.new_target}`
       },
       "TARGET CHANGED"
-    ), isCompleted && /* @__PURE__ */ React.createElement(CheckCircle, { size: 18, className: "text-green-600 dark:text-green-400" }), status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 18, className: "text-red-600 dark:text-red-400" })), /* @__PURE__ */ React.createElement("div", { className: `text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? "text-green-600 dark:text-green-400" : ""}` }, isCompleted ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "MIGRATED:"), " ", rec.source_node, " \u2192 ", completed.newNode, " \u2713") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "FROM:"), /* @__PURE__ */ React.createElement("span", null, rec.source_node), rec.score_details?.source?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.source.metrics.current_cpu?.toFixed(0) || "?", "% CPU)")), /* @__PURE__ */ React.createElement(ArrowRight, { size: 16, className: "text-gray-400 dark:text-gray-500" }), /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "TO:"), /* @__PURE__ */ React.createElement("span", null, rec.target_node), rec.score_details?.target?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || "?", "% CPU)")), rec.score_improvement !== void 0 && (() => {
+    ), isCompleted && /* @__PURE__ */ React.createElement(CheckCircle, { size: 18, className: "text-green-600 dark:text-green-400" }), status === "failed" && /* @__PURE__ */ React.createElement(XCircle, { size: 18, className: "text-red-600 dark:text-red-400" })), /* @__PURE__ */ React.createElement("div", { className: `text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? "text-green-600 dark:text-green-400" : ""}` }, isCompleted ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "MIGRATED:"), " ", rec.source_node, " \u2192 ", completed.newNode, " \u2713") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "FROM:"), /* @__PURE__ */ React.createElement("span", null, rec.source_node), rec.score_details?.source?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.source.metrics.current_cpu?.toFixed(0) || "?", "% CPU)"), rec.trend_evidence?.available && (() => {
+      let dir = rec.trend_evidence.source_node_trend?.cpu_direction;
+      return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-red-600 ml-0.5", title: "CPU rising fast" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-500 ml-0.5", title: "CPU rising" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500 ml-0.5", title: "CPU falling" }) : null;
+    })()), /* @__PURE__ */ React.createElement(ArrowRight, { size: 16, className: "text-gray-400 dark:text-gray-500" }), /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs" }, "TO:"), /* @__PURE__ */ React.createElement("span", null, rec.target_node), rec.score_details?.target?.metrics && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-normal opacity-75 ml-0.5" }, "(", rec.score_details.target.metrics.predicted_cpu?.toFixed(0) || "?", "% CPU)"), rec.trend_evidence?.available && (() => {
+      let dir = rec.trend_evidence.target_node_trend?.cpu_direction;
+      return dir === "sustained_increase" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-orange-500 ml-0.5", title: "CPU rising" }) : dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 10, className: "text-yellow-500 ml-0.5", title: "CPU rising slightly" }) : dir === "falling" || dir === "sustained_decrease" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 10, className: "text-green-500 ml-0.5", title: "CPU falling" }) : /* @__PURE__ */ React.createElement(Minus, { size: 10, className: "text-gray-400 ml-0.5", title: "CPU stable" });
+    })()), rec.score_improvement !== void 0 && (() => {
       let pct = Math.min(100, rec.score_improvement / 80 * 100), barColor = rec.score_improvement >= 50 ? "bg-green-500" : rec.score_improvement >= 30 ? "bg-yellow-500" : rec.score_improvement >= (penaltyConfig?.min_score_improvement || 15) ? "bg-orange-500" : "bg-red-500";
       return /* @__PURE__ */ React.createElement("span", { className: "inline-flex items-center gap-1.5 min-w-[120px]", title: `Score improvement: +${rec.score_improvement.toFixed(1)} penalty points` }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 dark:text-gray-400" }, "+", rec.score_improvement.toFixed(0)), /* @__PURE__ */ React.createElement("span", { className: "flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]" }, /* @__PURE__ */ React.createElement("span", { className: `block h-full rounded-full ${barColor} transition-all`, style: { width: `${pct}%` } })));
     })())), /* @__PURE__ */ React.createElement("div", { className: `text-xs mt-1 ${isCompleted ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}` }, rec.structured_reason ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: `font-medium ${isMaintenance ? "text-yellow-600 dark:text-yellow-400" : ""}` }, rec.structured_reason.primary_label), rec.structured_reason.contributing_factors?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-gray-500 dark:text-gray-500" }, "\u2014 ", rec.structured_reason.contributing_factors.slice(0, 3).map((f) => f.label).join("; ")), /* @__PURE__ */ React.createElement("span", { className: "ml-2" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.confidence_score !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 inline-flex items-center gap-1", title: `Confidence: ${rec.confidence_score}%` }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "|"), /* @__PURE__ */ React.createElement("span", { className: "inline-flex gap-0.5" }, [20, 40, 60, 80, 100].map((threshold) => /* @__PURE__ */ React.createElement("span", { key: threshold, className: `w-1.5 h-1.5 rounded-full ${rec.confidence_score >= threshold ? rec.confidence_score >= 70 ? "bg-green-500" : rec.confidence_score >= 40 ? "bg-yellow-500" : "bg-orange-500" : "bg-gray-300 dark:bg-gray-600"}` }))), /* @__PURE__ */ React.createElement("span", { className: `font-semibold text-[10px] ${rec.confidence_score >= 70 ? "text-green-600 dark:text-green-400" : rec.confidence_score >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-orange-600 dark:text-orange-400"}` }, rec.confidence_score, "%"))) : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Reason:"), " ", /* @__PURE__ */ React.createElement("span", { className: isMaintenance ? "font-bold text-yellow-600 dark:text-yellow-400" : "" }, rec.reason), " | ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "Memory:"), " ", (rec.mem_gb || 0).toFixed(1), " GB"), rec.ai_confidence_adjustment && rec.ai_confidence_adjustment !== 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2", title: "AI-adjusted confidence modification" }, "| ", /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, "AI Adjustment:"), " ", /* @__PURE__ */ React.createElement("span", { className: `font-semibold ${rec.ai_confidence_adjustment > 0 ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}` }, rec.ai_confidence_adjustment > 0 ? "+" : "", rec.ai_confidence_adjustment))), !isCompleted && (rec.risk_level || rec.has_conflict) && /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 mt-1" }, rec.risk_level && /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${rec.risk_level === "very_high" ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300" : rec.risk_level === "high" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" : rec.risk_level === "moderate" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"}`, title: rec.risk_factors?.map((f) => f.detail).join(`
@@ -5096,7 +5188,25 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       },
       /* @__PURE__ */ React.createElement(Info, { size: 12 }),
       collapsedSections[`breakdown-${idx}`] ? "Hide score breakdown" : "Show score breakdown"
-    ), collapsedSections[`breakdown-${idx}`] && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-red-600 dark:text-red-400 mb-1" }, "Source: ", rec.source_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.source?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.source?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-green-600 dark:text-green-400 mb-1" }, "Target: ", rec.target_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.target?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.target?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties")))), rec.score_details.target?.metrics && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1" }, "After migration on ", rec.target_node, ":"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU: ", rec.score_details.target.metrics.predicted_cpu, "%"), /* @__PURE__ */ React.createElement("span", null, "Memory: ", rec.score_details.target.metrics.predicted_mem, "%"), /* @__PURE__ */ React.createElement("span", null, "Headroom: ", rec.score_details.target.metrics.cpu_headroom, "% CPU, ", rec.score_details.target.metrics.mem_headroom, "% mem"))))), rec.ai_insight && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-purple-600 dark:text-purple-400 font-semibold shrink-0" }, "AI:"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.ai_insight))), rec.bind_mount_warning && /* @__PURE__ */ React.createElement("div", { className: `mt-2 p-2 ${rec.mount_point_info?.has_unshared_bind_mount ? "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-300 dark:border-orange-700" : "bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-300 dark:border-green-700"} rounded text-xs` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(Folder, { size: 14, className: `shrink-0 ${rec.mount_point_info?.has_unshared_bind_mount ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"}` }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.bind_mount_warning))), /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
+    ), collapsedSections[`breakdown-${idx}`] && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-4" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-red-600 dark:text-red-400 mb-1" }, "Source: ", rec.source_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.source?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.source?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-green-600 dark:text-green-400 mb-1" }, "Target: ", rec.target_node), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "Score: ", rec.score_details.target?.total_score?.toFixed(1) || "N/A"), /* @__PURE__ */ React.createElement("div", { className: "text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500" }, "Penalties:"), Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key2, val]) => /* @__PURE__ */ React.createElement("div", { key: key2, className: "flex justify-between" }, /* @__PURE__ */ React.createElement("span", null, key2.replace(/_/g, " ")), /* @__PURE__ */ React.createElement("span", { className: "text-red-500 dark:text-red-400 font-mono" }, "+", val))), Object.values(rec.score_details.target?.penalties || {}).every((v) => v === 0) && /* @__PURE__ */ React.createElement("div", { className: "text-green-600 dark:text-green-400" }, "No penalties")))), rec.score_details.target?.metrics && /* @__PURE__ */ React.createElement("div", { className: "mt-2 pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1" }, "After migration on ", rec.target_node, ":"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("span", null, "CPU: ", rec.score_details.target.metrics.predicted_cpu, "%"), /* @__PURE__ */ React.createElement("span", null, "Memory: ", rec.score_details.target.metrics.predicted_mem, "%"), /* @__PURE__ */ React.createElement("span", null, "Headroom: ", rec.score_details.target.metrics.cpu_headroom, "% CPU, ", rec.score_details.target.metrics.mem_headroom, "% mem"))))), rec.ai_insight && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-purple-600 dark:text-purple-400 font-semibold shrink-0" }, "AI:"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.ai_insight))), rec.bind_mount_warning && /* @__PURE__ */ React.createElement("div", { className: `mt-2 p-2 ${rec.mount_point_info?.has_unshared_bind_mount ? "bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-300 dark:border-orange-700" : "bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-300 dark:border-green-700"} rounded text-xs` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(Folder, { size: 14, className: `shrink-0 ${rec.mount_point_info?.has_unshared_bind_mount ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"}` }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-300" }, rec.bind_mount_warning))), rec.decision_explanation && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-xs text-gray-600 dark:text-gray-400 italic" }, rec.decision_explanation), rec.trend_evidence?.available && !isCompleted && /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: (e) => {
+          e.stopPropagation();
+          let trendKey = `trend-${idx}`;
+          setCollapsedSections((prev) => ({ ...prev, [trendKey]: !prev[trendKey] }));
+        },
+        className: "text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+      },
+      /* @__PURE__ */ React.createElement(Activity, { size: 12 }),
+      collapsedSections[`trend-${idx}`] ? "Hide trend analysis" : "Why this migration?"
+    ), collapsedSections[`trend-${idx}`] && /* @__PURE__ */ React.createElement("div", { className: "mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded text-xs space-y-3" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1" }, "Source: ", rec.source_node, (() => {
+      let dir = rec.trend_evidence.source_node_trend?.cpu_direction;
+      return dir === "sustained_increase" || dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 12, className: "text-red-500" }) : dir === "sustained_decrease" || dir === "falling" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 12, className: "text-green-500" }) : /* @__PURE__ */ React.createElement(Minus, { size: 12, className: "text-gray-400" });
+    })()), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "CPU: ", rec.trend_evidence.source_node_trend?.cpu_trend || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Memory: ", rec.trend_evidence.source_node_trend?.mem_trend || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Stability: ", rec.trend_evidence.source_node_trend?.stability_score || "?", "/100"), rec.trend_evidence.source_node_trend?.above_baseline && /* @__PURE__ */ React.createElement("div", { className: "text-orange-600 dark:text-orange-400 font-medium" }, "Above baseline (", rec.trend_evidence.source_node_trend.baseline_deviation_sigma?.toFixed(1) || "?", "\u03C3)"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1" }, "Target: ", rec.target_node, (() => {
+      let dir = rec.trend_evidence.target_node_trend?.cpu_direction;
+      return dir === "sustained_increase" || dir === "rising" ? /* @__PURE__ */ React.createElement(TrendingUp, { size: 12, className: "text-orange-500" }) : dir === "sustained_decrease" || dir === "falling" ? /* @__PURE__ */ React.createElement(TrendingDown, { size: 12, className: "text-green-500" }) : /* @__PURE__ */ React.createElement(Minus, { size: 12, className: "text-gray-400" });
+    })()), /* @__PURE__ */ React.createElement("div", { className: "space-y-0.5 text-gray-600 dark:text-gray-400" }, /* @__PURE__ */ React.createElement("div", null, "CPU: ", rec.trend_evidence.target_node_trend?.cpu_trend || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Memory: ", rec.trend_evidence.target_node_trend?.mem_trend || "N/A"), /* @__PURE__ */ React.createElement("div", null, "Stability: ", rec.trend_evidence.target_node_trend?.stability_score || "?", "/100")))), rec.trend_evidence.guest_trend && /* @__PURE__ */ React.createElement("div", { className: "pt-2 border-t border-indigo-200 dark:border-indigo-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Guest Behavior"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2" }, /* @__PURE__ */ React.createElement("span", { className: `px-2 py-0.5 rounded text-[10px] font-bold ${rec.trend_evidence.guest_trend.behavior === "growing" ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300" : rec.trend_evidence.guest_trend.behavior === "bursty" ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300" : rec.trend_evidence.guest_trend.behavior === "steady" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}` }, rec.trend_evidence.guest_trend.behavior || "unknown"), /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "CPU: ", rec.trend_evidence.guest_trend.cpu_growth_rate || "N/A"), rec.trend_evidence.guest_trend.previous_migrations > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "| Migrated ", rec.trend_evidence.guest_trend.previous_migrations, "x before"), rec.trend_evidence.guest_trend.peak_hours?.length > 0 && /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 dark:text-gray-400" }, "| Peak hours: ", rec.trend_evidence.guest_trend.peak_hours.map((h) => `${h}:00`).join(", ")))), rec.trend_evidence.decision_factors?.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "pt-2 border-t border-indigo-200 dark:border-indigo-700" }, /* @__PURE__ */ React.createElement("div", { className: "font-medium text-gray-700 dark:text-gray-300 mb-1" }, "Decision Factors"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, rec.trend_evidence.decision_factors.map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement("span", { className: `shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${f.type === "problem" ? "bg-red-500" : f.type === "positive" ? "bg-green-500" : f.type === "concern" ? "bg-yellow-500" : "bg-gray-400"}` }), /* @__PURE__ */ React.createElement("span", { className: "text-gray-600 dark:text-gray-400" }, f.factor, f.weight === "high" && /* @__PURE__ */ React.createElement("span", { className: "ml-1 text-[9px] font-bold text-gray-400 dark:text-gray-500" }, "(HIGH)")))))), rec.trend_evidence.data_quality && /* @__PURE__ */ React.createElement("div", { className: "text-[10px] text-gray-400 dark:text-gray-500 pt-1" }, "Based on ", rec.trend_evidence.data_quality.node_history_days || 0, " days of node history,", " ", rec.trend_evidence.data_quality.guest_history_days || 0, " days of guest history.", " ", rec.trend_evidence.data_quality.confidence_note))), /* @__PURE__ */ React.createElement("div", { className: "mt-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-3" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: (e) => {
@@ -5248,10 +5358,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/WorkloadPatterns.jsx
-  var { useState: useState11, useEffect: useEffect3 } = React;
+  var { useState: useState11, useEffect: useEffect4 } = React;
   function WorkloadPatterns({ API_BASE: API_BASE4, active }) {
     let [patterns, setPatterns] = useState11(null), [loading, setLoading] = useState11(!1);
-    return useEffect3(() => {
+    return useEffect4(() => {
       !active || patterns || loading || (setLoading(!0), fetch(`${API_BASE4}/workload-patterns?hours=168`).then((r) => r.json()).then((res) => {
         res.success && setPatterns(res.patterns || []);
       }).catch(() => {
@@ -5283,10 +5393,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/MigrationOutcomes.jsx
-  var { useState: useState12, useEffect: useEffect4 } = React;
+  var { useState: useState12, useEffect: useEffect5 } = React;
   function MigrationOutcomes({ API_BASE: API_BASE4, active }) {
     let [outcomes, setOutcomes] = useState12(null), [loading, setLoading] = useState12(!1);
-    return useEffect4(() => {
+    return useEffect5(() => {
       !active || outcomes || loading || (setLoading(!0), (async () => {
         try {
           let { fetchMigrationOutcomes: fetchMigrationOutcomes2, refreshMigrationOutcomes: refreshMigrationOutcomes2 } = await import("../../../api/client.js");
@@ -5305,10 +5415,10 @@ Proceed anyway?`) || !confirm(`Rollback ${rec.type} ${rec.vmid} (${rec.name}) ba
   }
 
   // src/components/dashboard/recommendations/insights/RecommendationHistory.jsx
-  var { useState: useState13, useEffect: useEffect5 } = React;
+  var { useState: useState13, useEffect: useEffect6 } = React;
   function RecommendationHistory({ API_BASE: API_BASE4, active }) {
     let [historyData, setHistoryData] = useState13(null), [loading, setLoading] = useState13(!1), [hours, setHours] = useState13(24);
-    if (useEffect5(() => {
+    if (useEffect6(() => {
       if (!active) return;
       let cancelled = !1;
       return setLoading(!0), fetch(`${API_BASE4}/score-history?hours=${hours}`).then((r) => r.json()).then((res) => {
@@ -5333,7 +5443,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/components/dashboard/recommendations/InsightsDrawer.jsx
-  var { useState: useState14, useEffect: useEffect6, useRef: useRef2 } = React, TABS = [
+  var { useState: useState14, useEffect: useEffect7, useRef: useRef2 } = React, TABS = [
     { id: "impact", label: "Impact", icon: BarChart2 },
     { id: "diagnostics", label: "Diagnostics", icon: Terminal },
     { id: "patterns", label: "Patterns", icon: Activity },
@@ -5351,13 +5461,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
     isMobile
   }) {
     let [activeTab, setActiveTab] = useState14("impact"), drawerRef = useRef2(null);
-    return useEffect6(() => {
+    return useEffect7(() => {
       if (!open) return;
       let handleKey = (e) => {
         e.key === "Escape" && onClose();
       };
       return window.addEventListener("keydown", handleKey), () => window.removeEventListener("keydown", handleKey);
-    }, [open]), useEffect6(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
+    }, [open]), useEffect7(() => (open ? document.body.style.overflow = "hidden" : document.body.style.overflow = "", () => {
       document.body.style.overflow = "";
     }), [open]), open ? /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-[60]" }, /* @__PURE__ */ React.createElement(
       "div",
@@ -6519,14 +6629,14 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           className: "w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
         }
       ))),
-      /* @__PURE__ */ React.createElement("div", { className: "overflow-y-auto p-4 pt-2 space-y-4" }, filteredGroups.map((group) => /* @__PURE__ */ React.createElement("div", { key: group.label }, /* @__PURE__ */ React.createElement("h3", { className: "text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2" }, group.label), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-1.5" }, group.icons.map(({ Icon, name }) => /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("div", { className: "overflow-y-auto p-4 pt-2 space-y-4" }, filteredGroups.map((group) => /* @__PURE__ */ React.createElement("div", { key: group.label }, /* @__PURE__ */ React.createElement("h3", { className: "text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2" }, group.label), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-1.5" }, group.icons.map(({ Icon, name: name2 }) => /* @__PURE__ */ React.createElement(
         "div",
         {
-          key: name,
+          key: name2,
           className: "flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-sm"
         },
         /* @__PURE__ */ React.createElement(Icon, { size: 16, className: "text-gray-600 dark:text-gray-300 flex-shrink-0" }),
-        /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-200 truncate" }, name)
+        /* @__PURE__ */ React.createElement("span", { className: "text-gray-700 dark:text-gray-200 truncate" }, name2)
       ))))), filteredGroups.length === 0 && /* @__PURE__ */ React.createElement("p", { className: "text-center text-gray-500 dark:text-gray-400 py-4" }, "No icons match your search."))
     ));
   }
@@ -6541,7 +6651,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useUIState.js
-  var { useState: useState19, useEffect: useEffect7 } = React;
+  var { useState: useState19, useEffect: useEffect8 } = React;
   function useUIState() {
     let [currentPage, setCurrentPage] = useState19("dashboard"), [showSettings, setShowSettings] = useState19(!1), [showAdvancedSettings, setShowAdvancedSettings] = useState19(!1), [showIconLegend, setShowIconLegend] = useState19(!1), [scrollToApiConfig, setScrollToApiConfig] = useState19(!1), [logoBalancing, setLogoBalancing] = useState19(!1), [countdownTick, setCountdownTick] = useState19(0), [refreshElapsed, setRefreshElapsed] = useState19(0), [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState19(() => {
       let saved = localStorage.getItem("dashboardHeaderCollapsed");
@@ -6584,22 +6694,22 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       mountPoints: !0,
       passthroughDisks: !0
     });
-    return useEffect7(() => {
+    return useEffect8(() => {
       localStorage.setItem("collapsedSections", JSON.stringify(collapsedSections));
-    }, [collapsedSections]), useEffect7(() => {
+    }, [collapsedSections]), useEffect8(() => {
       localStorage.setItem("nodeGridColumns", nodeGridColumns.toString());
-    }, [nodeGridColumns]), useEffect7(() => {
+    }, [nodeGridColumns]), useEffect8(() => {
       localStorage.setItem("clusterMapViewMode", clusterMapViewMode);
-    }, [clusterMapViewMode]), useEffect7(() => {
+    }, [clusterMapViewMode]), useEffect8(() => {
       localStorage.setItem("showPoweredOffGuests", showPoweredOffGuests.toString());
-    }, [showPoweredOffGuests]), useEffect7(() => {
+    }, [showPoweredOffGuests]), useEffect8(() => {
       localStorage.setItem("dashboardHeaderCollapsed", JSON.stringify(dashboardHeaderCollapsed));
-    }, [dashboardHeaderCollapsed]), useEffect7(() => {
+    }, [dashboardHeaderCollapsed]), useEffect8(() => {
       let interval = setInterval(() => {
         setCountdownTick((prev) => prev + 1);
       }, 1e3);
       return () => clearInterval(interval);
-    }, []), useEffect7(() => {
+    }, []), useEffect8(() => {
     }, [showSettings]), {
       currentPage,
       setCurrentPage,
@@ -6699,9 +6809,28 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useConfig.js
-  var { useState: useState21, useEffect: useEffect8 } = React;
+  var { useState: useState21, useEffect: useEffect9 } = React;
   function useConfig(API_BASE4, deps = {}) {
-    let { setError } = deps, [config, setConfig] = useState21(null), [autoRefreshInterval, setAutoRefreshInterval] = useState21(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState21(60), [tempUiInterval, setTempUiInterval] = useState21(60), [savingSettings, setSavingSettings] = useState21(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState21(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState21(!1), [logLevel, setLogLevel] = useState21("INFO"), [verboseLogging, setVerboseLogging] = useState21(!1), [penaltyConfig, setPenaltyConfig] = useState21(null), [penaltyDefaults, setPenaltyDefaults] = useState21(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState21(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState21(!1), [penaltyPresets, setPenaltyPresets] = useState21(null), [activePreset, setActivePreset] = useState21("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState21(!1);
+    let { setError } = deps, [config, setConfig] = useState21(null), [autoRefreshInterval, setAutoRefreshInterval] = useState21(3600 * 1e3), [tempBackendInterval, setTempBackendInterval] = useState21(60), [tempUiInterval, setTempUiInterval] = useState21(60), [savingSettings, setSavingSettings] = useState21(!1), [savingCollectionSettings, setSavingCollectionSettings] = useState21(!1), [collectionSettingsSaved, setCollectionSettingsSaved] = useState21(!1), [logLevel, setLogLevel] = useState21("INFO"), [verboseLogging, setVerboseLogging] = useState21(!1), [penaltyConfig, setPenaltyConfig] = useState21(null), [penaltyDefaults, setPenaltyDefaults] = useState21(null), [savingPenaltyConfig, setSavingPenaltyConfig] = useState21(!1), [penaltyConfigSaved, setPenaltyConfigSaved] = useState21(!1), [penaltyPresets, setPenaltyPresets] = useState21(null), [activePreset, setActivePreset] = useState21("custom"), [openPenaltyConfigOnAutomation, setOpenPenaltyConfigOnAutomation] = useState21(!1), [migrationSettings, setMigrationSettings] = useState21(null), [migrationSettingsDefaults, setMigrationSettingsDefaults] = useState21(null), [migrationSettingsDescriptions, setMigrationSettingsDescriptions] = useState21(null), [effectivePenaltyConfig, setEffectivePenaltyConfig] = useState21(null), [hasExpertOverrides, setHasExpertOverrides] = useState21(!1), [savingMigrationSettings, setSavingMigrationSettings] = useState21(!1), [migrationSettingsSaved, setMigrationSettingsSaved] = useState21(!1), fetchConfig2 = async () => {
+      try {
+        let result = await (await fetch(`${API_BASE4}/config`)).json();
+        if (result.success) {
+          setConfig(result.config);
+          let intervalMs = (result.config.ui_refresh_interval_minutes || 60) * 60 * 1e3;
+          return setAutoRefreshInterval(intervalMs), setTempBackendInterval(result.config.collection_interval_minutes || 60), setTempUiInterval(result.config.ui_refresh_interval_minutes || 60), result.config;
+        }
+      } catch (err) {
+        console.error("Failed to load config:", err);
+      }
+      return null;
+    }, fetchPenaltyConfig2 = async () => {
+      try {
+        let result = await (await fetch(`${API_BASE4}/penalty-config`)).json();
+        result.success && (setPenaltyConfig(result.config), setPenaltyDefaults(result.defaults), result.presets && setPenaltyPresets(result.presets), result.active_preset && setActivePreset(result.active_preset));
+      } catch (err) {
+        console.error("Failed to load penalty config:", err);
+      }
+    };
     return {
       config,
       setConfig,
@@ -6729,27 +6858,8 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       activePreset,
       openPenaltyConfigOnAutomation,
       setOpenPenaltyConfigOnAutomation,
-      fetchConfig: async () => {
-        try {
-          let result = await (await fetch(`${API_BASE4}/config`)).json();
-          if (result.success) {
-            setConfig(result.config);
-            let intervalMs = (result.config.ui_refresh_interval_minutes || 60) * 60 * 1e3;
-            return setAutoRefreshInterval(intervalMs), setTempBackendInterval(result.config.collection_interval_minutes || 60), setTempUiInterval(result.config.ui_refresh_interval_minutes || 60), result.config;
-          }
-        } catch (err) {
-          console.error("Failed to load config:", err);
-        }
-        return null;
-      },
-      fetchPenaltyConfig: async () => {
-        try {
-          let result = await (await fetch(`${API_BASE4}/penalty-config`)).json();
-          result.success && (setPenaltyConfig(result.config), setPenaltyDefaults(result.defaults), result.presets && setPenaltyPresets(result.presets), result.active_preset && setActivePreset(result.active_preset));
-        } catch (err) {
-          console.error("Failed to load penalty config:", err);
-        }
-      },
+      fetchConfig: fetchConfig2,
+      fetchPenaltyConfig: fetchPenaltyConfig2,
       applyPenaltyPreset: async (presetName) => {
         try {
           setSavingPenaltyConfig(!0);
@@ -6807,6 +6917,53 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           console.error("Failed to reset penalty config:", err), setError && setError(`Error resetting penalty config: ${err.message}`);
         } finally {
           setSavingPenaltyConfig(!1);
+        }
+      },
+      // Migration settings
+      migrationSettings,
+      setMigrationSettings,
+      migrationSettingsDefaults,
+      migrationSettingsDescriptions,
+      effectivePenaltyConfig,
+      hasExpertOverrides,
+      savingMigrationSettings,
+      migrationSettingsSaved,
+      fetchMigrationSettings: async () => {
+        try {
+          let result = await (await fetch(`${API_BASE4}/migration-settings`)).json();
+          result.success && (setMigrationSettings(result.settings), setMigrationSettingsDefaults(result.defaults), setMigrationSettingsDescriptions(result.descriptions), setEffectivePenaltyConfig(result.effective_penalty_config), setHasExpertOverrides(result.has_expert_overrides || !1));
+        } catch (err) {
+          console.error("Failed to load migration settings:", err);
+        }
+      },
+      saveMigrationSettingsAction: async () => {
+        if (migrationSettings) {
+          setSavingMigrationSettings(!0), setMigrationSettingsSaved(!1);
+          try {
+            let result = await (await fetch(`${API_BASE4}/migration-settings`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ settings: migrationSettings })
+            })).json();
+            result.success ? (setMigrationSettings(result.settings), setEffectivePenaltyConfig(result.effective_penalty_config), setMigrationSettingsSaved(!0), setTimeout(() => setMigrationSettingsSaved(!1), 3e3), fetchPenaltyConfig2()) : setError && setError(`Failed to save migration settings: ${result.error}`);
+          } catch (err) {
+            console.error("Failed to save migration settings:", err), setError && setError(`Error saving migration settings: ${err.message}`);
+          } finally {
+            setSavingMigrationSettings(!1);
+          }
+        }
+      },
+      resetMigrationSettingsAction: async () => {
+        setSavingMigrationSettings(!0);
+        try {
+          let result = await (await fetch(`${API_BASE4}/migration-settings/reset`, {
+            method: "POST"
+          })).json();
+          result.success ? (setMigrationSettings(result.settings), setEffectivePenaltyConfig(result.effective_penalty_config), setMigrationSettingsSaved(!0), setTimeout(() => setMigrationSettingsSaved(!1), 3e3), fetchPenaltyConfig2()) : setError && setError(`Failed to reset migration settings: ${result.error}`);
+        } catch (err) {
+          console.error("Failed to reset migration settings:", err), setError && setError(`Error resetting migration settings: ${err.message}`);
+        } finally {
+          setSavingMigrationSettings(!1);
         }
       }
     };
@@ -6981,7 +7138,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/hooks/useRecommendations.js
   init_constants();
-  var { useState: useState23, useEffect: useEffect9 } = React;
+  var { useState: useState23, useEffect: useEffect10 } = React;
   function useRecommendations(API_BASE4, deps = {}) {
     let { data, maintenanceNodes } = deps, [recommendations, setRecommendations] = useState23([]), [recommendationData, setRecommendationData] = useState23(null), [loadingRecommendations, setLoadingRecommendations] = useState23(!1), [feedbackGiven, setFeedbackGiven] = useState23({}), [thresholdSuggestions, setThresholdSuggestions] = useState23(null), [cpuThreshold, setCpuThreshold] = useState23(() => {
       let saved = localStorage.getItem("proxbalance_cpu_threshold");
@@ -6993,15 +7150,15 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       let saved = localStorage.getItem("proxbalance_iowait_threshold");
       return saved ? Number(saved) : 30;
     }), [thresholdMode, setThresholdMode] = useState23(() => localStorage.getItem("proxbalance_threshold_mode") || "manual");
-    useEffect9(() => {
+    useEffect10(() => {
       localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString());
-    }, [cpuThreshold]), useEffect9(() => {
+    }, [cpuThreshold]), useEffect10(() => {
       localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString());
-    }, [memThreshold]), useEffect9(() => {
+    }, [memThreshold]), useEffect10(() => {
       localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString());
-    }, [iowaitThreshold]), useEffect9(() => {
+    }, [iowaitThreshold]), useEffect10(() => {
       localStorage.setItem("proxbalance_threshold_mode", thresholdMode);
-    }, [thresholdMode]), useEffect9(() => {
+    }, [thresholdMode]), useEffect10(() => {
       thresholdMode === "auto" && thresholdSuggestions && (setCpuThreshold(thresholdSuggestions.suggested_cpu_threshold), setMemThreshold(thresholdSuggestions.suggested_mem_threshold), setIowaitThreshold(thresholdSuggestions.suggested_iowait_threshold));
     }, [thresholdMode, thresholdSuggestions]);
     let fetchCachedRecommendations2 = async () => {
@@ -7675,13 +7832,13 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
   }
 
   // src/hooks/useEvacuation.js
-  var { useState: useState27, useEffect: useEffect10 } = React;
+  var { useState: useState27, useEffect: useEffect11 } = React;
   function useEvacuation(deps = {}) {
     let { saveAutomationConfig: saveAutomationConfig2, automationConfig } = deps, [maintenanceNodes, setMaintenanceNodes] = useState27(() => {
       let saved = localStorage.getItem("maintenanceNodes");
       return saved ? new Set(JSON.parse(saved)) : /* @__PURE__ */ new Set();
     }), [evacuatingNodes, setEvacuatingNodes] = useState27(/* @__PURE__ */ new Set()), [evacuationStatus, setEvacuationStatus] = useState27({}), [evacuationPlan, setEvacuationPlan] = useState27(null), [planNode, setPlanNode] = useState27(null), [planningNodes, setPlanningNodes] = useState27(/* @__PURE__ */ new Set()), [guestActions, setGuestActions] = useState27({}), [guestTargets, setGuestTargets] = useState27({}), [showConfirmModal, setShowConfirmModal] = useState27(!1);
-    return useEffect10(() => {
+    return useEffect11(() => {
       if (localStorage.setItem("maintenanceNodes", JSON.stringify(Array.from(maintenanceNodes))), automationConfig !== null && saveAutomationConfig2) {
         let maintenanceArray = Array.from(maintenanceNodes), currentMaintenance = automationConfig.maintenance_nodes || [];
         JSON.stringify(maintenanceArray.sort()) !== JSON.stringify(currentMaintenance.sort()) && saveAutomationConfig2({ maintenance_nodes: maintenanceArray });
@@ -7814,7 +7971,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
 
   // src/index.jsx
   init_constants();
-  var { useState: useState29, useEffect: useEffect11, useMemo: useMemo2, useCallback, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
+  var { useState: useState29, useEffect: useEffect12, useMemo: useMemo2, useCallback: useCallback2, useRef: useRef3 } = React, ProxmoxBalanceManager = () => {
     let isMobile = useIsMobile_default(640), { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(!0), ui = useUIState(), auth = useAuth(API_BASE), automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) }), evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig }), configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) }), updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) }), cluster = useClusterData(API_BASE, {
       setTokenAuthError: auth.setTokenAuthError,
       checkPermissions: auth.checkPermissions,
@@ -7830,43 +7987,43 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
       setError: cluster.setError,
       fetchGuestLocations: cluster.fetchGuestLocations
     });
-    useEffect11(() => {
+    useEffect12(() => {
       document.documentElement.classList.add("dark"), configHook.fetchConfig().then((cfg) => {
         cfg && (ai.initFromConfig(cfg), auth.setProxmoxTokenId(cfg.proxmox_api_token_id || ""), auth.setProxmoxTokenSecret(cfg.proxmox_api_token_secret || ""));
-      }), updates.fetchSystemInfo(), automation.fetchAutomationStatus(), automation.fetchAutomationConfig(), automation.fetchRunHistory(), auth.checkPermissions(), configHook.fetchPenaltyConfig();
-    }, []), useEffect11(() => {
+      }), updates.fetchSystemInfo(), automation.fetchAutomationStatus(), automation.fetchAutomationConfig(), automation.fetchRunHistory(), auth.checkPermissions(), configHook.fetchPenaltyConfig(), configHook.fetchMigrationSettings();
+    }, []), useEffect12(() => {
       if (cluster.data) {
         let splashScreen = document.getElementById("loading-screen");
         splashScreen && (splashScreen.classList.add("hidden"), setTimeout(() => {
           splashScreen.style.display = "none";
         }, 500));
       }
-    }, [cluster.data]), useEffect11(() => {
+    }, [cluster.data]), useEffect12(() => {
       let interval = setInterval(() => {
         automation.fetchAutomationStatus(), automation.fetchRunHistory();
       }, 1e4);
       return () => clearInterval(interval);
-    }, []), useEffect11(() => {
+    }, []), useEffect12(() => {
       cluster.fetchAnalysis();
-    }, []), useEffect11(() => {
+    }, []), useEffect12(() => {
       let interval = setInterval(() => {
         cluster.fetchAnalysis();
       }, configHook.autoRefreshInterval);
       return () => clearInterval(interval);
-    }, [configHook.autoRefreshInterval]), useEffect11(() => {
+    }, [configHook.autoRefreshInterval]), useEffect12(() => {
       cluster.data && !recs.loadingRecommendations && (recs.fetchCachedRecommendations(), cluster.fetchNodeScores(
         { cpu: recs.cpuThreshold, mem: recs.memThreshold, iowait: recs.iowaitThreshold },
         evacuation.maintenanceNodes
       ));
-    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect11(() => {
+    }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]), useEffect12(() => {
       if (!cluster.data) return;
       let interval = setInterval(() => {
         recs.fetchCachedRecommendations();
       }, 12e4);
       return () => clearInterval(interval);
-    }, [cluster.data]), useEffect11(() => {
+    }, [cluster.data]), useEffect12(() => {
       cluster.data && (cluster.fetchGuestProfiles(), cluster.fetchScoreHistory());
-    }, [cluster.data]), useEffect11(() => {
+    }, [cluster.data]), useEffect12(() => {
       ui.currentPage === "automation" && configHook.openPenaltyConfigOnAutomation && requestAnimationFrame(() => {
         ui.setCollapsedSections((prev) => ({ ...prev, penaltyScoring: !1 })), setTimeout(() => {
           let penaltySection = document.getElementById("penalty-config-section");
@@ -7877,18 +8034,18 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
           configHook.setOpenPenaltyConfigOnAutomation(!1);
         }, 300);
       });
-    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect11(() => {
+    }, [ui.currentPage, configHook.openPenaltyConfigOnAutomation]), useEffect12(() => {
       ui.scrollToApiConfig && ui.currentPage === "settings" && (ui.setShowAdvancedSettings(!0), setTimeout(() => {
         let element = document.getElementById("proxmox-api-config");
         element && (element.scrollIntoView({ behavior: "smooth", block: "start" }), element.classList.add("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg"), setTimeout(() => {
           element.classList.remove("ring-4", "ring-red-500", "ring-opacity-50", "rounded-lg");
         }, 3e3)), ui.setScrollToApiConfig(!1);
       }, 400));
-    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect11(() => {
+    }, [ui.scrollToApiConfig, ui.currentPage]), useEffect12(() => {
       !ui.collapsedSections.nodeStatus && !cluster.chartJsLoaded && cluster.loadChartJs();
-    }, [ui.collapsedSections.nodeStatus]), useEffect11(() => {
+    }, [ui.collapsedSections.nodeStatus]), useEffect12(() => {
       migrations.selectedGuestDetails && ui.setGuestModalCollapsed({ mountPoints: !0, passthroughDisks: !0 });
-    }, [migrations.selectedGuestDetails?.vmid]), useEffect11(() => {
+    }, [migrations.selectedGuestDetails?.vmid]), useEffect12(() => {
       if (!cluster.data || !cluster.data.nodes || ui.collapsedSections.nodeStatus || !cluster.chartJsLoaded || typeof Chart > "u") return;
       Object.values(cluster.charts).forEach((chart) => {
         try {
@@ -8097,6 +8254,17 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         iowaitThreshold: recs.iowaitThreshold,
         savePenaltyConfig: configHook.savePenaltyConfig,
         resetPenaltyConfig: configHook.resetPenaltyConfig,
+        migrationSettings: configHook.migrationSettings,
+        setMigrationSettings: configHook.setMigrationSettings,
+        migrationSettingsDefaults: configHook.migrationSettingsDefaults,
+        migrationSettingsDescriptions: configHook.migrationSettingsDescriptions,
+        effectivePenaltyConfig: configHook.effectivePenaltyConfig,
+        hasExpertOverrides: configHook.hasExpertOverrides,
+        savingMigrationSettings: configHook.savingMigrationSettings,
+        migrationSettingsSaved: configHook.migrationSettingsSaved,
+        saveMigrationSettingsAction: configHook.saveMigrationSettingsAction,
+        resetMigrationSettingsAction: configHook.resetMigrationSettingsAction,
+        fetchMigrationSettingsAction: configHook.fetchMigrationSettings,
         saveAutomationConfig: automation.saveAutomationConfig,
         setAutomigrateLogs: automation.setAutomigrateLogs,
         setCollapsedSections: ui.setCollapsedSections,

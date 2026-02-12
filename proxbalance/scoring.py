@@ -17,6 +17,21 @@ Scoring philosophy:
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+# Lazy import to avoid circular dependency — used only when trend data is available
+_trend_analysis = None
+
+
+def _get_trend_analysis():
+    """Lazy import of trend_analysis module."""
+    global _trend_analysis
+    if _trend_analysis is None:
+        try:
+            from proxbalance import trend_analysis as ta
+            _trend_analysis = ta
+        except Exception:
+            pass
+    return _trend_analysis
+
 
 # ---------------------------------------------------------------------------
 # Default penalty scoring configuration
@@ -574,8 +589,53 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         elif long_iowait > 10:
             penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
 
-    # Trend penalty - only apply if using historical data (24h or 7d weights > 0)
-    if weight_24h > 0 or weight_7d > 0:
+    # Trend penalty - use quantified trend data from metrics store when available,
+    # fall back to simple rising/falling/stable labels from cluster_cache
+    _ta = _get_trend_analysis()
+    _node_trend_data = None
+    if _ta and (weight_24h > 0 or weight_7d > 0):
+        try:
+            _node_trend_data = _ta.analyze_node_trends(
+                target_name,
+                lookback_hours=168,
+                cpu_threshold=cpu_threshold,
+                mem_threshold=mem_threshold,
+            )
+            cpu_rate = _node_trend_data.get("cpu", {}).get("rate_per_day", 0)
+            mem_rate = _node_trend_data.get("memory", {}).get("rate_per_day", 0)
+            node_stability = _node_trend_data.get("overall_stability", 50)
+
+            # Quantified trend penalties: scale with rate of change
+            base_trend_penalty = penalty_config.get("cpu_trend_rising_penalty", 15)
+            if cpu_rate > 3.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 3)
+            elif cpu_rate > 1.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 2)
+            elif cpu_rate > 0.5:
+                penalty_breakdown["cpu_trend"] = base_trend_penalty
+
+            base_mem_trend_penalty = penalty_config.get("mem_trend_rising_penalty", 15)
+            if mem_rate > 3.0:
+                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 3)
+            elif mem_rate > 1.0:
+                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
+            elif mem_rate > 0.5:
+                penalty_breakdown["mem_trend"] = base_mem_trend_penalty
+
+            # Stability bonus: stable nodes get a penalty reduction
+            if node_stability >= 80:
+                stability_bonus = -10
+            elif node_stability >= 60:
+                stability_bonus = -5
+            else:
+                stability_bonus = 0
+
+            penalty_breakdown["stability_bonus"] = stability_bonus
+        except Exception:
+            _node_trend_data = None
+
+    # Fallback to simple trend labels if metrics store analysis failed
+    if _node_trend_data is None and (weight_24h > 0 or weight_7d > 0):
         if cpu_trend == "rising":
             penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
         if mem_trend == "rising":
@@ -708,6 +768,19 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         },
         "total_score": round(total_score, 1),
     }
+
+    # Attach trend analysis data when available for UI transparency
+    if _node_trend_data:
+        details["trend_analysis"] = {
+            "cpu_rate_per_day": _node_trend_data.get("cpu", {}).get("rate_per_day", 0),
+            "cpu_direction": _node_trend_data.get("cpu", {}).get("direction", "unknown"),
+            "mem_rate_per_day": _node_trend_data.get("memory", {}).get("rate_per_day", 0),
+            "mem_direction": _node_trend_data.get("memory", {}).get("direction", "unknown"),
+            "stability_score": _node_trend_data.get("overall_stability", 50),
+            "stability_label": _node_trend_data.get("overall_stability_label", "unknown"),
+            "overall_direction": _node_trend_data.get("overall_direction", "unknown"),
+            "data_quality": _node_trend_data.get("data_quality", {}),
+        }
 
     return total_score, details
 

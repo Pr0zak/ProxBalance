@@ -32,6 +32,12 @@ export default function AutomationPage(props) {
     penaltyPresets, activePreset, applyPenaltyPreset,
     cpuThreshold, memThreshold, iowaitThreshold,
     savePenaltyConfig, resetPenaltyConfig,
+    migrationSettings, setMigrationSettings,
+    migrationSettingsDefaults, migrationSettingsDescriptions,
+    effectivePenaltyConfig, hasExpertOverrides,
+    savingMigrationSettings, migrationSettingsSaved,
+    saveMigrationSettingsAction, resetMigrationSettingsAction,
+    fetchMigrationSettingsAction,
     saveAutomationConfig,
     setAutomigrateLogs,
     setCollapsedSections,
@@ -182,6 +188,17 @@ export default function AutomationPage(props) {
           iowaitThreshold={iowaitThreshold}
           savePenaltyConfig={savePenaltyConfig}
           resetPenaltyConfig={resetPenaltyConfig}
+          migrationSettings={migrationSettings}
+          setMigrationSettings={setMigrationSettings}
+          migrationSettingsDefaults={migrationSettingsDefaults}
+          migrationSettingsDescriptions={migrationSettingsDescriptions}
+          effectivePenaltyConfig={effectivePenaltyConfig}
+          hasExpertOverrides={hasExpertOverrides}
+          savingMigrationSettings={savingMigrationSettings}
+          migrationSettingsSaved={migrationSettingsSaved}
+          saveMigrationSettingsAction={saveMigrationSettingsAction}
+          resetMigrationSettingsAction={resetMigrationSettingsAction}
+          fetchMigrationSettingsAction={fetchMigrationSettingsAction}
         />
 
         <DistributionBalancingSection

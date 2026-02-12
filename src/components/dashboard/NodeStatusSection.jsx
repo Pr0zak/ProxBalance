@@ -1,4 +1,4 @@
-import { HardDrive, ChevronDown, ChevronUp, Eye } from '../Icons.jsx';
+import { HardDrive, ChevronDown, ChevronUp, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
 
 export default function NodeStatusSection({
   data,
@@ -115,10 +115,20 @@ export default function NodeStatusSection({
                     </div>
                   </div>
                   <div className="space-y-1.5 text-xs">
-                    {/* CPU with sparkline */}
+                    {/* CPU with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-600 dark:text-gray-400">CPU:</span>
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center gap-0.5">CPU:
+                          {(() => {
+                            const trend = node.metrics?.cpu_trend;
+                            const ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis;
+                            const dir = ta?.cpu_direction || trend;
+                            if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
+                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising'} />;
+                            if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="Falling" />;
+                            return null;
+                          })()}
+                        </span>
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
                             <span className="text-gray-400 line-through mr-1">{(node.cpu_percent || 0).toFixed(0)}%</span>
@@ -143,10 +153,20 @@ export default function NodeStatusSection({
                       </svg>
                     </div>
 
-                    {/* Memory with sparkline */}
+                    {/* Memory with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-600 dark:text-gray-400">Memory:</span>
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center gap-0.5">Memory:
+                          {(() => {
+                            const trend = node.metrics?.mem_trend;
+                            const ta = node.score_details?.trend_analysis || nodeScores?.[name]?.trend_analysis;
+                            const dir = ta?.mem_direction || trend;
+                            if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `Mem ${ta.mem_rate_per_day > 0 ? '+' : ''}${ta.mem_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
+                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title="Rising" />;
+                            if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="Falling" />;
+                            return null;
+                          })()}
+                        </span>
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
                             <span className="text-gray-400 line-through mr-1">{(node.mem_percent || 0).toFixed(0)}%</span>
