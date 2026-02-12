@@ -120,9 +120,12 @@ export default function RecommendationCard({
           <div className={`text-xs mt-1 ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
             {rec.structured_reason ? (
               <div>
-                <span className={`font-medium ${isMaintenance ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                <span className={`font-medium ${isMaintenance ? 'text-yellow-600 dark:text-yellow-400' : rec.structured_reason.primary_reason === 'iowait_relief' ? 'text-orange-600 dark:text-orange-400' : ''}`}>
                   {rec.structured_reason.primary_label}
                 </span>
+                {rec.structured_reason.primary_reason === 'iowait_relief' && (
+                  <span className="ml-1 px-1.5 py-0 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-[10px] font-bold rounded" title="Migration triggered by sustained high I/O wait on source node">I/O</span>
+                )}
                 {rec.structured_reason.contributing_factors?.length > 0 && (
                   <span className="ml-1 text-gray-500 dark:text-gray-500">
                     — {rec.structured_reason.contributing_factors.slice(0, 3).map(f => f.label).join('; ')}
@@ -253,11 +256,28 @@ export default function RecommendationCard({
                   {rec.score_details.target?.metrics && (
                     <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                       <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
-                      <div className="flex gap-4 text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 dark:text-gray-400">
                         <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
                         <span>Memory: {rec.score_details.target.metrics.predicted_mem}%</span>
                         <span>Headroom: {rec.score_details.target.metrics.cpu_headroom}% CPU, {rec.score_details.target.metrics.mem_headroom}% mem</span>
                       </div>
+                    </div>
+                  )}
+                  {/* Stability factor and overcommit annotations */}
+                  {(rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
+                      {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
+                          title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
+                          Source CPU factor: {rec.score_details.source.trend_analysis.cpu_stability_factor}x
+                        </span>
+                      )}
+                      {rec.score_details.target?.trend_analysis?.cpu_stability_factor != null && rec.score_details.target.trend_analysis.cpu_stability_factor !== 1.0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
+                          title={`Target CPU penalties scaled by ${rec.score_details.target.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.target.trend_analysis.stability_score}`}>
+                          Target CPU factor: {rec.score_details.target.trend_analysis.cpu_stability_factor}x
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

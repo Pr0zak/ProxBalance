@@ -191,11 +191,23 @@ export default function NodeStatusSection({
                       </svg>
                     </div>
 
-                    {/* IOWait with sparkline */}
+                    {/* IOWait with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-600 dark:text-gray-400">IOWait:</span>
-                        <span className="font-semibold text-orange-600 dark:text-orange-400">
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center gap-0.5">IOWait:
+                          {(() => {
+                            const iowait = node.metrics?.current_iowait || 0;
+                            const avgIowait = node.metrics?.avg_iowait || 0;
+                            if (iowait > 30) return <TrendingUp size={10} className="text-red-500" title={`IOWait ${iowait.toFixed(1)}% (critical)`} />;
+                            if (iowait > 15 && avgIowait > 10) return <TrendingUp size={10} className="text-orange-400" title={`IOWait ${iowait.toFixed(1)}% (elevated, avg ${avgIowait.toFixed(1)}%)`} />;
+                            return null;
+                          })()}
+                        </span>
+                        <span className={`font-semibold ${
+                          (node.metrics?.current_iowait || 0) > 30 ? 'text-red-600 dark:text-red-400' :
+                          (node.metrics?.current_iowait || 0) > 15 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-orange-600 dark:text-orange-400'
+                        }`}>
                           {(node.metrics?.current_iowait || 0).toFixed(1)}%
                         </span>
                       </div>
@@ -223,6 +235,43 @@ export default function NodeStatusSection({
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
                       </span>
                     </div>
+
+                    {/* Stability + Overcommit indicators */}
+                    {nodeScores && nodeScores[node.name] && (
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {nodeScores[node.name].trend_analysis?.stability_score != null && (() => {
+                          const s = nodeScores[node.name].trend_analysis.stability_score;
+                          const label = s >= 80 ? 'Stable' : s >= 60 ? 'Moderate' : s >= 40 ? 'Variable' : 'Volatile';
+                          const color = s >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : s >= 60 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : s >= 40 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                            : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300';
+                          const factor = nodeScores[node.name].trend_analysis.cpu_stability_factor;
+                          const factorTip = factor && factor !== 1.0 ? ` | CPU penalties ${factor < 1 ? `reduced ${Math.round((1 - factor) * 100)}%` : `inflated ${Math.round((factor - 1) * 100)}%`}` : '';
+                          return (
+                            <span className={`px-1.5 py-0 rounded text-[9px] font-medium ${color}`}
+                              title={`Stability: ${s}/100${factorTip}`}>
+                              {label}
+                            </span>
+                          );
+                        })()}
+                        {nodeScores[node.name].overcommit_ratio > 0 && (() => {
+                          const oc = nodeScores[node.name].overcommit_ratio;
+                          const committed = nodeScores[node.name].committed_mem_gb;
+                          const color = oc > 1.2 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            : oc > 1.0 ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                            : oc > 0.85 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                            : '';
+                          if (!color) return null;
+                          return (
+                            <span className={`px-1.5 py-0 rounded text-[9px] font-medium ${color}`}
+                              title={`Memory overcommit: ${(oc * 100).toFixed(0)}% (${committed?.toFixed(1) || '?'}GB committed)`}>
+                              OC {(oc * 100).toFixed(0)}%
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     {/* Penalty Breakdown Bar */}
                     {nodeScores && nodeScores[node.name] && nodeScores[node.name].penalty_categories && (() => {

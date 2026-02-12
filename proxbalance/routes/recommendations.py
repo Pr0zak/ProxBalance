@@ -692,7 +692,7 @@ def node_scores():
         # Group penalties into categories for the UI ring chart
         penalty_categories = {
             "cpu": penalty_breakdown.get("current_cpu", 0) + penalty_breakdown.get("sustained_cpu", 0) + penalty_breakdown.get("predicted_cpu", 0),
-            "memory": penalty_breakdown.get("current_mem", 0) + penalty_breakdown.get("sustained_mem", 0) + penalty_breakdown.get("predicted_mem", 0),
+            "memory": penalty_breakdown.get("current_mem", 0) + penalty_breakdown.get("sustained_mem", 0) + penalty_breakdown.get("predicted_mem", 0) + penalty_breakdown.get("mem_overcommit", 0),
             "iowait": penalty_breakdown.get("iowait_current", 0) + penalty_breakdown.get("iowait_sustained", 0),
             "trends": penalty_breakdown.get("cpu_trend", 0) + penalty_breakdown.get("mem_trend", 0),
             "spikes": penalty_breakdown.get("cpu_spikes", 0) + penalty_breakdown.get("mem_spikes", 0),
@@ -713,6 +713,9 @@ def node_scores():
             'penalty_categories': penalty_categories,
             'total_penalties': details.get("total_penalties", 0) if details else 0,
             'components': details.get("components", {}) if details else {},
+            'trend_analysis': details.get("trend_analysis") if details else None,
+            'overcommit_ratio': node.get("mem_overcommit_ratio", 0),
+            'committed_mem_gb': node.get("committed_mem_gb", 0),
         }
 
     return jsonify({
