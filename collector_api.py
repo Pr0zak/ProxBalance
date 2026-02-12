@@ -927,6 +927,18 @@ def collect_data():
         collector = ProxmoxAPICollector(config)
         data = collector.analyze_cluster()
 
+        # Preserve first_collected_at from existing cache
+        try:
+            if os.path.exists(CACHE_FILE):
+                with open(CACHE_FILE, 'r') as f:
+                    existing = json.load(f)
+                if existing.get('first_collected_at'):
+                    data['first_collected_at'] = existing['first_collected_at']
+        except Exception:
+            pass
+        if 'first_collected_at' not in data:
+            data['first_collected_at'] = data['collected_at']
+
         # Write to cache file atomically
         temp_file = CACHE_FILE + '.tmp'
         with open(temp_file, 'w') as f:

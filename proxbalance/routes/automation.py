@@ -492,7 +492,7 @@ def get_automigrate_status():
                         earliest_ts = sh_data[0].get('timestamp', '')
                         if earliest_ts:
                             from datetime import datetime as dt, timezone
-                            first_dt = dt.fromisoformat(earliest_ts.replace('Z', '+00:00')).replace(tzinfo=None)
+                            first_dt = dt.fromisoformat(earliest_ts.rstrip('Z').split('+')[0])
                             data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
             except Exception:
                 pass
@@ -507,20 +507,38 @@ def get_automigrate_status():
                         data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
                     except Exception:
                         pass
-            # Fallback to cluster_cache.json collected_at
+            # Fallback to guest_profiles.json earliest observation
+            if data_collection_hours == 0:
+                try:
+                    profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
+                    if os.path.exists(profiles_file):
+                        with open(profiles_file, 'r') as f:
+                            profiles_data = json.load(f)
+                        profiles = profiles_data.get('profiles', {})
+                        earliest_obs = None
+                        for p in profiles.values():
+                            obs_list = p.get('observations', [])
+                            if obs_list:
+                                ts = obs_list[0].get('timestamp', '')
+                                if ts and (earliest_obs is None or ts < earliest_obs):
+                                    earliest_obs = ts
+                        if earliest_obs:
+                            from datetime import datetime as dt, timezone
+                            first_dt = dt.fromisoformat(earliest_obs.rstrip('Z').split('+')[0])
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+            # Fallback to cluster_cache.json first_collected_at / collected_at
             if data_collection_hours == 0:
                 try:
                     cache_file = os.path.join(BASE_PATH, 'cluster_cache.json')
                     if os.path.exists(cache_file):
-                        cache_mtime = os.path.getmtime(cache_file)
                         from datetime import datetime as dt, timezone
-                        cache_age_hours = (time.time() - cache_mtime) / 3600
-                        # Use file creation time approximation - check if there's a collected_at
                         with open(cache_file, 'r') as f:
                             cache_data = json.load(f)
                         first_collected = cache_data.get('first_collected_at') or cache_data.get('collected_at', '')
                         if first_collected:
-                            first_dt = dt.fromisoformat(first_collected.replace('Z', '+00:00')).replace(tzinfo=None)
+                            first_dt = dt.fromisoformat(first_collected.rstrip('Z').split('+')[0])
                             data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
                 except Exception:
                     pass
