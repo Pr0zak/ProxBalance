@@ -582,10 +582,10 @@ export default function AutomationStatusSection({
                                                decision.action === 'deferred' ? 'border-amber-500' :
                                                decision.action === 'skipped' ? 'border-yellow-500' :
                                                'border-gray-400';
-                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-green-900/40' :
-                                           isPending ? 'bg-blue-50 dark:bg-blue-900/40' :
-                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/40' :
-                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/40' :
+                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-gray-800' :
+                                           isPending ? 'bg-blue-50 dark:bg-gray-800' :
+                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-gray-800' :
+                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-gray-800' :
                                            'bg-gray-50 dark:bg-gray-800';
 
                             return (
@@ -896,13 +896,13 @@ export default function AutomationStatusSection({
                                   Decisions ({run.decisions.length})
                                 </div>
                                 {run.decisions.map((decision, didx) => (
-                                  <div key={didx} className={`text-xs p-1.5 rounded ${
-                                    decision.action === 'executed' ? 'bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-700' :
-                                    decision.action === 'pending' ? 'bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700' :
-                                    decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/40 border border-cyan-200 dark:border-cyan-700' :
-                                    decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700' :
-                                    decision.action === 'skipped' ? 'bg-yellow-50 dark:bg-yellow-900/40 border border-yellow-200 dark:border-yellow-700' :
-                                    'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600'
+                                  <div key={didx} className={`text-xs p-1.5 rounded bg-gray-50 dark:bg-gray-800 border-l-2 ${
+                                    decision.action === 'executed' ? 'border-green-500' :
+                                    decision.action === 'pending' ? 'border-blue-500' :
+                                    decision.action === 'observing' ? 'border-cyan-500' :
+                                    decision.action === 'deferred' ? 'border-amber-500' :
+                                    decision.action === 'skipped' ? 'border-yellow-500' :
+                                    'border-gray-400'
                                   }`}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-1">
