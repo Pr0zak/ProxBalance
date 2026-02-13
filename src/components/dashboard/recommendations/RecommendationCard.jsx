@@ -332,7 +332,7 @@ export default function RecommendationCard({
                 {collapsedSections[`trend-${idx}`] ? 'Hide trend analysis' : 'Why this migration?'}
               </button>
               {collapsedSections[`trend-${idx}`] && (
-                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 border border-indigo-200 dark:border-indigo-800 rounded text-xs space-y-3">
+                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded text-xs space-y-3">
                   {/* Source vs Target Trend Summary */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -380,7 +380,7 @@ export default function RecommendationCard({
 
                   {/* Guest Behavior */}
                   {rec.trend_evidence.guest_trend && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Guest Behavior</div>
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -406,7 +406,7 @@ export default function RecommendationCard({
 
                   {/* Decision Factors */}
                   {rec.trend_evidence.decision_factors?.length > 0 && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Decision Factors</div>
                       <div className="space-y-1">
                         {rec.trend_evidence.decision_factors.map((f, i) => (
