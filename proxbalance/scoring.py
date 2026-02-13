@@ -415,9 +415,18 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 cpu_threshold=cpu_threshold,
                 mem_threshold=mem_threshold,
             )
-            cpu_rate = _node_trend_data.get("cpu", {}).get("rate_per_day", 0)
-            mem_rate = _node_trend_data.get("memory", {}).get("rate_per_day", 0)
+            raw_cpu_rate = _node_trend_data.get("cpu", {}).get("rate_per_day", 0)
+            raw_mem_rate = _node_trend_data.get("memory", {}).get("rate_per_day", 0)
             node_stability = _node_trend_data.get("overall_stability", 50)
+
+            # Gate trend penalties by confidence level.  With sparse data
+            # (< 12 samples or low R²) the regression slope is unreliable —
+            # scale the effective rate so penalties aren't inflated by noise.
+            _confidence_scale = {"high": 1.0, "medium": 0.5, "low": 0.0}
+            cpu_confidence = _node_trend_data.get("cpu", {}).get("confidence", "low")
+            mem_confidence = _node_trend_data.get("memory", {}).get("confidence", "low")
+            cpu_rate = raw_cpu_rate * _confidence_scale.get(cpu_confidence, 0.0)
+            mem_rate = raw_mem_rate * _confidence_scale.get(mem_confidence, 0.0)
 
             # Quantified trend penalties: scale with rate of change
             base_trend_penalty = penalty_config.get("cpu_trend_rising_penalty", 15)
@@ -624,8 +633,10 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         details["trend_analysis"] = {
             "cpu_rate_per_day": _node_trend_data.get("cpu", {}).get("rate_per_day", 0),
             "cpu_direction": _node_trend_data.get("cpu", {}).get("direction", "unknown"),
+            "cpu_confidence": _node_trend_data.get("cpu", {}).get("confidence", "low"),
             "mem_rate_per_day": _node_trend_data.get("memory", {}).get("rate_per_day", 0),
             "mem_direction": _node_trend_data.get("memory", {}).get("direction", "unknown"),
+            "mem_confidence": _node_trend_data.get("memory", {}).get("confidence", "low"),
             "stability_score": _node_trend_data.get("overall_stability", 50),
             "stability_label": _node_trend_data.get("overall_stability_label", "unknown"),
             "cpu_stability_factor": cpu_stability_factor,
