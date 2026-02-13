@@ -709,9 +709,12 @@ class UpdateManager:
         """
         log.append('Restarting ProxBalance services...')
 
-        # Restart collector timer
-        ok, msg = self.services.restart('proxmox-collector.timer', timeout=15)
-        log.append(f'{"" if ok else ""} {msg}')
+        # Restart all timers so they re-anchor after daemon-reload
+        for timer in ('proxmox-collector.timer',
+                      'proxmox-balance-automigrate.timer',
+                      'proxmox-balance-recommendations.timer'):
+            ok, msg = self.services.restart(timer, timeout=15)
+            log.append(f'{"" if ok else ""} {msg}')
 
         # Defer API restart with health verification
         log.append('API service will restart in 2 seconds (health check follows)...')
@@ -786,10 +789,13 @@ class UpdateManager:
                 )
 
             # Restart services again
-            subprocess.run(
-                [SYSTEMCTL_CMD, 'restart', 'proxmox-collector.timer'],
-                capture_output=True, text=True, timeout=15,
-            )
+            for timer in ('proxmox-collector.timer',
+                          'proxmox-balance-automigrate.timer',
+                          'proxmox-balance-recommendations.timer'):
+                subprocess.run(
+                    [SYSTEMCTL_CMD, 'restart', timer],
+                    capture_output=True, text=True, timeout=15,
+                )
             subprocess.Popen(
                 [SYSTEMCTL_CMD, 'restart', 'proxmox-balance'],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
