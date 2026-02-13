@@ -525,7 +525,7 @@ export default function AutomationStatusSection({
                   <div className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                     {/* Run Overview */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Status</div>
                         <div className={`text-sm font-bold ${
                           automationStatus.state.last_run.status === 'success' ? 'text-green-600 dark:text-green-400' :
@@ -540,19 +540,19 @@ export default function AutomationStatusSection({
                            automationStatus.state.last_run.status}
                         </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Migrations</div>
                         <div className="text-sm font-bold text-gray-900 dark:text-white">
                           {automationStatus.state.last_run.migrations_successful || 0} / {automationStatus.state.last_run.migrations_executed || 0}
                         </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Duration</div>
                         <div className="text-sm font-bold text-gray-900 dark:text-white">
                           {automationStatus.state.last_run.duration_seconds ? `${Math.floor(automationStatus.state.last_run.duration_seconds / 60)}m ${automationStatus.state.last_run.duration_seconds % 60}s` : 'N/A'}
                         </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Mode</div>
                         <div className="text-sm font-bold text-gray-900 dark:text-white">
                           {automationStatus.state.last_run.mode === 'dry_run' ? 'Dry Run' : 'Live'}
@@ -562,7 +562,7 @@ export default function AutomationStatusSection({
 
                     {/* Decision Details */}
                     {automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3 mb-3 max-h-64 overflow-y-auto">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 mb-3 max-h-64 overflow-y-auto">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Decisions Made:</div>
                         <div className="space-y-2">
                           {[...automationStatus.state.last_run.decisions].sort((a, b) => {
@@ -582,11 +582,11 @@ export default function AutomationStatusSection({
                                                decision.action === 'deferred' ? 'border-amber-500' :
                                                decision.action === 'skipped' ? 'border-yellow-500' :
                                                'border-gray-400';
-                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-green-900/20' :
-                                           isPending ? 'bg-blue-50 dark:bg-blue-900/20' :
-                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/20' :
-                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/20' :
-                                           'bg-gray-50 dark:bg-gray-700';
+                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-green-900/40' :
+                                           isPending ? 'bg-blue-50 dark:bg-blue-900/40' :
+                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/40' :
+                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/40' :
+                                           'bg-gray-50 dark:bg-gray-800';
 
                             return (
                               <div key={idx} className={`text-xs ${bgColor} rounded p-2 border-l-4 ${borderColor} ${isPending ? 'animate-pulse' : ''}`}>
@@ -661,7 +661,7 @@ export default function AutomationStatusSection({
 
                     {/* Safety Checks */}
                     {automationStatus.state.last_run.safety_checks && (
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Safety Checks:</div>
                         <div className="grid grid-cols-1 gap-2 text-xs">
                           <div className="flex items-start gap-2">
@@ -687,7 +687,7 @@ export default function AutomationStatusSection({
 
                     {/* Activity Log — VMs considered but not migrated */}
                     {automationStatus.state?.activity_log && automationStatus.state.activity_log.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                           Activity Log — Skipped ({automationStatus.state.activity_log.length}):
                         </div>
@@ -710,7 +710,7 @@ export default function AutomationStatusSection({
                     {(!automationStatus.state.last_run.decisions || automationStatus.state.last_run.decisions.length === 0) &&
                      (!automationStatus.state?.activity_log || automationStatus.state.activity_log.length === 0) &&
                      automationStatus.filter_reasons && automationStatus.filter_reasons.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-600 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                           Filtered ({automationStatus.filter_reasons.length}):
                         </div>
@@ -897,12 +897,12 @@ export default function AutomationStatusSection({
                                 </div>
                                 {run.decisions.map((decision, didx) => (
                                   <div key={didx} className={`text-xs p-1.5 rounded ${
-                                    decision.action === 'executed' ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700' :
-                                    decision.action === 'pending' ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700' :
-                                    decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700' :
-                                    decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700' :
-                                    decision.action === 'skipped' ? 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700' :
-                                    'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-600'
+                                    decision.action === 'executed' ? 'bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-700' :
+                                    decision.action === 'pending' ? 'bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700' :
+                                    decision.action === 'observing' ? 'bg-cyan-50 dark:bg-cyan-900/40 border border-cyan-200 dark:border-cyan-700' :
+                                    decision.action === 'deferred' ? 'bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700' :
+                                    decision.action === 'skipped' ? 'bg-yellow-50 dark:bg-yellow-900/40 border border-yellow-200 dark:border-yellow-700' :
+                                    'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600'
                                   }`}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-1">
