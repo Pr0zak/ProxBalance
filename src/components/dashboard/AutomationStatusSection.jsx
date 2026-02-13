@@ -531,12 +531,13 @@ export default function AutomationStatusSection({
                           automationStatus.state.last_run.status === 'success' ? 'text-green-600 dark:text-green-400' :
                           automationStatus.state.last_run.status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
                           automationStatus.state.last_run.status === 'failed' ? 'text-red-600 dark:text-red-400' :
+                          automationStatus.state.last_run.status === 'no_action' ? 'text-green-600 dark:text-green-400' :
                           'text-gray-600 dark:text-gray-400'
                         }`}>
                           {automationStatus.state.last_run.status === 'success' ? 'Success' :
                            automationStatus.state.last_run.status === 'partial' ? 'Partial' :
                            automationStatus.state.last_run.status === 'failed' ? 'Failed' :
-                           automationStatus.state.last_run.status === 'no_action' ? 'No Action' :
+                           automationStatus.state.last_run.status === 'no_action' ? 'Cluster Balanced' :
                            automationStatus.state.last_run.status}
                         </div>
                       </div>
@@ -559,6 +560,14 @@ export default function AutomationStatusSection({
                         </div>
                       </div>
                     </div>
+
+                    {/* Cluster Balanced Banner */}
+                    {automationStatus.state.last_run.status === 'no_action' && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg mb-4 flex items-center gap-2">
+                        <CheckCircle size={16} className="text-green-600 dark:text-green-400 shrink-0" />
+                        <span className="text-sm text-green-700 dark:text-green-300">No action needed — cluster is balanced and no migrations were required.</span>
+                      </div>
+                    )}
 
                     {/* Decision Details */}
                     {automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && (
@@ -876,10 +885,10 @@ export default function AutomationStatusSection({
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                               run.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-gray-800 dark:text-green-300' :
                               run.status === 'partial' ? 'bg-yellow-100 text-yellow-700 dark:bg-gray-800 dark:text-yellow-300' :
-                              run.status === 'no_action' ? 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300' :
+                              run.status === 'no_action' ? 'bg-green-50 text-green-600 dark:bg-gray-800 dark:text-green-400' :
                               'bg-red-100 text-red-700 dark:bg-gray-800 dark:text-red-300'
                             }`}>
-                              {run.status}
+                              {run.status === 'no_action' ? 'balanced' : run.status}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">

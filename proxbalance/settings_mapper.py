@@ -28,6 +28,7 @@ DEFAULT_MIGRATION_SETTINGS: Dict[str, Any] = {
     "lookback_days": 7,         # 1, 3, 7, 14, 30
     "min_confidence": 75,       # 50-95%
     "protect_workloads": True,  # Avoid migrating during peak hours
+    "min_score_improvement": None,  # None = derived from sensitivity; int = explicit override
     "expert_overrides": None,   # None = auto-map; dict = use these penalty values directly
 }
 
@@ -128,7 +129,12 @@ def map_simplified_to_penalty_config(settings: Dict[str, Any]) -> Dict[str, Any]
         cfg[key] = int(round(default_val * mem_scale))
 
     # --- Score improvement threshold ---
-    cfg["min_score_improvement"] = profile["min_score_improvement"]
+    # Allow explicit override; otherwise use sensitivity profile value
+    msi_override = settings.get("min_score_improvement")
+    if msi_override is not None and isinstance(msi_override, (int, float)):
+        cfg["min_score_improvement"] = int(msi_override)
+    else:
+        cfg["min_score_improvement"] = profile["min_score_improvement"]
     cfg["cluster_convergence_threshold"] = profile["convergence_threshold"]
 
     # --- Time period weights from trend_weight ---
@@ -249,6 +255,10 @@ def validate_migration_settings(settings: Dict[str, Any]) -> Tuple[bool, str]:
     confidence = settings.get("min_confidence", 75)
     if not (50 <= confidence <= 95):
         return False, "min_confidence must be between 50 and 95"
+
+    msi = settings.get("min_score_improvement")
+    if msi is not None and not (1 <= msi <= 100):
+        return False, "min_score_improvement must be between 1 and 100"
 
     return True, ""
 
