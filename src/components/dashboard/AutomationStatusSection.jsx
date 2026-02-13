@@ -75,7 +75,7 @@ export default function AutomationStatusSection({
             </div>
             {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
               <div className="mb-3">
-                <span className="inline-block px-3 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
+                <span className="inline-block px-3 py-1.5 bg-yellow-50 dark:bg-gray-800 rounded-lg border border-yellow-200 dark:border-yellow-800 text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
               </div>
             )}
 
@@ -103,10 +103,10 @@ export default function AutomationStatusSection({
                   disabled={!automationStatus.enabled}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2 ${
                     !automationStatus.enabled
-                      ? 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+                      ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : automationStatus.timer_active
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 cursor-pointer'
-                      : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 cursor-pointer'
+                      ? 'bg-green-50 dark:bg-gray-800 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-gray-700 cursor-pointer'
+                      : 'bg-yellow-50 dark:bg-gray-800 border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-gray-700 cursor-pointer'
                   }`}
                   title={
                     !automationStatus.enabled
@@ -196,10 +196,10 @@ export default function AutomationStatusSection({
             {runNowMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${
                 runNowMessage.type === 'success'
-                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300'
+                  ? 'bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300'
                   : runNowMessage.type === 'info'
-                  ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300'
-                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300'
+                  ? 'bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                  : 'bg-red-50 dark:bg-gray-800 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300'
               }`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1">
@@ -223,7 +223,7 @@ export default function AutomationStatusSection({
               </div>
             )}
             {automationStatus.dry_run && automationStatus.enabled && (
-              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm">
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-gray-800 border border-yellow-200 dark:border-yellow-700 rounded-lg text-sm">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400" />
                   <span className="font-semibold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
@@ -244,7 +244,7 @@ export default function AutomationStatusSection({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-gray-600 dark:text-gray-400">Learning: {Math.round(lp.data_collection_hours)}h / {lp.min_required_hours}h</span>
-                      {level && <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
+                      {level && <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-gray-800 text-blue-700 dark:text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
                       {lp.guest_profiles_count > 0 && <span className="text-gray-500 dark:text-gray-500">{lp.guest_profiles_count} profiles</span>}
                       {lp.outcomes_count > 0 && <span className="text-gray-500 dark:text-gray-500">{lp.outcomes_count} outcomes</span>}
                     </div>
@@ -438,33 +438,33 @@ export default function AutomationStatusSection({
                     return (
                       <div key={idx} className={`text-sm rounded-lg p-3 border-2 animate-pulse ${
                         isAutomated
-                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600'
-                          : 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-600'
+                          ? 'bg-blue-50 dark:bg-gray-800 border-blue-300 dark:border-blue-600'
+                          : 'bg-purple-50 dark:bg-gray-800 border-purple-300 dark:border-purple-600'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 flex-1">
                             <span className="text-gray-900 dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
                             <span className="text-gray-500 dark:text-gray-400 text-xs">{migration.source_node} → {migration.target_node || '?'}</span>
                             {migration.type === 'VM' ? (
-                              <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded border border-green-300 dark:border-green-600" title="Live migration (no downtime)">LIVE</span>
+                              <span className="px-1.5 py-0.5 bg-green-100 dark:bg-gray-800 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded border border-green-300 dark:border-green-600" title="Live migration (no downtime)">LIVE</span>
                             ) : (
-                              <span className="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-semibold rounded border border-orange-300 dark:border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
+                              <span className="px-1.5 py-0.5 bg-orange-100 dark:bg-gray-800 text-orange-700 dark:text-orange-300 text-[10px] font-semibold rounded border border-orange-300 dark:border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
                             )}
                             {!isAutomated && (
-                              <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold rounded border border-purple-300 dark:border-purple-600">MANUAL</span>
+                              <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-gray-800 text-purple-700 dark:text-purple-300 text-[10px] font-semibold rounded border border-purple-300 dark:border-purple-600">MANUAL</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
                               isAutomated
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-gray-700 dark:text-blue-400'
+                                : 'bg-purple-100 text-purple-700 dark:bg-gray-700 dark:text-purple-400'
                             }`}>
                               <RefreshCw size={12} className="animate-spin" /> Running
                             </span>
                             <button
                               onClick={() => setCancelMigrationModal(migration)}
-                              className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
+                              className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-red-700 dark:text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
                               title="Cancel migration"
                             >
                               <X size={12} /> Cancel
@@ -582,11 +582,11 @@ export default function AutomationStatusSection({
                                                decision.action === 'deferred' ? 'border-amber-500' :
                                                decision.action === 'skipped' ? 'border-yellow-500' :
                                                'border-gray-400';
-                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-gray-800' :
-                                           isPending ? 'bg-blue-50 dark:bg-gray-800' :
-                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-gray-800' :
-                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-gray-800' :
-                                           'bg-gray-50 dark:bg-gray-800';
+                            const bgColor = isExecuted ? 'bg-green-50 dark:bg-gray-700' :
+                                           isPending ? 'bg-blue-50 dark:bg-gray-700' :
+                                           decision.action === 'observing' ? 'bg-cyan-50 dark:bg-gray-700' :
+                                           decision.action === 'deferred' ? 'bg-amber-50 dark:bg-gray-700' :
+                                           'bg-gray-50 dark:bg-gray-700';
 
                             return (
                               <div key={idx} className={`text-xs ${bgColor} rounded p-2 border-l-4 ${borderColor} ${isPending ? 'animate-pulse' : ''}`}>
@@ -611,10 +611,10 @@ export default function AutomationStatusSection({
                                          decision.action === 'deferred' ? '🕐' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
                                       </span>
                                       {decision.type && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{decision.type}</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 text-blue-700 dark:bg-gray-800 dark:text-blue-400">{decision.type}</span>
                                       )}
                                       {decision.distribution_balancing && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" title="Distribution Balancing">Balance</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-100 text-purple-700 dark:bg-gray-800 dark:text-purple-400" title="Distribution Balancing">Balance</span>
                                       )}
                                     </div>
                                     <span className="text-gray-600 dark:text-gray-400">
@@ -623,13 +623,13 @@ export default function AutomationStatusSection({
                                     </span>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                    decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    decision.action === 'pending' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    decision.action === 'observing' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' :
-                                    decision.action === 'deferred' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                    decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                    decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    decision.action === 'executed' ? 'bg-green-100 text-green-700 dark:bg-gray-800 dark:text-green-400' :
+                                    decision.action === 'pending' ? 'bg-blue-100 text-blue-700 dark:bg-gray-800 dark:text-blue-400' :
+                                    decision.action === 'observing' ? 'bg-cyan-100 text-cyan-700 dark:bg-gray-800 dark:text-cyan-400' :
+                                    decision.action === 'deferred' ? 'bg-amber-100 text-amber-700 dark:bg-gray-800 dark:text-amber-400' :
+                                    decision.action === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-gray-800 dark:text-yellow-400' :
+                                    decision.action === 'filtered' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
+                                    'bg-red-100 text-red-700 dark:bg-gray-800 dark:text-red-400'
                                   }`}>
                                     {decision.action}
                                   </span>
@@ -808,17 +808,17 @@ export default function AutomationStatusSection({
                             })()}
                           </span>
                           {migration.dry_run && (
-                            <span className="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs rounded">DRY RUN</span>
+                            <span className="px-1.5 py-0.5 bg-yellow-100 dark:bg-gray-800 text-yellow-700 dark:text-yellow-400 text-xs rounded">DRY RUN</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {timeDisplay && <span className="text-xs text-gray-500 dark:text-gray-400">{timeDisplay}</span>}
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
-                            migration.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                            migration.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                            migration.status === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                            migration.status === 'timeout' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                            'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                            migration.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-gray-800 dark:text-green-400' :
+                            migration.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-gray-800 dark:text-red-400' :
+                            migration.status === 'skipped' ? 'bg-yellow-100 text-yellow-700 dark:bg-gray-800 dark:text-yellow-400' :
+                            migration.status === 'timeout' ? 'bg-orange-100 text-orange-700 dark:bg-gray-800 dark:text-orange-400' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                           }`}>
                             {migration.status === 'completed' && <CheckCircle size={12} />}
                             {migration.status === 'failed' && <XCircle size={12} />}
@@ -837,7 +837,7 @@ export default function AutomationStatusSection({
                         </div>
                       )}
                       {migration.status === 'failed' && (
-                        <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded flex items-start gap-2">
+                        <div className="mt-2 p-2 bg-red-50 dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded flex items-start gap-2">
                           <XCircle size={14} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
                           <div className="text-xs text-red-800 dark:text-red-300 flex-1">
                             <span className="font-semibold">Error:</span> {migration.error || 'Migration failed (check logs for details)'}
@@ -874,10 +874,10 @@ export default function AutomationStatusSection({
                             {isExpanded ? <ChevronDown size={14} className="text-gray-600 dark:text-gray-400" /> : <ChevronRight size={14} className="text-gray-600 dark:text-gray-400" />}
                             <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{timeDisplay}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              run.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
-                              run.status === 'partial' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' :
+                              run.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-gray-800 dark:text-green-300' :
+                              run.status === 'partial' ? 'bg-yellow-100 text-yellow-700 dark:bg-gray-800 dark:text-yellow-300' :
                               run.status === 'no_action' ? 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300' :
-                              'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                              'bg-red-100 text-red-700 dark:bg-gray-800 dark:text-red-300'
                             }`}>
                               {run.status}
                             </span>
@@ -891,12 +891,13 @@ export default function AutomationStatusSection({
                         {isExpanded && (
                           <>
                             {run.decisions && run.decisions.length > 0 && (
-                              <div className="mt-2 pl-5 space-y-1">
-                                <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">
-                                  Decisions ({run.decisions.length})
-                                </div>
+                              <div className="mt-2 pl-3">
+                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2.5 space-y-1.5">
+                                  <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                                    Decisions ({run.decisions.length})
+                                  </div>
                                 {run.decisions.map((decision, didx) => (
-                                  <div key={didx} className={`text-xs p-1.5 rounded bg-gray-50 dark:bg-gray-800 border-l-2 ${
+                                  <div key={didx} className={`text-xs p-2 rounded bg-white dark:bg-gray-700 border-l-2 ${
                                     decision.action === 'executed' ? 'border-green-500' :
                                     decision.action === 'pending' ? 'border-blue-500' :
                                     decision.action === 'observing' ? 'border-cyan-500' :
@@ -932,6 +933,7 @@ export default function AutomationStatusSection({
                                     )}
                                   </div>
                                 ))}
+                                </div>
                               </div>
                             )}
 
