@@ -9,6 +9,8 @@ manages score history snapshots for time-series analysis.
 import os
 import sys
 import json
+import tempfile
+import shutil
 from typing import Any, Dict, List
 from datetime import datetime, timezone
 
@@ -315,8 +317,20 @@ def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, A
                 with open(SCORE_HISTORY_FILE, 'r') as f:
                     history = json.load(f)
                 if not isinstance(history, list):
+                    print(f"Warning: score_history.json contained {type(history).__name__} instead of list, resetting", file=sys.stderr)
                     history = []
-            except (json.JSONDecodeError, IOError):
+            except json.JSONDecodeError as e:
+                print(f"Warning: score_history.json is corrupted ({e}), backing up and resetting", file=sys.stderr)
+                # Preserve the corrupted file for potential recovery
+                corrupt_path = SCORE_HISTORY_FILE + '.corrupt'
+                try:
+                    shutil.copy2(SCORE_HISTORY_FILE, corrupt_path)
+                    print(f"  Corrupted file backed up to {corrupt_path}", file=sys.stderr)
+                except OSError:
+                    pass
+                history = []
+            except IOError as e:
+                print(f"Warning: Could not read score_history.json ({e}), starting fresh", file=sys.stderr)
                 history = []
 
         history.append(snapshot)
@@ -325,8 +339,21 @@ def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, A
         if len(history) > SCORE_HISTORY_MAX_ENTRIES:
             history = history[-SCORE_HISTORY_MAX_ENTRIES:]
 
-        with open(SCORE_HISTORY_FILE, 'w') as f:
-            json.dump(history, f)
+        # Atomic write: write to temp file then rename to prevent corruption
+        # on service restart / kill during write
+        dir_name = os.path.dirname(SCORE_HISTORY_FILE) or '.'
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix='.tmp', prefix='score_history_')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(history, f)
+            os.replace(tmp_path, SCORE_HISTORY_FILE)
+        except BaseException:
+            # Clean up temp file on any failure (including KeyboardInterrupt)
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     except Exception as e:
         print(f"Warning: Failed to save score snapshot: {e}", file=sys.stderr)
