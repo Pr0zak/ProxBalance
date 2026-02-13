@@ -1,5 +1,5 @@
 import {
-  CheckCircle, XCircle, AlertTriangle, Info, ArrowRight,
+  CheckCircle, XCircle, AlertTriangle, ArrowRight,
   Terminal, Folder, RotateCcw, Play, Lock, RefreshCw,
   ThumbsUp, ThumbsDown, TrendingUp, TrendingDown, Minus, Zap, Activity
 } from '../../Icons.jsx';
@@ -203,88 +203,6 @@ export default function RecommendationCard({
             </div>
           )}
 
-          {/* Score Breakdown (expandable) */}
-          {rec.score_details && !isCompleted && (
-            <div className="mt-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const breakdownKey = `breakdown-${idx}`;
-                  setCollapsedSections(prev => ({ ...prev, [breakdownKey]: !prev[breakdownKey] }));
-                }}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-              >
-                <Info size={12} />
-                {collapsedSections[`breakdown-${idx}`] ? 'Hide score breakdown' : 'Show score breakdown'}
-              </button>
-              {collapsedSections[`breakdown-${idx}`] && (
-                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="font-semibold text-red-600 dark:text-red-400 mb-1">Source: {rec.source_node}</div>
-                      <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
-                        <div>Score: {rec.score_details.source?.total_score?.toFixed(1) || 'N/A'}</div>
-                        <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
-                        {Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
-                          <div key={key} className="flex justify-between">
-                            <span>{key.replace(/_/g, ' ')}</span>
-                            <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
-                          </div>
-                        ))}
-                        {Object.values(rec.score_details.source?.penalties || {}).every(v => v === 0) && (
-                          <div className="text-green-600 dark:text-green-400">No penalties</div>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-green-600 dark:text-green-400 mb-1">Target: {rec.target_node}</div>
-                      <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
-                        <div>Score: {rec.score_details.target?.total_score?.toFixed(1) || 'N/A'}</div>
-                        <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
-                        {Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
-                          <div key={key} className="flex justify-between">
-                            <span>{key.replace(/_/g, ' ')}</span>
-                            <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
-                          </div>
-                        ))}
-                        {Object.values(rec.score_details.target?.penalties || {}).every(v => v === 0) && (
-                          <div className="text-green-600 dark:text-green-400">No penalties</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {rec.score_details.target?.metrics && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 dark:text-gray-400">
-                        <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
-                        <span>Memory: {rec.score_details.target.metrics.predicted_mem}%</span>
-                        <span>Headroom: {rec.score_details.target.metrics.cpu_headroom}% CPU, {rec.score_details.target.metrics.mem_headroom}% mem</span>
-                      </div>
-                    </div>
-                  )}
-                  {/* Stability factor and overcommit annotations */}
-                  {(rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
-                      {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
-                          title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
-                          Source CPU factor: {rec.score_details.source.trend_analysis.cpu_stability_factor}x
-                        </span>
-                      )}
-                      {rec.score_details.target?.trend_analysis?.cpu_stability_factor != null && rec.score_details.target.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
-                          title={`Target CPU penalties scaled by ${rec.score_details.target.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.target.trend_analysis.stability_score}`}>
-                          Target CPU factor: {rec.score_details.target.trend_analysis.cpu_stability_factor}x
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {rec.ai_insight && (
             <div className="mt-2 p-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700 rounded text-xs">
               <div className="flex items-start gap-2">
@@ -317,28 +235,28 @@ export default function RecommendationCard({
             </div>
           )}
 
-          {/* "Why This Migration?" Expandable Section */}
-          {rec.trend_evidence?.available && !isCompleted && (
+          {/* "Why This Migration?" Combined Expandable Section */}
+          {(rec.score_details || rec.trend_evidence?.available) && !isCompleted && (
             <div className="mt-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const trendKey = `trend-${idx}`;
-                  setCollapsedSections(prev => ({ ...prev, [trendKey]: !prev[trendKey] }));
+                  const detailsKey = `details-${idx}`;
+                  setCollapsedSections(prev => ({ ...prev, [detailsKey]: !prev[detailsKey] }));
                 }}
                 className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
               >
                 <Activity size={12} />
-                {collapsedSections[`trend-${idx}`] ? 'Hide trend analysis' : 'Why this migration?'}
+                {collapsedSections[`details-${idx}`] ? 'Hide details' : 'Why this migration?'}
               </button>
-              {collapsedSections[`trend-${idx}`] && (
+              {collapsedSections[`details-${idx}`] && (
                 <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded text-xs space-y-3">
-                  {/* Source vs Target Trend Summary */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Source vs Target — Scores, Penalties & Trends */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1">
                         Source: {rec.source_node}
-                        {(() => {
+                        {rec.trend_evidence?.available && (() => {
                           const dir = rec.trend_evidence.source_node_trend?.cpu_direction;
                           if (dir === 'sustained_increase' || dir === 'rising')
                             return <TrendingUp size={12} className="text-red-500" />;
@@ -348,12 +266,32 @@ export default function RecommendationCard({
                         })()}
                       </div>
                       <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
-                        <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
-                        <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
-                        <div>Stability: {rec.trend_evidence.source_node_trend?.stability_score || '?'}/100</div>
-                        {rec.trend_evidence.source_node_trend?.above_baseline && (
-                          <div className="text-orange-600 dark:text-orange-400 font-medium">
-                            Above baseline ({rec.trend_evidence.source_node_trend.baseline_deviation_sigma?.toFixed(1) || '?'}σ)
+                        {rec.score_details && (
+                          <>
+                            <div>Score: {rec.score_details.source?.total_score?.toFixed(1) || 'N/A'}</div>
+                            <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
+                            {Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
+                              <div key={key} className="flex justify-between">
+                                <span>{key.replace(/_/g, ' ')}</span>
+                                <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
+                              </div>
+                            ))}
+                            {Object.values(rec.score_details.source?.penalties || {}).every(v => v === 0) && (
+                              <div className="text-green-600 dark:text-green-400">No penalties</div>
+                            )}
+                          </>
+                        )}
+                        {rec.trend_evidence?.available && (
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/40' : ''}>
+                            <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-0.5">Trends:</div>
+                            <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
+                            <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
+                            <div>Stability: {rec.trend_evidence.source_node_trend?.stability_score || '?'}/100</div>
+                            {rec.trend_evidence.source_node_trend?.above_baseline && (
+                              <div className="text-orange-600 dark:text-orange-400 font-medium">
+                                Above baseline ({rec.trend_evidence.source_node_trend.baseline_deviation_sigma?.toFixed(1) || '?'}σ)
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -361,7 +299,7 @@ export default function RecommendationCard({
                     <div>
                       <div className="font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1">
                         Target: {rec.target_node}
-                        {(() => {
+                        {rec.trend_evidence?.available && (() => {
                           const dir = rec.trend_evidence.target_node_trend?.cpu_direction;
                           if (dir === 'sustained_increase' || dir === 'rising')
                             return <TrendingUp size={12} className="text-orange-500" />;
@@ -371,15 +309,65 @@ export default function RecommendationCard({
                         })()}
                       </div>
                       <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
-                        <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
-                        <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
-                        <div>Stability: {rec.trend_evidence.target_node_trend?.stability_score || '?'}/100</div>
+                        {rec.score_details && (
+                          <>
+                            <div>Score: {rec.score_details.target?.total_score?.toFixed(1) || 'N/A'}</div>
+                            <div className="text-[10px] mt-1 font-medium text-gray-500 dark:text-gray-500">Penalties:</div>
+                            {Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
+                              <div key={key} className="flex justify-between">
+                                <span>{key.replace(/_/g, ' ')}</span>
+                                <span className="text-red-500 dark:text-red-400 font-mono">+{val}</span>
+                              </div>
+                            ))}
+                            {Object.values(rec.score_details.target?.penalties || {}).every(v => v === 0) && (
+                              <div className="text-green-600 dark:text-green-400">No penalties</div>
+                            )}
+                          </>
+                        )}
+                        {rec.trend_evidence?.available && (
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/40' : ''}>
+                            <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-0.5">Trends:</div>
+                            <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
+                            <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
+                            <div>Stability: {rec.trend_evidence.target_node_trend?.stability_score || '?'}/100</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
+                  {/* After Migration Predictions */}
+                  {rec.score_details?.target?.metrics && (
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
+                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 dark:text-gray-400">
+                        <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
+                        <span>Memory: {rec.score_details.target.metrics.predicted_mem}%</span>
+                        <span>Headroom: {rec.score_details.target.metrics.cpu_headroom}% CPU, {rec.score_details.target.metrics.mem_headroom}% mem</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stability Factors */}
+                  {rec.score_details && (rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60 flex flex-wrap gap-2">
+                      {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100/50 dark:bg-indigo-900/30 rounded text-gray-600 dark:text-gray-400"
+                          title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
+                          Source CPU factor: {rec.score_details.source.trend_analysis.cpu_stability_factor}x
+                        </span>
+                      )}
+                      {rec.score_details.target?.trend_analysis?.cpu_stability_factor != null && rec.score_details.target.trend_analysis.cpu_stability_factor !== 1.0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100/50 dark:bg-indigo-900/30 rounded text-gray-600 dark:text-gray-400"
+                          title={`Target CPU penalties scaled by ${rec.score_details.target.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.target.trend_analysis.stability_score}`}>
+                          Target CPU factor: {rec.score_details.target.trend_analysis.cpu_stability_factor}x
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Guest Behavior */}
-                  {rec.trend_evidence.guest_trend && (
+                  {rec.trend_evidence?.guest_trend && (
                     <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Guest Behavior</div>
                       <div className="flex flex-wrap gap-2">
@@ -405,7 +393,7 @@ export default function RecommendationCard({
                   )}
 
                   {/* Decision Factors */}
-                  {rec.trend_evidence.decision_factors?.length > 0 && (
+                  {rec.trend_evidence?.decision_factors?.length > 0 && (
                     <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Decision Factors</div>
                       <div className="space-y-1">
@@ -428,7 +416,7 @@ export default function RecommendationCard({
                   )}
 
                   {/* Data Quality */}
-                  {rec.trend_evidence.data_quality && (
+                  {rec.trend_evidence?.data_quality && (
                     <div className="text-[10px] text-gray-400 dark:text-gray-500 pt-1">
                       Based on {rec.trend_evidence.data_quality.node_history_days || 0} days of node history,{' '}
                       {rec.trend_evidence.data_quality.guest_history_days || 0} days of guest history.{' '}
