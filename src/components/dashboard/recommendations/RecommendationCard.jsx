@@ -250,7 +250,7 @@ export default function RecommendationCard({
                 {collapsedSections[`details-${idx}`] ? 'Hide details' : 'Why this migration?'}
               </button>
               {collapsedSections[`details-${idx}`] && (
-                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded text-xs space-y-3">
+                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-700 rounded text-xs space-y-3">
                   {/* Source vs Target — Scores, Penalties & Trends */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -282,7 +282,7 @@ export default function RecommendationCard({
                           </>
                         )}
                         {rec.trend_evidence?.available && (
-                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/40' : ''}>
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-700/50' : ''}>
                             <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
@@ -325,7 +325,7 @@ export default function RecommendationCard({
                           </>
                         )}
                         {rec.trend_evidence?.available && (
-                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/40' : ''}>
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-200/50 dark:border-indigo-700/50' : ''}>
                             <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
@@ -338,7 +338,7 @@ export default function RecommendationCard({
 
                   {/* After Migration Predictions */}
                   {rec.score_details?.target?.metrics && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
                       <div className="text-[10px] font-medium text-gray-500 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-600 dark:text-gray-400">
                         <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
@@ -350,7 +350,7 @@ export default function RecommendationCard({
 
                   {/* Stability Factors */}
                   {rec.score_details && (rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60 flex flex-wrap gap-2">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700 flex flex-wrap gap-2">
                       {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-indigo-100/50 dark:bg-indigo-900/30 rounded text-gray-600 dark:text-gray-400"
                           title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
@@ -368,7 +368,7 @@ export default function RecommendationCard({
 
                   {/* Guest Behavior */}
                   {rec.trend_evidence?.guest_trend && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Guest Behavior</div>
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -394,7 +394,7 @@ export default function RecommendationCard({
 
                   {/* Decision Factors */}
                   {rec.trend_evidence?.decision_factors?.length > 0 && (
-                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-800/60">
+                    <div className="pt-2 border-t border-indigo-200 dark:border-indigo-700">
                       <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">Decision Factors</div>
                       <div className="space-y-1">
                         {rec.trend_evidence.decision_factors.map((f, i) => (
