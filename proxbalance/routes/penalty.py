@@ -278,6 +278,10 @@ def update_migration_settings_endpoint():
         "protect_workloads": settings.get("protect_workloads", DEFAULT_MIGRATION_SETTINGS["protect_workloads"]),
     }
 
+    # Include min_score_improvement override if provided
+    if "min_score_improvement" in settings:
+        new_settings["min_score_improvement"] = settings["min_score_improvement"]
+
     # Preserve expert overrides if present
     if "expert_overrides" in settings:
         new_settings["expert_overrides"] = settings["expert_overrides"]
