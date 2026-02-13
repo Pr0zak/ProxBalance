@@ -1,7 +1,7 @@
 import {
   Clock, ChevronDown, ChevronUp, XCircle, CheckCircle, Pause, Settings,
   Play, Loader, X, Info, AlertTriangle, RefreshCw, ClipboardList,
-  Download, MinusCircle, ChevronRight, Minus
+  Download, MinusCircle, ChevronRight, Minus, Eye
 } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
 
@@ -616,7 +616,7 @@ export default function AutomationStatusSection({
                                          decision.action === 'skipped' ? '⏭' :
                                          decision.action === 'pending' ? '🔄' :
                                          decision.action === 'executed' ? '✅' :
-                                         decision.action === 'observing' ? '👁' :
+                                         decision.action === 'observing' ? <Eye size={14} className="inline text-cyan-600 dark:text-cyan-400" /> :
                                          decision.action === 'deferred' ? '🕐' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
                                       </span>
                                       {decision.type && (
@@ -918,7 +918,7 @@ export default function AutomationStatusSection({
                                       <div className="flex items-center gap-1">
                                         {decision.action === 'executed' && <CheckCircle size={10} className="text-green-600 dark:text-green-400" />}
                                         {decision.action === 'pending' && <RefreshCw size={10} className="text-blue-600 dark:text-blue-400" />}
-                                        {decision.action === 'observing' && <Info size={10} className="text-cyan-600 dark:text-cyan-400" />}
+                                        {decision.action === 'observing' && <Eye size={10} className="text-cyan-600 dark:text-cyan-400" />}
                                         {decision.action === 'deferred' && <Clock size={10} className="text-amber-600 dark:text-amber-400" />}
                                         {decision.action === 'skipped' && <Minus size={10} className="text-yellow-600 dark:text-yellow-400" />}
                                         {decision.action === 'filtered' && <XCircle size={10} className="text-gray-600 dark:text-gray-400" />}
