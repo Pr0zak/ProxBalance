@@ -2,10 +2,7 @@
   "mcpServers": {
     "proxbalance": {
       "type": "http",
-      "url": "${PROXBALANCE_MCP_URL}",
-      "headers": {
-        "Authorization": "Bearer ${PROXBALANCE_MCP_KEY}"
-      }
+      "url": "${PROXBALANCE_MCP_URL}"
     }
   }
 }
