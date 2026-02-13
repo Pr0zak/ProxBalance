@@ -819,9 +819,9 @@ def update_recommendation_tracking(
     Returns:
         (updated_tracking, ready_recommendations, observing_recommendations)
     """
-    observation_periods = intelligent_config.get('observation_periods', 3)
-    observation_window_hours = intelligent_config.get('observation_window_hours', 1)
-    min_data_hours = intelligent_config.get('minimum_data_collection_hours', 0)
+    observation_periods = intelligent_config.get('observation_periods') or 3
+    observation_window_hours = intelligent_config.get('observation_window_hours') or 1
+    min_data_hours = intelligent_config.get('minimum_data_collection_hours') or 0
     now = datetime.utcnow()
     window_cutoff = now - timedelta(hours=observation_window_hours)
 
@@ -834,7 +834,7 @@ def update_recommendation_tracking(
     tracked = tracking.get("tracked", {})
 
     # Mark entries not in current set as stale; only delete after grace period
-    stale_retention_hours = intelligent_config.get('stale_retention_hours', 48)
+    stale_retention_hours = intelligent_config.get('stale_retention_hours') or 48
     stale_cutoff = now - timedelta(hours=stale_retention_hours)
     stale_keys = [k for k in tracked if k not in current_keys]
     keys_to_delete = []
@@ -1282,12 +1282,12 @@ def main():
                     save_tracking(tracking)
 
                     # Log observing items
-                    obs_periods = intelligent_config.get('observation_periods', 3)
+                    obs_periods = intelligent_config.get('observation_periods') or 3
                     for obs_rec in observing_recs:
                         obs_key = make_tracking_key(obs_rec.get('vmid'), obs_rec.get('source_node'))
                         entry = tracking.get('tracked', {}).get(obs_key, {})
                         count = entry.get('consecutive_count', 1)
-                        min_hours = intelligent_config.get('minimum_data_collection_hours', 0)
+                        min_hours = intelligent_config.get('minimum_data_collection_hours') or 0
                         if min_hours > 0 and count >= obs_periods:
                             first_seen = datetime.fromisoformat(entry.get('first_seen', '').rstrip('Z'))
                             hours_tracked = (datetime.utcnow() - first_seen).total_seconds() / 3600
@@ -1395,7 +1395,7 @@ def main():
 
                 # Cycle detection (catches both A->B->A rollbacks and A->B->C->A cycles)
                 cycle_detection_enabled = resolved_features['cycle_detection']
-                cycle_window = intelligent_config.get('cycle_window_hours', 48)
+                cycle_window = intelligent_config.get('cycle_window_hours') or 48
                 if not is_maintenance_evac and not is_distribution_balancing and cycle_detection_enabled:
                     is_cycle, cycle_msg = is_cycle_migration(vmid, target_node, cycle_window)
                     if is_cycle:
@@ -1425,7 +1425,7 @@ def main():
                 risk_gating_enabled = resolved_features['risk_gating']
                 if not is_maintenance_evac and not is_distribution_balancing and risk_gating_enabled:
                     risk_score = r.get('risk_score', 0)
-                    risk_multiplier = intelligent_config.get('risk_confidence_multiplier', 1.2)
+                    risk_multiplier = intelligent_config.get('risk_confidence_multiplier') or 1.2
                     if risk_score > 50:
                         adjusted_min = min(100, min_confidence * risk_multiplier)
                         if confidence < adjusted_min:
@@ -1490,7 +1490,7 @@ def main():
 
                     # Cost-benefit ratio check
                     cost_benefit_enabled = resolved_features['cost_benefit']
-                    min_cb_ratio = intelligent_config.get('min_cost_benefit_ratio', 1.0)
+                    min_cb_ratio = intelligent_config.get('min_cost_benefit_ratio') or 1.0
                     if cost_benefit_enabled:
                         cb = r.get('cost_benefit', {})
                         cb_ratio = cb.get('ratio', float('inf'))
