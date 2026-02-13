@@ -85,8 +85,6 @@ export default function DashboardPage({
   guestModalCollapsed, setGuestModalCollapsed,
   // Helper functions
   checkAffinityViolations, generateSparkline, fetchGuestLocations,
-  // Feedback
-  feedbackGiven, onFeedback,
   // Guest migration options
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions, setGuestMigrationOptions,
   // API base
@@ -304,8 +302,6 @@ export default function DashboardPage({
           cancelMigration={cancelMigration}
           trackMigration={trackMigration}
           setConfirmMigration={setConfirmMigration}
-          feedbackGiven={feedbackGiven}
-          onFeedback={onFeedback}
           setCurrentPage={setCurrentPage}
           setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
           nodeScores={nodeScores}

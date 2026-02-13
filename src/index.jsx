@@ -629,8 +629,6 @@ const ProxmoxBalanceManager = () => {
     checkAffinityViolations={wrappedCheckAffinityViolations}
     generateSparkline={cluster.generateSparkline}
     fetchGuestLocations={cluster.fetchGuestLocations}
-    feedbackGiven={recs.feedbackGiven}
-    onFeedback={recs.onFeedback}
     guestMigrationOptions={migrations.guestMigrationOptions}
     loadingGuestOptions={migrations.loadingGuestOptions}
     fetchGuestMigrationOptions={wrappedFetchGuestMigrationOptions}

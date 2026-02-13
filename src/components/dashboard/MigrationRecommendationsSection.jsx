@@ -24,8 +24,6 @@ export default function MigrationRecommendationsSection({
   // Migrations
   canMigrate, migrationStatus, setMigrationStatus, completedMigrations, guestsMigrating, migrationProgress,
   cancelMigration, trackMigration, setConfirmMigration,
-  // Feedback
-  feedbackGiven, onFeedback,
   // Navigation
   setCurrentPage, setOpenPenaltyConfigOnAutomation,
   // Node scores (for predicted view)
@@ -217,8 +215,6 @@ export default function MigrationRecommendationsSection({
                   cancelMigration={cancelMigration}
                   setConfirmMigration={setConfirmMigration}
                   canMigrate={canMigrate}
-                  feedbackGiven={feedbackGiven}
-                  onFeedback={onFeedback}
                   collapsedSections={collapsedSections}
                   setCollapsedSections={setCollapsedSections}
                 />
