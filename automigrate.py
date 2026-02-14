@@ -102,9 +102,11 @@ def load_history() -> Dict[str, Any]:
 
 
 def save_history(history: Dict[str, Any]):
-    """Save migration history."""
-    with open(HISTORY_FILE, 'w') as f:
+    """Save migration history atomically."""
+    tmp_file = str(HISTORY_FILE) + '.tmp'
+    with open(tmp_file, 'w') as f:
         json.dump(history, f, indent=2)
+    os.rename(tmp_file, str(HISTORY_FILE))
 
 
 def _check_time_window(config, window_key, window_label, default_when_empty):
