@@ -221,33 +221,6 @@ export default function PenaltyScoringSection({
             </summary>
             <div className="mt-3 space-y-4">
 
-              {/* Minimum Confidence */}
-              <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm">Minimum Confidence</h4>
-                  <span className="relative group inline-block">
-                    <Info size={14} className="text-gray-400 hover:text-blue-500 cursor-help" />
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50" style={{minWidth: '220px'}}>
-                      Minimum confidence score required before recommending a migration. Higher values mean more data is needed before acting.
-                    </div>
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 w-8">50%</span>
-                  <input
-                    type="range"
-                    min={50}
-                    max={95}
-                    step={5}
-                    value={settings.min_confidence}
-                    onChange={(e) => updateSetting('min_confidence', parseInt(e.target.value))}
-                    className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <span className="text-xs text-gray-400 w-8">95%</span>
-                  <span className="text-xs font-mono text-gray-600 dark:text-gray-300 w-10 text-right">{settings.min_confidence}%</span>
-                </div>
-              </div>
-
               {/* Min Score Improvement */}
               <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
