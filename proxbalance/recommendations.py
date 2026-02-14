@@ -1033,7 +1033,16 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         traceback.print_exc()
 
     # G1: Post-generation conflict detection
-    conflicts = _detect_migration_conflicts(recommendations, nodes, guests, cpu_threshold, mem_threshold, penalty_cfg)
+    # Scope conflict detection to max_migrations_per_run so we only flag
+    # conflicts for the batch of migrations that can actually execute per
+    # automation cycle, rather than assuming all recommendations land at once.
+    try:
+        _cfg = load_config()
+        _max_per_run = _cfg.get('automated_migrations', {}).get('rules', {}).get('max_migrations_per_run', 0)
+    except Exception:
+        _max_per_run = 0
+    conflicts = _detect_migration_conflicts(recommendations, nodes, guests, cpu_threshold, mem_threshold, penalty_cfg,
+                                            max_migrations_per_run=_max_per_run)
 
     # F3: Capacity planning advisories
     advisories = _generate_capacity_advisories(nodes, recommendations, penalty_cfg)

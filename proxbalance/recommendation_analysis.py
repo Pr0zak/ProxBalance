@@ -263,13 +263,22 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
 
 
 def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dict[str, Any], guests: Dict[str, Any],
-                               cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
+                               cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict[str, Any],
+                               max_migrations_per_run: int = 0) -> List[Dict[str, Any]]:
     """
     Post-generation validation: detect conflicts among recommended migrations.
 
     Groups recommendations by target node and simulates the combined
     post-migration load. If the combined load exceeds thresholds, flags
     the conflict with a resolution suggestion.
+
+    When max_migrations_per_run is set (> 0), conflict detection is scoped
+    to the number of migrations that can actually execute per automation
+    cycle instead of assuming all recommendations land simultaneously.
+    Only the top N recommendations per target (by score improvement) are
+    checked, since automigrate processes them in priority order. Remaining
+    recommendations beyond the batch window are not flagged as conflicted
+    because fresh recommendations will be regenerated before they execute.
     """
     if len(recommendations) < 2:
         return []
@@ -300,12 +309,23 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
         node_total_mem = node.get("total_mem_gb", 1) or 1
         node_cores = node.get("cpu_cores", 1) or 1
 
-        # Simulate combined post-migration load
+        # Sort by score improvement (highest first) to match automigrate priority
+        recs_by_priority = sorted(recs, key=lambda r: r.get("score_improvement", 0), reverse=True)
+
+        # Scope conflict check to what can actually execute per run.
+        # When max_migrations_per_run is configured, only the top N recs
+        # targeting this node can execute before recommendations regenerate.
+        if max_migrations_per_run > 0:
+            batch_recs = recs_by_priority[:max_migrations_per_run]
+        else:
+            batch_recs = recs_by_priority
+
+        # Simulate combined post-migration load for the batch
         combined_cpu = current_cpu
         combined_mem = current_mem
         incoming: List[Dict[str, Any]] = []
 
-        for rec in recs:
+        for rec in batch_recs:
             vmid_key = str(rec.get("vmid"))
             guest = guests.get(vmid_key, {})
             mem_gb = rec.get("mem_gb", 0) or guest.get("mem_max_gb", 0)
@@ -341,8 +361,8 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
 
         if cpu_exceeded or mem_exceeded:
             # Find best alternative target for the lowest-improvement recommendation
-            recs_sorted = sorted(recs, key=lambda r: r.get("score_improvement", 0))
-            weakest = recs_sorted[0]
+            batch_sorted_asc = sorted(batch_recs, key=lambda r: r.get("score_improvement", 0))
+            weakest = batch_sorted_asc[0]
 
             resolution = f"Consider deferring migration of {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')})"
 
@@ -369,8 +389,8 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
             }
             conflicts.append(conflict)
 
-            # Tag affected recommendations with conflict info
-            for rec in recs:
+            # Only tag the batch recs as conflicted, not all recs for this target
+            for rec in batch_recs:
                 rec["has_conflict"] = True
                 rec["conflict_target"] = target_node
 
