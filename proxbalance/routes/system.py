@@ -523,6 +523,65 @@ def update_collection_settings():
     return jsonify(response)
 
 
+@system_bp.route("/api/settings/recommendation-thresholds", methods=["GET"])
+@api_route
+def get_recommendation_thresholds():
+    """Get recommendation threshold settings from config."""
+    config = load_config()
+    thresholds = config.get('recommendation_thresholds', {})
+    return jsonify({
+        "success": True,
+        "thresholds": {
+            "cpu_threshold": thresholds.get('cpu_threshold', 60),
+            "mem_threshold": thresholds.get('mem_threshold', 70),
+            "iowait_threshold": thresholds.get('iowait_threshold', 30),
+        }
+    })
+
+
+@system_bp.route("/api/settings/recommendation-thresholds", methods=["POST"])
+@api_route
+def update_recommendation_thresholds():
+    """Update recommendation threshold settings in config.json."""
+    data = request.get_json()
+
+    cpu = data.get('cpu_threshold')
+    mem = data.get('mem_threshold')
+    iowait = data.get('iowait_threshold')
+
+    # Validate
+    for name, val in [('cpu_threshold', cpu), ('mem_threshold', mem), ('iowait_threshold', iowait)]:
+        if val is not None:
+            try:
+                val = float(val)
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": f"{name} must be a number"}), 400
+            if val < 1 or val > 100:
+                return jsonify({"success": False, "error": f"{name} must be between 1 and 100"}), 400
+
+    with open(CONFIG_FILE, 'r') as f:
+        config_data = json.load(f)
+
+    if 'recommendation_thresholds' not in config_data:
+        config_data['recommendation_thresholds'] = {}
+
+    if cpu is not None:
+        config_data['recommendation_thresholds']['cpu_threshold'] = float(cpu)
+    if mem is not None:
+        config_data['recommendation_thresholds']['mem_threshold'] = float(mem)
+    if iowait is not None:
+        config_data['recommendation_thresholds']['iowait_threshold'] = float(iowait)
+
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config_data, f, indent=2)
+
+    return jsonify({
+        "success": True,
+        "message": "Recommendation thresholds updated",
+        "thresholds": config_data['recommendation_thresholds']
+    })
+
+
 @system_bp.route("/api/system/token-permissions", methods=["POST"])
 @api_route
 def change_token_permissions():

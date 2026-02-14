@@ -22,6 +22,25 @@ export function useRecommendations(API_BASE, deps = {}) {
     const saved = localStorage.getItem('proxbalance_iowait_threshold');
     return saved ? Number(saved) : DEFAULT_IOWAIT_THRESHOLD;
   });
+
+  // Load thresholds from config.json on mount (authoritative source)
+  useEffect(() => {
+    fetch(`${API_BASE}/settings/recommendation-thresholds`)
+      .then(r => r.json())
+      .then(result => {
+        if (result.success && result.thresholds) {
+          setCpuThreshold(result.thresholds.cpu_threshold);
+          setMemThreshold(result.thresholds.mem_threshold);
+          setIowaitThreshold(result.thresholds.iowait_threshold);
+          // Sync localStorage
+          localStorage.setItem('proxbalance_cpu_threshold', result.thresholds.cpu_threshold.toString());
+          localStorage.setItem('proxbalance_mem_threshold', result.thresholds.mem_threshold.toString());
+          localStorage.setItem('proxbalance_iowait_threshold', result.thresholds.iowait_threshold.toString());
+        }
+      })
+      .catch(() => {}); // Fall back to localStorage/defaults on error
+  }, []);
+
   // Save thresholds to localStorage
   useEffect(() => {
     localStorage.setItem('proxbalance_cpu_threshold', cpuThreshold.toString());

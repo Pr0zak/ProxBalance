@@ -1036,12 +1036,21 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     # Scope conflict detection to max_migrations_per_run so we only flag
     # conflicts for the batch of migrations that can actually execute per
     # automation cycle, rather than assuming all recommendations land at once.
+    # Use safety check thresholds (max_node_cpu/mem_percent) for conflict
+    # detection rather than recommendation thresholds, since conflict detection
+    # answers "would the target node be overloaded?" — the same question as
+    # safety checks — not "should we recommend moving guests off this node?"
     try:
         _cfg = load_config()
         _max_per_run = _cfg.get('automated_migrations', {}).get('rules', {}).get('max_migrations_per_run', 0)
+        _safety = _cfg.get('automated_migrations', {}).get('safety_checks', {})
+        _conflict_cpu = float(_safety.get('max_node_cpu_percent', 85))
+        _conflict_mem = float(_safety.get('max_node_memory_percent', 90))
     except Exception:
         _max_per_run = 0
-    conflicts = _detect_migration_conflicts(recommendations, nodes, guests, cpu_threshold, mem_threshold, penalty_cfg,
+        _conflict_cpu = 85.0
+        _conflict_mem = 90.0
+    conflicts = _detect_migration_conflicts(recommendations, nodes, guests, _conflict_cpu, _conflict_mem, penalty_cfg,
                                             max_migrations_per_run=_max_per_run)
 
     # F3: Capacity planning advisories

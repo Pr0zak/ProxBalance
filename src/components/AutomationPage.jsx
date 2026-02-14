@@ -11,6 +11,7 @@ import DistributionBalancingSection from './automation/DistributionBalancingSect
 import TimeWindowsSection from './automation/TimeWindowsSection.jsx';
 import MigrationLogsSection from './automation/MigrationLogsSection.jsx';
 import PenaltyScoringSection from './automation/PenaltyScoringSection.jsx';
+import RecommendationThresholdsSection from './settings/RecommendationThresholdsSection.jsx';
 
 export default function AutomationPage(props) {
   const {
@@ -22,6 +23,7 @@ export default function AutomationPage(props) {
     confirmRemoveWindow,
     editingWindowIndex,
     fetchAutomationStatus,
+    fetchConfig,
     logRefreshTime,
     migrationHistoryPage,
     migrationHistoryPageSize,
@@ -168,6 +170,13 @@ export default function AutomationPage(props) {
         <SafetyRulesSection
           automationConfig={automationConfig}
           saveAutomationConfig={saveAutomationConfig}
+          collapsedSections={collapsedSections}
+          setCollapsedSections={setCollapsedSections}
+        />
+
+        <RecommendationThresholdsSection
+          config={config}
+          fetchConfig={fetchConfig}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
         />
