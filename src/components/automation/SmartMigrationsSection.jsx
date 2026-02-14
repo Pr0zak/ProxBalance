@@ -1,5 +1,5 @@
 import {
-  ChevronDown, ChevronUp, X, CheckCircle, Info
+  ChevronDown, X, CheckCircle, Info
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
@@ -33,7 +33,6 @@ function inferIntelligenceLevel(imConfig) {
 }
 
 export default function SmartMigrationsSection({ automationConfig, saveAutomationConfig, automationStatus, collapsedSections, setCollapsedSections, embedded }) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
 
   const imConfig = automationConfig.rules?.intelligent_migrations;
@@ -122,7 +121,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                           <span className="font-bold text-gray-900 dark:text-white text-sm">{level.label}</span>
                           <div className="flex items-center gap-1.5">
                             {level.recommended && (
-                              <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded">
+                              <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold rounded">
                                 RECOMMENDED
                               </span>
                             )}
@@ -130,7 +129,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                           </div>
                         </div>
                         <div className="text-xs text-gray-600 dark:text-gray-300">{level.description}</div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{level.detail}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{level.detail}</div>
                       </button>
                     );
                   })}
@@ -138,9 +137,9 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
               </div>
 
               {/* Main tuning controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Required Observation Periods
                   </label>
                   <NumberField
@@ -148,14 +147,14 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                     max="10"
                     value={obsPeriods}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } })}
-                    className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                   />
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Consecutive times a recommendation must appear before acting
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Minimum Data Collection (hours)
                   </label>
                   <NumberField
@@ -163,9 +162,9 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                     max="72"
                     value={minDataHours}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } })}
-                    className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                   />
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     How long the system must observe before first migration (0 = no minimum)
                   </p>
                 </div>
@@ -175,103 +174,98 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                 The system will collect data for at least {minDataHours} hour{minDataHours !== 1 ? 's' : ''} and require {obsPeriods} consistent recommendation{obsPeriods !== 1 ? 's' : ''} before migrating.
               </p>
 
-              {/* Advanced Tuning Accordion */}
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {/* Advanced Tuning */}
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
+                  <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
                   Advanced Tuning
-                </button>
-                {showAdvanced && (
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        Observation Window (hours)
-                      </label>
-                      <NumberField
-                        min="1"
-                        max="72"
-                        value={imConfig?.observation_window_hours || 24}
-                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_window_hours: val } } })}
-                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                      />
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                        Max age for observation tracking
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        Cycle Detection Window (hours)
-                      </label>
-                      <NumberField
-                        min="1"
-                        max="168"
-                        value={imConfig?.cycle_window_hours || 48}
-                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, cycle_window_hours: val } } })}
-                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                      />
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                        How far back to check for migration cycles
-                      </p>
-                    </div>
-                    {(currentLevel === 'standard' || currentLevel === 'full') && (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                          Min Cost-Benefit Ratio
-                        </label>
-                        <NumberField
-                          min="0.1"
-                          max="10.0"
-                          step="0.1"
-                          isFloat
-                          value={imConfig?.min_cost_benefit_ratio !== undefined ? imConfig.min_cost_benefit_ratio : 1.0}
-                          onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, min_cost_benefit_ratio: val } } })}
-                          className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                        />
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                          Minimum improvement-to-cost ratio required
-                        </p>
-                      </div>
-                    )}
-                    {currentLevel === 'full' && (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                          Risk Confidence Multiplier
-                        </label>
-                        <NumberField
-                          min="0.1"
-                          max="5.0"
-                          step="0.1"
-                          isFloat
-                          value={imConfig?.risk_confidence_multiplier !== undefined ? imConfig.risk_confidence_multiplier : 1.2}
-                          onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, risk_confidence_multiplier: val } } })}
-                          className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                        />
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                          Higher values require more confidence for risky moves
-                        </p>
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        Stale Data Retention (hours)
-                      </label>
-                      <NumberField
-                        min="1"
-                        max="168"
-                        value={imConfig?.stale_retention_hours || 48}
-                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, stale_retention_hours: val } } })}
-                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
-                      />
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                        How long to keep stale tracking data before cleanup
-                      </p>
-                    </div>
+                </summary>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Observation Window (hours)
+                    </label>
+                    <NumberField
+                      min="1"
+                      max="72"
+                      value={imConfig?.observation_window_hours || 24}
+                      onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_window_hours: val } } })}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Max age for observation tracking
+                    </p>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Cycle Detection Window (hours)
+                    </label>
+                    <NumberField
+                      min="1"
+                      max="168"
+                      value={imConfig?.cycle_window_hours || 48}
+                      onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, cycle_window_hours: val } } })}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      How far back to check for migration cycles
+                    </p>
+                  </div>
+                  {(currentLevel === 'standard' || currentLevel === 'full') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Min Cost-Benefit Ratio
+                      </label>
+                      <NumberField
+                        min="0.1"
+                        max="10.0"
+                        step="0.1"
+                        isFloat
+                        value={imConfig?.min_cost_benefit_ratio !== undefined ? imConfig.min_cost_benefit_ratio : 1.0}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, min_cost_benefit_ratio: val } } })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Minimum improvement-to-cost ratio required
+                      </p>
+                    </div>
+                  )}
+                  {currentLevel === 'full' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Risk Confidence Multiplier
+                      </label>
+                      <NumberField
+                        min="0.1"
+                        max="5.0"
+                        step="0.1"
+                        isFloat
+                        value={imConfig?.risk_confidence_multiplier !== undefined ? imConfig.risk_confidence_multiplier : 1.2}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, risk_confidence_multiplier: val } } })}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Higher values require more confidence for risky moves
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Stale Data Retention (hours)
+                    </label>
+                    <NumberField
+                      min="1"
+                      max="168"
+                      value={imConfig?.stale_retention_hours || 48}
+                      onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, stale_retention_hours: val } } })}
+                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      How long to keep stale tracking data before cleanup
+                    </p>
+                  </div>
+                </div>
+              </details>
             </div>
           )}
         </div>

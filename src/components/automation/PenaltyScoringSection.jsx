@@ -1,5 +1,6 @@
-import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye, Shield, AlertTriangle, Info } from '../Icons.jsx';
+import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye, Shield, AlertTriangle } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
+import Toggle, { ToggleRow } from '../Toggle.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -116,26 +117,16 @@ export default function PenaltyScoringSection({
       </button>
 
       {!collapsedSections.penaltyScoring && (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Configure how ProxBalance analyzes performance trends and decides when to recommend migrations.
           </p>
 
-          {/* ─── Main Settings (always visible) ─── */}
-
           {/* Migration Sensitivity */}
-          <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-gray-900 dark:text-white">Migration Sensitivity</h4>
-              <span className="relative group inline-block">
-                <Info size={14} className="text-gray-400 hover:text-blue-500 cursor-help" />
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  Controls how aggressively ProxBalance recommends migrations
-                </div>
-              </span>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Migration Sensitivity</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              {SENSITIVITY_DESCRIPTIONS[settings.sensitivity]}
+              Controls how aggressively ProxBalance recommends migrations. {SENSITIVITY_DESCRIPTIONS[settings.sensitivity]}
             </p>
             <div className="flex flex-wrap gap-2">
               {[1, 2, 3].map((level) => {
@@ -161,22 +152,16 @@ export default function PenaltyScoringSection({
           </div>
 
           {/* Trend Weight */}
-          <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-gray-900 dark:text-white">Trend Weight</h4>
-              <span className="relative group inline-block">
-                <Info size={14} className="text-gray-400 hover:text-blue-500 cursor-help" />
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50" style={{minWidth: '240px'}}>
-                  Controls how much historical trends matter vs. current snapshot. Higher values give more weight to sustained patterns over time.
-                </div>
-              </span>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trend Weight</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              {settings.trend_weight <= 20 ? 'Mostly snapshot-based: decisions rely primarily on current metrics.' :
-               settings.trend_weight <= 45 ? 'Snapshot-leaning: current metrics are weighted more, but trends factor in.' :
-               settings.trend_weight <= 65 ? 'Balanced: decisions use a mix of current metrics and historical trends.' :
-               settings.trend_weight <= 85 ? 'Trend-leaning: historical patterns are weighted more heavily than current snapshot.' :
-               'Mostly trend-based: decisions rely primarily on sustained historical patterns.'}
+              Controls how much historical trends matter vs. current snapshot. Higher values give more weight to sustained patterns over time.
+              {' '}
+              {settings.trend_weight <= 20 ? 'Currently: mostly snapshot-based.' :
+               settings.trend_weight <= 45 ? 'Currently: snapshot-leaning.' :
+               settings.trend_weight <= 65 ? 'Currently: balanced mix.' :
+               settings.trend_weight <= 85 ? 'Currently: trend-leaning.' :
+               'Currently: mostly trend-based.'}
             </p>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 whitespace-nowrap w-16">Snapshot</span>
@@ -195,10 +180,8 @@ export default function PenaltyScoringSection({
           </div>
 
           {/* Analysis Lookback */}
-          <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-gray-900 dark:text-white">Analysis Lookback</h4>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Analysis Lookback</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               How many days of performance history to analyze when detecting trends. Longer periods provide more stable analysis but are slower to react to changes.
             </p>
@@ -223,7 +206,7 @@ export default function PenaltyScoringSection({
             </div>
           </div>
 
-          {/* ─── Advanced Settings (expandable) ─── */}
+          {/* Advanced Settings */}
           <details className="group">
             <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
               <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
@@ -232,15 +215,9 @@ export default function PenaltyScoringSection({
             <div className="mt-3 space-y-4">
 
               {/* Min Score Improvement */}
-              <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm">Min Score Improvement</h4>
-                  <span className="relative group inline-block">
-                    <Info size={14} className="text-gray-400 hover:text-blue-500 cursor-help" />
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50" style={{minWidth: '240px'}}>
-                      Minimum penalty score improvement (in points) required for a migration to be recommended. Lower values recommend more migrations.
-                    </div>
-                  </span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Min Score Improvement</label>
                   {settings.min_score_improvement != null && (
                     <button
                       onClick={() => updateSetting('min_score_improvement', null)}
@@ -250,6 +227,9 @@ export default function PenaltyScoringSection({
                     </button>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Minimum penalty score improvement (in points) required for a migration to be recommended. Lower values recommend more migrations.
+                </p>
                 <div className="flex items-center gap-3">
                   <NumberField
                     min="1"
@@ -268,41 +248,24 @@ export default function PenaltyScoringSection({
               </div>
 
               {/* Protect Running Workloads */}
-              <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Shield size={16} className="text-blue-500" />
-                      <h4 className="font-medium text-gray-900 dark:text-white text-sm">Protect Running Workloads</h4>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Avoid migrating guests during their detected peak usage hours to minimize disruption.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => updateSetting('protect_workloads', !settings.protect_workloads)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4 ${
-                      settings.protect_workloads ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      settings.protect_workloads ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              </div>
+              <ToggleRow
+                label="Protect Running Workloads"
+                description="Avoid migrating guests during their detected peak usage hours to minimize disruption"
+                checked={settings.protect_workloads !== false}
+                onChange={(e) => updateSetting('protect_workloads', e.target.checked)}
+              />
 
               {/* What-If Simulator */}
-              <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">What-If Simulator</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">What-If Simulator</label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Preview how your current settings would affect recommendations before saving.</p>
                   </div>
                   <button
                     onClick={runSimulation}
                     disabled={simulatingConfig}
-                    className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-indigo-600 dark:bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5 shrink-0 ml-4"
                   >
                     {simulatingConfig ? (
                       <><RefreshCw size={14} className="animate-spin" /> Simulating...</>
@@ -315,12 +278,12 @@ export default function PenaltyScoringSection({
                 {showSimulator && simulatorResult && !simulatorResult.error && (
                   <div className="mt-3 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center">
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-center">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current Settings</div>
                         <div className="text-2xl font-bold text-gray-900 dark:text-white">{simulatorResult.current_count}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">recommendations</div>
                       </div>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center">
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-center">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Proposed Settings</div>
                         <div className={`text-2xl font-bold ${
                           simulatorResult.proposed_count > simulatorResult.current_count
@@ -338,7 +301,7 @@ export default function PenaltyScoringSection({
                         <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Changes</h5>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
                           {simulatorResult.changes.map((change, i) => (
-                            <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                            <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-white dark:bg-gray-800 rounded-lg">
                               <span className={`px-1.5 py-0.5 rounded-lg font-medium ${
                                 change.action === 'added'
                                   ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
@@ -363,7 +326,7 @@ export default function PenaltyScoringSection({
                         <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Node Score Impact</h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {Object.entries(simulatorResult.node_score_comparison).map(([node, scores]) => (
-                            <div key={node} className="flex items-center justify-between text-xs p-1.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                            <div key={node} className="flex items-center justify-between text-xs p-1.5 bg-white dark:bg-gray-800 rounded-lg">
                               <span className="font-medium text-gray-700 dark:text-gray-300">{node}</span>
                               <span className="text-gray-500 dark:text-gray-400">
                                 {scores.current} &rarr; {scores.proposed}
@@ -398,9 +361,9 @@ export default function PenaltyScoringSection({
             </div>
           </details>
 
-          {/* ─── Expert Mode (collapsed by default) ─── */}
+          {/* Expert Mode (collapsed by default) */}
           <details className="group" open={showExpertMode} onToggle={(e) => setShowExpertMode(e.target.open)}>
-            <summary className="cursor-pointer text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 flex items-center gap-1 list-none">
+            <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
               <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
               Expert Mode: Raw Penalty Weights
             </summary>
@@ -418,7 +381,7 @@ export default function PenaltyScoringSection({
               {penaltyConfig && penaltyDefaults && (
                 <>
                   <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">Time Period Weights</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Time Period Weights</label>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.
                     </p>
@@ -470,7 +433,7 @@ export default function PenaltyScoringSection({
 
                   {/* CPU Penalties */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">CPU Penalties</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPU Penalties</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[['cpu_high_penalty', 'High'], ['cpu_very_high_penalty', 'Very High'], ['cpu_extreme_penalty', 'Extreme']].map(([key, label]) => (
                         <div key={key}>
@@ -490,7 +453,7 @@ export default function PenaltyScoringSection({
 
                   {/* Memory Penalties */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">Memory Penalties</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Memory Penalties</label>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Proxmox memory is allocated, not dynamic — these penalties reflect allocation pressure, not active usage trends.
                     </p>
@@ -513,7 +476,7 @@ export default function PenaltyScoringSection({
 
                   {/* IOWait Penalties */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">IOWait Penalties</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">IOWait Penalties</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[['iowait_moderate_penalty', 'Moderate'], ['iowait_high_penalty', 'High'], ['iowait_severe_penalty', 'Severe']].map(([key, label]) => (
                         <div key={key}>
@@ -533,7 +496,7 @@ export default function PenaltyScoringSection({
 
                   {/* Minimum Score Improvement */}
                   <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                    <h4 className="font-medium text-gray-900 dark:text-white text-sm">Minimum Score Improvement</h4>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Minimum Score Improvement</label>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       Minimum score improvement (in points) required for a migration to be recommended.
                     </p>

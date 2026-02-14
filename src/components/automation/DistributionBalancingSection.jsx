@@ -10,8 +10,7 @@ export default function DistributionBalancingSection({
     ? ''
     : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
 
-  return (<>
-        {/* Distribution Balancing */}
+  return (
         <div className={outerClass}>
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancing: !prev.distributionBalancing }))}
@@ -28,66 +27,6 @@ export default function DistributionBalancingSection({
           </button>
 
           {!collapsedSections.distributionBalancing && (
-          <>
-          {/* Collapsible detailed description */}
-          <div className="mb-4">
-            <button
-              onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancingHelp: !prev.distributionBalancingHelp }))}
-              className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
-            >
-              {collapsedSections.distributionBalancingHelp ? (
-                <>
-                  <ChevronDown size={16} className="-rotate-90" />
-                  Show detailed explanation
-                </>
-              ) : (
-                <>
-                  <ChevronDown size={16} />
-                  Hide detailed explanation
-                </>
-              )}
-            </button>
-
-            {!collapsedSections.distributionBalancingHelp && (
-              <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-3">
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">What is Distribution Balancing?</h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>, rather than just CPU, memory, or I/O metrics.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">The Problem It Solves</h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    A node with 19 small VMs (DNS, monitoring, utilities) may show low resource usage but still suffers from management overhead, slower operations (start/stop/backup), and uneven workload distribution. Distribution balancing addresses this by moving small guests to less populated nodes.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How It Works</h3>
-                  <ol className="text-sm text-blue-800 dark:text-blue-200 list-decimal list-inside space-y-1">
-                    <li>Counts running guests on each node (e.g., pve4: 19, pve6: 4)</li>
-                    <li>If difference ≥ threshold (default: 2), finds small guests on overloaded node</li>
-                    <li>Only considers guests ≤ max CPU cores (default: 2) and ≤ max memory (default: 4 GB)</li>
-                    <li>Recommends migrating eligible small guests to underloaded nodes</li>
-                    <li>Works alongside performance-based recommendations, respects tags and storage compatibility</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">When to Enable</h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    ✓ Many small utility VMs (DNS, monitoring, etc.)<br />
-                    ✓ Nodes with very different guest counts (e.g., 19 vs 4)<br />
-                    ✓ Performance metrics don't show the imbalance<br />
-                    ✓ Want more even workload distribution for management simplicity
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="space-y-4">
             {/* Enable Distribution Balancing */}
             <ToggleRow
@@ -104,11 +43,33 @@ export default function DistributionBalancingSection({
               }}
             />
 
+            {/* Help section */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
+                <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
+                How does this work?
+              </summary>
+              <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                  Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>.
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                  A node with many small VMs (DNS, monitoring, utilities) may show low resource usage but still suffer from management overhead and uneven workload distribution.
+                </p>
+                <ol className="text-xs text-blue-700 dark:text-blue-300 list-decimal list-inside space-y-1">
+                  <li>Counts running guests on each node</li>
+                  <li>If difference exceeds the threshold, finds small eligible guests on the overloaded node</li>
+                  <li>Recommends migrating them to underloaded nodes</li>
+                  <li>Respects tags, affinity rules, and storage compatibility</li>
+                </ol>
+              </div>
+            </details>
+
             {config.distribution_balancing?.enabled && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Guest Count Threshold */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Guest Count Threshold
                 </label>
                 <NumberField
@@ -131,7 +92,7 @@ export default function DistributionBalancingSection({
 
               {/* Max CPU Cores */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max CPU Cores
                 </label>
                 <NumberField
@@ -148,13 +109,13 @@ export default function DistributionBalancingSection({
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Only migrate guests with ≤ this many CPU cores (0 = no limit)
+                  Only migrate guests with this many CPU cores or less (0 = no limit)
                 </p>
               </div>
 
               {/* Max Memory GB */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Memory (GB)
                 </label>
                 <NumberField
@@ -171,15 +132,13 @@ export default function DistributionBalancingSection({
                   className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Only migrate guests with ≤ this much memory (0 = no limit)
+                  Only migrate guests with this much memory or less (0 = no limit)
                 </p>
               </div>
             </div>
             )}
           </div>
-          </>
           )}
         </div>
-
-  </>);
+  );
 }

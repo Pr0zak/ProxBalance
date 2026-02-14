@@ -88,8 +88,8 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
       </button>
 
       {!isCollapsed && (
-      <div className="space-y-6">
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+      <div className="space-y-4">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-900 dark:text-blue-200">
             <strong>When to recommend migrations:</strong> When a node's resource usage exceeds these thresholds,
             the engine will start recommending migrations to move guests off that node. Lower values mean more
@@ -173,7 +173,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-3">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
@@ -181,7 +181,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
+          className={`w-full px-4 py-2 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
             saved
               ? 'bg-emerald-500 dark:bg-emerald-600'
               : saving
