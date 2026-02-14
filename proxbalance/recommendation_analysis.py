@@ -23,13 +23,14 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
     """
     min_improvement = penalty_cfg.get("min_score_improvement", 15)
 
-    # Factor 1: Score improvement (40%) — maps improvement to 0-100
+    # Factor 1: Score improvement (35%) — continuous mapping to 0-100
+    # Uses linear interpolation within bands to avoid cliff effects
     if score_improvement >= 60:
         improvement_factor = 100
     elif score_improvement >= 40:
-        improvement_factor = 75
+        improvement_factor = 80 + (score_improvement - 40) / 20 * 20  # 80-100
     elif score_improvement >= 25:
-        improvement_factor = 55
+        improvement_factor = 55 + (score_improvement - 25) / 15 * 25  # 55-80
     elif score_improvement >= min_improvement:
         improvement_factor = 30 + ((score_improvement - min_improvement) / max(1, 25 - min_improvement)) * 25
     else:
@@ -59,13 +60,23 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
         complexity_factor = 100  # Small VM, easy migration
 
     # Factor 4: Stability signal (15%) — favorable trends = higher confidence
+    # Uses headroom-weighted approach: a slowly rising trend with ample headroom
+    # is less concerning than a rapidly rising trend near capacity.
     if target_details:
         cpu_trend = target_metrics.get("cpu_trend", "stable")
         mem_trend = target_metrics.get("mem_trend", "stable")
         total_penalties = target_details.get("total_penalties", 0)
 
         if cpu_trend == "rising" or mem_trend == "rising":
-            stability_factor = 30  # Target has rising trends
+            # Scale penalty by how much headroom remains — generous headroom
+            # with a slow rise is much less concerning than tight headroom
+            min_headroom = min(cpu_headroom, mem_headroom)
+            if min_headroom >= 50:
+                stability_factor = 70  # Plenty of room despite rising trend
+            elif min_headroom >= 30:
+                stability_factor = 50  # Moderate room, moderate concern
+            else:
+                stability_factor = 30  # Low headroom + rising = high concern
         elif total_penalties > 50:
             stability_factor = 50  # Target already has significant penalties
         elif total_penalties > 20:
