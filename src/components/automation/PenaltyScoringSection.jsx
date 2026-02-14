@@ -508,6 +508,9 @@ export default function PenaltyScoringSection({
                   {/* Memory Penalties */}
                   <div className="space-y-3">
                     <h4 className="font-medium text-gray-900 dark:text-white text-sm">Memory Penalties</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Proxmox memory is allocated, not dynamic — these penalties reflect allocation pressure, not active usage trends.
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[['mem_high_penalty', 'High'], ['mem_very_high_penalty', 'Very High'], ['mem_extreme_penalty', 'Extreme']].map(([key, label]) => (
                         <div key={key}>

@@ -143,6 +143,13 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
               </div>
 
               <ToggleRow
+                label="Verify Guest Location Before Migrating"
+                description="Queries Proxmox directly to confirm each VM is on the expected node before migrating. Prevents failures from stale cache data."
+                checked={automationConfig.safety_checks?.verify_before_migrate !== false}
+                onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, verify_before_migrate: e.target.checked } })}
+              />
+
+              <ToggleRow
                 label="Abort Batch if a Migration Fails"
                 description="Stops remaining migrations in the batch if any single migration fails."
                 checked={automationConfig.safety_checks?.abort_on_failure !== false}

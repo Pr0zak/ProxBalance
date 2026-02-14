@@ -1693,7 +1693,8 @@ def main():
                 continue
 
             # Verify guest is actually on the expected source node (prevents stale-cache failures)
-            if not dry_run:
+            safety = config.get('automated_migrations', {}).get('safety_checks', {})
+            if not dry_run and safety.get('verify_before_migrate', True):
                 verified, verify_msg = verify_guest_on_node(vmid, source, config)
                 if not verified:
                     logger.warning(f"Skipping VM {vmid}: {verify_msg}")

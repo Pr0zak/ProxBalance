@@ -247,6 +247,21 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                         </p>
                       </div>
                     )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Stale Data Retention (hours)
+                      </label>
+                      <NumberField
+                        min="1"
+                        max="168"
+                        value={imConfig?.stale_retention_hours || 48}
+                        onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, stale_retention_hours: val } } })}
+                        className="w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+                      />
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                        How long to keep stale tracking data before cleanup
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

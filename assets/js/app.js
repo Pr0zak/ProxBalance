@@ -2166,7 +2166,16 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, risk_confidence_multiplier: val } } }),
         className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
       }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Higher values require more confidence for risky moves")))))));
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "Higher values require more confidence for risky moves")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1" }, "Stale Data Retention (hours)"), /* @__PURE__ */ React.createElement(
+      NumberField,
+      {
+        min: "1",
+        max: "168",
+        value: imConfig?.stale_retention_hours || 48,
+        onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, stale_retention_hours: val } } }),
+        className: "w-full px-2 py-2 text-base sm:text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white"
+      }
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 dark:text-gray-400 mt-1" }, "How long to keep stale tracking data before cleanup")))))));
   }
 
   // src/components/automation/SafetyRulesSection.jsx
@@ -2275,6 +2284,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         className: "w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
       }
     ))), /* @__PURE__ */ React.createElement(
+      ToggleRow,
+      {
+        label: "Verify Guest Location Before Migrating",
+        description: "Queries Proxmox directly to confirm each VM is on the expected node before migrating. Prevents failures from stale cache data.",
+        checked: automationConfig.safety_checks?.verify_before_migrate !== !1,
+        onChange: (e) => saveAutomationConfig2({ safety_checks: { ...automationConfig.safety_checks, verify_before_migrate: e.target.checked } })
+      }
+    ), /* @__PURE__ */ React.createElement(
       ToggleRow,
       {
         label: "Abort Batch if a Migration Fails",
@@ -3189,7 +3206,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         onCommit: (val) => setPenaltyConfig({ ...penaltyConfig, [key]: val }),
         className: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
       }
-    ))))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Memory Penalties"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [["mem_high_penalty", "High"], ["mem_very_high_penalty", "Very High"], ["mem_extreme_penalty", "Extreme"]].map(([key, label]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, label, " (default: ", penaltyDefaults[key], ")"), /* @__PURE__ */ React.createElement(
+    ))))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("h4", { className: "font-medium text-gray-900 dark:text-white text-sm" }, "Memory Penalties"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400" }, "Proxmox memory is allocated, not dynamic \u2014 these penalties reflect allocation pressure, not active usage trends."), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-3" }, [["mem_high_penalty", "High"], ["mem_very_high_penalty", "Very High"], ["mem_extreme_penalty", "Extreme"]].map(([key, label]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("label", { className: "block text-xs text-gray-700 dark:text-gray-300 mb-1" }, label, " (default: ", penaltyDefaults[key], ")"), /* @__PURE__ */ React.createElement(
       NumberField,
       {
         min: "0",
