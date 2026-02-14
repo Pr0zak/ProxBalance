@@ -80,11 +80,20 @@ def save_config(config: Dict, config_file: Optional[str] = None) -> bool:
         config_file = CONFIG_FILE
 
     try:
-        with open(config_file, 'w') as f:
+        temp_file = config_file + '.tmp'
+        with open(temp_file, 'w') as f:
             json.dump(config, f, indent=2)
+        os.rename(temp_file, config_file)
         return True
     except Exception as e:
         print(f"Error saving config: {e}", file=sys.stderr)
+        # Clean up temp file if it exists
+        temp_file = config_file + '.tmp'
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except OSError:
+                pass
         return False
 
 
@@ -139,13 +148,22 @@ def save_penalty_config(penalty_config: Dict, config_file: Optional[str] = None)
         # Update the penalty_scoring section
         config['penalty_scoring'] = penalty_config
 
-        # Write back to file
-        with open(config_file, 'w') as f:
+        # Write back to file atomically
+        temp_file = config_file + '.tmp'
+        with open(temp_file, 'w') as f:
             json.dump(config, f, indent=2)
+        os.rename(temp_file, config_file)
 
         return True
     except Exception as e:
         print(f"Error saving penalty config: {e}", file=sys.stderr)
+        # Clean up temp file if it exists
+        temp_file = config_file + '.tmp'
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except OSError:
+                pass
         return False
 
 

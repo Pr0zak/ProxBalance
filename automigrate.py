@@ -695,6 +695,58 @@ def is_migration_in_progress(vmid: int, source_node: str, config: Dict[str, Any]
         return False
 
 
+def verify_guest_on_node(vmid: int, expected_node: str, config: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Verify a guest is actually on the expected source node by querying Proxmox directly.
+
+    Prevents stale-cache migration attempts where the cache shows a guest on a node
+    it has already been migrated away from.
+
+    Args:
+        vmid: VM ID to verify
+        expected_node: Node where the guest is expected to be
+        config: Configuration dictionary with Proxmox credentials
+
+    Returns:
+        Tuple of (verified, message)
+    """
+    try:
+        proxmox_host = config.get('proxmox_host', 'localhost')
+        proxmox_port = config.get('proxmox_port', 8006)
+        token_id = config.get('proxmox_api_token_id', '')
+        token_secret = config.get('proxmox_api_token_secret', '')
+        verify_ssl = config.get('proxmox_verify_ssl', False)
+
+        if not token_id or not token_secret:
+            logger.warning("Missing Proxmox API credentials, skipping guest location verification")
+            return True, "Credentials unavailable, skipping verification"
+
+        url = f"https://{proxmox_host}:{proxmox_port}/api2/json/cluster/resources"
+        headers = {
+            'Authorization': f'PVEAPIToken={token_id}={token_secret}'
+        }
+        params = {'type': 'vm'}
+
+        response = requests.get(url, headers=headers, verify=verify_ssl, timeout=10, params=params)
+
+        if response.status_code == 200:
+            resources = response.json().get('data', [])
+            for resource in resources:
+                if resource.get('vmid') == vmid:
+                    actual_node = resource.get('node')
+                    if actual_node == expected_node:
+                        return True, f"Guest {vmid} confirmed on {expected_node}"
+                    else:
+                        return False, f"Guest {vmid} is on {actual_node}, not {expected_node} (stale cache)"
+            return False, f"Guest {vmid} not found in cluster resources"
+
+        logger.warning(f"Proxmox API returned status {response.status_code}")
+        return True, "Could not verify, proceeding with caution"
+    except Exception as e:
+        logger.warning(f"Could not verify guest {vmid} location: {e}")
+        return True, "Verification failed, proceeding with caution"
+
+
 def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str = None) -> bool:
     """
     Check if a VM was recently migrated and is still in cooldown period.
@@ -1637,6 +1689,31 @@ def main():
                     'confidence_score': rec.get('confidence_score')
                 })
                 continue
+
+            # Verify guest is actually on the expected source node (prevents stale-cache failures)
+            if not dry_run:
+                verified, verify_msg = verify_guest_on_node(vmid, source, config)
+                if not verified:
+                    logger.warning(f"Skipping VM {vmid}: {verify_msg}")
+                    guest = cache_data.get('guests', {}).get(str(vmid), {})
+                    activity_log.append({
+                        'timestamp': datetime.utcnow().isoformat() + 'Z',
+                        'vmid': vmid,
+                        'name': guest.get('name', f'VM-{vmid}'),
+                        'action': 'skipped',
+                        'reason': verify_msg
+                    })
+                    last_run_summary['decisions'].append({
+                        'vmid': vmid,
+                        'name': guest.get('name', f'VM-{vmid}'),
+                        'source_node': source,
+                        'target_node': target,
+                        'target_node_score': rec.get('target_node_score'),
+                        'action': 'skipped',
+                        'reason': verify_msg,
+                        'confidence_score': rec.get('confidence_score')
+                    })
+                    continue
 
             target_score = rec.get('target_node_score', 'N/A')
             logger.info(f"Migrating {guest_type} {vmid} ({rec['name']}) from {source} to {target} (score: {target_score}) - {rec['reason']}")

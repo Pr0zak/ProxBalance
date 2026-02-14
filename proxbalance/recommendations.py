@@ -848,7 +848,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 cmd_flag = '--restart' if guest_type == 'lxc' else '--online'
 
                 recommendation = {
-                    "vmid": guest_id,
+                    "vmid": vmid_int,
                     "name": candidate['guest_name'],
                     "type": candidate['guest_type'],
                     "current_node": candidate['source_node'],
