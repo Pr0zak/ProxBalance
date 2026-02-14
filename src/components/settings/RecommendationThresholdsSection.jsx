@@ -2,7 +2,7 @@ import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect } = React;
 
-export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections }) {
+export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded }) {
   const [cpuThreshold, setCpuThreshold] = useState(60);
   const [memThreshold, setMemThreshold] = useState(70);
   const [iowaitThreshold, setIowaitThreshold] = useState(30);
@@ -65,24 +65,31 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
   const isCollapsed = collapsedSections?.recommendationThresholds;
 
+  const outerClass = embedded
+    ? ''
+    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+    <div className={outerClass}>
       <button
         onClick={() => setCollapsedSections && setCollapsedSections(prev => ({ ...prev, recommendationThresholds: !prev.recommendationThresholds }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+        {embedded
+          ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h3>
+          : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+        }
         {setCollapsedSections && (
           <ChevronDown
-            size={24}
-            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '-rotate-180' : ''}`}
+            size={embedded ? 20 : 24}
+            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
           />
         )}
       </button>
 
       {!isCollapsed && (
-      <div className="space-y-6">
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+      <div className="space-y-4">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-900 dark:text-blue-200">
             <strong>When to recommend migrations:</strong> When a node's resource usage exceeds these thresholds,
             the engine will start recommending migrations to move guests off that node. Lower values mean more
@@ -166,7 +173,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-3">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
@@ -174,7 +181,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
+          className={`w-full px-4 py-2 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
             saved
               ? 'bg-emerald-500 dark:bg-emerald-600'
               : saving

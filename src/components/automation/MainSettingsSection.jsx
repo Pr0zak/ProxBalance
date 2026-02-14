@@ -19,7 +19,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Core Settings</h2>
             <ChevronDown
               size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? '-rotate-180' : ''}`}
+              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? '' : '-rotate-180'}`}
             />
           </button>
 
@@ -217,6 +217,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                 </div>
               </div>
             </div>
+
           </div>)}
         </div>
   );
