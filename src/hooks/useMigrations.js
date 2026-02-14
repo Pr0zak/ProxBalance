@@ -301,18 +301,19 @@ export function useMigrations(API_BASE, deps = {}) {
   };
 
   const checkAffinityViolations = (data) => {
-    if (!data) return [];
+    if (!data || !data.nodes || !data.guests) return [];
     const violations = [];
 
     Object.values(data.nodes).forEach(node => {
-      const guestsOnNode = node.guests.map(gid => data.guests[gid]);
+      if (!node.guests) return;
+      const guestsOnNode = node.guests.map(gid => data.guests[gid]).filter(Boolean);
 
       guestsOnNode.forEach(guest => {
-        if (guest.tags.exclude_groups.length > 0) {
+        if (guest.tags && guest.tags.exclude_groups && guest.tags.exclude_groups.length > 0) {
           guest.tags.exclude_groups.forEach(excludeTag => {
             const conflicts = guestsOnNode.filter(other =>
               other.vmid !== guest.vmid &&
-              other.tags.all_tags.includes(excludeTag)
+              other.tags && other.tags.all_tags && other.tags.all_tags.includes(excludeTag)
             );
 
             if (conflicts.length > 0) {
