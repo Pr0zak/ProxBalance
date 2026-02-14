@@ -500,6 +500,7 @@ def update_collection_settings():
         json.dump(config_data, f, indent=2)
 
     # Update systemd timer
+    timer_warning = None
     try:
         subprocess.run(
             ['/opt/proxmox-balance-manager/venv/bin/python3',
@@ -509,12 +510,17 @@ def update_collection_settings():
             check=True
         )
     except Exception as e:
+        timer_warning = f"Settings saved but timer update failed: {e}"
         print(f"Warning: Failed to update timer: {e}", file=sys.stderr)
 
-    return jsonify({
+    response = {
         "success": True,
         "message": "Collection settings updated successfully"
-    })
+    }
+    if timer_warning:
+        response["warning"] = timer_warning
+
+    return jsonify(response)
 
 
 @system_bp.route("/api/system/token-permissions", methods=["POST"])

@@ -1192,6 +1192,11 @@ systemctl enable proxmox-balance.service
 systemctl enable proxmox-collector.timer
 systemctl enable proxmox-balance-recommendations.timer
 systemctl enable proxmox-balance-automigrate.timer
+
+# Sync collector timer interval with config.json (prevents desync on update)
+if [ -f /opt/proxmox-balance-manager/update_timer.py ] && [ -f /opt/proxmox-balance-manager/config.json ]; then
+  /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/update_timer.py || true
+fi
 EOF
   
   msg_ok "Services configured"
