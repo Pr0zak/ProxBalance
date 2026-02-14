@@ -397,6 +397,7 @@ const ProxmoxBalanceManager = () => {
       confirmRemoveWindow={automation.confirmRemoveWindow}
       editingWindowIndex={automation.editingWindowIndex}
       fetchAutomationStatus={automation.fetchAutomationStatus}
+      fetchConfig={configHook.fetchConfig}
       logRefreshTime={automation.logRefreshTime}
       migrationHistoryPage={automation.migrationHistoryPage}
       migrationHistoryPageSize={automation.migrationHistoryPageSize}

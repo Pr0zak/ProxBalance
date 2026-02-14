@@ -1,8 +1,8 @@
-import { Save, CheckCircle } from '../Icons.jsx';
+import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect } = React;
 
-export default function RecommendationThresholdsSection({ config, fetchConfig }) {
+export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections }) {
   const [cpuThreshold, setCpuThreshold] = useState(60);
   const [memThreshold, setMemThreshold] = useState(70);
   const [iowaitThreshold, setIowaitThreshold] = useState(30);
@@ -63,12 +63,26 @@ export default function RecommendationThresholdsSection({ config, fetchConfig })
 
   if (!loaded) return null;
 
-  return (
-    <div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recommendation Thresholds</h3>
+  const isCollapsed = collapsedSections?.recommendationThresholds;
 
-      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+      <button
+        onClick={() => setCollapsedSections && setCollapsedSections(prev => ({ ...prev, recommendationThresholds: !prev.recommendationThresholds }))}
+        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
+      >
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+        {setCollapsedSections && (
+          <ChevronDown
+            size={24}
+            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '-rotate-180' : ''}`}
+          />
+        )}
+      </button>
+
+      {!isCollapsed && (
+      <div className="space-y-6">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
           <p className="text-sm text-blue-900 dark:text-blue-200">
             <strong>When to recommend migrations:</strong> When a node's resource usage exceeds these thresholds,
             the engine will start recommending migrations to move guests off that node. Lower values mean more
@@ -157,37 +171,36 @@ export default function RecommendationThresholdsSection({ config, fetchConfig })
           </div>
         )}
 
-        <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-700/50 -mx-4 -mb-4 px-4 py-4 mt-4 border-t border-gray-200 dark:border-gray-600">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
-              saved
-                ? 'bg-emerald-500 dark:bg-emerald-600'
-                : saving
-                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
-                  : 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
-            }`}
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Saving...
-              </>
-            ) : saved ? (
-              <>
-                <CheckCircle size={16} />
-                Thresholds Saved!
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                Apply Recommendation Thresholds
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
+            saved
+              ? 'bg-emerald-500 dark:bg-emerald-600'
+              : saving
+                ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                : 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
+          }`}
+        >
+          {saving ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              Saving...
+            </>
+          ) : saved ? (
+            <>
+              <CheckCircle size={16} />
+              Thresholds Saved!
+            </>
+          ) : (
+            <>
+              <Save size={16} />
+              Apply Recommendation Thresholds
+            </>
+          )}
+        </button>
       </div>
+      )}
     </div>
   );
 }

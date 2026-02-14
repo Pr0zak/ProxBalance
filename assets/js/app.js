@@ -930,80 +930,11 @@
     )))));
   }
 
-  // src/components/settings/RecommendationThresholdsSection.jsx
-  init_constants();
-  var { useState: useState2, useEffect } = React;
-  function RecommendationThresholdsSection({ config, fetchConfig: fetchConfig2 }) {
-    let [cpuThreshold, setCpuThreshold] = useState2(60), [memThreshold, setMemThreshold] = useState2(70), [iowaitThreshold, setIowaitThreshold] = useState2(30), [saving, setSaving] = useState2(!1), [saved, setSaved] = useState2(!1), [error, setError] = useState2(null), [loaded, setLoaded] = useState2(!1);
-    useEffect(() => {
-      fetch(`${API_BASE}/settings/recommendation-thresholds`).then((r) => r.json()).then((result) => {
-        result.success && result.thresholds && (setCpuThreshold(result.thresholds.cpu_threshold), setMemThreshold(result.thresholds.mem_threshold), setIowaitThreshold(result.thresholds.iowait_threshold)), setLoaded(!0);
-      }).catch(() => setLoaded(!0));
-    }, []);
-    let handleSave = () => {
-      setSaving(!0), setSaved(!1), setError(null), fetch(`${API_BASE}/settings/recommendation-thresholds`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cpu_threshold: cpuThreshold,
-          mem_threshold: memThreshold,
-          iowait_threshold: iowaitThreshold
-        })
-      }).then((r) => r.json()).then((result) => {
-        setSaving(!1), result.success ? (setSaved(!0), setTimeout(() => setSaved(!1), 3e3), localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString()), localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString()), localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString()), fetchConfig2 && fetchConfig2()) : setError(result.error || "Failed to save");
-      }).catch((err) => {
-        setSaving(!1), setError(err.message);
-      });
-    };
-    return loaded ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-900 dark:text-white mb-6" }, "Recommendation Thresholds"), /* @__PURE__ */ React.createElement("div", { className: "space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded" }, /* @__PURE__ */ React.createElement("div", { className: "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-900 dark:text-blue-200" }, /* @__PURE__ */ React.createElement("strong", null, "When to recommend migrations:"), " When a node's resource usage exceeds these thresholds, the engine will start recommending migrations to move guests off that node. Lower values mean more proactive balancing. These are used by both the dashboard and background recommendation services.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "CPU Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, cpuThreshold, "%")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "range",
-        min: "10",
-        max: "95",
-        step: "5",
-        value: cpuThreshold,
-        onChange: (e) => setCpuThreshold(Number(e.target.value)),
-        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "10%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "95%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's CPU exceeds this level")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Memory Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, memThreshold, "%")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "range",
-        min: "10",
-        max: "95",
-        step: "5",
-        value: memThreshold,
-        onChange: (e) => setMemThreshold(Number(e.target.value)),
-        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "10%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "95%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's memory exceeds this level")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "IOWait Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, iowaitThreshold, "%")), /* @__PURE__ */ React.createElement(
-      "input",
-      {
-        type: "range",
-        min: "5",
-        max: "60",
-        step: "5",
-        value: iowaitThreshold,
-        onChange: (e) => setIowaitThreshold(Number(e.target.value)),
-        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      }
-    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "5%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "60%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's IOWait exceeds this level")), error && /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-3" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-red-600 dark:text-red-400" }, error)), /* @__PURE__ */ React.createElement("div", { className: "sticky bottom-0 bg-gray-50 dark:bg-gray-700/50 -mx-4 -mb-4 px-4 py-4 mt-4 border-t border-gray-200 dark:border-gray-600" }, /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: handleSave,
-        disabled: saving,
-        className: `w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${saved ? "bg-emerald-500 dark:bg-emerald-600" : saving ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed" : "bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600"}`
-      },
-      saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" }), "Saving...") : saved ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), "Thresholds Saved!") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 16 }), "Apply Recommendation Thresholds")
-    )))) : null;
-  }
-
   // src/components/NumberField.jsx
-  var { useState: useState3, useEffect: useEffect2, useRef } = React;
+  var { useState: useState2, useEffect, useRef } = React;
   function NumberField({ value, onCommit, isFloat, className, ...props }) {
-    let [localVal, setLocalVal] = useState3(String(value ?? "")), committedRef = useRef(value);
-    return useEffect2(() => {
+    let [localVal, setLocalVal] = useState2(String(value ?? "")), committedRef = useRef(value);
+    return useEffect(() => {
       value !== committedRef.current && (committedRef.current = value, setLocalVal(String(value ?? "")));
     }, [value]), /* @__PURE__ */ React.createElement(
       "input",
@@ -1504,7 +1435,7 @@ ${details}`);
 
   // src/components/settings/AdvancedSystemSettings.jsx
   init_constants();
-  var { useState: useState4 } = React;
+  var { useState: useState3 } = React;
   function AdvancedSystemSettings({
     showAdvancedSettings,
     setShowAdvancedSettings,
@@ -1891,12 +1822,6 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         fetchConfig: fetchConfig2
       }
     ), /* @__PURE__ */ React.createElement("hr", { className: "border-gray-300 dark:border-gray-600" }), /* @__PURE__ */ React.createElement(
-      RecommendationThresholdsSection,
-      {
-        config,
-        fetchConfig: fetchConfig2
-      }
-    ), /* @__PURE__ */ React.createElement("hr", { className: "border-gray-300 dark:border-gray-600" }), /* @__PURE__ */ React.createElement(
       NotificationsSection,
       {
         automationConfig,
@@ -1955,9 +1880,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/MainSettingsSection.jsx
-  var { useState: useState5 } = React;
+  var { useState: useState4 } = React;
   function MainSettingsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
-    let [confirmEnableAutomation, setConfirmEnableAutomation] = useState5(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState5(!1);
+    let [confirmEnableAutomation, setConfirmEnableAutomation] = useState4(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState4(!1);
     return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -2105,7 +2030,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/SmartMigrationsSection.jsx
-  var { useState: useState6 } = React, INTELLIGENCE_LEVELS = [
+  var { useState: useState5 } = React, INTELLIGENCE_LEVELS = [
     {
       key: "basic",
       label: "Basic",
@@ -2132,7 +2057,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     return hasFull ? "full" : hasStandard ? "standard" : "basic";
   }
   function SmartMigrationsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, automationStatus, collapsedSections, setCollapsedSections }) {
-    let [showAdvanced, setShowAdvanced] = useState6(!1), [dismissedSuggestion, setDismissedSuggestion] = useState6(!1), imConfig = automationConfig.rules?.intelligent_migrations, currentLevel = inferIntelligenceLevel(imConfig), suggestedLevel = automationStatus?.intelligent_tracking?.suggested_level, minDataHours = imConfig?.minimum_data_collection_hours !== void 0 ? imConfig.minimum_data_collection_hours : 24, obsPeriods = imConfig?.observation_periods || 3;
+    let [showAdvanced, setShowAdvanced] = useState5(!1), [dismissedSuggestion, setDismissedSuggestion] = useState5(!1), imConfig = automationConfig.rules?.intelligent_migrations, currentLevel = inferIntelligenceLevel(imConfig), suggestedLevel = automationStatus?.intelligent_tracking?.suggested_level, minDataHours = imConfig?.minimum_data_collection_hours !== void 0 ? imConfig.minimum_data_collection_hours : 24, obsPeriods = imConfig?.observation_periods || 3;
     return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -2254,9 +2179,9 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/SafetyRulesSection.jsx
-  var { useState: useState7 } = React;
+  var { useState: useState6 } = React;
   function SafetyRulesSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
-    let [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState7(!1);
+    let [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState6(!1);
     return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -2466,7 +2391,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
   }
 
   // src/components/automation/TimeWindowsSection.jsx
-  var { useState: useState8 } = React;
+  var { useState: useState7 } = React;
   function WindowTypeButtons({ currentType, onSelect }) {
     return /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
       "button",
@@ -2489,7 +2414,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     ));
   }
   function TimeWindowsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections, setError }) {
-    let [editingWindowIndex, setEditingWindowIndex] = useState8(null), [showTimeWindowForm, setShowTimeWindowForm] = useState8(!1), [newWindowData, setNewWindowData] = useState8({ name: "", type: "migration", days: [], start_time: "00:00", end_time: "00:00" }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState8(null);
+    let [editingWindowIndex, setEditingWindowIndex] = useState7(null), [showTimeWindowForm, setShowTimeWindowForm] = useState7(!1), [newWindowData, setNewWindowData] = useState7({ name: "", type: "migration", days: [], start_time: "00:00", end_time: "00:00" }), [confirmRemoveWindow, setConfirmRemoveWindow] = useState7(null);
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white mb-4" }, "Time Windows"), /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-3" }, /* @__PURE__ */ React.createElement(Info, { size: 20, className: "text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" }), /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" }, "Timezone for Time Windows"), /* @__PURE__ */ React.createElement(
       "select",
       {
@@ -3067,7 +2992,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
 
   // src/components/automation/PenaltyScoringSection.jsx
   init_constants();
-  var { useState: useState9, useEffect: useEffect3, useCallback } = React, SENSITIVITY_LABELS = { 1: "Conservative", 2: "Balanced", 3: "Aggressive" }, SENSITIVITY_DESCRIPTIONS = {
+  var { useState: useState8, useEffect: useEffect2, useCallback } = React, SENSITIVITY_LABELS = { 1: "Conservative", 2: "Balanced", 3: "Aggressive" }, SENSITIVITY_DESCRIPTIONS = {
     1: "High bar for migrations. Only recommends moves with clear, sustained problems. Best for production clusters where stability is paramount.",
     2: "Moderate sensitivity. Recommends migrations when trends show growing problems. Suitable for most clusters.",
     3: "Low bar for migrations. Recommends moves proactively for even modest improvements. Best for clusters that benefit from frequent rebalancing."
@@ -3108,8 +3033,8 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     resetMigrationSettingsAction,
     fetchMigrationSettingsAction
   }) {
-    let [showExpertMode, setShowExpertMode] = useState9(!1), [showSimulator, setShowSimulator] = useState9(!1), [simulatorResult, setSimulatorResult] = useState9(null), [simulatingConfig, setSimulatingConfig] = useState9(!1);
-    useEffect3(() => {
+    let [showExpertMode, setShowExpertMode] = useState8(!1), [showSimulator, setShowSimulator] = useState8(!1), [simulatorResult, setSimulatorResult] = useState8(null), [simulatingConfig, setSimulatingConfig] = useState8(!1);
+    useEffect2(() => {
       !migrationSettings && fetchMigrationSettingsAction && fetchMigrationSettingsAction();
     }, []);
     let settings = migrationSettings || {
@@ -3332,6 +3257,91 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
     )))));
   }
 
+  // src/components/settings/RecommendationThresholdsSection.jsx
+  init_constants();
+  var { useState: useState9, useEffect: useEffect3 } = React;
+  function RecommendationThresholdsSection({ config, fetchConfig: fetchConfig2, collapsedSections, setCollapsedSections }) {
+    let [cpuThreshold, setCpuThreshold] = useState9(60), [memThreshold, setMemThreshold] = useState9(70), [iowaitThreshold, setIowaitThreshold] = useState9(30), [saving, setSaving] = useState9(!1), [saved, setSaved] = useState9(!1), [error, setError] = useState9(null), [loaded, setLoaded] = useState9(!1);
+    useEffect3(() => {
+      fetch(`${API_BASE}/settings/recommendation-thresholds`).then((r) => r.json()).then((result) => {
+        result.success && result.thresholds && (setCpuThreshold(result.thresholds.cpu_threshold), setMemThreshold(result.thresholds.mem_threshold), setIowaitThreshold(result.thresholds.iowait_threshold)), setLoaded(!0);
+      }).catch(() => setLoaded(!0));
+    }, []);
+    let handleSave = () => {
+      setSaving(!0), setSaved(!1), setError(null), fetch(`${API_BASE}/settings/recommendation-thresholds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cpu_threshold: cpuThreshold,
+          mem_threshold: memThreshold,
+          iowait_threshold: iowaitThreshold
+        })
+      }).then((r) => r.json()).then((result) => {
+        setSaving(!1), result.success ? (setSaved(!0), setTimeout(() => setSaved(!1), 3e3), localStorage.setItem("proxbalance_cpu_threshold", cpuThreshold.toString()), localStorage.setItem("proxbalance_mem_threshold", memThreshold.toString()), localStorage.setItem("proxbalance_iowait_threshold", iowaitThreshold.toString()), fetchConfig2 && fetchConfig2()) : setError(result.error || "Failed to save");
+      }).catch((err) => {
+        setSaving(!1), setError(err.message);
+      });
+    };
+    if (!loaded) return null;
+    let isCollapsed = collapsedSections?.recommendationThresholds;
+    return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setCollapsedSections && setCollapsedSections((prev) => ({ ...prev, recommendationThresholds: !prev.recommendationThresholds })),
+        className: "w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
+      },
+      /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-900 dark:text-white" }, "Recommendation Thresholds"),
+      setCollapsedSections && /* @__PURE__ */ React.createElement(
+        ChevronDown,
+        {
+          size: 24,
+          className: `text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? "-rotate-180" : ""}`
+        }
+      )
+    ), !isCollapsed && /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("div", { className: "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-blue-900 dark:text-blue-200" }, /* @__PURE__ */ React.createElement("strong", null, "When to recommend migrations:"), " When a node's resource usage exceeds these thresholds, the engine will start recommending migrations to move guests off that node. Lower values mean more proactive balancing. These are used by both the dashboard and background recommendation services.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "CPU Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, cpuThreshold, "%")), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "range",
+        min: "10",
+        max: "95",
+        step: "5",
+        value: cpuThreshold,
+        onChange: (e) => setCpuThreshold(Number(e.target.value)),
+        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+      }
+    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "10%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "95%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's CPU exceeds this level")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "Memory Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, memThreshold, "%")), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "range",
+        min: "10",
+        max: "95",
+        step: "5",
+        value: memThreshold,
+        onChange: (e) => setMemThreshold(Number(e.target.value)),
+        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+      }
+    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "10%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "95%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's memory exceeds this level")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" }, "IOWait Threshold: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-blue-600 dark:text-blue-400" }, iowaitThreshold, "%")), /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "range",
+        min: "5",
+        max: "60",
+        step: "5",
+        value: iowaitThreshold,
+        onChange: (e) => setIowaitThreshold(Number(e.target.value)),
+        className: "w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+      }
+    ), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("span", null, "5%"), /* @__PURE__ */ React.createElement("span", null, "Aggressive"), /* @__PURE__ */ React.createElement("span", null, "Relaxed"), /* @__PURE__ */ React.createElement("span", null, "60%")), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Recommend moving guests when a node's IOWait exceeds this level")), error && /* @__PURE__ */ React.createElement("div", { className: "bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-3" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-red-600 dark:text-red-400" }, error)), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSave,
+        disabled: saving,
+        className: `w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${saved ? "bg-emerald-500 dark:bg-emerald-600" : saving ? "bg-gray-400 dark:bg-gray-600 cursor-not-allowed" : "bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600"}`
+      },
+      saving ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" }), "Saving...") : saved ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), "Thresholds Saved!") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Save, { size: 16 }), "Apply Recommendation Thresholds")
+    )));
+  }
+
   // src/components/AutomationPage.jsx
   function AutomationPage(props) {
     let {
@@ -3343,6 +3353,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       confirmRemoveWindow,
       editingWindowIndex,
       fetchAutomationStatus: fetchAutomationStatus2,
+      fetchConfig: fetchConfig2,
       logRefreshTime,
       migrationHistoryPage,
       migrationHistoryPageSize,
@@ -3444,6 +3455,14 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
       {
         automationConfig,
         saveAutomationConfig: saveAutomationConfig2,
+        collapsedSections,
+        setCollapsedSections
+      }
+    ), /* @__PURE__ */ React.createElement(
+      RecommendationThresholdsSection,
+      {
+        config,
+        fetchConfig: fetchConfig2,
         collapsedSections,
         setCollapsedSections
       }
@@ -8279,6 +8298,7 @@ Recs: ${recCounts[i]}` }, /* @__PURE__ */ React.createElement("div", { className
         confirmRemoveWindow: automation.confirmRemoveWindow,
         editingWindowIndex: automation.editingWindowIndex,
         fetchAutomationStatus: automation.fetchAutomationStatus,
+        fetchConfig: configHook.fetchConfig,
         logRefreshTime: automation.logRefreshTime,
         migrationHistoryPage: automation.migrationHistoryPage,
         migrationHistoryPageSize: automation.migrationHistoryPageSize,
