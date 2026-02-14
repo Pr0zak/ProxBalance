@@ -2,7 +2,7 @@ import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect } = React;
 
-export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections }) {
+export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded }) {
   const [cpuThreshold, setCpuThreshold] = useState(60);
   const [memThreshold, setMemThreshold] = useState(70);
   const [iowaitThreshold, setIowaitThreshold] = useState(30);
@@ -65,17 +65,24 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
   const isCollapsed = collapsedSections?.recommendationThresholds;
 
+  const outerClass = embedded
+    ? ''
+    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+    <div className={outerClass}>
       <button
         onClick={() => setCollapsedSections && setCollapsedSections(prev => ({ ...prev, recommendationThresholds: !prev.recommendationThresholds }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+        {embedded
+          ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h3>
+          : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+        }
         {setCollapsedSections && (
           <ChevronDown
-            size={24}
-            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '-rotate-180' : ''}`}
+            size={embedded ? 20 : 24}
+            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
           />
         )}
       </button>

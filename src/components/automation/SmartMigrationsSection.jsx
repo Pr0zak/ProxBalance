@@ -32,7 +32,7 @@ function inferIntelligenceLevel(imConfig) {
   return 'basic';
 }
 
-export default function SmartMigrationsSection({ automationConfig, saveAutomationConfig, automationStatus, collapsedSections, setCollapsedSections }) {
+export default function SmartMigrationsSection({ automationConfig, saveAutomationConfig, automationStatus, collapsedSections, setCollapsedSections, embedded }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
 
@@ -42,21 +42,28 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
   const minDataHours = imConfig?.minimum_data_collection_hours !== undefined ? imConfig.minimum_data_collection_hours : 24;
   const obsPeriods = imConfig?.observation_periods || 3;
 
+  const outerClass = embedded
+    ? ''
+    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+    <div className={outerClass}>
       <button
         onClick={() => setCollapsedSections(prev => ({ ...prev, smartMigrations: !prev.smartMigrations }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Smart Migrations</h2>
+          {embedded
+            ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Smart Migrations</h3>
+            : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Smart Migrations</h2>
+          }
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Track recommendations over time and only act on persistent imbalances
           </p>
         </div>
         <ChevronDown
-          size={24}
-          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.smartMigrations ? '-rotate-180' : ''}`}
+          size={embedded ? 20 : 24}
+          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.smartMigrations ? '' : '-rotate-180'}`}
         />
       </button>
 

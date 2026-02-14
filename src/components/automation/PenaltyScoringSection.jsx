@@ -32,6 +32,7 @@ export default function PenaltyScoringSection({
   savingMigrationSettings, migrationSettingsSaved,
   saveMigrationSettingsAction, resetMigrationSettingsAction,
   fetchMigrationSettingsAction,
+  embedded,
 }) {
   const [showExpertMode, setShowExpertMode] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
@@ -92,16 +93,25 @@ export default function PenaltyScoringSection({
   const isSaving = savingMigrationSettings || savingPenaltyConfig;
   const isSaved = migrationSettingsSaved || penaltyConfigSaved;
 
+  const outerClass = embedded
+    ? ''
+    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+
+  const HeadingTag = embedded ? 'h3' : 'h2';
+  const headingClass = embedded
+    ? 'text-base font-bold text-gray-900 dark:text-white'
+    : 'text-xl font-bold text-gray-900 dark:text-white';
+
   return (<>
-    <div id="penalty-config-section" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+    <div id="penalty-config-section" className={outerClass}>
       <button
         onClick={() => setCollapsedSections(prev => ({ ...prev, penaltyScoring: !prev.penaltyScoring }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration Settings</h2>
+        <HeadingTag className={headingClass}>Scoring & Sensitivity</HeadingTag>
         <ChevronDown
-          size={24}
-          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.penaltyScoring ? '-rotate-180' : ''}`}
+          size={embedded ? 20 : 24}
+          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.penaltyScoring ? '' : '-rotate-180'}`}
         />
       </button>
 

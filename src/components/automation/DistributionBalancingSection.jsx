@@ -4,19 +4,26 @@ import Toggle, { ToggleRow } from '../Toggle.jsx';
 
 export default function DistributionBalancingSection({
   config, automationConfig, collapsedSections, setCollapsedSections,
-  setConfig, saveAutomationConfig
+  setConfig, saveAutomationConfig, embedded
 }) {
+  const outerClass = embedded
+    ? ''
+    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+
   return (<>
         {/* Distribution Balancing */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={outerClass}>
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancing: !prev.distributionBalancing }))}
             className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
+            {embedded
+              ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Distribution Balancing</h3>
+              : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
+            }
             <ChevronDown
-              size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.distributionBalancing ? '-rotate-180' : ''}`}
+              size={embedded ? 20 : 24}
+              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.distributionBalancing ? '' : '-rotate-180'}`}
             />
           </button>
 
