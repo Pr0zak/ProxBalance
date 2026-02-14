@@ -41,6 +41,10 @@ STABILITY_GOOD = 0.20         # CV < 20% = stable
 STABILITY_MODERATE = 0.35     # CV < 35% = moderate
 # Above 35% = volatile
 
+# Minimum average CPU % for bursty classification — guests below this threshold
+# have negligible absolute impact even when their relative volatility (CV) is high
+BURSTY_MIN_CPU = 5.0
+
 
 # ---------------------------------------------------------------------------
 # Core statistical helpers
@@ -386,10 +390,11 @@ def analyze_guest_trends(
     cpu_rate = abs(cpu_trend.get("rate_per_day", 0))
     mem_rate = abs(mem_trend.get("rate_per_day", 0))
     cpu_stab = cpu_trend.get("stability_score", 50)
+    cpu_avg = cpu_trend.get("current_avg", 0)
 
     if cpu_trend["direction"] in ("sustained_increase", "rising") and cpu_rate > 1.0:
         behavior = "growing"
-    elif cpu_stab < 40:
+    elif cpu_stab < 40 and cpu_avg >= BURSTY_MIN_CPU:
         behavior = "bursty"
     elif cpu_stab >= 75:
         behavior = "steady"

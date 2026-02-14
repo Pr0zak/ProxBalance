@@ -154,7 +154,7 @@ def classify_guest_behavior(profile: Dict[str, Any]) -> Dict[str, Any]:
     data_points = len(cpu_avgs)
     confidence = "high" if data_points >= 48 else ("medium" if data_points >= 12 else "low")
 
-    if peak_mult > 2.0:
+    if peak_mult > 2.0 and mean_avg > 5:
         behavior = "bursty"
     elif abs(growth_per_day) > 2.0 and mean_avg > 5:
         behavior = "growing"
