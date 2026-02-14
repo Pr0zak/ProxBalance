@@ -119,10 +119,6 @@ export default function AutomationPage(props) {
           saveAutomationConfig={saveAutomationConfig}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
-          testAutomation={testAutomation}
-          testingAutomation={testingAutomation}
-          testResult={testResult}
-          setTestResult={setTestResult}
         />
 
         {/* 2. Safety & Guardrails */}

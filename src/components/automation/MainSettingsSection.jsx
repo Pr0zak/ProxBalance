@@ -1,12 +1,12 @@
 import {
-  AlertTriangle, CheckCircle, ChevronDown, Play, RefreshCw, X, XCircle, Power
+  AlertTriangle, ChevronDown, X, Power
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
 const { useState } = React;
 
-export default function MainSettingsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, testAutomation, testingAutomation, testResult, setTestResult }) {
+export default function MainSettingsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
 
@@ -218,46 +218,6 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
               </div>
             </div>
 
-            {/* Test Run */}
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Test Automation</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Run a dry-run test to preview what migrations would be executed with your current settings.
-                  </p>
-                </div>
-                <button
-                  onClick={testAutomation}
-                  disabled={testingAutomation}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed shrink-0"
-                >
-                  {testingAutomation ? (
-                    <><RefreshCw size={16} className="animate-spin" /> Testing...</>
-                  ) : (
-                    <><Play size={16} /> Test Run</>
-                  )}
-                </button>
-              </div>
-              {testResult && (
-                <div className={`mt-3 p-3 rounded-lg border ${testResult.success ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-2">
-                      {testResult.success ? <CheckCircle size={18} className="text-green-600 dark:text-green-400 mt-0.5" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 mt-0.5" />}
-                      <div>
-                        <div className={`font-semibold text-sm ${testResult.success ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'}`}>
-                          {testResult.success ? 'Test Run Complete' : 'Test Run Failed'}
-                        </div>
-                        <p className="text-xs mt-1 text-gray-700 dark:text-gray-300">{testResult.message || testResult.error}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setTestResult(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>)}
         </div>
   );

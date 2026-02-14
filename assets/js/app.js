@@ -1881,7 +1881,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
 
   // src/components/automation/MainSettingsSection.jsx
   var { useState: useState4 } = React;
-  function MainSettingsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections, testAutomation: testAutomation2, testingAutomation, testResult, setTestResult }) {
+  function MainSettingsSection({ automationConfig, saveAutomationConfig: saveAutomationConfig2, collapsedSections, setCollapsedSections }) {
     let [confirmEnableAutomation, setConfirmEnableAutomation] = useState4(!1), [confirmDisableDryRun, setConfirmDisableDryRun] = useState4(!1);
     return /* @__PURE__ */ React.createElement("div", { className: "bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden" }, /* @__PURE__ */ React.createElement(
       "button",
@@ -2010,15 +2010,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         onCommit: (val) => saveAutomationConfig2({ rules: { ...automationConfig.rules, grace_period_seconds: val } }),
         className: "w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
       }
-    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations for cluster to settle (0 = no wait)")))), /* @__PURE__ */ React.createElement("div", { className: "pt-2 border-t border-gray-200 dark:border-gray-700" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between flex-wrap gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-gray-900 dark:text-white" }, "Test Automation"), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-500 dark:text-gray-400" }, "Run a dry-run test to preview what migrations would be executed with your current settings.")), /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: testAutomation2,
-        disabled: testingAutomation,
-        className: "flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed shrink-0"
-      },
-      testingAutomation ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(RefreshCw, { size: 16, className: "animate-spin" }), " Testing...") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Play, { size: 16 }), " Test Run")
-    )), testResult && /* @__PURE__ */ React.createElement("div", { className: `mt-3 p-3 rounded-lg border ${testResult.success ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700" : "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-start gap-2" }, testResult.success ? /* @__PURE__ */ React.createElement(CheckCircle, { size: 18, className: "text-green-600 dark:text-green-400 mt-0.5" }) : /* @__PURE__ */ React.createElement(XCircle, { size: 18, className: "text-red-600 dark:text-red-400 mt-0.5" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: `font-semibold text-sm ${testResult.success ? "text-green-900 dark:text-green-200" : "text-red-900 dark:text-red-200"}` }, testResult.success ? "Test Run Complete" : "Test Run Failed"), /* @__PURE__ */ React.createElement("p", { className: "text-xs mt-1 text-gray-700 dark:text-gray-300" }, testResult.message || testResult.error))), /* @__PURE__ */ React.createElement("button", { onClick: () => setTestResult(null), className: "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" }, /* @__PURE__ */ React.createElement(X, { size: 14 })))))));
+    ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1" }, "Wait time between migrations for cluster to settle (0 = no wait)"))))));
   }
 
   // src/components/automation/DecisionTreeFlowchart.jsx
@@ -3441,11 +3433,7 @@ This will restart the background data collection process.`) && fetch(`${API_BASE
         automationConfig,
         saveAutomationConfig: saveAutomationConfig2,
         collapsedSections,
-        setCollapsedSections,
-        testAutomation: testAutomation2,
-        testingAutomation,
-        testResult,
-        setTestResult
+        setCollapsedSections
       }
     ), /* @__PURE__ */ React.createElement(
       SafetyRulesSection,
