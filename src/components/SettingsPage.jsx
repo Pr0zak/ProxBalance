@@ -4,6 +4,7 @@ import {
 
 import AIProviderSection from './settings/AIProviderSection.jsx';
 import DataCollectionSection from './settings/DataCollectionSection.jsx';
+import RecommendationThresholdsSection from './settings/RecommendationThresholdsSection.jsx';
 import NotificationsSection from './settings/NotificationsSection.jsx';
 import AdvancedSystemSettings from './settings/AdvancedSystemSettings.jsx';
 
@@ -97,6 +98,13 @@ export default function SettingsPage(props) {
             data={data}
             config={config}
             handleRefresh={handleRefresh}
+            fetchConfig={fetchConfig}
+          />
+
+          <hr className="border-gray-300 dark:border-gray-600" />
+
+          <RecommendationThresholdsSection
+            config={config}
             fetchConfig={fetchConfig}
           />
 
