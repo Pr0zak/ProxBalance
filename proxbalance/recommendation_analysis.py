@@ -60,20 +60,20 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
         complexity_factor = 100  # Small VM, easy migration
 
     # Factor 4: Stability signal (15%) — favorable trends = higher confidence
-    # Uses headroom-weighted approach: a slowly rising trend with ample headroom
-    # is less concerning than a rapidly rising trend near capacity.
+    # Only CPU and IOWait trends matter here. Memory in Proxmox is essentially
+    # static (allocated, not dynamic), so a "rising" memory trend is just
+    # migration churn, not a workload signal. The scoring algorithm already
+    # reflects this (mem_trend_rising_penalty=5 vs cpu=15, plus mem_penalty_cap).
     if target_details:
         cpu_trend = target_metrics.get("cpu_trend", "stable")
-        mem_trend = target_metrics.get("mem_trend", "stable")
         total_penalties = target_details.get("total_penalties", 0)
 
-        if cpu_trend == "rising" or mem_trend == "rising":
-            # Scale penalty by how much headroom remains — generous headroom
-            # with a slow rise is much less concerning than tight headroom
-            min_headroom = min(cpu_headroom, mem_headroom)
-            if min_headroom >= 50:
+        if cpu_trend == "rising":
+            # Scale by CPU headroom — generous headroom with a slow rise
+            # is much less concerning than tight headroom
+            if cpu_headroom >= 50:
                 stability_factor = 70  # Plenty of room despite rising trend
-            elif min_headroom >= 30:
+            elif cpu_headroom >= 30:
                 stability_factor = 50  # Moderate room, moderate concern
             else:
                 stability_factor = 30  # Low headroom + rising = high concern
@@ -208,7 +208,7 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     if src_metrics.get("cpu_trend") == "rising":
         factors.append({"factor": "source_cpu_trend", "severity": "medium", "label": "Source CPU trending upward"})
     if src_metrics.get("mem_trend") == "rising":
-        factors.append({"factor": "source_mem_trend", "severity": "medium", "label": "Source memory trending upward"})
+        factors.append({"factor": "source_mem_trend", "severity": "low", "label": "Source memory trending upward (memory is largely static)"})
 
     # IOWait
     src_iowait = src_metrics.get("current_iowait", 0)
