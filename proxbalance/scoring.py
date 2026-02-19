@@ -68,7 +68,7 @@ DEFAULT_PENALTY_CONFIG = {
 
     # Trend penalties
     "cpu_trend_rising_penalty": 15,   # Penalty for rising CPU trend
-    "mem_trend_rising_penalty": 5,    # Penalty for rising Memory trend (low — mem is static)
+    "mem_trend_rising_penalty": 0,    # Memory trends reflect migration history, not workload changes — disabled
 
     # Spike penalties (max values in week)
     "cpu_spike_moderate": 5,          # Penalty when max CPU > 70%
@@ -153,9 +153,15 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
     long_iowait = metrics.get("avg_iowait_week", 0)
 
     # Calculate weighted metrics using configured weights
+    # CPU and IOWait benefit from time-weighted smoothing (transient spikes).
+    # Memory is a step-function resource in Proxmox (fixed VM/CT allocations)
+    # — it only changes when guests are migrated/started/stopped.  Blending
+    # with historical averages creates stale phantom values after migrations:
+    # nodes that received VMs appear to have *less* memory than reality,
+    # and nodes that lost VMs appear to have *more*.  Use current reading.
     if metrics.get("has_historical"):
         cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        mem = immediate_mem
         iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         cpu = immediate_cpu
@@ -221,9 +227,10 @@ def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], add
     long_iowait = metrics.get("avg_iowait_week", 0)
 
     # Calculate weighted current state using configured weights
+    # Memory uses immediate value — see note in calculate_node_health_score.
     if metrics.get("has_historical"):
         current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        current_mem = immediate_mem
         current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         current_cpu = immediate_cpu
@@ -314,9 +321,10 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     weight_24h = penalty_config.get("weight_24h", 0.3)
     weight_7d = penalty_config.get("weight_7d", 0.2)
 
+    # Memory uses immediate value — see note in calculate_node_health_score.
     if metrics.get("has_historical"):
         current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        current_mem = immediate_mem
         current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         # No historical data, use current only
@@ -438,13 +446,18 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             elif cpu_rate > 0.5:
                 penalty_breakdown["cpu_trend"] = base_trend_penalty
 
-            base_mem_trend_penalty = penalty_config.get("mem_trend_rising_penalty", 15)
-            if mem_rate > 3.0:
-                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 3)
-            elif mem_rate > 1.0:
-                penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
-            elif mem_rate > 0.5:
-                penalty_breakdown["mem_trend"] = base_mem_trend_penalty
+            # Memory trend penalties are disabled by default (mem_trend_rising_penalty=0)
+            # because memory trends in Proxmox reflect migration history, not workload
+            # changes.  A "rising" memory trend means a VM was recently migrated in,
+            # not that workloads are consuming more RAM.
+            base_mem_trend_penalty = penalty_config.get("mem_trend_rising_penalty", 0)
+            if base_mem_trend_penalty > 0:
+                if mem_rate > 3.0:
+                    penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 3)
+                elif mem_rate > 1.0:
+                    penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
+                elif mem_rate > 0.5:
+                    penalty_breakdown["mem_trend"] = base_mem_trend_penalty
 
             # CPU stability factor: scale CPU-related penalties by node volatility.
             # Stable nodes get CPU penalties *reduced* (the high reading is likely
@@ -466,8 +479,9 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     if _node_trend_data is None and (weight_24h > 0 or weight_7d > 0):
         if cpu_trend == "rising":
             penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
+        # Memory trend penalty disabled by default — see note above.
         if mem_trend == "rising":
-            penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 15)
+            penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 0)
 
     # Max spike penalty - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
