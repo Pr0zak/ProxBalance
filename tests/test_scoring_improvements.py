@@ -217,40 +217,104 @@ test("Mild overcommit (1.1) gets no penalty (below 1.2 threshold)",
      details_mild_no_pen["penalties"].get("mem_overcommit", 0) == 0,
      f"Expected 0, got {details_mild_no_pen['penalties'].get('mem_overcommit', 0)}")
 
-# Node with moderate overcommit (1.3) — should get base penalty (8)
+# Node with moderate overcommit (1.3) — graduated penalty
+# scale = (1.3 - 1.2) / 0.8 = 0.125, penalty = round(8 + 0.125 * 17) = 10
 node_mild_oc = make_node("pve-mod-oc", cpu_pct=40, mem_pct=50,
                          total_mem_gb=64, overcommit_ratio=1.3)
 score_mild, details_mild = calculate_target_node_score(
     node_mild_oc, guest_test, {}, 60.0, 70.0,
     penalty_config=cfg, return_details=True)
 
-test("Moderate overcommit (1.3) gets base penalty",
-     details_mild["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_penalty"],
-     f"Expected {cfg['mem_overcommit_penalty']}, got {details_mild['penalties'].get('mem_overcommit', 0)}")
+expected_mild = 10  # round(8 + 0.125 * 17)
+test("Moderate overcommit (1.3) gets graduated penalty of 10",
+     details_mild["penalties"].get("mem_overcommit", 0) == expected_mild,
+     f"Expected {expected_mild}, got {details_mild['penalties'].get('mem_overcommit', 0)}")
 
-# Node with heavy overcommit (1.6) — should get high penalty (25)
+# Node with heavy overcommit (1.6) — graduated penalty
+# scale = (1.6 - 1.2) / 0.8 = 0.5, penalty = round(8 + 0.5 * 17) = 16 (banker's rounding)
 node_heavy_oc = make_node("pve-heavy-oc", cpu_pct=40, mem_pct=50,
                           total_mem_gb=64, overcommit_ratio=1.6)
 score_heavy, details_heavy = calculate_target_node_score(
     node_heavy_oc, guest_test, {}, 60.0, 70.0,
     penalty_config=cfg, return_details=True)
 
-test("Heavy overcommit (1.6) gets high penalty",
-     details_heavy["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_high_penalty"],
-     f"Expected {cfg['mem_overcommit_high_penalty']}, got {details_heavy['penalties'].get('mem_overcommit', 0)}")
+expected_heavy = 16  # round(8 + 0.5 * 17) — Python banker's rounding
+test("Heavy overcommit (1.6) gets graduated penalty of 16",
+     details_heavy["penalties"].get("mem_overcommit", 0) == expected_heavy,
+     f"Expected {expected_heavy}, got {details_heavy['penalties'].get('mem_overcommit', 0)}")
 
-# Verify score ordering: healthy < mild overcommit < heavy overcommit
+# Node at the cap (2.0+) — should reach max penalty (25)
+node_extreme_oc = make_node("pve-extreme-oc", cpu_pct=40, mem_pct=50,
+                            total_mem_gb=64, overcommit_ratio=2.0)
+score_extreme, details_extreme = calculate_target_node_score(
+    node_extreme_oc, guest_test, {}, 60.0, 70.0,
+    penalty_config=cfg, return_details=True)
+
+test("Extreme overcommit (2.0) gets max penalty",
+     details_extreme["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_high_penalty"],
+     f"Expected {cfg['mem_overcommit_high_penalty']}, got {details_extreme['penalties'].get('mem_overcommit', 0)}")
+
+# Node well beyond cap (3.0) — still capped at max penalty (25)
+node_beyond_oc = make_node("pve-beyond-oc", cpu_pct=40, mem_pct=50,
+                           total_mem_gb=64, overcommit_ratio=3.0)
+_, details_beyond = calculate_target_node_score(
+    node_beyond_oc, guest_test, {}, 60.0, 70.0,
+    penalty_config=cfg, return_details=True)
+
+test("Overcommit beyond 2.0 (3.0) still capped at max penalty",
+     details_beyond["penalties"].get("mem_overcommit", 0) == cfg["mem_overcommit_high_penalty"],
+     f"Expected {cfg['mem_overcommit_high_penalty']}, got {details_beyond['penalties'].get('mem_overcommit', 0)}")
+
+# Verify score ordering: healthy < mild overcommit < heavy overcommit < extreme
 test("Healthy node scores better than mild overcommit",
      score_healthy < score_mild,
      f"healthy={score_healthy:.1f}, mild={score_mild:.1f}")
 test("Mild overcommit scores better than heavy overcommit",
      score_mild < score_heavy,
      f"mild={score_mild:.1f}, heavy={score_heavy:.1f}")
+test("Heavy overcommit scores better than extreme overcommit",
+     score_heavy < score_extreme,
+     f"heavy={score_heavy:.1f}, extreme={score_extreme:.1f}")
 
 # Verify overcommit penalty shows in details
 test("Overcommit penalty visible in penalty breakdown",
      "mem_overcommit" in details_heavy["penalties"],
      f"Keys: {list(details_heavy['penalties'].keys())}")
+
+# Phase 2b: Pending migrations increase target overcommit ratio
+print("\n" + "-" * 70)
+print("Phase 2b: Pending Migrations Increase Target Overcommit")
+print("-" * 70)
+
+# Node at 1.1x overcommit (no penalty by itself).
+# Add pending guests that commit 0.2x more → 1.3x total → should trigger penalty.
+node_pending_oc = make_node("pve-pending", cpu_pct=40, mem_pct=50,
+                            total_mem_gb=100, overcommit_ratio=1.1)
+pending_guests = {"pve-pending": [
+    make_guest(601, "pending-a", mem_max_gb=10.0),  # 10/100 = 0.1x
+    make_guest(602, "pending-b", mem_max_gb=10.0),  # 10/100 = 0.1x
+]}
+# Effective overcommit = 1.1 + 0.2 = 1.3 → scale = 0.125 → penalty = 10
+
+score_no_pending, det_no_pending = calculate_target_node_score(
+    node_pending_oc, guest_test, {}, 60.0, 70.0,
+    penalty_config=cfg, return_details=True)
+
+score_with_pending, det_with_pending = calculate_target_node_score(
+    node_pending_oc, guest_test, pending_guests, 60.0, 70.0,
+    penalty_config=cfg, return_details=True)
+
+test("No overcommit penalty without pending guests (ratio 1.1)",
+     det_no_pending["penalties"].get("mem_overcommit", 0) == 0,
+     f"Got {det_no_pending['penalties'].get('mem_overcommit', 0)}")
+
+test("Overcommit penalty appears with pending guests (effective ratio 1.3)",
+     det_with_pending["penalties"].get("mem_overcommit", 0) > 0,
+     f"Got {det_with_pending['penalties'].get('mem_overcommit', 0)}")
+
+test("Score worsens when pending guests push overcommit above threshold",
+     score_with_pending > score_no_pending,
+     f"no_pending={score_no_pending:.1f}, with_pending={score_with_pending:.1f}")
 
 
 # ====================================================================
