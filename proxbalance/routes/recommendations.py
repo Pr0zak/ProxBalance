@@ -619,10 +619,10 @@ def node_scores():
 
         if metrics.get("has_historical"):
             weighted_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-            weighted_mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
         else:
             weighted_cpu = immediate_cpu
-            weighted_mem = immediate_mem
+        # Memory uses current value — it's a step-function resource (see scoring.py).
+        weighted_mem = immediate_mem
 
         # Determine suitability based on score thresholds
         # Lower scores are better migration targets

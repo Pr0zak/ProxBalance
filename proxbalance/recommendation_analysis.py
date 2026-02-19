@@ -62,8 +62,8 @@ def calculate_confidence(score_improvement: float, target_details: Optional[Dict
     # Factor 4: Stability signal (15%) — favorable trends = higher confidence
     # Only CPU and IOWait trends matter here. Memory in Proxmox is essentially
     # static (allocated, not dynamic), so a "rising" memory trend is just
-    # migration churn, not a workload signal. The scoring algorithm already
-    # reflects this (mem_trend_rising_penalty=5 vs cpu=15, plus mem_penalty_cap).
+    # migration churn, not a workload signal. The scoring algorithm disables
+    # memory trend penalties entirely (mem_trend_rising_penalty=0).
     if target_details:
         cpu_trend = target_metrics.get("cpu_trend", "stable")
         total_penalties = target_details.get("total_penalties", 0)
@@ -158,9 +158,11 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
         return m.get(key_current, 0)
 
     src_cpu = _weighted(src_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
-    src_mem = _weighted(src_metrics, "current_mem", "avg_mem", "avg_mem_week")
     tgt_cpu = _weighted(tgt_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
-    tgt_mem = _weighted(tgt_metrics, "current_mem", "avg_mem", "avg_mem_week")
+    # Memory uses current value directly — it's a step-function resource
+    # (only changes with migrations), so blending creates stale phantom values.
+    src_mem = src_metrics.get("current_mem", 0)
+    tgt_mem = tgt_metrics.get("current_mem", 0)
 
     # Identify dominant factor
     cpu_diff = src_cpu - tgt_cpu

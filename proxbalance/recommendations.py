@@ -221,12 +221,12 @@ def _check_cluster_convergence(nodes: Dict[str, Any], penalty_cfg: Dict[str, Any
             cpu = (metrics.get('current_cpu', 0) * weight_current +
                    metrics.get('avg_cpu', 0) * weight_24h +
                    metrics.get('avg_cpu_week', 0) * weight_7d)
-            mem = (metrics.get('current_mem', 0) * weight_current +
-                   metrics.get('avg_mem', 0) * weight_24h +
-                   metrics.get('avg_mem_week', 0) * weight_7d)
         else:
             cpu = metrics.get('current_cpu', 0)
-            mem = metrics.get('current_mem', 0)
+        # Memory uses current value directly — it's a step-function resource
+        # that only changes with migrations, so blending with historical
+        # averages would misrepresent the actual spread.
+        mem = metrics.get('current_mem', 0)
         cpus.append(cpu)
         mems.append(mem)
 
@@ -1152,11 +1152,13 @@ def _build_trend_evidence(
                 "weight": "high" if src_cpu_rate > 2.0 else "medium",
                 "type": "problem",
             })
+        # Memory trends in Proxmox reflect migration history (step functions),
+        # not organic workload growth.  Report as informational, not as a problem.
         if src_mem_rate > 0.5:
             decision_factors.append({
-                "factor": f"Source node memory trending up {src_trend['memory'].get('rate_display', '')} over {lookback // 24}d",
-                "weight": "high" if src_mem_rate > 2.0 else "medium",
-                "type": "problem",
+                "factor": f"Source node memory trending up {src_trend['memory'].get('rate_display', '')} over {lookback // 24}d (likely from recent migrations)",
+                "weight": "low",
+                "type": "info",
             })
         if src_trend.get("cpu_above_baseline"):
             decision_factors.append({
