@@ -41,7 +41,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
       {outcomes.map((outcome, idx) => {
         const pre = outcome.pre_migration || {};
         const post = outcome.post_migration || {};
-        const isPending = outcome.status === 'pending_post_capture';
+        const isPending = outcome.status && outcome.status.startsWith('pending_');
         return (
           <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'}`}>
             <div className="flex items-center justify-between mb-1.5">

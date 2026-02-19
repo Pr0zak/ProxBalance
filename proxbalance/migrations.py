@@ -544,7 +544,7 @@ def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dic
 
     last_migration = None
     for migration in reversed(migrations):
-        if migration.get("vmid") == vmid and migration.get("status") == "success":
+        if migration.get("vmid") == vmid and migration.get("status") in ("success", "completed"):
             last_migration = migration
             break
 

@@ -574,8 +574,9 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     storage_score = 0
     storage_list = target_node.get("storage", [])
     if storage_list:
-        # Prefer nodes with more available storage
-        avg_storage_usage = sum(s.get("usage_pct", 0) for s in storage_list if s.get("active", False)) / len(storage_list) if storage_list else 0
+        # Prefer nodes with more available storage (only count active storage)
+        active_storages = [s for s in storage_list if s.get("active", False)]
+        avg_storage_usage = sum(s.get("usage_pct", 0) for s in active_storages) / len(active_storages) if active_storages else 0
         storage_score = avg_storage_usage  # Lower = more available
 
     # Combined weighted score (lower is better)

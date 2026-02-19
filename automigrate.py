@@ -999,13 +999,14 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48
 
     visited_nodes = set()
     for migration in reversed(migrations):
-        if migration.get('vmid') != vmid or migration.get('status') != 'success':
+        if migration.get('vmid') != vmid or migration.get('status') not in ('success', 'completed'):
             continue
         # Skip dry-run migrations — they didn't actually move anything
         if migration.get('dry_run', False):
             continue
         try:
-            migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+            ts = migration.get('timestamp', '')
+            migration_time = datetime.fromisoformat(ts.replace('Z', '+00:00')).replace(tzinfo=None)
             if migration_time < cycle_threshold:
                 break
             visited_nodes.add(migration.get('source_node'))
