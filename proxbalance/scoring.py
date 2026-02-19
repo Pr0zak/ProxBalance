@@ -90,9 +90,9 @@ DEFAULT_PENALTY_CONFIG = {
 
     # Memory overcommit penalties (running guests' allocated memory > physical RAM)
     # Proxmox commonly overcommits memory via ballooning, so only penalize
-    # meaningfully above 1.2x (moderate) and heavily above 1.5x (severe).
-    "mem_overcommit_penalty": 8,             # Penalty when overcommit ratio > 1.2
-    "mem_overcommit_high_penalty": 25,       # Penalty when overcommit ratio > 1.5
+    # above 1.2x.  Penalty scales linearly from min → max between 1.2x and 2.0x.
+    "mem_overcommit_penalty": 8,             # Min penalty at overcommit ratio 1.2
+    "mem_overcommit_high_penalty": 25,       # Max penalty at overcommit ratio >= 2.0
 
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
@@ -545,12 +545,32 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
 
     # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
     # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
-    # 1.2x is moderate (ballooning is active), 1.5x is severe (risk of OOM).
+    # Below 1.2x: no penalty (normal ballooning range).
+    # 1.2x–2.0x: graduated penalty scaling linearly from min (8) to max (25).
+    # Above 2.0x: capped at max penalty (25).
+    # Graduated scaling avoids the old binary jump where 1.21x and 1.99x got
+    # wildly different penalties, which caused marginal overcommit to dominate
+    # the score and trigger unnecessary migrations.
     overcommit_ratio = target_node.get("mem_overcommit_ratio", 0)
-    if overcommit_ratio > 1.5:
-        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_high_penalty", 25)
-    elif overcommit_ratio > 1.2:
-        penalty_breakdown["mem_overcommit"] = penalty_config.get("mem_overcommit_penalty", 8)
+    # Adjust overcommit ratio for pending migrations to this target.
+    # The base ratio only reflects currently-placed guests; guests already
+    # selected for migration in this batch add committed memory that hasn't
+    # been accounted for yet.
+    if target_name in pending_target_guests and pending_target_guests[target_name]:
+        total_mem_gb = target_node.get("total_mem_gb", 1)
+        if total_mem_gb > 0:
+            pending_committed_gb = sum(
+                pg.get("mem_max_gb", 0) for pg in pending_target_guests[target_name]
+            )
+            overcommit_ratio += pending_committed_gb / total_mem_gb
+    if overcommit_ratio > 1.2:
+        min_oc_penalty = penalty_config.get("mem_overcommit_penalty", 8)
+        max_oc_penalty = penalty_config.get("mem_overcommit_high_penalty", 25)
+        # Linear scale: 0.0 at ratio 1.2, 1.0 at ratio 2.0, capped at 1.0
+        scale = min((overcommit_ratio - 1.2) / 0.8, 1.0)
+        penalty_breakdown["mem_overcommit"] = int(round(
+            min_oc_penalty + scale * (max_oc_penalty - min_oc_penalty)
+        ))
 
     # Cap total memory penalties to prevent memory from dominating the score.
     # Memory is mostly static in Proxmox (fixed allocations), so it should not
