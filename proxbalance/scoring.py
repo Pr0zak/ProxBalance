@@ -281,7 +281,7 @@ def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], add
     }
 
 
-def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False, guest_profile: Optional[Dict[str, Any]] = None) -> Union[float, Tuple[float, Dict[str, Any]]]:
+def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False, guest_profile: Optional[Dict[str, Any]] = None, adding: bool = True) -> Union[float, Tuple[float, Dict[str, Any]]]:
     """
     Calculate weighted score for target node suitability (lower is better).
     Considers current load, predicted post-migration load, storage availability, and headroom.
@@ -407,6 +407,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     # fall back to simple rising/falling/stable labels from cluster_cache
     _ta = _get_trend_analysis()
     _node_trend_data = None
+    cpu_stability_factor = 1.0  # Default: no adjustment (set inside try block when trend data available)
     if _ta and (weight_24h > 0 or weight_7d > 0):
         try:
             _node_trend_data = _ta.analyze_node_trends(
@@ -448,6 +449,8 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             # CPU stability factor: scale CPU-related penalties by node volatility.
             # Stable nodes get CPU penalties *reduced* (the high reading is likely
             # transient); volatile nodes get penalties *inflated* (unpredictable).
+            # NOTE: Stored here but applied AFTER spike/predicted penalties are
+            # calculated below, so that all CPU penalties are scaled consistently.
             if node_stability >= 80:
                 cpu_stability_factor = 0.7   # Excellent — reduce CPU penalties 30%
             elif node_stability >= 60:
@@ -456,13 +459,6 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 cpu_stability_factor = 1.3   # Volatile — inflate CPU penalties 30%
             else:
                 cpu_stability_factor = 1.0   # Moderate — no change
-
-            for _cpu_key in ("current_cpu", "sustained_cpu", "cpu_trend",
-                             "cpu_spikes", "predicted_cpu"):
-                if _cpu_key in penalty_breakdown:
-                    penalty_breakdown[_cpu_key] = int(
-                        round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
-                    )
         except Exception:
             _node_trend_data = None
 
@@ -494,7 +490,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
-    predicted = predict_post_migration_load(target_node, guest, adding=True, penalty_config=penalty_config, guest_profile=guest_profile)
+    predicted = predict_post_migration_load(target_node, guest, adding=adding, penalty_config=penalty_config, guest_profile=guest_profile)
 
     # Account for pending migrations to this target
     if target_name in pending_target_guests:
@@ -522,6 +518,16 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_high_penalty", 50)
     elif predicted["mem"] > mem_threshold:
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
+
+    # Apply CPU stability factor now that all CPU penalties (including spikes
+    # and predicted) have been calculated.
+    if cpu_stability_factor != 1.0:
+        for _cpu_key in ("current_cpu", "sustained_cpu", "cpu_trend",
+                         "cpu_spikes", "predicted_cpu"):
+            if penalty_breakdown.get(_cpu_key, 0) != 0:
+                penalty_breakdown[_cpu_key] = int(
+                    round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
+                )
 
     # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
     # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
