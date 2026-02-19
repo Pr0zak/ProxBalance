@@ -857,9 +857,13 @@ def save_tracking(tracking: Dict[str, Any]):
         logger.error(f"Failed to save tracking file: {e}")
 
 
-def make_tracking_key(vmid: int, source_node: str) -> str:
-    """Create a tracking key for a recommendation."""
-    return f"{vmid}_{source_node}"
+def make_tracking_key(vmid: int, source_node: str = "") -> str:
+    """Create a tracking key for a recommendation.
+
+    Uses only the VMID so that bounce-back migrations (A->B then B->A)
+    are recognized as repeated recommendations for the same guest.
+    """
+    return str(vmid)
 
 
 def update_recommendation_tracking(
@@ -933,6 +937,7 @@ def update_recommendation_tracking(
                 entry['consecutive_count'] = 0
             entry["consecutive_count"] += 1
             entry["last_seen"] = now.isoformat() + 'Z'
+            entry["source_node"] = source_node  # Keep current source updated
             entry["last_target_node"] = target_node
             entry["observations"].append(observation)
         else:
@@ -999,13 +1004,14 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48
 
     visited_nodes = set()
     for migration in reversed(migrations):
-        if migration.get('vmid') != vmid or migration.get('status') != 'success':
+        if migration.get('vmid') != vmid or migration.get('status') not in ('success', 'completed'):
             continue
         # Skip dry-run migrations — they didn't actually move anything
         if migration.get('dry_run', False):
             continue
         try:
-            migration_time = datetime.fromisoformat(migration.get('timestamp', ''))
+            ts = migration.get('timestamp', '')
+            migration_time = datetime.fromisoformat(ts.replace('Z', '+00:00')).replace(tzinfo=None)
             if migration_time < cycle_threshold:
                 break
             visited_nodes.add(migration.get('source_node'))

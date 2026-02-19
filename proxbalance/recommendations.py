@@ -515,7 +515,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             guest_profile = get_guest_profile(vmid_key)
 
             # Calculate current score (how well current node suits this guest)
-            current_score, src_details = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile)
+            current_score, src_details = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile, adding=False)
 
             # For maintenance nodes, artificially inflate current score to prioritize evacuation
             if src_node_name in maintenance_nodes:

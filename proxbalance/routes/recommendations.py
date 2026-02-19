@@ -736,7 +736,7 @@ def guest_migration_options(vmid):
     if src_node and src_node.get("status") == "online":
         current_score, current_details = calculate_target_node_score(
             src_node, guest, {}, cpu_threshold, mem_threshold,
-            penalty_config=penalty_cfg, return_details=True
+            penalty_config=penalty_cfg, return_details=True, adding=False
         )
 
     # Check storage compatibility
@@ -949,7 +949,7 @@ def simulate_penalty_config():
             continue
 
         # Current config scoring
-        current_src_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=current_config)
+        current_src_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=current_config, adding=False)
         current_best_improvement = 0
         current_best_target = None
         for tgt_name, tgt_node in nodes.items():
@@ -964,7 +964,7 @@ def simulate_penalty_config():
             current_recommendations += 1
 
         # Proposed config scoring
-        proposed_src_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=proposed_config)
+        proposed_src_score = calculate_target_node_score(src_node, guest, {}, cpu_threshold, mem_threshold, penalty_config=proposed_config, adding=False)
         proposed_best_improvement = 0
         proposed_best_target = None
         for tgt_name, tgt_node in nodes.items():

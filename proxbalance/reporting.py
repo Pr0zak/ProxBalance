@@ -8,6 +8,8 @@ urgency classifications, and capacity planning advisories.
 import statistics
 from typing import Any, Dict, List
 
+from proxbalance.scoring import calculate_node_health_score
+
 
 def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Dict[str, Any]], nodes: Dict[str, Any], penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -19,13 +21,17 @@ def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Di
     mem_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "mem_imbalance")
     other_count = len(recommendations) - maintenance_count - cpu_count - mem_count
 
-    # Calculate average cluster health
+    # Calculate average cluster health using penalty-based scoring
+    # (consistent with recommendations.py and forecasting.py)
     online_nodes = [n for n in nodes.values() if n.get("status") == "online"]
     if online_nodes:
         avg_cpu = sum(n.get("metrics", {}).get("current_cpu", 0) for n in online_nodes) / len(online_nodes)
         avg_mem = sum(n.get("metrics", {}).get("current_mem", 0) for n in online_nodes) / len(online_nodes)
-        # Simple health score: 100 - weighted average of resource usage
-        cluster_health = round(max(0, 100 - (avg_cpu * 0.5 + avg_mem * 0.5)), 1)
+        avg_score = sum(
+            calculate_node_health_score(n, n.get("metrics", {}), penalty_config=penalty_cfg)
+            for n in online_nodes
+        ) / len(online_nodes)
+        cluster_health = round(max(0, 100 - avg_score), 1)
     else:
         avg_cpu = 0
         avg_mem = 0
