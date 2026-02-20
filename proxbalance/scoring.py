@@ -105,6 +105,11 @@ DEFAULT_PENALTY_CONFIG = {
     "maintenance_score_boost": 100,   # Extra score added to maintenance nodes for evacuation priority
     "iowait_score_boost": 30,        # Extra score added to IOWait-stressed nodes to trigger migrations
 
+    # Source memory migration floor: don't recommend migrating guests off a node
+    # when its memory is below this % (unless CPU or IOWait is also high).
+    # Prevents score-differential churn between nodes that are all healthy.
+    "source_mem_migration_floor": 65,
+
     # Time period weighting (for historical data)
     "weight_current": 0.5,            # Weight for current/immediate metrics (50%)
     "weight_24h": 0.3,                # Weight for 24-hour average metrics (30%)

@@ -749,13 +749,49 @@ def verify_guest_on_node(vmid: int, expected_node: str, config: Dict[str, Any]) 
         return True, "Verification failed, proceeding with caution"
 
 
+def _count_recent_migrations(vmid: int, lookback_hours: int = 168) -> int:
+    """
+    Count how many times a VM has been successfully migrated within the
+    lookback window (default 7 days). Used for escalating cooldowns on
+    VMs that keep getting shuffled around.
+    """
+    history = load_history()
+    migrations = history.get('migrations', [])
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=lookback_hours)
+    count = 0
+    for m in reversed(migrations):
+        if m.get('vmid') != vmid:
+            continue
+        if m.get('dry_run', False) or m.get('status') == 'failed':
+            continue
+        try:
+            ts = datetime.fromisoformat(m.get('timestamp', '').replace('Z', '+00:00')).replace(tzinfo=None)
+            if ts < cutoff:
+                break
+            count += 1
+        except (ValueError, TypeError):
+            continue
+    return count
+
+
 def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str = None) -> bool:
     """
     Check if a VM was recently migrated and is still in cooldown period.
 
+    Uses exponential cooldown scaling for repeat movers: VMs that have been
+    migrated multiple times within 7 days get progressively longer cooldowns
+    to break ping-pong cycles that slip past cycle detection.
+
+    Cooldown escalation (based on migrations in past 7 days):
+      1 migration  → base cooldown (e.g. 240 min)
+      2 migrations → 2x base (e.g. 480 min / 8 hours)
+      3 migrations → 4x base (e.g. 960 min / 16 hours)
+      4+ migrations → 8x base (e.g. 1920 min / 32 hours, capped)
+
     Args:
         vmid: VM ID to check
-        cooldown_minutes: Cooldown period in minutes
+        cooldown_minutes: Base cooldown period in minutes
         cooldown_reset_at: ISO timestamp; migrations before this time are ignored
                           (used when user changes cooldown settings to reset cooldown)
 
@@ -776,9 +812,19 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
         except (ValueError, TypeError):
             pass
 
+    # Escalate cooldown for VMs that have been migrated multiple times recently
+    recent_count = _count_recent_migrations(vmid, lookback_hours=168)
+    if recent_count > 1:
+        # Exponential backoff: 2^(count-1), capped at 8x
+        multiplier = min(8, 2 ** (recent_count - 1))
+        effective_cooldown = cooldown_minutes * multiplier
+        logger.info(f"VM {vmid} escalated cooldown: {cooldown_minutes}min * {multiplier}x = {effective_cooldown}min ({recent_count} migrations in 7 days)")
+    else:
+        effective_cooldown = cooldown_minutes
+
     # Check if this VM was migrated recently
     now = datetime.utcnow()
-    cooldown_threshold = now - timedelta(minutes=cooldown_minutes)
+    cooldown_threshold = now - timedelta(minutes=effective_cooldown)
 
     for migration in reversed(migrations):  # Check most recent first
         if migration.get('vmid') == vmid:
@@ -798,7 +844,7 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
                     return False
 
                 if migration_time > cooldown_threshold:
-                    logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()})")
+                    logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()}, effective cooldown {effective_cooldown}min)")
                     return True
                 else:
                     # Found the VM but it's past cooldown, no need to check older entries
@@ -987,7 +1033,7 @@ def update_recommendation_tracking(
     return tracking, ready, observing
 
 
-def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 48) -> Tuple[bool, str]:
+def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 72) -> Tuple[bool, str]:
     """
     Detect migration cycling by checking if the VM has recently been on the
     proposed target node. Catches both simple rollbacks (A->B->A) and multi-hop
@@ -1455,7 +1501,7 @@ def main():
 
                 # Cycle detection (catches both A->B->A rollbacks and A->B->C->A cycles)
                 cycle_detection_enabled = resolved_features['cycle_detection']
-                cycle_window = intelligent_config.get('cycle_window_hours') or 48
+                cycle_window = intelligent_config.get('cycle_window_hours') or 72
                 if not is_maintenance_evac and not is_distribution_balancing and cycle_detection_enabled:
                     is_cycle, cycle_msg = is_cycle_migration(vmid, target_node, cycle_window)
                     if is_cycle:
