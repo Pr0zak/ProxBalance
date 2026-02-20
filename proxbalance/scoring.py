@@ -15,7 +15,22 @@ Scoring philosophy:
 """
 
 import sys
-from typing import Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+# Lazy import to avoid circular dependency — used only when trend data is available
+_trend_analysis = None
+
+
+def _get_trend_analysis():
+    """Lazy import of trend_analysis module."""
+    global _trend_analysis
+    if _trend_analysis is None:
+        try:
+            from proxbalance import trend_analysis as ta
+            _trend_analysis = ta
+        except Exception:
+            pass
+    return _trend_analysis
 
 
 # ---------------------------------------------------------------------------
@@ -25,20 +40,23 @@ from typing import Dict, List
 
 DEFAULT_PENALTY_CONFIG = {
     # Current load penalties (immediate state)
+    # CPU is the primary resource that fluctuates — penalize heavily.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) — only
+    # penalize when approaching host capacity or exceeding thresholds.
     "cpu_high_penalty": 20,           # Penalty when CPU > threshold
     "cpu_very_high_penalty": 50,      # Penalty when CPU > threshold+10
     "cpu_extreme_penalty": 100,       # Penalty when CPU > threshold+20
-    "mem_high_penalty": 20,           # Penalty when Memory > threshold
-    "mem_very_high_penalty": 50,      # Penalty when Memory > threshold+10
-    "mem_extreme_penalty": 100,       # Penalty when Memory > threshold+20
+    "mem_high_penalty": 8,            # Penalty when Memory > threshold
+    "mem_very_high_penalty": 20,      # Penalty when Memory > threshold+10
+    "mem_extreme_penalty": 50,        # Penalty when Memory > threshold+20
 
     # Sustained load penalties (7-day averages)
     "cpu_sustained_high": 40,         # Penalty when 7d avg CPU > 70%
     "cpu_sustained_very_high": 80,    # Penalty when 7d avg CPU > 80%
     "cpu_sustained_critical": 150,    # Penalty when 7d avg CPU > 90%
-    "mem_sustained_high": 40,         # Penalty when 7d avg Memory > 70%
-    "mem_sustained_very_high": 80,    # Penalty when 7d avg Memory > 80%
-    "mem_sustained_critical": 150,    # Penalty when 7d avg Memory > 90%
+    "mem_sustained_high": 10,         # Penalty when 7d avg Memory > 70%
+    "mem_sustained_very_high": 25,    # Penalty when 7d avg Memory > 80%
+    "mem_sustained_critical": 60,     # Penalty when 7d avg Memory > 90%
 
     # IOWait penalties
     "iowait_high_penalty": 20,        # Penalty when immediate IOWait > 10%
@@ -50,25 +68,31 @@ DEFAULT_PENALTY_CONFIG = {
 
     # Trend penalties
     "cpu_trend_rising_penalty": 15,   # Penalty for rising CPU trend
-    "mem_trend_rising_penalty": 15,   # Penalty for rising Memory trend
+    "mem_trend_rising_penalty": 0,    # Memory trends reflect migration history, not workload changes — disabled
 
     # Spike penalties (max values in week)
     "cpu_spike_moderate": 5,          # Penalty when max CPU > 70%
     "cpu_spike_high": 10,             # Penalty when max CPU > 80%
     "cpu_spike_very_high": 20,        # Penalty when max CPU > 90%
     "cpu_spike_extreme": 30,          # Penalty when max CPU > 95%
-    "mem_spike_moderate": 5,          # Penalty when max Memory > 75%
-    "mem_spike_high": 10,             # Penalty when max Memory > 85%
-    "mem_spike_very_high": 20,        # Penalty when max Memory > 90%
-    "mem_spike_extreme": 30,          # Penalty when max Memory > 95%
+    "mem_spike_moderate": 2,          # Penalty when max Memory > 85%
+    "mem_spike_high": 5,              # Penalty when max Memory > 90%
+    "mem_spike_very_high": 10,        # Penalty when max Memory > 95%
+    "mem_spike_extreme": 20,          # Penalty when max Memory > 98%
 
     # Predicted post-migration penalties
     "predicted_cpu_over_penalty": 25,        # Penalty when predicted CPU > threshold
     "predicted_cpu_high_penalty": 50,        # Penalty when predicted CPU > threshold+10
     "predicted_cpu_extreme_penalty": 100,    # Penalty when predicted CPU > threshold+20
-    "predicted_mem_over_penalty": 25,        # Penalty when predicted Memory > threshold
-    "predicted_mem_high_penalty": 50,        # Penalty when predicted Memory > threshold+10
-    "predicted_mem_extreme_penalty": 100,    # Penalty when predicted Memory > threshold+20
+    "predicted_mem_over_penalty": 10,        # Penalty when predicted Memory > threshold
+    "predicted_mem_high_penalty": 25,        # Penalty when predicted Memory > threshold+10
+    "predicted_mem_extreme_penalty": 50,     # Penalty when predicted Memory > threshold+20
+
+    # Memory overcommit penalties (running guests' allocated memory > physical RAM)
+    # Proxmox commonly overcommits memory via ballooning, so only penalize
+    # above 1.2x.  Penalty scales linearly from min → max between 1.2x and 2.0x.
+    "mem_overcommit_penalty": 8,             # Min penalty at overcommit ratio 1.2
+    "mem_overcommit_high_penalty": 25,       # Max penalty at overcommit ratio >= 2.0
 
     # Threshold offsets
     "cpu_threshold_offset_1": 10,     # First threshold offset (used for +10 calculations)
@@ -79,11 +103,26 @@ DEFAULT_PENALTY_CONFIG = {
     # Score improvement requirements
     "min_score_improvement": 15,      # Minimum score improvement to recommend migration
     "maintenance_score_boost": 100,   # Extra score added to maintenance nodes for evacuation priority
+    "iowait_score_boost": 30,        # Extra score added to IOWait-stressed nodes to trigger migrations
+
+    # Source memory migration floor: don't recommend migrating guests off a node
+    # when its memory is below this % (unless CPU or IOWait is also high).
+    # Prevents score-differential churn between nodes that are all healthy.
+    "source_mem_migration_floor": 65,
 
     # Time period weighting (for historical data)
     "weight_current": 0.5,            # Weight for current/immediate metrics (50%)
     "weight_24h": 0.3,                # Weight for 24-hour average metrics (30%)
     "weight_7d": 0.2,                 # Weight for 7-day average metrics (20%)
+
+    # Intelligent migration: cluster convergence
+    "cluster_convergence_threshold": 8.0,  # Suppress recommendations when node spread < this %
+
+    # Intelligent migration: seasonal baseline
+    "seasonal_baseline": {
+        "enabled": False,
+        "sigma_threshold": 2.0,       # Only flag overload if > N sigma above seasonal baseline
+    },
 }
 
 
@@ -91,207 +130,7 @@ DEFAULT_PENALTY_CONFIG = {
 # Scoring functions
 # ---------------------------------------------------------------------------
 
-def calculate_intelligent_thresholds(nodes: Dict, penalty_config: Dict = None) -> Dict:
-    """
-    Analyze cluster health and suggest optimal thresholds.
-    Returns suggested CPU and Memory thresholds based on cluster characteristics.
-    """
-    if penalty_config is None:
-        penalty_config = DEFAULT_PENALTY_CONFIG
-
-    if not nodes:
-        return {
-            "suggested_cpu_threshold": 60.0,
-            "suggested_mem_threshold": 70.0,
-            "confidence": "low",
-            "reasoning": "Insufficient data for analysis"
-        }
-
-    # Collect metrics from all online nodes using 7-day averages for more stable analysis
-    cpu_values = []
-    mem_values = []
-    iowait_values = []
-
-    for node_name, node in nodes.items():
-        if node.get("status") != "online":
-            continue
-
-        metrics = node.get("metrics", {})
-        if metrics.get("has_historical"):
-            # Prefer 7-day averages for more stable threshold suggestions
-            cpu_values.append(metrics.get("avg_cpu_week") or metrics.get("avg_cpu", 0))
-            mem_values.append(metrics.get("avg_mem_week") or metrics.get("avg_mem", 0))
-            iowait_values.append(metrics.get("avg_iowait_week") or metrics.get("avg_iowait", 0))
-
-    if not cpu_values or not mem_values:
-        return {
-            "suggested_cpu_threshold": 60.0,
-            "suggested_mem_threshold": 70.0,
-            "confidence": "low",
-            "reasoning": "Insufficient historical data"
-        }
-
-    # Calculate cluster statistics
-    avg_cpu = sum(cpu_values) / len(cpu_values)
-    max_cpu = max(cpu_values)
-    avg_mem = sum(mem_values) / len(mem_values)
-    max_mem = max(mem_values)
-    avg_iowait = sum(iowait_values) / len(iowait_values) if iowait_values else 0
-
-    # Calculate standard deviation for load variance
-    cpu_variance = sum((x - avg_cpu) ** 2 for x in cpu_values) / len(cpu_values)
-    mem_variance = sum((x - avg_mem) ** 2 for x in mem_values) / len(mem_values)
-
-    # Determine cluster characteristics
-    node_count = len(cpu_values)
-
-    # Better cluster size categories
-    if node_count <= 2:
-        cluster_size = "minimal"
-        size_adjustment = -10  # Very conservative
-    elif node_count <= 4:
-        cluster_size = "small"
-        size_adjustment = -5  # Conservative
-    elif node_count <= 8:
-        cluster_size = "medium"
-        size_adjustment = 0  # Neutral
-    elif node_count <= 16:
-        cluster_size = "large"
-        size_adjustment = 5  # More tolerant
-    else:
-        cluster_size = "xlarge"
-        size_adjustment = 8  # Most tolerant
-
-    # Calculate variance percentage (coefficient of variation)
-    cpu_cv = (cpu_variance ** 0.5) / avg_cpu * 100 if avg_cpu > 0 else 0
-    mem_cv = (mem_variance ** 0.5) / avg_mem * 100 if avg_mem > 0 else 0
-
-    # Better balance detection
-    is_balanced = cpu_cv < 30 and mem_cv < 30  # Coefficient of variation < 30%
-    balance_status = "balanced" if is_balanced else "imbalanced"
-
-    # More granular load detection
-    if avg_cpu > 70 or avg_mem > 80:
-        load_level = "very high"
-        load_adjustment = 15  # Much more tolerant to avoid migration storms
-    elif avg_cpu > 50 or avg_mem > 60:
-        load_level = "high"
-        load_adjustment = 10  # More tolerant
-    elif avg_cpu > 30 or avg_mem > 40:
-        load_level = "moderate"
-        load_adjustment = 0  # Neutral
-    else:
-        load_level = "low"
-        load_adjustment = -5  # Can be more aggressive
-
-    # IOWait level detection
-    if avg_iowait > 30:
-        iowait_level = "critical"
-        iowait_adjustment = -15
-    elif avg_iowait > 20:
-        iowait_level = "high"
-        iowait_adjustment = -10
-    elif avg_iowait > 10:
-        iowait_level = "elevated"
-        iowait_adjustment = -5
-    else:
-        iowait_level = "normal"
-        iowait_adjustment = 0
-
-    # Calculate intelligent thresholds
-    # Base thresholds
-    cpu_threshold = 60.0
-    mem_threshold = 70.0
-    iowait_threshold = 30.0
-
-    # Build adjustments with detailed tracking
-    adjustments = []
-
-    # 1. Adjust for cluster size
-    cpu_threshold += size_adjustment
-    mem_threshold += size_adjustment
-    iowait_threshold += size_adjustment
-    adjustments.append({
-        "factor": "Cluster Size",
-        "value": f"{node_count} nodes ({cluster_size})",
-        "adjustment": f"{size_adjustment:+.0f}%",
-        "direction": "more tolerant" if size_adjustment > 0 else "more conservative" if size_adjustment < 0 else "neutral"
-    })
-
-    # 2. Adjust for load distribution balance
-    balance_adjustment = 10 if is_balanced else -5
-    cpu_threshold += balance_adjustment
-    mem_threshold += balance_adjustment
-    iowait_threshold += balance_adjustment // 2
-    adjustments.append({
-        "factor": "Load Balance",
-        "value": f"{balance_status} (CPU variance: {cpu_cv:.1f}%, Mem variance: {mem_cv:.1f}%)",
-        "adjustment": f"{balance_adjustment:+.0f}%",
-        "direction": "less aggressive" if is_balanced else "more aggressive"
-    })
-
-    # 3. Adjust for overall cluster load
-    cpu_threshold += load_adjustment
-    mem_threshold += load_adjustment
-    iowait_threshold += load_adjustment // 2
-    adjustments.append({
-        "factor": "Overall Load",
-        "value": f"{load_level} (avg CPU: {avg_cpu:.1f}%, avg Memory: {avg_mem:.1f}%)",
-        "adjustment": f"{load_adjustment:+.0f}%",
-        "direction": "reduce churn" if load_adjustment > 0 else "can rebalance" if load_adjustment < 0 else "neutral"
-    })
-
-    # 4. Adjust for IOWait pressure
-    cpu_threshold += iowait_adjustment // 3
-    iowait_threshold += iowait_adjustment
-    adjustments.append({
-        "factor": "I/O Pressure",
-        "value": f"{iowait_level} (avg IOWait: {avg_iowait:.1f}%)",
-        "adjustment": f"{iowait_adjustment:+.0f}%",
-        "direction": "address I/O contention" if iowait_adjustment < 0 else "I/O healthy"
-    })
-
-    # Clamp thresholds to reasonable ranges
-    cpu_threshold = max(40, min(85, cpu_threshold))
-    mem_threshold = max(50, min(90, mem_threshold))
-    iowait_threshold = max(15, min(40, iowait_threshold))
-
-    # Determine confidence based on data quality
-    confidence = "high" if len(cpu_values) >= 3 and all(m.get("has_historical") for m in [n.get("metrics", {}) for n in nodes.values()]) else "medium"
-
-    # Build summary reasoning
-    summary = f"{cluster_size.capitalize()} cluster ({node_count} nodes), {balance_status} load, {load_level} utilization, {iowait_level} I/O"
-
-    # Determine analysis period based on available data
-    has_week_data = any(n.get("metrics", {}).get("avg_cpu_week") for n in nodes.values())
-    analysis_period = "7 days" if has_week_data else "24 hours"
-
-    return {
-        "suggested_cpu_threshold": round(cpu_threshold, 1),
-        "suggested_mem_threshold": round(mem_threshold, 1),
-        "suggested_iowait_threshold": round(iowait_threshold, 1),
-        "confidence": confidence,
-        "summary": summary,
-        "analysis_period": analysis_period,
-        "adjustments": adjustments,
-        "cluster_stats": {
-            "node_count": node_count,
-            "cluster_size": cluster_size,
-            "avg_cpu": round(avg_cpu, 1),
-            "max_cpu": round(max_cpu, 1),
-            "avg_mem": round(avg_mem, 1),
-            "max_mem": round(max_mem, 1),
-            "avg_iowait": round(avg_iowait, 1),
-            "cpu_variance": round(cpu_cv, 1),
-            "mem_variance": round(mem_cv, 1),
-            "balance_status": balance_status,
-            "load_level": load_level,
-            "iowait_level": iowait_level
-        }
-    }
-
-
-def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict = None) -> float:
+def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None) -> float:
     """
     Calculate comprehensive health score for a node (0-100, lower is better/healthier).
     Considers CPU, Memory, IOWait, Load Average, and Storage pressure.
@@ -319,9 +158,15 @@ def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict 
     long_iowait = metrics.get("avg_iowait_week", 0)
 
     # Calculate weighted metrics using configured weights
+    # CPU and IOWait benefit from time-weighted smoothing (transient spikes).
+    # Memory is a step-function resource in Proxmox (fixed VM/CT allocations)
+    # — it only changes when guests are migrated/started/stopped.  Blending
+    # with historical averages creates stale phantom values after migrations:
+    # nodes that received VMs appear to have *less* memory than reality,
+    # and nodes that lost VMs appear to have *more*.  Use current reading.
     if metrics.get("has_historical"):
         cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        mem = immediate_mem
         iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         cpu = immediate_cpu
@@ -342,11 +187,14 @@ def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict 
         storage_pressure = sum(storage_usages) / len(storage_usages) if storage_usages else 0
 
     # Weighted health score
-    # CPU: 30%, Memory: 30%, IOWait: 20%, Load: 10%, Storage: 10%
+    # CPU dominates because it fluctuates with workload.
+    # Memory is mostly static in Proxmox (fixed VM/CT allocations) so it
+    # matters mainly for capacity (can-it-fit), not for migration triggers.
+    # CPU: 40%, Memory: 15%, IOWait: 25%, Load: 10%, Storage: 10%
     health_score = (
-        cpu * 0.30 +
-        mem * 0.30 +
-        iowait * 0.20 +
+        cpu * 0.40 +
+        mem * 0.15 +
+        iowait * 0.25 +
         load_per_core * 0.10 +
         storage_pressure * 0.10
     )
@@ -354,7 +202,7 @@ def calculate_node_health_score(node: Dict, metrics: Dict, penalty_config: Dict 
     return health_score
 
 
-def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, penalty_config: Dict = None) -> Dict:
+def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], adding: bool = True, penalty_config: Optional[Dict[str, Any]] = None, guest_profile: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
     """
     Predict node load after adding or removing a guest.
     Returns predicted CPU%, Memory%, and IOWait%.
@@ -384,9 +232,10 @@ def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, pe
     long_iowait = metrics.get("avg_iowait_week", 0)
 
     # Calculate weighted current state using configured weights
+    # Memory uses immediate value — see note in calculate_node_health_score.
     if metrics.get("has_historical"):
         current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        current_mem = immediate_mem
         current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         current_cpu = immediate_cpu
@@ -405,6 +254,20 @@ def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, pe
     # Estimate guest's contribution to node CPU (guest uses X% of its cores)
     guest_cpu_cores = guest.get("cpu_cores", 1)
     guest_cpu_impact = (guest_cpu * guest_cpu_cores / node_cores) if node_cores > 0 else 0
+
+    # Phase 3c: Profile-based adjustments for better load prediction
+    if guest_profile and guest_profile.get('behavior') != 'unknown':
+        behavior = guest_profile['behavior']
+        peak_mult = guest_profile.get('peak_multiplier', 1.0)
+        growth_rate = guest_profile.get('growth_rate_per_day', 0)
+
+        if behavior == 'bursty':
+            # Use p95 load for bursty guests instead of current snapshot
+            guest_cpu_impact *= max(1.0, peak_mult * 0.8)  # Dampen slightly
+        elif behavior == 'growing':
+            # Project 48 hours of growth
+            growth_factor = 1.0 + (growth_rate * 2 / 100)
+            guest_cpu_impact *= min(2.0, max(1.0, growth_factor))  # Cap at 2x
 
     # Estimate guest's memory impact
     guest_mem_impact = (guest_mem_gb / node_total_mem_gb * 100) if node_total_mem_gb > 0 else 0
@@ -430,7 +293,7 @@ def predict_post_migration_load(node: Dict, guest: Dict, adding: bool = True, pe
     }
 
 
-def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_guests: Dict, cpu_threshold: float, mem_threshold: float, penalty_config: Dict = None, return_details: bool = False):
+def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, Any], pending_target_guests: Dict[str, List[Dict[str, Any]]], cpu_threshold: float, mem_threshold: float, penalty_config: Optional[Dict[str, Any]] = None, return_details: bool = False, guest_profile: Optional[Dict[str, Any]] = None, adding: bool = True) -> Union[float, Tuple[float, Dict[str, Any]]]:
     """
     Calculate weighted score for target node suitability (lower is better).
     Considers current load, predicted post-migration load, storage availability, and headroom.
@@ -463,9 +326,10 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     weight_24h = penalty_config.get("weight_24h", 0.3)
     weight_7d = penalty_config.get("weight_7d", 0.2)
 
+    # Memory uses immediate value — see note in calculate_node_health_score.
     if metrics.get("has_historical"):
         current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = (immediate_mem * weight_current) + (short_mem * weight_24h) + (long_mem * weight_7d)
+        current_mem = immediate_mem
         current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
     else:
         # No historical data, use current only
@@ -496,6 +360,7 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         "predicted_cpu": 0,
         "predicted_mem": 0,
     }
+    cpu_stability_factor = 1.0  # Default: no adjustment (overridden by trend analysis)
 
     # Get configurable threshold offsets
     cpu_offset_1 = penalty_config.get("cpu_threshold_offset_1", 10)
@@ -527,12 +392,12 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         elif long_cpu > 70:
             penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_high", 40)
 
-        if long_mem > 90:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 150)
+        if long_mem > 95:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 60)
+        elif long_mem > 90:
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 25)
         elif long_mem > 80:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 80)
-        elif long_mem > 70:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 40)
+            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 10)
 
     # IOWait penalty - penalize high disk wait times (current always applies)
     if immediate_iowait > 30:
@@ -551,12 +416,77 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         elif long_iowait > 10:
             penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
 
-    # Trend penalty - only apply if using historical data (24h or 7d weights > 0)
-    if weight_24h > 0 or weight_7d > 0:
+    # Trend penalty - use quantified trend data from metrics store when available,
+    # fall back to simple rising/falling/stable labels from cluster_cache
+    _ta = _get_trend_analysis()
+    _node_trend_data = None
+    cpu_stability_factor = 1.0  # Default: no adjustment (set inside try block when trend data available)
+    if _ta and (weight_24h > 0 or weight_7d > 0):
+        try:
+            _node_trend_data = _ta.analyze_node_trends(
+                target_name,
+                lookback_hours=168,
+                cpu_threshold=cpu_threshold,
+                mem_threshold=mem_threshold,
+            )
+            raw_cpu_rate = _node_trend_data.get("cpu", {}).get("rate_per_day", 0)
+            raw_mem_rate = _node_trend_data.get("memory", {}).get("rate_per_day", 0)
+            node_stability = _node_trend_data.get("overall_stability", 50)
+
+            # Gate trend penalties by confidence level.  With sparse data
+            # (< 12 samples or low R²) the regression slope is unreliable —
+            # scale the effective rate so penalties aren't inflated by noise.
+            _confidence_scale = {"high": 1.0, "medium": 0.5, "low": 0.0}
+            cpu_confidence = _node_trend_data.get("cpu", {}).get("confidence", "low")
+            mem_confidence = _node_trend_data.get("memory", {}).get("confidence", "low")
+            cpu_rate = raw_cpu_rate * _confidence_scale.get(cpu_confidence, 0.0)
+            mem_rate = raw_mem_rate * _confidence_scale.get(mem_confidence, 0.0)
+
+            # Quantified trend penalties: scale with rate of change
+            base_trend_penalty = penalty_config.get("cpu_trend_rising_penalty", 15)
+            if cpu_rate > 3.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 3)
+            elif cpu_rate > 1.0:
+                penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 2)
+            elif cpu_rate > 0.5:
+                penalty_breakdown["cpu_trend"] = base_trend_penalty
+
+            # Memory trend penalties are disabled by default (mem_trend_rising_penalty=0)
+            # because memory trends in Proxmox reflect migration history, not workload
+            # changes.  A "rising" memory trend means a VM was recently migrated in,
+            # not that workloads are consuming more RAM.
+            base_mem_trend_penalty = penalty_config.get("mem_trend_rising_penalty", 0)
+            if base_mem_trend_penalty > 0:
+                if mem_rate > 3.0:
+                    penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 3)
+                elif mem_rate > 1.0:
+                    penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
+                elif mem_rate > 0.5:
+                    penalty_breakdown["mem_trend"] = base_mem_trend_penalty
+
+            # CPU stability factor: scale CPU-related penalties by node volatility.
+            # Stable nodes get CPU penalties *reduced* (the high reading is likely
+            # transient); volatile nodes get penalties *inflated* (unpredictable).
+            # NOTE: Stored here but applied AFTER spike/predicted penalties are
+            # calculated below, so that all CPU penalties are scaled consistently.
+            if node_stability >= 80:
+                cpu_stability_factor = 0.7   # Excellent — reduce CPU penalties 30%
+            elif node_stability >= 60:
+                cpu_stability_factor = 0.85  # Good — reduce CPU penalties 15%
+            elif node_stability < 40:
+                cpu_stability_factor = 1.3   # Volatile — inflate CPU penalties 30%
+            else:
+                cpu_stability_factor = 1.0   # Moderate — no change
+        except Exception:
+            _node_trend_data = None
+
+    # Fallback to simple trend labels if metrics store analysis failed
+    if _node_trend_data is None and (weight_24h > 0 or weight_7d > 0):
         if cpu_trend == "rising":
             penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
+        # Memory trend penalty disabled by default — see note above.
         if mem_trend == "rising":
-            penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 15)
+            penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 0)
 
     # Max spike penalty - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
@@ -569,17 +499,17 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         elif max_cpu_week > 70:
             penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_moderate", 5)
 
-        if max_mem_week > 95:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 30)
+        if max_mem_week > 98:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 20)
+        elif max_mem_week > 95:
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 10)
         elif max_mem_week > 90:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 20)
+            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 5)
         elif max_mem_week > 85:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 10)
-        elif max_mem_week > 75:
             penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
 
     # Predict post-migration load
-    predicted = predict_post_migration_load(target_node, guest, adding=True, penalty_config=penalty_config)
+    predicted = predict_post_migration_load(target_node, guest, adding=adding, penalty_config=penalty_config, guest_profile=guest_profile)
 
     # Account for pending migrations to this target
     if target_name in pending_target_guests:
@@ -608,6 +538,60 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     elif predicted["mem"] > mem_threshold:
         penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
 
+    # Apply CPU stability factor now that all CPU penalties (including spikes
+    # and predicted) have been calculated.
+    if cpu_stability_factor != 1.0:
+        for _cpu_key in ("current_cpu", "sustained_cpu", "cpu_trend",
+                         "cpu_spikes", "predicted_cpu"):
+            if penalty_breakdown.get(_cpu_key, 0) != 0:
+                penalty_breakdown[_cpu_key] = int(
+                    round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
+                )
+
+    # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
+    # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
+    # Below 1.2x: no penalty (normal ballooning range).
+    # 1.2x–2.0x: graduated penalty scaling linearly from min (8) to max (25).
+    # Above 2.0x: capped at max penalty (25).
+    # Graduated scaling avoids the old binary jump where 1.21x and 1.99x got
+    # wildly different penalties, which caused marginal overcommit to dominate
+    # the score and trigger unnecessary migrations.
+    overcommit_ratio = target_node.get("mem_overcommit_ratio", 0)
+    # Adjust overcommit ratio for pending migrations to this target.
+    # The base ratio only reflects currently-placed guests; guests already
+    # selected for migration in this batch add committed memory that hasn't
+    # been accounted for yet.
+    if target_name in pending_target_guests and pending_target_guests[target_name]:
+        total_mem_gb = target_node.get("total_mem_gb", 1)
+        if total_mem_gb > 0:
+            pending_committed_gb = sum(
+                pg.get("mem_max_gb", 0) for pg in pending_target_guests[target_name]
+            )
+            overcommit_ratio += pending_committed_gb / total_mem_gb
+    if overcommit_ratio > 1.2:
+        min_oc_penalty = penalty_config.get("mem_overcommit_penalty", 8)
+        max_oc_penalty = penalty_config.get("mem_overcommit_high_penalty", 25)
+        # Linear scale: 0.0 at ratio 1.2, 1.0 at ratio 2.0, capped at 1.0
+        scale = min((overcommit_ratio - 1.2) / 0.8, 1.0)
+        penalty_breakdown["mem_overcommit"] = int(round(
+            min_oc_penalty + scale * (max_oc_penalty - min_oc_penalty)
+        ))
+
+    # Cap total memory penalties to prevent memory from dominating the score.
+    # Memory is mostly static in Proxmox (fixed allocations), so it should not
+    # single-handedly make a node unsuitable — that's what the hard capacity
+    # gate in recommendations.py is for.  CPU and IOWait are the real drivers.
+    mem_penalty_keys = ("current_mem", "sustained_mem", "mem_spikes",
+                        "mem_trend", "predicted_mem", "mem_overcommit")
+    total_mem_penalties = sum(penalty_breakdown.get(k, 0) for k in mem_penalty_keys)
+    mem_penalty_cap = 60  # Maximum combined memory penalty contribution
+    if total_mem_penalties > mem_penalty_cap:
+        # Scale all memory penalties proportionally to fit within the cap
+        scale = mem_penalty_cap / total_mem_penalties
+        for k in mem_penalty_keys:
+            if k in penalty_breakdown and penalty_breakdown[k] > 0:
+                penalty_breakdown[k] = int(round(penalty_breakdown[k] * scale))
+
     # Sum all penalties
     penalties = sum(penalty_breakdown.values())
 
@@ -615,25 +599,29 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
     health_score = calculate_node_health_score(target_node, metrics, penalty_config=penalty_config)
 
     # Predicted health after migration
+    # CPU-heavy weighting — memory is static, CPU drives actual migration value
     predicted_health = (
-        predicted["cpu"] * 0.30 +
-        predicted["mem"] * 0.30 +
-        predicted["iowait"] * 0.20 +
-        current_cpu * 0.10 +  # Factor in current state
-        current_mem * 0.10
+        predicted["cpu"] * 0.40 +
+        predicted["mem"] * 0.15 +
+        predicted["iowait"] * 0.25 +
+        current_cpu * 0.15 +  # Factor in current CPU state
+        current_mem * 0.05
     )
 
     # Headroom score (how much capacity remains) - prefer nodes with more headroom
+    # CPU headroom weighted higher — memory capacity is a hard constraint checked
+    # separately; CPU headroom indicates ability to absorb workload fluctuations
     cpu_headroom = 100 - predicted["cpu"]
     mem_headroom = 100 - predicted["mem"]
-    headroom_score = 100 - (cpu_headroom * 0.5 + mem_headroom * 0.5)  # Lower = more headroom
+    headroom_score = 100 - (cpu_headroom * 0.65 + mem_headroom * 0.35)  # Lower = more headroom
 
     # Storage availability score
     storage_score = 0
     storage_list = target_node.get("storage", [])
     if storage_list:
-        # Prefer nodes with more available storage
-        avg_storage_usage = sum(s.get("usage_pct", 0) for s in storage_list if s.get("active", False)) / len(storage_list) if storage_list else 0
+        # Prefer nodes with more available storage (only count active storage)
+        active_storages = [s for s in storage_list if s.get("active", False)]
+        avg_storage_usage = sum(s.get("usage_pct", 0) for s in active_storages) / len(active_storages) if active_storages else 0
         storage_score = avg_storage_usage  # Lower = more available
 
     # Combined weighted score (lower is better)
@@ -686,6 +674,22 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
         "total_score": round(total_score, 1),
     }
 
+    # Attach trend analysis data when available for UI transparency
+    if _node_trend_data:
+        details["trend_analysis"] = {
+            "cpu_rate_per_day": _node_trend_data.get("cpu", {}).get("rate_per_day", 0),
+            "cpu_direction": _node_trend_data.get("cpu", {}).get("direction", "unknown"),
+            "cpu_confidence": _node_trend_data.get("cpu", {}).get("confidence", "low"),
+            "mem_rate_per_day": _node_trend_data.get("memory", {}).get("rate_per_day", 0),
+            "mem_direction": _node_trend_data.get("memory", {}).get("direction", "unknown"),
+            "mem_confidence": _node_trend_data.get("memory", {}).get("confidence", "low"),
+            "stability_score": _node_trend_data.get("overall_stability", 50),
+            "stability_label": _node_trend_data.get("overall_stability_label", "unknown"),
+            "cpu_stability_factor": cpu_stability_factor,
+            "overall_direction": _node_trend_data.get("overall_direction", "unknown"),
+            "data_quality": _node_trend_data.get("data_quality", {}),
+        }
+
     return total_score, details
 
 
@@ -693,7 +697,7 @@ def calculate_target_node_score(target_node: Dict, guest: Dict, pending_target_g
 # Migration risk scoring
 # ---------------------------------------------------------------------------
 
-def calculate_migration_risk(guest: Dict, source_node: Dict, target_node: Dict, cluster_health: float = 100.0) -> Dict:
+def calculate_migration_risk(guest: Dict[str, Any], source_node: Dict[str, Any], target_node: Dict[str, Any], cluster_health: float = 100.0) -> Dict[str, Any]:
     """
     Calculate a risk score (0-100, lower is safer) for a migration.
 
@@ -878,97 +882,6 @@ def calculate_migration_risk(guest: Dict, source_node: Dict, target_node: Dict, 
     }
 
 
-def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict:
-    """
-    Project a metric trend into the future using simple linear regression.
-
-    Args:
-        values: List of numeric metric values (e.g. CPU %, memory %).
-        timestamps: List of corresponding Unix timestamps (seconds).
-        hours_ahead: How many hours to project into the future (default 48).
-
-    Returns a dict with:
-        - current_value: Most recent value in the series.
-        - projected_value: Predicted value at hours_ahead from now.
-        - trend_rate_per_day: Units of change per day (positive = rising).
-        - confidence: "high" | "medium" | "low" based on R² goodness of fit.
-        - r_squared: Coefficient of determination (0-1).
-    """
-    n = len(values)
-    if n < 2 or len(timestamps) < 2:
-        last = values[-1] if values else 0.0
-        return {
-            "current_value": round(last, 2),
-            "projected_value": round(last, 2),
-            "trend_rate_per_day": 0.0,
-            "confidence": "low",
-            "r_squared": 0.0,
-        }
-
-    # Convert timestamps to hours relative to the first timestamp for numerical stability
-    t0 = timestamps[0]
-    x = [(t - t0) / 3600.0 for t in timestamps]  # hours since start
-    y = list(values)
-
-    # Simple linear regression: y = a + b*x
-    sum_x = sum(x)
-    sum_y = sum(y)
-    sum_xy = sum(xi * yi for xi, yi in zip(x, y))
-    sum_x2 = sum(xi * xi for xi in x)
-
-    denominator = n * sum_x2 - sum_x * sum_x
-    if abs(denominator) < 1e-12:
-        # All x values are effectively the same — no trend determinable
-        last = y[-1]
-        return {
-            "current_value": round(last, 2),
-            "projected_value": round(last, 2),
-            "trend_rate_per_day": 0.0,
-            "confidence": "low",
-            "r_squared": 0.0,
-        }
-
-    b = (n * sum_xy - sum_x * sum_y) / denominator  # slope (units per hour)
-    a = (sum_y - b * sum_x) / n  # intercept
-
-    # R² (coefficient of determination)
-    y_mean = sum_y / n
-    ss_tot = sum((yi - y_mean) ** 2 for yi in y)
-    ss_res = sum((yi - (a + b * xi)) ** 2 for xi, yi in zip(x, y))
-
-    if ss_tot < 1e-12:
-        r_squared = 0.0  # All values are essentially the same
-    else:
-        r_squared = max(0.0, 1.0 - ss_res / ss_tot)
-
-    # Confidence based on R²
-    if r_squared >= 0.7:
-        confidence = "high"
-    elif r_squared >= 0.4:
-        confidence = "medium"
-    else:
-        confidence = "low"
-
-    # Current value (most recent data point)
-    current_value = y[-1]
-
-    # Projected value: extrapolate from the last timestamp by hours_ahead
-    last_x = x[-1]
-    projected_x = last_x + hours_ahead
-    projected_value = a + b * projected_x
-
-    # Trend rate per day (slope * 24 hours)
-    trend_rate_per_day = b * 24.0
-
-    return {
-        "current_value": round(current_value, 2),
-        "projected_value": round(projected_value, 2),
-        "trend_rate_per_day": round(trend_rate_per_day, 2),
-        "confidence": confidence,
-        "r_squared": round(r_squared, 4),
-    }
-
-
 def _risk_label(score: int) -> str:
     """Map a numeric risk score to a label."""
     if score <= 25:
@@ -981,167 +894,11 @@ def _risk_label(score: int) -> str:
 
 
 # ---------------------------------------------------------------------------
-# F2: Workload Pattern Recognition
+# Re-exports for backwards compatibility
 # ---------------------------------------------------------------------------
 
-def analyze_workload_patterns(score_history: List[Dict], node_name: str) -> Dict:
-    """Analyze historical score data to detect recurring workload patterns.
+# project_trend moved to proxbalance.forecasting
+from proxbalance.forecasting import project_trend  # noqa: E402, F401
 
-    Identifies daily cycles (business-hours vs off-hours), weekly patterns,
-    and burst detection using hour-of-day and day-of-week bucketing on
-    historical score snapshots.
-
-    Args:
-        score_history: List of score snapshot dicts from score_history.json,
-            each with 'timestamp' and 'nodes' dict.
-        node_name: The node to analyze.
-
-    Returns:
-        A dict describing detected patterns::
-
-            {
-                "node": str,
-                "data_points": int,
-                "daily_pattern": { ... } or None,
-                "weekly_pattern": { ... } or None,
-                "burst_detection": { ... },
-                "recommendation_timing": str or None,
-            }
-    """
-    from datetime import datetime, timezone
-
-    result: Dict = {
-        "node": node_name,
-        "data_points": 0,
-        "daily_pattern": None,
-        "weekly_pattern": None,
-        "burst_detection": {
-            "detected": False,
-            "recurring_bursts": 0,
-            "burst_hours": [],
-        },
-        "recommendation_timing": None,
-    }
-
-    if not score_history or len(score_history) < 12:
-        return result
-
-    # Extract per-hour-of-day and per-day-of-week CPU values
-    hourly_buckets: Dict[int, List[float]] = {h: [] for h in range(24)}
-    daily_buckets: Dict[int, List[float]] = {d: [] for d in range(7)}
-
-    for snapshot in score_history:
-        node_data = snapshot.get("nodes", {}).get(node_name)
-        if node_data is None:
-            continue
-
-        cpu = node_data.get("cpu", 0)
-
-        ts_str = snapshot.get("timestamp", "")
-        try:
-            if ts_str.endswith("Z"):
-                ts_str = ts_str[:-1] + "+00:00"
-            ts = datetime.fromisoformat(ts_str)
-        except (ValueError, TypeError):
-            continue
-
-        result["data_points"] += 1
-        hourly_buckets[ts.hour].append(cpu)
-        daily_buckets[ts.weekday()].append(cpu)
-
-    if result["data_points"] < 12:
-        return result
-
-    # Compute hourly averages
-    hourly_avgs = {}
-    for h, vals in hourly_buckets.items():
-        if vals:
-            hourly_avgs[h] = sum(vals) / len(vals)
-
-    if len(hourly_avgs) < 6:
-        return result
-
-    all_avgs = list(hourly_avgs.values())
-    overall_avg = sum(all_avgs) / len(all_avgs)
-
-    # Detect daily pattern: business hours (8-18) vs off-hours
-    business_hours = [hourly_avgs.get(h) for h in range(8, 18) if h in hourly_avgs]
-    off_hours = [hourly_avgs.get(h) for h in list(range(0, 8)) + list(range(18, 24)) if h in hourly_avgs]
-
-    if business_hours and off_hours:
-        biz_avg = sum(business_hours) / len(business_hours)
-        off_avg = sum(off_hours) / len(off_hours)
-        spread = abs(biz_avg - off_avg)
-
-        if spread > 8:  # Significant difference between business and off hours
-            peak_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h], reverse=True)[:5]
-            trough_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h])[:5]
-
-            confidence = "high" if spread > 20 else "medium" if spread > 12 else "low"
-
-            result["daily_pattern"] = {
-                "cycle_type": "daily",
-                "peak_hours": sorted(peak_hours),
-                "trough_hours": sorted(trough_hours),
-                "peak_avg_cpu": round(max(biz_avg, off_avg), 1),
-                "trough_avg_cpu": round(min(biz_avg, off_avg), 1),
-                "business_hours_avg": round(biz_avg, 1),
-                "off_hours_avg": round(off_avg, 1),
-                "spread": round(spread, 1),
-                "pattern_confidence": confidence,
-            }
-
-    # Detect weekly pattern
-    daily_avgs = {}
-    for d, vals in daily_buckets.items():
-        if vals:
-            daily_avgs[d] = sum(vals) / len(vals)
-
-    if len(daily_avgs) >= 5:
-        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        weekday_vals = [daily_avgs.get(d) for d in range(5) if d in daily_avgs]
-        weekend_vals = [daily_avgs.get(d) for d in range(5, 7) if d in daily_avgs]
-
-        if weekday_vals and weekend_vals:
-            wd_avg = sum(weekday_vals) / len(weekday_vals)
-            we_avg = sum(weekend_vals) / len(weekend_vals)
-            weekly_spread = abs(wd_avg - we_avg)
-
-            if weekly_spread > 5:
-                peak_days = sorted(daily_avgs.keys(), key=lambda d: daily_avgs[d], reverse=True)[:3]
-                result["weekly_pattern"] = {
-                    "cycle_type": "weekly",
-                    "peak_days": [day_names[d] for d in sorted(peak_days)],
-                    "weekday_avg": round(wd_avg, 1),
-                    "weekend_avg": round(we_avg, 1),
-                    "spread": round(weekly_spread, 1),
-                    "pattern_confidence": "high" if weekly_spread > 15 else "medium",
-                }
-
-    # Burst detection: identify hours with consistently high CPU
-    burst_threshold = overall_avg + 20
-    burst_hours = []
-    for h, avg in hourly_avgs.items():
-        if avg > burst_threshold and len(hourly_buckets[h]) >= 3:
-            burst_hours.append(h)
-
-    if burst_hours:
-        result["burst_detection"] = {
-            "detected": True,
-            "recurring_bursts": len(burst_hours),
-            "burst_hours": sorted(burst_hours),
-            "avg_burst_cpu": round(sum(hourly_avgs[h] for h in burst_hours) / len(burst_hours), 1),
-            "threshold_used": round(burst_threshold, 1),
-        }
-
-    # Recommendation timing: suggest best window for migrations
-    if hourly_avgs:
-        best_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h])[:4]
-        best_start = min(best_hours)
-        best_end = max(best_hours) + 1
-        result["recommendation_timing"] = (
-            f"Migrate during {best_start:02d}:00-{best_end:02d}:00 "
-            f"when load is minimal (avg {hourly_avgs[best_hours[0]]:.0f}%)"
-        )
-
-    return result
+# analyze_workload_patterns moved to proxbalance.patterns
+from proxbalance.patterns import analyze_workload_patterns  # noqa: E402, F401

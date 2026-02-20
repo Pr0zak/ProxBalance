@@ -26,6 +26,12 @@ dev-cache/cache.json
 migration_history.json
 automigrate.lock
 .previous_branch
+score_history.json
+recommendation_tracking.json
+guest_profiles.json
+migration_outcomes.json
+node_metrics_history.json
+guest_metrics_history.json
 
 # IDE
 .vscode/

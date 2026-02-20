@@ -207,6 +207,11 @@ class GitManager:
             return False
         return 'No local changes to save' not in result.stdout
 
+    def stash_pop(self) -> bool:
+        """Pop the most recent stash. Returns True if successful."""
+        result = self._run(['stash', 'pop'], timeout=10)
+        return result.returncode == 0
+
     def checkout(self, ref: str) -> None:
         self._run_or_raise(['checkout', ref], timeout=10, error_msg=f'Failed to checkout {ref}')
 
@@ -591,7 +596,8 @@ class UpdateManager:
         log.append(f'Pulling {commits_to_pull} new commit(s) from branch: {branch}')
 
         # Stash local changes before pulling
-        if self.git.stash(include_untracked=True):
+        stashed = self.git.stash(include_untracked=True)
+        if stashed:
             log.append('Stashed local changes (including build artifacts)')
 
         # Try fast-forward first
@@ -609,6 +615,13 @@ class UpdateManager:
                 log.append('Reset to match remote branch')
             else:
                 raise Exception(f'Git pull failed: {stderr}')
+
+        # Restore stashed runtime data files (score_history, profiles, etc.)
+        if stashed:
+            if self.git.stash_pop():
+                log.append('Restored stashed local files')
+            else:
+                log.append('Warning: could not restore stashed files (conflicts possible)')
 
         log.append(f'Updated to latest commit on {branch}')
 
@@ -709,9 +722,12 @@ class UpdateManager:
         """
         log.append('Restarting ProxBalance services...')
 
-        # Restart collector timer
-        ok, msg = self.services.restart('proxmox-collector.timer', timeout=15)
-        log.append(f'{"" if ok else ""} {msg}')
+        # Restart all timers so they re-anchor after daemon-reload
+        for timer in ('proxmox-collector.timer',
+                      'proxmox-balance-automigrate.timer',
+                      'proxmox-balance-recommendations.timer'):
+            ok, msg = self.services.restart(timer, timeout=15)
+            log.append(f'{"" if ok else ""} {msg}')
 
         # Defer API restart with health verification
         log.append('API service will restart in 2 seconds (health check follows)...')
@@ -786,10 +802,13 @@ class UpdateManager:
                 )
 
             # Restart services again
-            subprocess.run(
-                [SYSTEMCTL_CMD, 'restart', 'proxmox-collector.timer'],
-                capture_output=True, text=True, timeout=15,
-            )
+            for timer in ('proxmox-collector.timer',
+                          'proxmox-balance-automigrate.timer',
+                          'proxmox-balance-recommendations.timer'):
+                subprocess.run(
+                    [SYSTEMCTL_CMD, 'restart', timer],
+                    capture_output=True, text=True, timeout=15,
+                )
             subprocess.Popen(
                 [SYSTEMCTL_CMD, 'restart', 'proxmox-balance'],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

@@ -3,6 +3,7 @@ import json, os, sys, subprocess, re, time
 from datetime import datetime, timedelta
 from pathlib import Path
 from proxbalance.config_manager import load_config, CONFIG_FILE, BASE_PATH
+from proxbalance.error_handlers import api_route
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -12,6 +13,7 @@ def read_cache():
 
 
 @automation_bp.route("/api/automigrate/status", methods=["GET"])
+@api_route
 def get_automigrate_status():
     """Get automation status and next run time"""
     try:
@@ -432,6 +434,152 @@ def get_automigrate_status():
         state = history.get('state', {}).copy()
         state['current_window'] = current_window
 
+        # Load intelligent migration tracking data
+        intelligent_tracking = {"enabled": False}
+        try:
+            rules = auto_config.get('rules', {})
+            im_config = rules.get('intelligent_migrations', {})
+            im_enabled = im_config.get('enabled', False)
+            tracking_file = os.path.join(BASE_PATH, 'recommendation_tracking.json')
+            tracking_data = {}
+            if os.path.exists(tracking_file):
+                with open(tracking_file, 'r') as f:
+                    tracking_data = json.load(f)
+            tracked = tracking_data.get('tracked', {})
+            observing_count = sum(1 for v in tracked.values() if v.get('status') == 'observing')
+            ready_count = sum(1 for v in tracked.values() if v.get('status') == 'ready')
+            items = [{
+                "vmid": v.get('vmid'),
+                "name": v.get('guest_name', ''),
+                "source_node": v.get('source_node', ''),
+                "last_target_node": v.get('last_target_node', ''),
+                "consecutive_count": v.get('consecutive_count', 0),
+                "status": v.get('status', 'observing'),
+                "first_seen": v.get('first_seen', ''),
+            } for v in tracked.values()]
+            # Learning progress data
+            guest_profiles_count = 0
+            try:
+                profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
+                if os.path.exists(profiles_file):
+                    with open(profiles_file, 'r') as f:
+                        guest_profiles_count = len(json.load(f).get('profiles', {}))
+            except Exception:
+                pass
+
+            outcomes_count = 0
+            avg_accuracy = None
+            try:
+                outcomes_file = os.path.join(BASE_PATH, 'migration_outcomes.json')
+                if os.path.exists(outcomes_file):
+                    with open(outcomes_file, 'r') as f:
+                        outcomes_list = json.load(f).get('outcomes', [])
+                    outcomes_count = len(outcomes_list)
+                    completed = [o for o in outcomes_list if o.get('status') == 'completed']
+                    if completed:
+                        avg_accuracy = round(sum(o.get('accuracy_pct', 0) for o in completed) / len(completed), 1)
+            except Exception:
+                pass
+
+            data_collection_hours = 0
+            # Try score_history.json first (most accurate - has hourly snapshots)
+            try:
+                sh_file = os.path.join(BASE_PATH, 'score_history.json')
+                if os.path.exists(sh_file):
+                    with open(sh_file, 'r') as f:
+                        sh_data = json.load(f)
+                    if isinstance(sh_data, list) and sh_data:
+                        earliest_ts = sh_data[0].get('timestamp', '')
+                        if earliest_ts:
+                            from datetime import datetime as dt, timezone
+                            first_dt = dt.fromisoformat(earliest_ts.rstrip('Z').split('+')[0])
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+            except Exception:
+                pass
+            # Fallback to recommendation tracking first_seen
+            if data_collection_hours == 0 and tracked:
+                first_seen_times = [v.get('first_seen', '') for v in tracked.values() if v.get('first_seen')]
+                if first_seen_times:
+                    earliest = min(first_seen_times)
+                    try:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest.rstrip('Z'))
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                    except Exception:
+                        pass
+            # Fallback to guest_profiles.json earliest observation
+            if data_collection_hours == 0:
+                try:
+                    profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
+                    if os.path.exists(profiles_file):
+                        with open(profiles_file, 'r') as f:
+                            profiles_data = json.load(f)
+                        profiles = profiles_data.get('profiles', {})
+                        earliest_obs = None
+                        for p in profiles.values():
+                            obs_list = p.get('observations', [])
+                            if obs_list:
+                                ts = obs_list[0].get('timestamp', '')
+                                if ts and (earliest_obs is None or ts < earliest_obs):
+                                    earliest_obs = ts
+                        if earliest_obs:
+                            from datetime import datetime as dt, timezone
+                            first_dt = dt.fromisoformat(earliest_obs.rstrip('Z').split('+')[0])
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+            # Fallback to cluster_cache.json first_collected_at / collected_at
+            if data_collection_hours == 0:
+                try:
+                    cache_file = os.path.join(BASE_PATH, 'cluster_cache.json')
+                    if os.path.exists(cache_file):
+                        from datetime import datetime as dt, timezone
+                        with open(cache_file, 'r') as f:
+                            cache_data = json.load(f)
+                        first_collected = cache_data.get('first_collected_at') or cache_data.get('collected_at', '')
+                        if first_collected:
+                            first_dt = dt.fromisoformat(first_collected.rstrip('Z').split('+')[0])
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+
+            # Intelligence level suggestion
+            suggested_level = None
+            current_level = im_config.get('intelligence_level', 'basic')
+            if current_level == 'basic' and outcomes_count >= 3 and guest_profiles_count >= 5:
+                suggested_level = 'standard'
+            elif current_level == 'standard':
+                score_history_count = 0
+                try:
+                    sh_file = os.path.join(BASE_PATH, 'score_history.json')
+                    if os.path.exists(sh_file):
+                        with open(sh_file, 'r') as f:
+                            score_history_count = len(json.load(f))
+                except Exception:
+                    pass
+                if score_history_count >= 168 and outcomes_count >= 10:
+                    suggested_level = 'full'
+
+            intelligent_tracking = {
+                "enabled": im_enabled,
+                "intelligence_level": im_config.get('intelligence_level', None),
+                "observation_periods": im_config.get('observation_periods', 3),
+                "total_tracked": len(tracked),
+                "observing_count": observing_count,
+                "ready_count": ready_count,
+                "items": items,
+                "suggested_level": suggested_level,
+                "learning_progress": {
+                    "data_collection_hours": data_collection_hours,
+                    "min_required_hours": im_config.get('minimum_data_collection_hours', 24),
+                    "guest_profiles_count": guest_profiles_count,
+                    "outcomes_count": outcomes_count,
+                    "avg_prediction_accuracy": avg_accuracy,
+                },
+            }
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "enabled": auto_config.get('enabled', False),
@@ -442,7 +590,8 @@ def get_automigrate_status():
             "recent_migrations": recent,
             "in_progress_migrations": in_progress_migrations,
             "state": state,
-            "filter_reasons": history.get('state', {}).get('last_filter_reasons', [])
+            "filter_reasons": history.get('state', {}).get('last_filter_reasons', []),
+            "intelligent_tracking": intelligent_tracking
         })
 
     except Exception as e:
@@ -453,6 +602,7 @@ def get_automigrate_status():
 
 
 @automation_bp.route("/api/automigrate/history", methods=["GET"])
+@api_route
 def get_automigrate_history():
     """Get automation run history with decisions, or individual migration history"""
     try:
@@ -516,6 +666,7 @@ def get_automigrate_history():
 
 
 @automation_bp.route("/api/automigrate/test", methods=["POST"])
+@api_route
 def test_automigrate():
     """Test automation logic without executing migrations"""
     try:
@@ -557,6 +708,7 @@ def test_automigrate():
 
 
 @automation_bp.route("/api/automigrate/run", methods=["POST"])
+@api_route
 def run_automigrate():
     """Manually trigger automation check now"""
     try:
@@ -648,6 +800,7 @@ def run_automigrate():
 
 
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
+@api_route
 def automigrate_config():
     """Get or update automated migration configuration"""
     if request.method == "GET":
@@ -680,6 +833,17 @@ def automigrate_config():
 
             # Keys that belong at the root config level, not under automated_migrations
             root_level_keys = {'distribution_balancing'}
+
+            # Check if cooldown_minutes is being changed — if so, record a reset timestamp
+            # so that the automigrate service ignores older migration history for cooldown checks
+            incoming_rules = updates.get('rules', {})
+            if 'cooldown_minutes' in incoming_rules:
+                current_rules = config.get('automated_migrations', {}).get('rules', {})
+                old_cooldown = current_rules.get('cooldown_minutes')
+                new_cooldown = incoming_rules['cooldown_minutes']
+                if old_cooldown is not None and old_cooldown != new_cooldown:
+                    incoming_rules['cooldown_reset_at'] = datetime.utcnow().isoformat() + 'Z'
+                    updates['rules'] = incoming_rules
 
             # Update configuration (deep merge)
             for key, value in updates.items():
@@ -743,6 +907,7 @@ OnUnitActiveSec={interval_minutes}min
 
 
 @automation_bp.route("/api/automigrate/toggle-timer", methods=["POST"])
+@api_route
 def automigrate_toggle_timer():
     """Toggle the automated migration timer on/off"""
     try:
@@ -796,6 +961,7 @@ def automigrate_toggle_timer():
 
 
 @automation_bp.route("/api/automigrate/logs", methods=["GET"])
+@api_route
 def automigrate_logs():
     """Get logs from the automated migration service"""
     try:

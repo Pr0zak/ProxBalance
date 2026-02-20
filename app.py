@@ -9,6 +9,7 @@ proxbalance/ domain modules (scoring, recommendations, migrations, etc.).
 """
 
 import os
+import subprocess
 from flask import Flask
 from flask_cors import CORS
 from flask_compress import Compress
@@ -19,6 +20,7 @@ from proxbalance.config_manager import (
 )
 from proxbalance.cache import CacheManager
 from proxbalance.routes import register_blueprints
+from proxbalance.error_handlers import register_error_handlers
 
 # ---------------------------------------------------------------------------
 # Flask application
@@ -47,10 +49,26 @@ if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
+# Sync systemd collector timer with configured interval on startup
+# ---------------------------------------------------------------------------
+
+_update_timer_script = os.path.join(BASE_PATH, 'update_timer.py')
+_venv_python = os.path.join(BASE_PATH, 'venv', 'bin', 'python3')
+if os.path.exists(_update_timer_script) and os.path.exists(_venv_python):
+    try:
+        subprocess.run(
+            [_venv_python, _update_timer_script],
+            capture_output=True, timeout=10, check=False,
+        )
+    except Exception:
+        pass  # Non-fatal — timer will use whatever is on disk
+
+# ---------------------------------------------------------------------------
 # Register all route blueprints
 # ---------------------------------------------------------------------------
 
 register_blueprints(app)
+register_error_handlers(app)
 
 # ---------------------------------------------------------------------------
 # Entry point

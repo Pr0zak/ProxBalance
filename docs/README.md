@@ -60,14 +60,24 @@ ProxBalance/
 ├── notifications.py             # Multi-provider notification system
 ├── update_manager.py            # Update/version management
 │
-├── proxbalance/                 # Core backend package
-│   ├── config_manager.py        # Config loading, Proxmox client, path constants
+├── proxbalance/                 # Core backend package (16 domain modules)
+│   ├── config_manager.py        # Config loading, Proxmox client
+│   ├── constants.py             # Shared path constants, tuning values
 │   ├── cache.py                 # In-memory cache with 60s TTL
+│   ├── error_handlers.py        # @api_route decorator, response helpers
 │   ├── scoring.py               # Penalty-based scoring algorithm
+│   ├── recommendations.py       # Recommendation engine
+│   ├── recommendation_analysis.py # Confidence scoring, conflict detection
+│   ├── storage.py               # Storage compatibility checks
+│   ├── distribution.py          # Guest distribution balancing
 │   ├── migrations.py            # Migration execution logic
 │   ├── evacuation.py            # Node evacuation planning
-│   ├── recommendations.py       # Recommendation engine
-│   └── routes/                  # Flask Blueprints (all API endpoints)
+│   ├── forecasting.py           # Trend projection
+│   ├── patterns.py              # Workload pattern detection
+│   ├── outcomes.py              # Migration outcome tracking
+│   ├── execution_planner.py     # Topological execution ordering
+│   ├── reporting.py             # Summaries, capacity advisories
+│   └── routes/                  # Flask Blueprints (all API endpoints, @api_route)
 │       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary
 │       ├── automation.py        # /api/automigrate/* endpoints
 │       ├── config.py            # /api/config endpoints
@@ -80,17 +90,18 @@ ProxBalance/
 │       └── system.py            # /api/update/*, /api/health, /api/version
 │
 ├── src/                         # Frontend source (React JSX)
-│   ├── index.jsx                # esbuild entry point
-│   ├── app.jsx                  # Main React SPA component
+│   ├── index.jsx                # Root component + hook composition (~658 lines)
+│   ├── hooks/                   # 11 custom React hooks (state management)
 │   ├── components/
-│   │   ├── DashboardPage.jsx    # Dashboard UI with charts
-│   │   ├── AutomationPage.jsx   # Automation configuration
-│   │   ├── SettingsPage.jsx     # Settings panel
+│   │   ├── DashboardPage.jsx    # Dashboard wrapper + 13 sub-components
+│   │   ├── AutomationPage.jsx   # Automation wrapper + 6 sub-components
+│   │   ├── SettingsPage.jsx     # Settings wrapper + 5 sub-components
 │   │   ├── Icons.jsx            # SVG icon components
 │   │   └── Skeletons.jsx        # Loading skeleton components
 │   ├── api/
 │   │   └── client.js            # API client with error handling
 │   └── utils/
+│       ├── constants.js         # Shared frontend constants
 │       ├── formatters.js        # Utility formatting functions
 │       └── useIsMobile.js       # Mobile responsiveness hook
 │

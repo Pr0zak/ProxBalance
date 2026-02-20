@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "proxbalance": {
+      "type": "http",
+      "url": "${PROXBALANCE_MCP_URL}"
+    }
+  }
+}
