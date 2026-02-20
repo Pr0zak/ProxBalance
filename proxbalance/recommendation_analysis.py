@@ -242,16 +242,29 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
         trend_note = " with an upward trend"
 
+    # Use graduated severity language instead of always saying "high"
+    def _severity_label(value: float) -> str:
+        if value > 85:
+            return "critical"
+        elif value > 70:
+            return "high"
+        elif value > 50:
+            return "elevated"
+        return "moderate"
+
     if is_iowait_triggered:
+        iowait_severity = _severity_label(src_iowait)
         summary = (
-            f"{guest_name} should move to {tgt_name} because {src_name} has high I/O wait "
+            f"{guest_name} should move to {tgt_name} because {src_name} has {iowait_severity} I/O wait "
             f"({src_iowait:.0f}%{trend_note}), "
             f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
         )
     else:
         dominant = "CPU" if cpu_diff > mem_diff else "memory"
+        dominant_value = src_cpu if cpu_diff > mem_diff else src_mem
+        severity = _severity_label(dominant_value)
         summary = (
-            f"{guest_name} should move to {tgt_name} because {src_name} has high {dominant} usage "
+            f"{guest_name} should move to {tgt_name} because {src_name} has {severity} {dominant} usage "
             f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
             f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
         )

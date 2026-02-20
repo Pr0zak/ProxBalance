@@ -511,6 +511,26 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     })
                     continue
 
+            # Source memory floor gate: skip guests on nodes with healthy memory
+            # when there is no CPU or IOWait pressure. Prevents score-differential
+            # churn where VMs get shuffled between nodes that are all comfortably
+            # below threshold, especially when memory trend penalties inflate scores.
+            source_mem_floor = penalty_cfg.get("source_mem_migration_floor", 65)
+            src_mem_pct = src_node.get("mem_percent", 0)
+            src_cpu_pct = src_node.get("cpu_percent", 0)
+            src_iowait = src_node.get("metrics", {}).get("current_iowait", 0) if src_node.get("metrics") else 0
+            if (src_node_name not in maintenance_nodes
+                    and src_node_name not in iowait_stressed_nodes
+                    and src_mem_pct < source_mem_floor
+                    and src_cpu_pct < cpu_threshold):
+                skipped_guests.append({
+                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
+                    "name": guest_name, "type": guest_type, "node": src_node_name,
+                    "reason": "source_memory_healthy",
+                    "detail": f"Source node {src_node_name} memory ({src_mem_pct:.0f}%) is below migration floor ({source_mem_floor}%) and CPU ({src_cpu_pct:.0f}%) is below threshold ({cpu_threshold:.0f}%). No migration needed."
+                })
+                continue
+
             # Load guest behavioral profile for profile-aware scoring (Phase 3c)
             guest_profile = get_guest_profile(vmid_key)
 

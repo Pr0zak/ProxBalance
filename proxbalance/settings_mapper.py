@@ -137,6 +137,12 @@ def map_simplified_to_penalty_config(settings: Dict[str, Any]) -> Dict[str, Any]
         cfg["min_score_improvement"] = profile["min_score_improvement"]
     cfg["cluster_convergence_threshold"] = profile["convergence_threshold"]
 
+    # --- Source memory migration floor ---
+    # Explicit override takes priority; otherwise keep the default (65%)
+    mem_floor = settings.get("source_mem_migration_floor")
+    if mem_floor is not None and isinstance(mem_floor, (int, float)):
+        cfg["source_mem_migration_floor"] = int(mem_floor)
+
     # --- Time period weights from trend_weight ---
     # trend_weight 0% → pure snapshot: current=0.9, 24h=0.1, 7d=0.0
     # trend_weight 50% → balanced:      current=0.5, 24h=0.3, 7d=0.2
