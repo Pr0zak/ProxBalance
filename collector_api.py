@@ -1072,5 +1072,7 @@ def collect_data():
 
 
 if __name__ == '__main__':
+    from proxbalance.db import init_db
+    init_db()
     success = collect_data()
     sys.exit(0 if success else 1)

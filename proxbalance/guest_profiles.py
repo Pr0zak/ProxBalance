@@ -1,43 +1,61 @@
 """
-ProxBalance Guest Behavioral Profiling
+ProxBalance Guest Behavioral Profiling (SQLite backend)
 
 Tracks per-guest CPU/memory patterns over time to classify workload
 behavior (steady, bursty, growing, cyclical) and provide better
 migration load predictions.
 
-Profiles are stored in guest_profiles.json and updated by the collector
-after each data collection run.
+Profiles are stored in the guest_profiles table and updated by the
+collector after each data collection run.
 """
 
 import json
-import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from proxbalance.constants import GUEST_PROFILES_FILE, MAX_GUEST_PROFILE_SAMPLES
+from proxbalance.constants import MAX_GUEST_PROFILE_SAMPLES
+from proxbalance.db import get_connection
 
 
 def load_guest_profiles() -> Dict[str, Any]:
-    """Load guest profiles from disk."""
-    try:
-        if os.path.exists(GUEST_PROFILES_FILE):
-            with open(GUEST_PROFILES_FILE, 'r') as f:
-                return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        pass
-    return {"version": 1, "profiles": {}}
+    """Load all guest profiles from the database.
+
+    Returns the same structure as the legacy JSON format:
+    ``{"version": 1, "profiles": {vmid: {vmid, node, observations: [...]}}}``
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT vmid, node, timestamp, cpu_json, mem_json FROM guest_profiles ORDER BY vmid, timestamp"
+    ).fetchall()
+
+    profiles: Dict[str, Any] = {}
+    for r in rows:
+        vmid = r["vmid"]
+        if vmid not in profiles:
+            profiles[vmid] = {"vmid": vmid, "node": r["node"] or "", "observations": []}
+        obs = {"timestamp": r["timestamp"]}
+        try:
+            obs["cpu"] = json.loads(r["cpu_json"]) if r["cpu_json"] else {}
+        except (json.JSONDecodeError, TypeError):
+            obs["cpu"] = {}
+        try:
+            obs["mem"] = json.loads(r["mem_json"]) if r["mem_json"] else {}
+        except (json.JSONDecodeError, TypeError):
+            obs["mem"] = {}
+        profiles[vmid]["observations"].append(obs)
+        # Keep node updated to the latest
+        if r["node"]:
+            profiles[vmid]["node"] = r["node"]
+
+    return {"version": 1, "profiles": profiles}
 
 
 def save_guest_profiles(profiles: Dict[str, Any]) -> bool:
-    """Save guest profiles to disk with atomic write."""
-    try:
-        tmp_file = GUEST_PROFILES_FILE + '.tmp'
-        with open(tmp_file, 'w') as f:
-            json.dump(profiles, f, indent=2)
-        os.replace(tmp_file, GUEST_PROFILES_FILE)
-        return True
-    except IOError:
-        return False
+    """No-op for backward compatibility.
+
+    All writes now go through :func:`update_guest_profile`.
+    """
+    return True
 
 
 def update_guest_profile(vmid: str, rrd_summary: Dict[str, Any], node: str) -> None:
@@ -54,31 +72,24 @@ def update_guest_profile(vmid: str, rrd_summary: Dict[str, Any], node: str) -> N
     if not rrd_summary or not rrd_summary.get('cpu'):
         return
 
-    profiles = load_guest_profiles()
-    guest_profiles = profiles.setdefault("profiles", {})
+    conn = get_connection()
+    vmid_str = str(vmid)
+    timestamp = datetime.now(timezone.utc).isoformat()
 
-    if vmid not in guest_profiles:
-        guest_profiles[vmid] = {
-            "vmid": vmid,
-            "node": node,
-            "observations": [],
-        }
+    conn.execute(
+        "INSERT INTO guest_profiles (vmid, node, timestamp, cpu_json, mem_json) VALUES (?, ?, ?, ?, ?)",
+        (vmid_str, node, timestamp,
+         json.dumps(rrd_summary.get("cpu", {})),
+         json.dumps(rrd_summary.get("mem", {}))),
+    )
 
-    profile = guest_profiles[vmid]
-    profile["node"] = node
-
-    observation = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "cpu": rrd_summary.get("cpu", {}),
-        "mem": rrd_summary.get("mem", {}),
-    }
-    profile["observations"].append(observation)
-
-    # Enforce max samples
-    if len(profile["observations"]) > MAX_GUEST_PROFILE_SAMPLES:
-        profile["observations"] = profile["observations"][-MAX_GUEST_PROFILE_SAMPLES:]
-
-    save_guest_profiles(profiles)
+    # Enforce max samples: keep only the most recent MAX_GUEST_PROFILE_SAMPLES
+    conn.execute(
+        "DELETE FROM guest_profiles WHERE vmid = ? AND id NOT IN "
+        "(SELECT id FROM guest_profiles WHERE vmid = ? ORDER BY timestamp DESC LIMIT ?)",
+        (vmid_str, vmid_str, MAX_GUEST_PROFILE_SAMPLES),
+    )
+    conn.commit()
 
 
 def classify_guest_behavior(profile: Dict[str, Any]) -> Dict[str, Any]:
@@ -181,14 +192,34 @@ def get_guest_profile(vmid: str) -> Optional[Dict[str, Any]]:
 
     Returns profile dict with classification or None if no profile exists.
     """
-    profiles = load_guest_profiles()
-    profile = profiles.get("profiles", {}).get(str(vmid))
+    conn = get_connection()
+    vmid_str = str(vmid)
 
-    if not profile:
+    rows = conn.execute(
+        "SELECT vmid, node, timestamp, cpu_json, mem_json FROM guest_profiles "
+        "WHERE vmid = ? ORDER BY timestamp DESC LIMIT ?",
+        (vmid_str, MAX_GUEST_PROFILE_SAMPLES),
+    ).fetchall()
+
+    if not rows:
         return None
 
+    # Build profile in chronological order (rows are DESC, reverse them)
+    rows = list(reversed(rows))
+    node = rows[-1]["node"] or ""
+    observations = []
+    for r in rows:
+        obs = {"timestamp": r["timestamp"]}
+        try:
+            obs["cpu"] = json.loads(r["cpu_json"]) if r["cpu_json"] else {}
+        except (json.JSONDecodeError, TypeError):
+            obs["cpu"] = {}
+        try:
+            obs["mem"] = json.loads(r["mem_json"]) if r["mem_json"] else {}
+        except (json.JSONDecodeError, TypeError):
+            obs["mem"] = {}
+        observations.append(obs)
+
+    profile = {"vmid": vmid_str, "node": node, "observations": observations}
     classification = classify_guest_behavior(profile)
-    return {
-        **profile,
-        **classification,
-    }
+    return {**profile, **classification}

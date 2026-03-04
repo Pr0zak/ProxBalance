@@ -33,36 +33,13 @@ def get_automigrate_status():
         except Exception:
             timer_active = False
 
-        # Load history
-        history_file = os.path.join(BASE_PATH, 'migration_history.json')
-        history = {"migrations": [], "state": {}}
-        if os.path.exists(history_file):
-            try:
-                with open(history_file, 'r') as f:
-                    history = json.load(f)
-            except:
-                pass
-
-        # Get recent migrations (last 7 days)
-        all_migrations = history.get('migrations', [])
-        seven_days_ago = datetime.now() - timedelta(days=7)
-
-        recent = []
-        for migration in all_migrations:
-            try:
-                # Parse timestamp (may or may not have 'Z' suffix)
-                timestamp_str = migration.get('timestamp', '')
-                if timestamp_str:
-                    # Remove 'Z' if present and parse
-                    timestamp_str = timestamp_str.rstrip('Z')
-                    migration_date = datetime.fromisoformat(timestamp_str)
-
-                    # Include if within last 7 days
-                    if migration_date >= seven_days_ago:
-                        recent.append(migration)
-            except (ValueError, TypeError):
-                # If timestamp parsing fails, include it anyway (better to show than hide)
-                recent.append(migration)
+        # Load history from SQLite
+        from proxbalance import migration_db
+        recent = migration_db.get_recent_migrations(days=7, limit=500)
+        history = {
+            "migrations": recent,
+            "state": migration_db.get_all_automation_state(),
+        }
 
         # Check for in-progress migrations using cluster tasks endpoint
         in_progress_migrations = []
@@ -440,12 +417,7 @@ def get_automigrate_status():
             rules = auto_config.get('rules', {})
             im_config = rules.get('intelligent_migrations', {})
             im_enabled = im_config.get('enabled', False)
-            tracking_file = os.path.join(BASE_PATH, 'recommendation_tracking.json')
-            tracking_data = {}
-            if os.path.exists(tracking_file):
-                with open(tracking_file, 'r') as f:
-                    tracking_data = json.load(f)
-            tracked = tracking_data.get('tracked', {})
+            tracked = migration_db.get_all_tracking()
             observing_count = sum(1 for v in tracked.values() if v.get('status') == 'observing')
             ready_count = sum(1 for v in tracked.values() if v.get('status') == 'ready')
             items = [{
@@ -460,40 +432,32 @@ def get_automigrate_status():
             # Learning progress data
             guest_profiles_count = 0
             try:
-                profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
-                if os.path.exists(profiles_file):
-                    with open(profiles_file, 'r') as f:
-                        guest_profiles_count = len(json.load(f).get('profiles', {}))
+                from proxbalance.guest_profiles import load_guest_profiles
+                guest_profiles_count = len(load_guest_profiles().get('profiles', {}))
             except Exception:
                 pass
 
             outcomes_count = 0
             avg_accuracy = None
             try:
-                outcomes_file = os.path.join(BASE_PATH, 'migration_outcomes.json')
-                if os.path.exists(outcomes_file):
-                    with open(outcomes_file, 'r') as f:
-                        outcomes_list = json.load(f).get('outcomes', [])
-                    outcomes_count = len(outcomes_list)
-                    completed = [o for o in outcomes_list if o.get('status') == 'completed']
-                    if completed:
-                        avg_accuracy = round(sum(o.get('accuracy_pct', 0) for o in completed) / len(completed), 1)
+                from proxbalance.outcomes import get_outcome_statistics
+                stats = get_outcome_statistics()
+                outcomes_count = stats.get('total_completed', 0)
+                avg_accuracy = stats.get('avg_accuracy_pct')
             except Exception:
                 pass
 
             data_collection_hours = 0
-            # Try score_history.json first (most accurate - has hourly snapshots)
+            # Try score_history from SQLite (most accurate - has hourly snapshots)
             try:
-                sh_file = os.path.join(BASE_PATH, 'score_history.json')
-                if os.path.exists(sh_file):
-                    with open(sh_file, 'r') as f:
-                        sh_data = json.load(f)
-                    if isinstance(sh_data, list) and sh_data:
-                        earliest_ts = sh_data[0].get('timestamp', '')
-                        if earliest_ts:
-                            from datetime import datetime as dt, timezone
-                            first_dt = dt.fromisoformat(earliest_ts.rstrip('Z').split('+')[0])
-                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                from proxbalance.forecasting import get_score_history as fetch_sh
+                sh_data = fetch_sh(limit=720)
+                if sh_data:
+                    earliest_ts = sh_data[0].get('timestamp', '')
+                    if earliest_ts:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest_ts.rstrip('Z').split('+')[0])
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
             except Exception:
                 pass
             # Fallback to recommendation tracking first_seen
@@ -507,25 +471,22 @@ def get_automigrate_status():
                         data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
                     except Exception:
                         pass
-            # Fallback to guest_profiles.json earliest observation
+            # Fallback to guest_profiles earliest observation
             if data_collection_hours == 0:
                 try:
-                    profiles_file = os.path.join(BASE_PATH, 'guest_profiles.json')
-                    if os.path.exists(profiles_file):
-                        with open(profiles_file, 'r') as f:
-                            profiles_data = json.load(f)
-                        profiles = profiles_data.get('profiles', {})
-                        earliest_obs = None
-                        for p in profiles.values():
-                            obs_list = p.get('observations', [])
-                            if obs_list:
-                                ts = obs_list[0].get('timestamp', '')
-                                if ts and (earliest_obs is None or ts < earliest_obs):
-                                    earliest_obs = ts
-                        if earliest_obs:
-                            from datetime import datetime as dt, timezone
-                            first_dt = dt.fromisoformat(earliest_obs.rstrip('Z').split('+')[0])
-                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                    from proxbalance.guest_profiles import load_guest_profiles as load_gp
+                    profiles = load_gp().get('profiles', {})
+                    earliest_obs = None
+                    for p in profiles.values():
+                        obs_list = p.get('observations', [])
+                        if obs_list:
+                            ts = obs_list[0].get('timestamp', '')
+                            if ts and (earliest_obs is None or ts < earliest_obs):
+                                earliest_obs = ts
+                    if earliest_obs:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest_obs.rstrip('Z').split('+')[0])
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
                 except Exception:
                     pass
             # Fallback to cluster_cache.json first_collected_at / collected_at
@@ -551,10 +512,8 @@ def get_automigrate_status():
             elif current_level == 'standard':
                 score_history_count = 0
                 try:
-                    sh_file = os.path.join(BASE_PATH, 'score_history.json')
-                    if os.path.exists(sh_file):
-                        with open(sh_file, 'r') as f:
-                            score_history_count = len(json.load(f))
+                    from proxbalance.forecasting import get_score_history as fetch_sh2
+                    score_history_count = len(fetch_sh2(limit=720))
                 except Exception:
                     pass
                 if score_history_count >= 168 and outcomes_count >= 10:
@@ -606,13 +565,12 @@ def get_automigrate_status():
 def get_automigrate_history():
     """Get automation run history with decisions, or individual migration history"""
     try:
-        history_file = os.path.join(BASE_PATH, 'migration_history.json')
-
-        if not os.path.exists(history_file):
-            return jsonify({"success": True, "runs": [], "migrations": [], "total": 0})
-
-        with open(history_file, 'r') as f:
-            history = json.load(f)
+        from proxbalance import migration_db as mdb
+        history = {
+            "migrations": mdb.get_all_migrations(limit=2000),
+            "state": mdb.get_all_automation_state(),
+            "run_history": mdb.get_run_history(limit=50),
+        }
 
         # Get query parameters
         limit = request.args.get('limit', 50, type=int)

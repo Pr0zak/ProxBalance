@@ -158,13 +158,9 @@ def get_guests_only():
 @api_route
 def get_score_history():
     """Return cluster health score history for timeline charting"""
-    from proxbalance.forecasting import SCORE_HISTORY_FILE
-    if not os.path.exists(SCORE_HISTORY_FILE):
-        return jsonify({"success": True, "history": []})
-    with open(SCORE_HISTORY_FILE, 'r') as f:
-        history = json.load(f)
+    from proxbalance.forecasting import get_score_history as fetch_score_history
     limit = request.args.get('limit', 168, type=int)
-    entries = history[-limit:] if isinstance(history, list) else []
+    entries = fetch_score_history(limit=limit)
     slim = [{
         "timestamp": e.get("timestamp"),
         "cluster_health": e.get("cluster_health"),

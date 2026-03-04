@@ -33,6 +33,12 @@ migration_outcomes.json
 node_metrics_history.json
 guest_metrics_history.json
 
+# SQLite database
+proxbalance.db
+*.db-wal
+*.db-shm
+*.json.migrated
+
 # IDE
 .vscode/
 .idea/

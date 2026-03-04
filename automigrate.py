@@ -27,9 +27,12 @@ MAX_RUN_HISTORY = 50
 BASE_DIR = Path(__file__).parent
 CONFIG_FILE = BASE_DIR / "config.json"
 CACHE_FILE = BASE_DIR / "cluster_cache.json"
-HISTORY_FILE = BASE_DIR / "migration_history.json"
 LOCK_FILE = BASE_DIR / "automigrate.lock"
-TRACKING_FILE = BASE_DIR / "recommendation_tracking.json"
+
+# SQLite modules
+from proxbalance.db import init_db, close_all as db_close_all
+from proxbalance import migration_db
+from proxbalance.forecasting import get_score_history
 
 # Logging
 logging.basicConfig(
@@ -93,20 +96,26 @@ def read_cache() -> Dict[str, Any]:
 
 
 def load_history() -> Dict[str, Any]:
-    """Load migration history."""
-    if not HISTORY_FILE.exists():
-        return {"migrations": [], "state": {}}
+    """Load migration history from SQLite (backward-compat wrapper).
 
-    with open(HISTORY_FILE, 'r') as f:
-        return json.load(f)
+    Returns a dict with 'migrations', 'state', and 'run_history' keys
+    matching the legacy JSON format.
+    """
+    return {
+        "migrations": migration_db.get_all_migrations(limit=2000),
+        "state": migration_db.get_all_automation_state(),
+        "run_history": migration_db.get_run_history(limit=MAX_RUN_HISTORY),
+    }
 
 
 def save_history(history: Dict[str, Any]):
-    """Save migration history atomically."""
-    tmp_file = str(HISTORY_FILE) + '.tmp'
-    with open(tmp_file, 'w') as f:
-        json.dump(history, f, indent=2)
-    os.rename(tmp_file, str(HISTORY_FILE))
+    """Save automation state to SQLite (backward-compat wrapper).
+
+    Only persists the 'state' dict — migrations and run_history
+    are written individually via migration_db calls.
+    """
+    state = history.get('state', {})
+    migration_db.set_automation_state_bulk(state)
 
 
 def _check_time_window(config, window_key, window_label, default_when_empty):
@@ -755,24 +764,15 @@ def _count_recent_migrations(vmid: int, lookback_hours: int = 168) -> int:
     lookback window (default 7 days). Used for escalating cooldowns on
     VMs that keep getting shuffled around.
     """
-    history = load_history()
-    migrations = history.get('migrations', [])
-    now = datetime.utcnow()
-    cutoff = now - timedelta(hours=lookback_hours)
-    count = 0
-    for m in reversed(migrations):
-        if m.get('vmid') != vmid:
-            continue
-        if m.get('dry_run', False) or m.get('status') == 'failed':
-            continue
-        try:
-            ts = datetime.fromisoformat(m.get('timestamp', '').replace('Z', '+00:00')).replace(tzinfo=None)
-            if ts < cutoff:
-                break
-            count += 1
-        except (ValueError, TypeError):
-            continue
-    return count
+    from proxbalance.db import get_connection
+    conn = get_connection()
+    cutoff = (datetime.utcnow() - timedelta(hours=lookback_hours)).isoformat()
+    row = conn.execute(
+        "SELECT COUNT(*) as cnt FROM migration_history "
+        "WHERE vmid = ? AND timestamp >= ? AND dry_run = 0 AND status != 'failed'",
+        (vmid, cutoff[:19]),
+    ).fetchone()
+    return row["cnt"] if row else 0
 
 
 def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str = None) -> bool:
@@ -783,26 +783,16 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
     migrated multiple times within 7 days get progressively longer cooldowns
     to break ping-pong cycles that slip past cycle detection.
 
-    Cooldown escalation (based on migrations in past 7 days):
-      1 migration  → base cooldown (e.g. 240 min)
-      2 migrations → 2x base (e.g. 480 min / 8 hours)
-      3 migrations → 4x base (e.g. 960 min / 16 hours)
-      4+ migrations → 8x base (e.g. 1920 min / 32 hours, capped)
-
     Args:
         vmid: VM ID to check
         cooldown_minutes: Base cooldown period in minutes
         cooldown_reset_at: ISO timestamp; migrations before this time are ignored
-                          (used when user changes cooldown settings to reset cooldown)
 
     Returns:
         True if VM is in cooldown, False otherwise
     """
     if cooldown_minutes <= 0:
         return False
-
-    history = load_history()
-    migrations = history.get('migrations', [])
 
     # Parse cooldown reset timestamp if provided
     reset_time = None
@@ -815,42 +805,40 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
     # Escalate cooldown for VMs that have been migrated multiple times recently
     recent_count = _count_recent_migrations(vmid, lookback_hours=168)
     if recent_count > 1:
-        # Exponential backoff: 2^(count-1), capped at 8x
         multiplier = min(8, 2 ** (recent_count - 1))
         effective_cooldown = cooldown_minutes * multiplier
         logger.info(f"VM {vmid} escalated cooldown: {cooldown_minutes}min * {multiplier}x = {effective_cooldown}min ({recent_count} migrations in 7 days)")
     else:
         effective_cooldown = cooldown_minutes
 
-    # Check if this VM was migrated recently
+    # Check most recent non-dry-run, non-failed migration for this VM
+    from proxbalance.db import get_connection
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT timestamp FROM migration_history "
+        "WHERE vmid = ? AND dry_run = 0 AND status != 'failed' "
+        "ORDER BY timestamp DESC LIMIT 1",
+        (vmid,),
+    ).fetchone()
+
+    if not row:
+        return False
+
+    try:
+        migration_time = datetime.fromisoformat(row["timestamp"].replace('Z', '+00:00')).replace(tzinfo=None)
+    except (ValueError, TypeError):
+        return False
+
+    # Skip migrations before cooldown reset
+    if reset_time and migration_time < reset_time:
+        return False
+
     now = datetime.utcnow()
     cooldown_threshold = now - timedelta(minutes=effective_cooldown)
 
-    for migration in reversed(migrations):  # Check most recent first
-        if migration.get('vmid') == vmid:
-            # Skip dry-run migrations — they didn't actually move anything
-            if migration.get('dry_run', False):
-                continue
-
-            # Skip failed migrations — they didn't complete
-            if migration.get('status') == 'failed':
-                continue
-
-            try:
-                migration_time = datetime.fromisoformat(migration.get('timestamp', '').replace('Z', '+00:00')).replace(tzinfo=None)
-
-                # Skip migrations that occurred before the cooldown was reset
-                if reset_time and migration_time < reset_time:
-                    return False
-
-                if migration_time > cooldown_threshold:
-                    logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()}, effective cooldown {effective_cooldown}min)")
-                    return True
-                else:
-                    # Found the VM but it's past cooldown, no need to check older entries
-                    return False
-            except (ValueError, TypeError):
-                continue
+    if migration_time > cooldown_threshold:
+        logger.info(f"VM {vmid} is in cooldown period (last migrated {migration_time.isoformat()}, effective cooldown {effective_cooldown}min)")
+        return True
 
     return False
 
@@ -858,22 +846,25 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
 
 def record_migration(migration_record: Dict[str, Any]):
     """
-    Record a migration to the history file.
+    Record a migration to the database.
 
     Args:
         migration_record: Migration details dictionary
     """
-    history = load_history()
-    history.setdefault('migrations', []).append(migration_record)
+    # Map legacy field names
+    record = dict(migration_record)
+    if 'id' in record and 'migration_id' not in record:
+        record['migration_id'] = record.pop('id')
+    if 'type' in record and 'guest_type' not in record:
+        record['guest_type'] = record.get('type')
 
-    # Update state
-    history['state'] = {
-        'last_run': datetime.utcnow().isoformat() + 'Z',  # Add Z to indicate UTC
-        'in_progress': False,
-        'current_window': migration_record.get('window_name')
-    }
+    migration_db.record_migration(record)
 
-    save_history(history)
+    # Update automation state
+    migration_db.set_automation_state('last_run', datetime.utcnow().isoformat() + 'Z')
+    migration_db.set_automation_state('in_progress', False)
+    if migration_record.get('window_name'):
+        migration_db.set_automation_state('current_window', migration_record['window_name'])
 
 
 # ---------------------------------------------------------------------------
@@ -881,26 +872,20 @@ def record_migration(migration_record: Dict[str, Any]):
 # ---------------------------------------------------------------------------
 
 def load_tracking() -> Dict[str, Any]:
-    """Load recommendation tracking data from disk."""
-    try:
-        if TRACKING_FILE.exists():
-            with open(TRACKING_FILE, 'r') as f:
-                return json.load(f)
-    except (json.JSONDecodeError, IOError) as e:
-        logger.warning(f"Failed to load tracking file: {e}")
-    return {"version": 1, "last_updated": None, "tracked": {}}
+    """Load recommendation tracking data from SQLite."""
+    tracked = migration_db.get_all_tracking()
+    return {"version": 1, "last_updated": None, "tracked": tracked}
 
 
 def save_tracking(tracking: Dict[str, Any]):
-    """Save recommendation tracking data to disk."""
-    tracking["last_updated"] = datetime.utcnow().isoformat() + 'Z'
-    try:
-        tmp_file = str(TRACKING_FILE) + '.tmp'
-        with open(tmp_file, 'w') as f:
-            json.dump(tracking, f, indent=2)
-        os.replace(tmp_file, str(TRACKING_FILE))
-    except IOError as e:
-        logger.error(f"Failed to save tracking file: {e}")
+    """Save recommendation tracking data to SQLite."""
+    tracked = tracking.get("tracked", {})
+    for key, data in tracked.items():
+        migration_db.upsert_tracking(key, data)
+    # Remove keys that are no longer in the tracked dict
+    existing_keys = set(migration_db.get_all_tracking().keys())
+    for key in existing_keys - set(tracked.keys()):
+        migration_db.delete_tracking(key)
 
 
 def make_tracking_key(vmid: int, source_node: str = "") -> str:
@@ -1042,28 +1027,23 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 72
     if cycle_window_hours <= 0:
         return False, ""
 
-    history = load_history()
-    migrations = history.get('migrations', [])
+    from proxbalance.db import get_connection
+    conn = get_connection()
+    cutoff = (datetime.utcnow() - timedelta(hours=cycle_window_hours)).isoformat()
 
-    now = datetime.utcnow()
-    cycle_threshold = now - timedelta(hours=cycle_window_hours)
+    rows = conn.execute(
+        "SELECT source_node, target_node FROM migration_history "
+        "WHERE vmid = ? AND timestamp >= ? AND dry_run = 0 "
+        "AND status IN ('success', 'completed') ORDER BY timestamp DESC",
+        (vmid, cutoff[:19]),
+    ).fetchall()
 
     visited_nodes = set()
-    for migration in reversed(migrations):
-        if migration.get('vmid') != vmid or migration.get('status') not in ('success', 'completed'):
-            continue
-        # Skip dry-run migrations — they didn't actually move anything
-        if migration.get('dry_run', False):
-            continue
-        try:
-            ts = migration.get('timestamp', '')
-            migration_time = datetime.fromisoformat(ts.replace('Z', '+00:00')).replace(tzinfo=None)
-            if migration_time < cycle_threshold:
-                break
-            visited_nodes.add(migration.get('source_node'))
-            visited_nodes.add(migration.get('target_node'))
-        except (ValueError, TypeError):
-            continue
+    for r in rows:
+        if r["source_node"]:
+            visited_nodes.add(r["source_node"])
+        if r["target_node"]:
+            visited_nodes.add(r["target_node"])
 
     if target_node in visited_nodes:
         return True, f"VM was recently on {target_node} (visited: {', '.join(sorted(visited_nodes))})"
@@ -1118,15 +1098,10 @@ def is_in_known_peak_period(source_node: str) -> Tuple[bool, str]:
     """
     try:
         from proxbalance.patterns import analyze_workload_patterns
-        from proxbalance.constants import SCORE_HISTORY_FILE
 
-        if not os.path.exists(SCORE_HISTORY_FILE):
-            return False, ""
+        score_history = get_score_history(limit=720)
 
-        with open(SCORE_HISTORY_FILE, 'r') as f:
-            score_history = json.load(f)
-
-        if not isinstance(score_history, list) or len(score_history) < 12:
+        if not score_history or len(score_history) < 12:
             return False, ""
 
         patterns = analyze_workload_patterns(score_history, source_node)
@@ -1247,6 +1222,9 @@ def main():
     try:
         lock_fd = acquire_lock()
         logger.info("Starting automated migration check")
+
+        # Initialize SQLite database
+        init_db()
 
         # Update last_run immediately at start of check (so UI knows we're running)
         try:
@@ -2074,21 +2052,21 @@ def main():
 
         # Always save last_run summary (even if exited early)
         try:
-            history = load_history()
-            run_state = history.setdefault('state', {})
-            run_state['last_run'] = last_run_summary
-            run_state['activity_log'] = activity_log[-50:]
+            migration_db.set_automation_state('last_run', last_run_summary)
+            migration_db.set_automation_state('activity_log', activity_log[-50:])
 
-            # Archive completed run to run_history (keep last 50 runs)
+            # Archive completed run to run_history
             if last_run_summary.get('status') in ['success', 'partial', 'failed', 'no_action']:
-                history.setdefault('run_history', []).insert(0, last_run_summary.copy())
-                # Keep only last N runs
-                history['run_history'] = history['run_history'][:MAX_RUN_HISTORY]
-                logger.info(f"Archived run to history (total: {len(history['run_history'])} runs)")
-
-            save_history(history)
+                migration_db.archive_run(last_run_summary.copy())
+                logger.info("Archived run to history")
         except Exception as e:
             logger.error(f"Failed to update last_run summary: {e}")
+
+        # Clean up database connections
+        try:
+            db_close_all()
+        except Exception:
+            pass
 
         if lock_fd:
             release_lock(lock_fd)

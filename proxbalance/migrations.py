@@ -464,35 +464,21 @@ def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: s
 # ---------------------------------------------------------------------------
 
 def _load_migration_history() -> Dict[str, Any]:
-    """Load migration history from disk.
+    """Load migration history from SQLite (backward-compat wrapper).
 
     Returns:
         dict with 'migrations' list (may be empty).
     """
-    history_file = os.path.join(BASE_PATH, "migration_history.json")
-    try:
-        if os.path.exists(history_file):
-            with open(history_file, "r") as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Error reading migration history: {e}", file=sys.stderr)
-    return {"migrations": [], "state": {}}
+    from proxbalance import migration_db
+    return {
+        "migrations": migration_db.get_all_migrations(limit=2000),
+        "state": migration_db.get_all_automation_state(),
+    }
 
 
 def _save_migration_history(history: Dict[str, Any]) -> bool:
-    """Persist migration history to disk.
-
-    Returns:
-        True on success, False on failure.
-    """
-    history_file = os.path.join(BASE_PATH, "migration_history.json")
-    try:
-        with open(history_file, "w") as f:
-            json.dump(history, f, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error saving migration history: {e}", file=sys.stderr)
-        return False
+    """No-op for backward compatibility — writes go through migration_db."""
+    return True
 
 
 def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -539,14 +525,18 @@ def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dic
     }
 
     # --- find the most recent successful migration for this vmid ----------
-    history = _load_migration_history()
-    migrations = history.get("migrations", [])
+    from proxbalance.db import get_connection
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM migration_history WHERE vmid = ? AND status IN ('success', 'completed') "
+        "ORDER BY timestamp DESC LIMIT 1",
+        (vmid,),
+    ).fetchone()
 
     last_migration = None
-    for migration in reversed(migrations):
-        if migration.get("vmid") == vmid and migration.get("status") in ("success", "completed"):
-            last_migration = migration
-            break
+    if row:
+        from proxbalance import migration_db
+        last_migration = migration_db._row_to_migration(dict(row))
 
     if last_migration is None:
         info["detail"] = f"No successful migration found for guest {vmid}"

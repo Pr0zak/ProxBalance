@@ -19,6 +19,7 @@ from proxbalance.config_manager import (
     BASE_PATH, CACHE_FILE, GIT_REPO_PATH, SESSIONS_DIR,
 )
 from proxbalance.cache import CacheManager
+from proxbalance.db import init_db
 from proxbalance.routes import register_blueprints
 from proxbalance.error_handlers import register_error_handlers
 
@@ -47,6 +48,9 @@ app.config['cache_manager'] = cache_manager
 # Ensure evacuation sessions directory exists
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR, exist_ok=True)
+
+# Initialize SQLite database (schema + one-time JSON migration)
+init_db()
 
 # ---------------------------------------------------------------------------
 # Sync systemd collector timer with configured interval on startup

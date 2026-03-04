@@ -38,6 +38,9 @@ GUEST_PROFILES_FILE = os.path.join(BASE_PATH, 'guest_profiles.json')
 NODE_METRICS_FILE = os.path.join(BASE_PATH, 'node_metrics_history.json')
 GUEST_METRICS_FILE = os.path.join(BASE_PATH, 'guest_metrics_history.json')
 
+# SQLite database
+DB_FILE = os.path.join(BASE_PATH, 'proxbalance.db')
+
 
 # ---------------------------------------------------------------------------
 # Disk / storage constants

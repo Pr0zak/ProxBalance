@@ -1,21 +1,19 @@
 """
-ProxBalance Forecasting Module
+ProxBalance Forecasting Module (SQLite backend)
 
 Provides trend projection using linear regression and generates proactive
 migration recommendations based on predicted threshold crossings. Also
 manages score history snapshots for time-series analysis.
 """
 
-import os
-import sys
 import json
-import tempfile
-import shutil
+import sys
 from typing import Any, Dict, List
 from datetime import datetime, timezone
 
 from proxbalance.constants import SCORE_HISTORY_FILE, SCORE_HISTORY_MAX_ENTRIES
 from proxbalance.scoring import calculate_node_health_score
+from proxbalance.db import get_connection
 
 
 def project_trend(values: List[float], timestamps: List[float], hours_ahead: float = 48) -> Dict[str, Any]:
@@ -119,7 +117,7 @@ def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data:
 
     Args:
         nodes: Current node data dict.
-        score_history_data: List of score history snapshot dicts (from score_history.json).
+        score_history_data: List of score history snapshot dicts.
         cpu_threshold: Current CPU threshold (e.g. 60.0).
         mem_threshold: Current memory threshold (e.g. 70.0).
 
@@ -270,7 +268,7 @@ def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data:
 
 def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, Any]], penalty_cfg: Dict[str, Any]) -> None:
     """
-    Save a point-in-time snapshot of per-node scores to score_history.json.
+    Save a point-in-time snapshot of per-node scores to the score_history table.
 
     Each snapshot records score, suitability, CPU%, and memory% for every
     online node, plus the cluster health and recommendation count.
@@ -303,57 +301,54 @@ def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, A
             avg_score = sum(online_scores) / len(online_scores)
             cluster_health = round(max(0, 100 - avg_score), 1)
 
-        snapshot = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "nodes": node_snapshots,
-            "cluster_health": cluster_health,
-            "recommendation_count": len(recommendations),
-        }
+        timestamp = datetime.now(timezone.utc).isoformat()
 
-        # Load existing history
-        history = []
-        if os.path.exists(SCORE_HISTORY_FILE):
-            try:
-                with open(SCORE_HISTORY_FILE, 'r') as f:
-                    history = json.load(f)
-                if not isinstance(history, list):
-                    print(f"Warning: score_history.json contained {type(history).__name__} instead of list, resetting", file=sys.stderr)
-                    history = []
-            except json.JSONDecodeError as e:
-                print(f"Warning: score_history.json is corrupted ({e}), backing up and resetting", file=sys.stderr)
-                # Preserve the corrupted file for potential recovery
-                corrupt_path = SCORE_HISTORY_FILE + '.corrupt'
-                try:
-                    shutil.copy2(SCORE_HISTORY_FILE, corrupt_path)
-                    print(f"  Corrupted file backed up to {corrupt_path}", file=sys.stderr)
-                except OSError:
-                    pass
-                history = []
-            except IOError as e:
-                print(f"Warning: Could not read score_history.json ({e}), starting fresh", file=sys.stderr)
-                history = []
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO score_history (timestamp, nodes_json, cluster_health, recommendation_count) "
+            "VALUES (?, ?, ?, ?)",
+            (timestamp, json.dumps(node_snapshots), cluster_health, len(recommendations)),
+        )
 
-        history.append(snapshot)
-
-        # Trim to max entries
-        if len(history) > SCORE_HISTORY_MAX_ENTRIES:
-            history = history[-SCORE_HISTORY_MAX_ENTRIES:]
-
-        # Atomic write: write to temp file then rename to prevent corruption
-        # on service restart / kill during write
-        dir_name = os.path.dirname(SCORE_HISTORY_FILE) or '.'
-        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix='.tmp', prefix='score_history_')
-        try:
-            with os.fdopen(fd, 'w') as f:
-                json.dump(history, f)
-            os.replace(tmp_path, SCORE_HISTORY_FILE)
-        except BaseException:
-            # Clean up temp file on any failure (including KeyboardInterrupt)
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        # Trim to max entries (keep most recent)
+        conn.execute(
+            "DELETE FROM score_history WHERE id NOT IN "
+            "(SELECT id FROM score_history ORDER BY id DESC LIMIT ?)",
+            (SCORE_HISTORY_MAX_ENTRIES,),
+        )
+        conn.commit()
 
     except Exception as e:
         print(f"Warning: Failed to save score snapshot: {e}", file=sys.stderr)
+
+
+def get_score_history(limit: int = 720) -> List[Dict[str, Any]]:
+    """Retrieve score history entries from the database.
+
+    Returns a list of dicts matching the legacy JSON format:
+    ``[{timestamp, nodes: {name: {score, suitability, cpu, mem}}, cluster_health, recommendation_count}]``
+
+    Args:
+        limit: Maximum number of entries to return (default 720).
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT timestamp, nodes_json, cluster_health, recommendation_count "
+        "FROM score_history ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+    # Reverse to chronological order (oldest first)
+    result = []
+    for r in reversed(rows):
+        try:
+            nodes = json.loads(r["nodes_json"]) if r["nodes_json"] else {}
+        except (json.JSONDecodeError, TypeError):
+            nodes = {}
+        result.append({
+            "timestamp": r["timestamp"],
+            "nodes": nodes,
+            "cluster_health": r["cluster_health"],
+            "recommendation_count": r["recommendation_count"],
+        })
+    return result

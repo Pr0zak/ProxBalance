@@ -29,12 +29,15 @@ from proxbalance.scoring import (
     calculate_target_node_score,
     calculate_migration_risk,
 )
+from proxbalance.db import init_db, close_all
 from proxbalance.forecasting import (
     project_trend,
     generate_forecast_recommendations,
     save_score_snapshot,
+    get_score_history,
     SCORE_HISTORY_FILE,
 )
+from proxbalance import migration_db
 from proxbalance.patterns import analyze_workload_patterns, get_node_seasonal_baseline
 from proxbalance.guest_profiles import (
     load_guest_profiles,

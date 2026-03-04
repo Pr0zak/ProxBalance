@@ -1013,16 +1013,9 @@ def simulate_penalty_config():
 @api_route
 def get_score_history():
     """Return historical score snapshots, optionally filtered by hours and node."""
-    score_history_file = os.path.join(BASE_PATH, 'score_history.json')
+    from proxbalance.forecasting import get_score_history as fetch_score_history
 
-    if not os.path.exists(score_history_file):
-        return jsonify({"success": True, "history": []})
-
-    with open(score_history_file, 'r') as f:
-        history = json.load(f)
-
-    if not isinstance(history, list):
-        history = []
+    history = fetch_score_history(limit=720)
 
     # Filter by time range
     hours = int(request.args.get("hours", 24))
@@ -1032,7 +1025,6 @@ def get_score_history():
     for entry in history:
         ts = entry.get("timestamp", "")
         try:
-            # Parse ISO format timestamp
             entry_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             if entry_dt.timestamp() < cutoff:
                 continue
@@ -1171,23 +1163,16 @@ def get_workload_patterns():
         hours = request.args.get("hours", 168, type=int)
         target_node = request.args.get("node")
 
-        # Load score history
-        score_history_file = os.path.join(BASE_PATH, "score_history.json")
-        if not os.path.exists(score_history_file):
+        # Load score history from SQLite
+        from proxbalance.forecasting import get_score_history as fetch_sh
+        score_history = fetch_sh(limit=720)
+
+        if not score_history:
             return jsonify({
                 "success": False,
                 "error": "No score history available. History is built over time as recommendations run.",
                 "patterns": [],
             }), 404
-
-        try:
-            with open(score_history_file, "r") as f:
-                score_history = json.load(f)
-        except Exception as read_err:
-            return jsonify({"success": False, "error": f"Failed to read score history: {read_err}"}), 500
-
-        if not isinstance(score_history, list):
-            return jsonify({"success": False, "error": "Invalid score history format"}), 500
 
         # Filter by time range
         cutoff = None
