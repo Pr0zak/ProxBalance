@@ -1,5 +1,7 @@
 # Migration Recommendation & Scoring Improvements Plan
 
+> **Note**: This plan references JSON file storage (`score_history.json`, `migration_history.json`, etc.). All of these have been migrated to SQLite (`proxbalance.db`). The features and logic described here remain accurate; only the storage backend has changed.
+
 This document proposes improvements to ProxBalance's recommendation engine, scoring algorithm, and UI to make the system more transparent, intuitive, and user-friendly for Proxmox administrators.
 
 ---

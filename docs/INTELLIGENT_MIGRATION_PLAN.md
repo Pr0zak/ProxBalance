@@ -1,5 +1,7 @@
 # Intelligent Migration System
 
+> **Note**: This plan references JSON file storage (`guest_profiles.json`, `score_history.json`, `migration_outcomes.json`, etc.). All of these have been migrated to SQLite (`proxbalance.db`). The features and logic described here remain accurate; only the storage backend has changed.
+
 ProxBalance's intelligent migration system adds learning capabilities to the automigrate engine. Instead of treating each migration decision as independent, it tracks patterns, outcomes, and trends to make progressively better decisions over time.
 
 All features are opt-in with individual toggles under `intelligent_migrations` in `config.json`, defaulting to disabled. This ensures zero behavioral change for existing deployments until administrators explicitly enable each capability.

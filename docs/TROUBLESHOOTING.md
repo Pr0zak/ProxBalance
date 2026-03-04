@@ -299,6 +299,48 @@ pvesh get /nodes/<node>/qemu/<vmid>/config | grep tags
 
 ---
 
+## Database Issues
+
+### Database locked errors
+
+SQLite uses WAL mode with a 5-second busy timeout. If you see "database is locked" errors:
+
+```bash
+pct exec <ctid> -- ls -lh /opt/proxmox-balance-manager/proxbalance.db*
+pct exec <ctid> -- systemctl restart proxmox-balance
+```
+
+### Database corrupted or missing
+
+The database is automatically created on first startup. To force re-creation:
+
+```bash
+pct exec <ctid> -- bash -c 'cd /opt/proxmox-balance-manager && mv proxbalance.db proxbalance.db.bak 2>/dev/null; systemctl restart proxmox-balance'
+```
+
+If legacy `.json.migrated` files exist, rename them back to `.json` before restarting to re-import:
+
+```bash
+pct exec <ctid> -- bash -c 'cd /opt/proxmox-balance-manager && for f in *.json.migrated; do mv "$f" "${f%.migrated}"; done'
+pct exec <ctid> -- systemctl restart proxmox-balance
+```
+
+### Check database health
+
+```bash
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -c "
+import sqlite3
+db = sqlite3.connect('/opt/proxmox-balance-manager/proxbalance.db')
+print('Tables:', [r[0] for r in db.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()])
+for t in ['node_metrics', 'guest_metrics', 'score_history', 'migration_history']:
+    c = db.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+    print(f'  {t}: {c} rows')
+db.close()
+"
+```
+
+---
+
 ## Performance Issues
 
 ### High CPU usage

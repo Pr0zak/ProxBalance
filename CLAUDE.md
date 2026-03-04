@@ -15,7 +15,7 @@ ProxBalance is an intelligent cluster monitoring and VM/CT migration management 
 | Build Tool | esbuild (JSX bundling) |
 | Reverse Proxy | Nginx |
 | Process Manager | Systemd (services + timers) |
-| Data Storage | JSON files (no database) |
+| Data Storage | SQLite (WAL mode) + JSON config files |
 | Proxmox API | proxmoxer library |
 | AI Providers | OpenAI, Anthropic Claude, Ollama |
 | Notifications | Pushover, Email/SMTP, Telegram, Discord, Slack, Webhooks |
@@ -24,39 +24,23 @@ ProxBalance is an intelligent cluster monitoring and VM/CT migration management 
 
 ```
 ProxBalance/
-├── app.py                       # Flask entry point (60 lines, modular Blueprint architecture)
-├── collector_api.py             # Proxmox data collection service (960 lines)
-├── ai_provider.py               # AI provider abstraction (609 lines, OpenAI/Anthropic/Ollama)
-├── notifications.py             # Multi-provider notification system (804 lines)
-├── automigrate.py               # Automated migration orchestrator (1,462 lines)
-├── update_manager.py            # Update checking and branch management (1,062 lines)
-├── update_timer.py              # Update timer helper (60 lines)
-├── generate_recommendations.py  # Background recommendation generation (264 lines)
-├── set_cluster_preset.py        # Cluster size preset configuration (108 lines)
-│
-├── proxbalance/                 # Core backend package (modular architecture)
-│   ├── __init__.py              # Package exports (48 lines)
-│   ├── config_manager.py        # Config loading, Proxmox client, path constants (328 lines)
-│   ├── cache.py                 # In-memory cache with 60s TTL (53 lines)
-│   ├── scoring.py               # Penalty-based scoring algorithm (1,147 lines)
-│   ├── recommendations.py       # AI-powered recommendation engine (2,165 lines)
-│   ├── migrations.py            # Migration execution logic (860 lines)
-│   ├── evacuation.py            # Node evacuation planning (975 lines)
 ├── app.py                       # Flask entry point (~63 lines, modular Blueprint architecture)
 ├── collector_api.py             # Proxmox data collection service (834 lines)
 ├── ai_provider.py               # AI provider abstraction (OpenAI/Anthropic/Ollama)
 ├── notifications.py             # Multi-provider notification system
-├── automigrate.py               # Automated migration orchestrator (1,426 lines)
+├── automigrate.py               # Automated migration orchestrator (~1,500 lines)
 ├── update_manager.py            # Update checking and branch management
 ├── update_timer.py              # Update timer helper
 ├── generate_recommendations.py  # Background recommendation generation
 ├── set_cluster_preset.py        # Cluster size preset configuration
 │
-├── proxbalance/                 # Core backend package (16 domain modules)
+├── proxbalance/                 # Core backend package (19 domain modules)
 │   ├── __init__.py              # Package exports
 │   ├── constants.py             # Shared path constants, file paths, tuning values
 │   ├── config_manager.py        # Config loading/saving, Proxmox client (type-hinted)
 │   ├── cache.py                 # In-memory cache with 60s TTL
+│   ├── db.py                    # SQLite connection management, schema DDL, JSON migration
+│   ├── migration_db.py          # Migration history, automation state, recommendation tracking
 │   ├── error_handlers.py        # Centralized Flask error handling, @api_route decorator
 │   ├── scoring.py               # Penalty-based scoring algorithm (~900 lines)
 │   ├── recommendations.py       # Recommendation engine (~838 lines)
@@ -65,38 +49,18 @@ ProxBalance/
 │   ├── distribution.py          # Guest distribution balancing across nodes
 │   ├── migrations.py            # Migration execution logic (~643 lines)
 │   ├── evacuation.py            # Node evacuation planning and sessions (~821 lines)
-│   ├── forecasting.py           # Trend projection, forecast recommendations
+│   ├── forecasting.py           # Trend projection, forecast recommendations, score history
+│   ├── metrics_store.py         # Node/guest metrics time-series storage (SQLite)
+│   ├── guest_profiles.py        # Guest behavior profiling and classification (SQLite)
 │   ├── patterns.py              # Workload pattern detection
-│   ├── outcomes.py              # Migration outcome tracking
+│   ├── outcomes.py              # Migration outcome tracking (SQLite)
+│   ├── trend_analysis.py        # Node/guest trend analysis
 │   ├── execution_planner.py     # Topological execution ordering
 │   ├── reporting.py             # Summaries, capacity advisories
+│   ├── settings_mapper.py       # Simplified settings ↔ penalty config mapping
 │   │
 │   └── routes/                  # Flask Blueprints (all API endpoints, use @api_route)
 │       ├── __init__.py          # register_blueprints() — registers all 10 blueprints
-│       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary, etc. (181 lines)
-│       ├── automation.py        # /api/automigrate/* endpoints (835 lines)
-│       ├── config.py            # /api/config endpoints (586 lines)
-│       ├── evacuation.py        # /api/nodes/evacuate endpoints (511 lines)
-│       ├── guests.py            # /api/guests/* endpoints (674 lines)
-│       ├── migrations.py        # /api/migrate endpoint (273 lines)
-│       ├── notifications.py     # /api/notifications/test endpoint (57 lines)
-│       ├── penalty.py           # /api/penalty-config endpoint (221 lines)
-│       ├── recommendations.py   # /api/recommendations endpoints (1,435 lines)
-│       └── system.py            # /api/update/*, /api/health, etc. (871 lines)
-│
-├── src/                         # Frontend source (React JSX)
-│   ├── index.jsx                # Entry point for esbuild bundling (2,547 lines)
-│   ├── app.jsx                  # Main React SPA component (~12,300 lines)
-│   ├── input.css                # Tailwind CSS directives and custom animations
-│   ├── components/
-│   │   ├── DashboardPage.jsx    # Dashboard UI with charts (7,005 lines)
-│   │   ├── AutomationPage.jsx   # Automation configuration (2,634 lines)
-│   │   ├── SettingsPage.jsx     # Settings panel (2,240 lines)
-│   │   ├── IconLegend.jsx       # Icon reference panel (173 lines)
-│   │   ├── Icons.jsx            # SVG icon components (78 lines)
-│   │   └── Skeletons.jsx        # Loading skeleton components (31 lines)
-│   ├── api/
-│   │   └── client.js            # API client with error handling (851 lines)
 │       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary, etc.
 │       ├── automation.py        # /api/automigrate/* endpoints
 │       ├── config.py            # /api/config endpoints
@@ -172,11 +136,7 @@ ProxBalance/
 │   ├── TROUBLESHOOTING.md       # Common issues and solutions
 │   ├── CONTRIBUTING.md          # Development guidelines
 │   ├── DOCKER_DEV.md            # Docker development setup
-│   ├── MODULAR_REFACTORING_PLAN.md     # Architecture refactoring plan
-│   ├── MOBILE_REDESIGN_PLAN.md         # Mobile UI redesign planning
-│   ├── RECOMMENDATION_IMPROVEMENTS_PLAN.md  # Recommendation engine improvements
-│   ├── TESTING_UPDATE_COMPATIBILITY.md  # Update testing procedures
-│   └── UPDATE_FROM_OLD_VERSION.md       # Migration guide from old versions
+│   └── UPDATE_FROM_OLD_VERSION.md  # Migration guide from old versions
 │
 ├── install.sh                   # Main LXC container installer (~2,200 lines)
 ├── upgrade-to-v2.sh             # V2 upgrade path
@@ -196,15 +156,12 @@ ProxBalance/
 
 ### Three-Tier Modular Design
 
-1. **Data Collection** (`collector_api.py`) — Gathers metrics from the Proxmox API using proxmoxer. Runs on a systemd timer (default 120 min). Supports parallel collection with configurable worker count. Writes to `cluster_cache.json`.
+1. **Data Collection** (`collector_api.py`) — Gathers metrics from the Proxmox API using proxmoxer. Runs on a systemd timer (default 120 min). Supports parallel collection with configurable worker count. Writes to `cluster_cache.json` (current snapshot) and persists time-series metrics to SQLite.
 
-2. **Application Logic** (`app.py` + `proxbalance/`) — Flask REST API using a **Blueprint architecture**. The entry point (`app.py`, 60 lines) creates the Flask app and registers 10 route blueprints. Core logic is in domain modules:
-   - `proxbalance/scoring.py` — Penalty-based node health scoring (1,147 lines)
-   - `proxbalance/recommendations.py` — AI-powered migration recommendations (2,165 lines)
-   - `proxbalance/migrations.py` — Migration execution and tracking (860 lines)
-   - `proxbalance/evacuation.py` — Node evacuation planning and sessions (975 lines)
-   - `proxbalance/config_manager.py` — Configuration, path constants, Proxmox client (328 lines)
-2. **Application Logic** (`app.py` + `proxbalance/`) — Flask REST API using a **Blueprint architecture**. The entry point (`app.py`, ~63 lines) creates the Flask app, registers error handlers, and registers 10 route blueprints. Core logic is in 16 domain modules:
+2. **Application Logic** (`app.py` + `proxbalance/`) — Flask REST API using a **Blueprint architecture**. The entry point (`app.py`, ~63 lines) creates the Flask app, initializes the SQLite database, registers error handlers, and registers 10 route blueprints. Core logic is in 19 domain modules:
+   - `proxbalance/db.py` — SQLite connection management, schema DDL, one-time JSON migration
+   - `proxbalance/migration_db.py` — Migration history, automation state, recommendation tracking
+   - `proxbalance/metrics_store.py` — Node/guest metrics time-series (SQLite INSERTs)
    - `proxbalance/scoring.py` — Penalty-based node health scoring
    - `proxbalance/recommendations.py` — Migration recommendation engine
    - `proxbalance/recommendation_analysis.py` — Confidence scoring, structured reasons, conflict detection
@@ -212,13 +169,15 @@ ProxBalance/
    - `proxbalance/distribution.py` — Guest distribution balancing across nodes
    - `proxbalance/migrations.py` — Migration execution
    - `proxbalance/evacuation.py` — Node evacuation planning and sessions
-   - `proxbalance/forecasting.py` — Trend projection, forecast recommendations
+   - `proxbalance/forecasting.py` — Trend projection, forecast recommendations, score history
+   - `proxbalance/guest_profiles.py` — Guest behavior profiling and classification
    - `proxbalance/patterns.py` — Workload pattern detection
    - `proxbalance/outcomes.py` — Migration outcome tracking
+   - `proxbalance/trend_analysis.py` — Node/guest trend analysis
    - `proxbalance/execution_planner.py` — Topological execution ordering
    - `proxbalance/reporting.py` — Summaries, capacity advisories
    - `proxbalance/config_manager.py` — Configuration, path constants, Proxmox client
-   - `proxbalance/constants.py` — Shared path constants, file paths
+   - `proxbalance/constants.py` — Shared path constants, file paths, SQLite pragmas
    - `proxbalance/cache.py` — In-memory TTL cache (60-second default)
    - `proxbalance/error_handlers.py` — Centralized error handling, `@api_route` decorator
 
@@ -232,10 +191,23 @@ ProxBalance/
 
 ### Data Persistence
 
-JSON files on disk — no database:
-- `cluster_cache.json` — Collected Proxmox metrics
+**SQLite database** (`proxbalance.db`, WAL mode):
+- `node_metrics` / `guest_metrics` — Time-series metrics from each collection cycle
+- `guest_profiles` — Guest behavior profiling samples
+- `score_history` — Node health score snapshots
+- `migration_outcomes` — Pre/post migration metric snapshots
+- `migration_history` — Migration audit log
+- `automation_state` — Key-value store for automigrate state
+- `automation_run_history` — Automation run summaries
+- `recommendation_tracking` — Per-guest recommendation state
+
+**JSON files** (kept as JSON):
+- `cluster_cache.json` — Latest collected Proxmox metrics snapshot (read by all routes)
 - `config.json` — Application configuration (gitignored, contains secrets)
-- `migration_history.json` — Migration audit log
+- `recommendations_cache.json` — Cached recommendation results
+- `evacuation_sessions/*.json` — Active evacuation session state
+
+On first startup, `init_db()` automatically migrates any legacy JSON data files into SQLite and renames them to `.json.migrated`.
 
 ## Development Setup
 
@@ -273,38 +245,20 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 ## Key Files to Know
 
 ### Backend
-- **`app.py`** — Thin entry point (60 lines). Creates Flask app, sets up shared state (cache, update manager), and registers blueprints. Do not add route handlers here.
-- **`proxbalance/routes/`** — All 48+ API endpoints split across 10 Blueprint modules. Find endpoints by their URL prefix (e.g., `/api/config` → `routes/config.py`).
-- **`proxbalance/scoring.py`** — The penalty-based scoring algorithm (1,147 lines). Central to cluster analysis. Contains 30+ configurable penalty weights in `DEFAULT_PENALTY_CONFIG`.
-- **`proxbalance/recommendations.py`** — Guest selection, storage compatibility checks, recommendation generation logic (2,165 lines). The largest domain module.
-- **`proxbalance/config_manager.py`** — Path constants (`BASE_PATH`, `CACHE_FILE`, `CONFIG_FILE`), config loading/saving, Proxmox client creation. Imported everywhere.
-- **`proxbalance/evacuation.py`** — Evacuation planning with session management (975 lines).
-- **`proxbalance/migrations.py`** — Migration execution, rollback info capture, outcome recording (860 lines).
-- **`collector_api.py`** — Proxmox API integration (960 lines). Authentication, data collection for nodes/guests/RRD metrics, parallel collection.
-- **`ai_provider.py`** — `AIProviderFactory` for creating provider instances (609 lines). Uses ABC pattern. Each provider (OpenAI, Anthropic, Ollama) is a class with a common interface. Includes shared prompt building and metric summarization.
-- **`automigrate.py`** — Automated migration orchestrator (1,462 lines). Runs as a standalone service via systemd timer.
-- **`notifications.py`** — Multi-provider notifications (804 lines): Pushover, Email, Telegram, Discord, Slack, Webhooks.
-- **`update_manager.py`** — Update checking, branch management, version comparison (1,062 lines).
-
-### Frontend
-- **`src/app.jsx`** — The main React SPA (~12,300 lines). Contains most UI components, state management, and routing logic.
-- **`src/components/DashboardPage.jsx`** — Dashboard with cluster charts and metrics (7,005 lines).
-- **`src/components/AutomationPage.jsx`** — Automation configuration UI (2,634 lines).
-- **`src/components/SettingsPage.jsx`** — Settings and configuration panel (2,240 lines).
-- **`src/components/IconLegend.jsx`** — Icon reference panel (173 lines).
-- **`src/api/client.js`** — Centralized API client for all backend calls (851 lines). Async functions returning data or `{ error: true, message: "..." }` objects.
-- **`src/index.jsx`** — esbuild entry point that bootstraps the React app (2,547 lines).
-- **`app.py`** — Thin entry point (~63 lines). Creates Flask app, registers error handlers, sets up shared state (cache, update manager), and registers blueprints. Do not add route handlers here.
+- **`app.py`** — Thin entry point (~63 lines). Creates Flask app, calls `init_db()`, registers error handlers, sets up shared state (cache, update manager), and registers blueprints. Do not add route handlers here.
+- **`proxbalance/db.py`** — SQLite connection management (thread-local, WAL mode), schema DDL for 10 tables, one-time JSON→SQLite migration. All data modules depend on this.
+- **`proxbalance/migration_db.py`** — Shared data layer for migration history, automation state (key-value), run history, and recommendation tracking. Used by `automigrate.py` and `proxbalance/migrations.py`.
+- **`proxbalance/metrics_store.py`** — Time-series storage for node/guest metrics. Single-row SQLite INSERTs instead of full-file JSON rewrites. Supports tiered compression (raw → hourly → 6-hour aggregates).
 - **`proxbalance/routes/`** — All 48+ API endpoints split across 10 Blueprint modules. Routes use `@api_route` decorator for centralized error handling. Find endpoints by their URL prefix (e.g., `/api/config` → `routes/config.py`).
 - **`proxbalance/scoring.py`** — The penalty-based scoring algorithm. Central to cluster analysis.
 - **`proxbalance/config_manager.py`** — Config loading/saving, Proxmox client creation. Re-exports path constants from `constants.py`. Imported everywhere.
-- **`proxbalance/constants.py`** — Shared path constants (`BASE_PATH`, `CACHE_FILE`, `CONFIG_FILE`, etc.) and tuning values.
+- **`proxbalance/constants.py`** — Shared path constants (`BASE_PATH`, `CACHE_FILE`, `CONFIG_FILE`, `DB_FILE`, etc.) and tuning values.
 - **`proxbalance/error_handlers.py`** — `api_success()`/`api_error()` response helpers, `@api_route` decorator, Flask-level 404/405/500 handlers.
 - **`proxbalance/recommendations.py`** — Guest selection, recommendation generation. Delegates to `storage.py`, `distribution.py`, `recommendation_analysis.py`.
 - **`proxbalance/evacuation.py`** — Evacuation planning with session management (~821 lines). Uses `storage.py` for storage verification.
-- **`collector_api.py`** — Proxmox API integration. Authentication, data collection for nodes/guests/RRD metrics, parallel collection.
+- **`collector_api.py`** — Proxmox API integration. Authentication, data collection for nodes/guests/RRD metrics, parallel collection. Calls `init_db()` on startup.
 - **`ai_provider.py`** — `AIProviderFactory` for creating provider instances. Each provider (OpenAI, Anthropic, Ollama) is a class with a common interface.
-- **`automigrate.py`** — Automated migration orchestrator. Runs as a standalone service via systemd timer.
+- **`automigrate.py`** — Automated migration orchestrator. Runs as a standalone service via systemd timer. Uses `migration_db` for all persistence.
 - **`notifications.py`** — Multi-provider notifications (Pushover, Email, Telegram, Discord, Slack, Webhooks).
 
 ### Frontend
@@ -325,16 +279,10 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 - **Style**: PEP 8 (format with `black`, lint with `flake8`). No linting config files committed; conventions enforced through code review.
 - **Naming**: `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants
 - **Architecture**: Domain logic in `proxbalance/*.py`, routes in `proxbalance/routes/*.py` as Flask Blueprints. Shared state via `current_app.config`.
-- **Patterns**:
-  - Class-based abstractions with ABC for providers (AI, notifications)
-  - Try-except blocks around all Proxmox API calls and file I/O
-  - Graceful degradation: return `{"error": True, "message": "..."}` dicts instead of raising exceptions
-  - Type hints on function parameters and return values
-  - Section separators with dashed comment headers for long files
+- **Patterns**: Class-based abstractions for providers (AI, notifications). Route handlers use `@api_route` decorator for automatic error handling. Inner try-except blocks for specific error cases (400, 404). Graceful degradation when services are unavailable.
+- **Database**: All SQLite access goes through `proxbalance/db.py` for connections. Data modules (`metrics_store`, `guest_profiles`, `forecasting`, `outcomes`, `migration_db`) each own their tables. Thread-local connections with WAL mode.
 - **Imports**: Standard library first, then third-party, then local. Domain modules export through `proxbalance/__init__.py`. Route blueprints are registered in `proxbalance/routes/__init__.py`. Lazy imports inside `register_blueprints()` to avoid circular dependencies.
 - **Docstrings**: Module-level triple-quoted docstrings. Function docstrings with Args/Returns/Raises sections.
-- **Patterns**: Class-based abstractions for providers (AI, notifications). Route handlers use `@api_route` decorator for automatic error handling. Inner try-except blocks for specific error cases (400, 404). Graceful degradation when services are unavailable.
-- **Imports**: Domain modules export through `proxbalance/__init__.py`. Route blueprints are registered in `proxbalance/routes/__init__.py`.
 
 ### JavaScript/JSX (Frontend)
 - **Style**: 2-space indentation, semicolons
@@ -358,7 +306,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-Common scopes: `api`, `ui`, `collector`, `affinity`, `update`, `notifications`, `dashboard`, `automation`, `tags`, `mobile`
+Common scopes: `api`, `ui`, `collector`, `affinity`, `update`, `notifications`, `dashboard`, `automation`, `tags`, `mobile`, `db`
 
 Examples from this repo:
 ```
@@ -366,10 +314,9 @@ feat(api): add webhook support for migration events
 fix(collector): handle missing SSH keys gracefully
 feat(affinity): add VM affinity rules to keep groups together on same host
 refactor(update): refactor update system into dedicated update_manager module
+feat(db): migrate JSON storage to SQLite for 99.99% write reduction
 fix(notifications): add per-migration action alerts
 feat(ui): add icons to buttons and create icon reference panel
-feat(notifications): add success/failure filtering and new event types
-fix(dashboard): prevent bottom nav from overlapping cluster map modals on mobile
 ```
 
 ## Configuration
@@ -394,7 +341,7 @@ ProxBalance uses a **penalty-based scoring system** rather than hard rules:
 - Suitability ratings normalized to 0-100% (lower is better/healthier)
 - All penalty weights configurable through the Settings UI via `DEFAULT_PENALTY_CONFIG`
 - Penalty categories: current load, sustained load (7-day), IOWait, trends, spikes, predicted post-migration
-- Implementation: `proxbalance/scoring.py` (1,147 lines)
+- Implementation: `proxbalance/scoring.py`
 - Detailed documentation: `docs/SCORING_ALGORITHM.md`
 
 ## AI Provider Architecture
@@ -448,22 +395,18 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 ## Important Notes for AI Assistants
 
 - **`config.json` contains secrets** — Never commit it. Use `config.example.json` for reference.
-- **Modular architecture** — `app.py` is a thin 60-line entry point. Route handlers are in `proxbalance/routes/`. Core logic is in `proxbalance/` domain modules. Do not add large blocks of code back into `app.py`.
-- **`src/app.jsx` is still very large** (~12,300 lines) — Be precise when making edits. Search for specific component names or use line ranges.
-- **`proxbalance/recommendations.py`** is the largest domain module (2,165 lines) — contains guest selection, storage compatibility, and recommendation generation logic. Be careful with edits.
-- **Modular architecture** — `app.py` is a thin ~63-line entry point. Route handlers are in `proxbalance/routes/` (use `@api_route` decorator). Core logic is in `proxbalance/` domain modules (16 modules). Do not add large blocks of code back into `app.py`.
+- **Modular architecture** — `app.py` is a thin ~63-line entry point. Route handlers are in `proxbalance/routes/` (use `@api_route` decorator). Core logic is in `proxbalance/` domain modules (19 modules). Do not add large blocks of code back into `app.py`.
+- **SQLite storage** — All time-series data, metrics, profiles, outcomes, and migration history live in `proxbalance.db` (WAL mode). Only `cluster_cache.json`, `config.json`, `recommendations_cache.json`, and evacuation sessions remain as JSON. The database is initialized via `init_db()` in `app.py` and `collector_api.py` on startup.
 - **`src/app.jsx` was deleted** — The frontend is now fully componentized. `src/index.jsx` (~658 lines) is the root composition layer. UI is split into 24 sub-components across `dashboard/`, `settings/`, and `automation/` directories. State lives in 11 custom hooks in `src/hooks/`.
 - **Hook dependency pattern** — Hooks accept a `deps` object for cross-hook references (e.g., `useMigrations(API_BASE, { setData, setError })`). The root component wires hooks together and creates wrapper functions for cross-hook calls.
 - **Frontend build** — Uses esbuild, not Babel. Run `./build.sh` to rebuild. Output goes to `assets/js/app.js`.
 - **No package.json committed** — It's gitignored. Use `npx esbuild` or install locally.
-- **JSON-file storage** — No database. All state lives in JSON files (`cluster_cache.json`, `config.json`, `migration_history.json`).
 - **Systemd timers** — Collection, recommendations, and auto-migration are separate systemd services, not in-process cron jobs.
 - **Blueprint routing** — All routes use full paths (e.g., `/api/config`), not url_prefix. Find a route by searching for `@*_bp.route('/api/...')` in `proxbalance/routes/`.
 - **Shared state** — Blueprints access shared objects (cache_manager, update_manager) via `current_app.config['key']`.
 - **Error handling pattern** — Both backend and frontend return `{ error: true, message: "..." }` objects rather than throwing exceptions. Follow this pattern.
-- **Branch workflow** — Development happens on `DEV`, merged to `master` for releases.
+- **Branch workflow** — Development happens on `DEV`, merged to `main` for releases.
 - **No CI/CD** — No GitHub Actions or other CI configuration. No linting config files committed. Use `black` and `flake8` manually.
 - **Line ending enforcement** — `.gitattributes` enforces LF line endings for all text files.
 - **Backward-compatible re-exports** — When modules are extracted, original modules re-export the moved functions to avoid breaking existing imports (e.g., `config_manager.py` re-exports from `constants.py`).
-- **All domain modules are type-hinted** — All 10 core domain modules have 100% function signature type hints using `typing` module.
-- **Branch workflow** — Development happens on `dev`, merged to `main` for releases.
+- **All domain modules are type-hinted** — All core domain modules have 100% function signature type hints using `typing` module.
