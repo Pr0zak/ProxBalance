@@ -34,16 +34,21 @@ function WindowTypeButtons({ currentType, onSelect }) {
   );
 }
 
-export default function TimeWindowsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, setError }) {
+export default function TimeWindowsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, setError, embedded }) {
   const [editingWindowIndex, setEditingWindowIndex] = useState(null);
   const [showTimeWindowForm, setShowTimeWindowForm] = useState(false);
   const [newWindowData, setNewWindowData] = useState({ name: '', type: 'migration', days: [], start_time: '00:00', end_time: '00:00' });
   const [confirmRemoveWindow, setConfirmRemoveWindow] = useState(null);
 
+  const outerClass = embedded ? '' : GLASS_CARD + ' overflow-hidden';
+
   return (<>
         {/* Time Windows (Unified) */}
-        <div className={GLASS_CARD + ' overflow-hidden'}>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Time Windows</h2>
+        <div className={outerClass}>
+          {embedded
+            ? <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Time Windows</h3>
+            : <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Time Windows</h2>
+          }
 
           {/* Timezone Selector */}
           <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">

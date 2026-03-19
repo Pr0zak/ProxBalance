@@ -35,6 +35,7 @@ export default function PenaltyScoringSection({
   saveMigrationSettingsAction, resetMigrationSettingsAction,
   fetchMigrationSettingsAction,
   embedded,
+  hideSensitivity,
 }) {
   const [showExpertMode, setShowExpertMode] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
@@ -123,7 +124,8 @@ export default function PenaltyScoringSection({
             Configure how ProxBalance analyzes performance trends and decides when to recommend migrations.
           </p>
 
-          {/* Migration Sensitivity */}
+          {/* Migration Sensitivity (hidden when rendered in QuickSetup) */}
+          {!hideSensitivity && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Migration Sensitivity</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
@@ -151,6 +153,7 @@ export default function PenaltyScoringSection({
               })}
             </div>
           </div>
+          )}
 
           {/* Trend Weight */}
           <div>

@@ -1,6 +1,6 @@
 import {
-  ArrowRight, Bell, CheckCircle, Clock, Download, Info,
-  RefreshCw, Settings, XCircle
+  ArrowRight, CheckCircle, Clock, Download, Info,
+  RefreshCw, XCircle
 } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
 
@@ -359,28 +359,5 @@ export default function MigrationLogsSection({
           )}
         </div>
 
-        {/* Notification Settings - Link to Settings page */}
-        <div className={GLASS_CARD + ' overflow-hidden'}>
-          <div className="flex items-center justify-between flex-wrap gap-y-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <Bell size={ICON.section} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notification Settings</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {automationConfig.notifications?.enabled
-                    ? `Enabled - ${Object.entries(automationConfig.notifications?.providers || {}).filter(([,v]) => v?.enabled).length} provider(s) active`
-                    : 'Configure notification providers for migration events'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setCurrentPage('settings')}
-              className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Settings size={16} />
-              Open Settings
-            </button>
-          </div>
-        </div>
   </>);
 }
