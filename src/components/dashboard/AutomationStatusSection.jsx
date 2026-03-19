@@ -35,11 +35,10 @@ export default function AutomationStatusSection({
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
-                  automationStatus.enabled
-                    ? 'bg-gradient-to-br from-green-600 to-emerald-600'
-                    : 'bg-gradient-to-br from-gray-500 to-gray-600'
-                }`}>
+                <div className={automationStatus.enabled
+                    ? iconBadge('green', 'emerald')
+                    : iconBadge('gray')
+                }>
                   <Clock size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">
