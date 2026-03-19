@@ -113,23 +113,17 @@ if [ -d /opt/proxmox-balance-manager/systemd ]; then
     cp /opt/proxmox-balance-manager/systemd/*.timer /etc/systemd/system/ 2>&1
     systemctl daemon-reload 2>&1
 
-    # Enable and start automigrate timer if it exists and isn't already enabled
-    if [ -f /etc/systemd/system/proxmox-balance-automigrate.timer ]; then
-        if ! systemctl is-enabled proxmox-balance-automigrate.timer >/dev/null 2>&1; then
-            echo "  ✓ Enabling automigrate timer..."
-            systemctl enable proxmox-balance-automigrate.timer 2>&1
-            systemctl start proxmox-balance-automigrate.timer 2>&1
+    # Enable new timers and restart existing ones so they re-anchor after daemon-reload
+    for timer in proxmox-balance-automigrate proxmox-balance-recommendations; do
+        if [ -f "/etc/systemd/system/${timer}.timer" ]; then
+            if ! systemctl is-enabled "${timer}.timer" >/dev/null 2>&1; then
+                echo "  ✓ Enabling ${timer} timer..."
+                systemctl enable "${timer}.timer" 2>&1
+            fi
+            echo "  ✓ Restarting ${timer} timer..."
+            systemctl restart "${timer}.timer" 2>&1
         fi
-    fi
-
-    # Enable and start recommendations timer if it exists and isn't already enabled
-    if [ -f /etc/systemd/system/proxmox-balance-recommendations.timer ]; then
-        if ! systemctl is-enabled proxmox-balance-recommendations.timer >/dev/null 2>&1; then
-            echo "  ✓ Enabling recommendations timer..."
-            systemctl enable proxmox-balance-recommendations.timer 2>&1
-            systemctl start proxmox-balance-recommendations.timer 2>&1
-        fi
-    fi
+    done
 
     echo "✓ Systemd services updated"
 fi

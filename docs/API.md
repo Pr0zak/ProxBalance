@@ -87,10 +87,6 @@ curl -X POST http://<host>/api/recommendations \
 
 Returns cached recommendations from the last generation.
 
-### GET /api/recommendations/threshold-suggestions
-
-Returns suggested threshold values based on current cluster state.
-
 ### POST /api/node-scores
 
 Returns penalty scores for all nodes, used for evaluating migration targets.
@@ -160,18 +156,6 @@ Returns historical node score snapshots for trend tracking.
 curl "http://<host>/api/score-history?hours=48&node=pve1"
 ```
 
-### GET /api/recommendations/export
-
-Exports recommendations in CSV or JSON format.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `format` | string | json | `csv` or `json` |
-
-```bash
-curl "http://<host>/api/recommendations/export?format=csv" -o recommendations.csv
-```
-
 ### POST /api/recommendations/feedback
 
 Submits feedback on a recommendation (helpful/not helpful).
@@ -185,20 +169,6 @@ curl -X POST http://<host>/api/recommendations/feedback \
 ### GET /api/recommendations/feedback
 
 Returns recommendation feedback summary with stats and recent entries.
-
-### GET /api/automigrate/history/export
-
-Exports migration history in CSV or JSON format with optional date range filtering.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `format` | string | json | `csv` or `json` |
-| `from` | ISO 8601 | (none) | Start date filter |
-| `to` | ISO 8601 | (none) | End date filter |
-
-```bash
-curl "http://<host>/api/automigrate/history/export?format=csv&from=2026-02-01T00:00:00Z" -o history.csv
-```
 
 ---
 

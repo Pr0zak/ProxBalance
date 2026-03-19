@@ -60,7 +60,7 @@ curl http://localhost:5000/api/config
 
 ## Test Data
 
-Create mock cluster data:
+Create mock cluster data. The SQLite database (`proxbalance.db`) is auto-created on first startup via `init_db()`. Only `cluster_cache.json` needs to be seeded manually:
 
 ```bash
 mkdir -p dev-cache

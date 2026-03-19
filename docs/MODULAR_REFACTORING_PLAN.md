@@ -1,319 +1,247 @@
 # ProxBalance Modular Refactoring Plan
 
-## Current State
+> **Last updated**: 2026-02-09
+> **Status**: Phase 1B complete, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 COMPLETE
 
-| File | Lines | Problem |
-|------|-------|---------|
-| `app.py` | 6,114 | Monolithic Flask API: scoring algorithm, migration execution, evacuation logic, config management, 48+ routes all in one file |
-| `src/app.jsx` | 11,827 | Entire React SPA in a single file: 40+ icon components, 300+ state hooks, 150+ event handlers, all dashboard/settings/automation UI |
+## Progress Summary
 
-Total: ~18,000 lines across 2 files that should be broken into focused modules.
+### Phase 1: Backend — COMPLETE
 
----
+| Step | Description | Status |
+|------|-------------|--------|
+| 1.1 | Package skeleton + thin `app.py` entry point (60 lines) | Done |
+| 1.2 | `CacheManager` → `proxbalance/cache.py` (53 lines) | Done |
+| 1.3 | Proxmox client → merged into `config_manager.py` | Done |
+| 1.4 | Configuration → `proxbalance/config_manager.py` (328 lines) | Done |
+| 1.5 | Scoring algorithm → `proxbalance/scoring.py` (900 lines) | Done |
+| 1.6 | Recommendations → `proxbalance/recommendations.py` (1,385 lines) | Done |
+| 1.7 | Migrations → `proxbalance/migrations.py` (643 lines) | Done |
+| 1.8 | Evacuation → `proxbalance/evacuation.py` (975 lines) | Done |
+| 1.9 | Routes → 10 Flask Blueprints in `proxbalance/routes/` | Done |
+| 1.10 | Entry points updated | Done |
 
-## Phase 1: Backend — Extract `app.py` into a Package
+### Phase 1B: Backend Decomposition — COMPLETE
 
-### Goal
-Transform `app.py` (6,114 lines) into a `proxbalance/` Python package with focused modules. Each module owns one domain. Routes stay thin — they validate input, call domain logic, and return responses.
+| Step | Description | Status |
+|------|-------------|--------|
+| 1B.1 | `proxbalance/forecasting.py` (340 lines) — extracted from scoring.py + recommendations.py | Done |
+| 1B.2 | `proxbalance/patterns.py` (171 lines) — extracted from scoring.py | Done |
+| 1B.3 | `proxbalance/outcomes.py` (260 lines) — extracted from migrations.py | Done |
+| 1B.4 | `proxbalance/execution_planner.py` (269 lines) — extracted from recommendations.py | Done |
+| 1B.5 | `proxbalance/reporting.py` (307 lines) — extracted from recommendations.py | Done |
+| — | Re-exports in original modules for backwards compatibility | Done |
+| — | `proxbalance/__init__.py` updated with new module imports | Done |
 
-### Target Structure
+### Phase 2: Frontend Componentization — COMPLETE
 
-```
-proxbalance/
-├── __init__.py              # Flask app factory, register blueprints
-├── cache.py                 # CacheManager class (~50 lines)
-├── config_manager.py        # load_config(), save_config(), validation, import/export (~400 lines)
-├── scoring.py               # Penalty scoring algorithm, health scores, thresholds (~500 lines)
-├── recommendations.py       # Recommendation engine, guest selection, distribution (~400 lines)
-├── migrations.py            # execute_migration(), batch, cancel, status tracking (~300 lines)
-├── evacuation.py            # Evacuation planning, execution, session tracking (~400 lines)
-├── proxmox_client.py        # get_proxmox_client(), Proxmox API helpers (~100 lines)
-├── utils.py                 # Shared utilities (formatters, file I/O helpers) (~100 lines)
-│
-└── routes/
-    ├── __init__.py           # Register all blueprints
-    ├── analysis.py           # /api/cluster-analysis, /api/cluster-summary, /api/nodes-only, /api/guests-only
-    ├── recommendations.py    # /api/recommendations, /api/ai-recommendations, /api/node-scores
-    ├── migrations.py         # /api/migrate, /api/migrate/batch, /api/migrations/*/cancel
-    ├── evacuation.py         # /api/nodes/evacuate, /api/nodes/evacuate/status/*
-    ├── config.py             # /api/config, /api/permissions, /api/validate-token, import/export
-    ├── penalty.py            # /api/penalty-config, /api/penalty-config/reset
-    ├── system.py             # /api/system/*, /api/logs/*
-    ├── guests.py             # /api/guests/*, /api/tasks/*
-    ├── automation.py         # /api/automigrate/*
-    └── notifications.py      # /api/notifications/*
-```
+| Step | Description | Status |
+|------|-------------|--------|
+| 2.0 | Delete dead `src/app.jsx` (12,321 lines) | **Done** |
+| 2.7 | Dashboard sub-components → `src/components/dashboard/` (13 files) | **Done** |
+| 2.8 | Settings sub-components → `src/components/settings/` (5 files) | **Done** |
+| 2.9 | Automation sub-components → `src/components/automation/` (6 files) | **Done** |
+| 2.5 | Custom hooks extraction → `src/hooks/` (11 hooks) | **Done** |
+| 2.10 | Slim root component (index.jsx: 2,547 → 658 lines, -74%) | **Done** |
 
-### Step-by-Step Breakdown
+### Phase 3: Shared Improvements — COMPLETE
 
-#### Step 1.1: Create Package Skeleton + App Factory
-- Create `proxbalance/` directory with `__init__.py`
-- Move Flask app creation into a `create_app()` factory function
-- Keep `app.py` as a thin entry point that calls `create_app()`
-- **Verify**: `python app.py` still starts the server, all routes respond
+| Step | Description | Status |
+|------|-------------|--------|
+| 3.1 | Shared constants modules (`proxbalance/constants.py` + `src/utils/constants.js`) | **Done** |
+| 3.2 | Centralized error handling (`proxbalance/error_handlers.py`) | **Done** |
+| 3.3 | Type hints for `config_manager.py` (9 functions) | **Done** |
+| 3.3 | Type hints for `evacuation.py` (9 functions) | **Done** |
+| 3.3 | Type hints for `scoring.py`, `recommendations.py`, `migrations.py` | **Done** |
+| 3.3 | Type hints for Phase 1B modules (forecasting, patterns, outcomes, execution_planner, reporting) | **Done** |
 
-#### Step 1.2: Extract `CacheManager` → `proxbalance/cache.py`
-- Move the `CacheManager` class (app.py lines ~141-180)
-- Update imports in `app.py`
-- **Low risk** — self-contained class with no external dependencies
+### Phase 4: Deep Decomposition + Route Cleanup — COMPLETE
 
-#### Step 1.3: Extract Proxmox Client → `proxbalance/proxmox_client.py`
-- Move `get_proxmox_client()` and related connection helpers
-- These are used by migration execution and data collection code
-- **Low risk** — pure utility function
-
-#### Step 1.4: Extract Configuration Management → `proxbalance/config_manager.py`
-- Move `load_config()`, `save_config()`, config validation logic
-- Move config import/export/backup functions
-- Move `DEFAULT_PENALTY_CONFIG` and penalty config load/save
-- These are referenced throughout `app.py` — will need careful import updates
-
-#### Step 1.5: Extract Scoring Algorithm → `proxbalance/scoring.py`
-- Move from app.py lines ~797-1100:
-  - `DEFAULT_PENALTY_CONFIG` (if not already in config_manager)
-  - `calculate_intelligent_thresholds()`
-  - `calculate_node_health_score()`
-  - `predict_post_migration_load()`
-  - `calculate_target_node_score()`
-- These are the core value of ProxBalance — extract carefully with full test coverage
-
-#### Step 1.6: Extract Recommendation Engine → `proxbalance/recommendations.py`
-- Move from app.py lines ~1100-1666:
-  - `select_guests_to_migrate()`
-  - `build_storage_cache()`
-  - `check_storage_compatibility()`
-  - `find_distribution_candidates()`
-  - `generate_recommendations()`
-- Depends on scoring module — import from `proxbalance.scoring`
-
-#### Step 1.7: Extract Migration Execution → `proxbalance/migrations.py`
-- Move from app.py lines ~2066-2400:
-  - `execute_migration()`
-  - `execute_batch_migration()`
-  - Migration status tracking and cancellation logic
-- Depends on `proxmox_client` for API calls
-
-#### Step 1.8: Extract Evacuation Logic → `proxbalance/evacuation.py`
-- Move from app.py lines ~2417-2756:
-  - `evacuate_node()` / `_execute_evacuation()`
-  - `_update_evacuation_progress()`
-  - Evacuation session file management
-  - Storage verification helpers
-- Depends on `migrations` module for actual execution
-
-#### Step 1.9: Extract Routes into Blueprints → `proxbalance/routes/`
-- Convert each route group into a Flask Blueprint:
-  - `analysis_bp`, `recommendations_bp`, `migrations_bp`, `evacuation_bp`, `config_bp`, `penalty_bp`, `system_bp`, `guests_bp`, `automation_bp`, `notifications_bp`
-- Routes become thin wrappers calling domain modules
-- Register all blueprints in `proxbalance/__init__.py`
-- **This is the largest step** — do one blueprint at a time
-
-#### Step 1.10: Update Entry Points
-- Ensure `app.py` remains a thin entry point: `from proxbalance import create_app; app = create_app()`
-- Update `automigrate.py` and `generate_recommendations.py` if they import from app.py directly (currently they use HTTP calls, so impact should be minimal)
-- Update systemd service files if python paths change
-- Update `install.sh` and `update.sh` if they reference app.py internals
-
-### Risk Mitigation
-- **No database migrations needed** — JSON file storage is path-based, not import-based
-- **Gunicorn entry point** — systemd service uses `gunicorn app:app`, will need to become `gunicorn proxbalance:create_app()`  (or keep `app.py` as a re-export shim)
-- **Background scripts use HTTP** — `automigrate.py` and `generate_recommendations.py` call API endpoints, not Python imports, so they are unaffected
-- **Keep `app.py` as a shim** during transition: it can re-export the Flask app from the package so existing deployment scripts don't break
+| Step | Description | Status |
+|------|-------------|--------|
+| 4.1 | Extract `proxbalance/storage.py` from recommendations.py + evacuation.py (284 lines) | **Done** |
+| 4.2 | Extract `proxbalance/distribution.py` from recommendations.py (133 lines) | **Done** |
+| 4.3 | Extract `proxbalance/recommendation_analysis.py` from recommendations.py (331 lines) | **Done** |
+| 4.4 | Adopt `@api_route` decorator across all 10 route files (~68 handlers) | **Done** |
+| 4.5 | Update CLAUDE.md to reflect current architecture | **Done** |
 
 ---
 
-## Phase 2: Frontend — Extract `src/app.jsx` into Components
+## Current File Sizes (2026-02-09)
 
-### Goal
-Break `src/app.jsx` (11,827 lines) into focused component files. Since there's no bundler (Babel CLI only), use a convention where component files are concatenated or Babel compiles a directory.
+### Backend Domain Modules
 
-### Build System Consideration
-The current build compiles JSX via Babel CLI without a bundler. Two approaches:
+| File | Lines | Notes |
+|------|-------|-------|
+| `app.py` | 63 | Thin entry point — on target |
+| `proxbalance/cache.py` | 53 | On target |
+| `proxbalance/constants.py` | 56 | **New** — shared constants, path definitions |
+| `proxbalance/config_manager.py` | 315 | On target, type-hinted, imports from constants.py |
+| `proxbalance/error_handlers.py` | 108 | **New** — centralized error handling |
+| `proxbalance/scoring.py` | 900 | Reduced from 1,147 (-21%) |
+| `proxbalance/recommendations.py` | 838 | Reduced from 2,165 (-61%) |
+| `proxbalance/recommendation_analysis.py` | 331 | **New** — confidence, reasons, conflicts |
+| `proxbalance/storage.py` | 284 | **New** — storage compatibility + verification |
+| `proxbalance/distribution.py` | 133 | **New** — guest distribution balancing |
+| `proxbalance/migrations.py` | 643 | Reduced from 860 (-25%) |
+| `proxbalance/evacuation.py` | 821 | Reduced from 975 (-16%) |
+| `proxbalance/forecasting.py` | 340 | **New** — trend projection, forecast recs |
+| `proxbalance/patterns.py` | 171 | **New** — workload pattern detection |
+| `proxbalance/outcomes.py` | 260 | **New** — migration outcome tracking |
+| `proxbalance/execution_planner.py` | 269 | **New** — topological execution ordering |
+| `proxbalance/reporting.py` | 307 | **New** — summaries, capacity advisories |
 
-**Option A: Single-entry with imports (requires bundler)**
-- Add a lightweight bundler (esbuild — fast, zero-config)
-- Use standard ES module imports between component files
-- `npx esbuild src/app.jsx --bundle --outfile=static/app.js`
+### Frontend Pages (Wrapper Components)
 
-**Option B: Concatenation order (no bundler, fragile)**
-- Split into files that are concatenated in dependency order
-- Fragile and hard to maintain — not recommended
+| File | Lines | Before | Reduction |
+|------|-------|--------|-----------|
+| `src/components/DashboardPage.jsx` | 416 | 7,005 | **-94%** |
+| `src/components/SettingsPage.jsx` | 213 | 2,240 | **-90%** |
+| `src/components/AutomationPage.jsx` | 223 | 2,634 | **-92%** |
+| `src/index.jsx` | 658 | 2,547 | **-74%** |
 
-**Recommendation**: Option A with esbuild. It adds ~5MB to node_modules, compiles in <100ms, and enables proper module imports. The existing Babel step can be replaced entirely since esbuild handles JSX natively.
+### Frontend Sub-Components
 
-### Target Structure
+#### `src/components/dashboard/` (13 files, 7,123 lines total)
 
-```
-src/
-├── app.jsx                    # Root component, routing, top-level state (~200 lines)
-├── api/
-│   └── client.js              # All fetch() calls to /api/* endpoints (~400 lines)
-│
-├── hooks/
-│   ├── useClusterData.js      # Data fetching + polling logic (~150 lines)
-│   ├── useConfig.js           # Configuration state + save/load (~100 lines)
-│   ├── useMigrations.js       # Migration state + execution (~150 lines)
-│   ├── useAutomation.js       # Automation state + controls (~100 lines)
-│   └── useDarkMode.js         # Theme toggle with localStorage (~30 lines)
-│
-├── components/
-│   ├── icons/
-│   │   └── Icons.jsx          # All 40+ SVG icon components (~300 lines)
-│   │
-│   ├── common/
-│   │   ├── SkeletonLoaders.jsx  # Loading skeleton components (~80 lines)
-│   │   ├── Modal.jsx            # Reusable modal wrapper (~50 lines)
-│   │   └── StatusBadge.jsx      # Status indicator badges (~40 lines)
-│   │
-│   ├── dashboard/
-│   │   ├── DashboardPage.jsx    # Dashboard layout + section orchestration (~300 lines)
-│   │   ├── Header.jsx           # App header, refresh, version info (~150 lines)
-│   │   ├── ClusterMap.jsx       # 5-mode cluster visualization (~400 lines)
-│   │   ├── NodeCards.jsx        # Node status cards with charts (~500 lines)
-│   │   ├── Recommendations.jsx  # Algorithm + AI recommendation panels (~400 lines)
-│   │   ├── GuestList.jsx        # Searchable/sortable guest table (~400 lines)
-│   │   ├── MigrationDialog.jsx  # Migration confirmation + execution UI (~300 lines)
-│   │   ├── EvacuationPanel.jsx  # Node evacuation UI (~300 lines)
-│   │   ├── MaintenanceMode.jsx  # Maintenance mode controls (~200 lines)
-│   │   └── TaggedGuests.jsx     # Guest tag management (~200 lines)
-│   │
-│   ├── settings/
-│   │   ├── SettingsPage.jsx     # Settings layout (~200 lines)
-│   │   ├── GeneralSettings.jsx  # Thresholds, collection config (~300 lines)
-│   │   ├── AISettings.jsx       # AI provider configuration (~300 lines)
-│   │   ├── PenaltyConfig.jsx    # Penalty weight editor (~300 lines)
-│   │   ├── TokenSettings.jsx    # Proxmox token management (~200 lines)
-│   │   └── SystemSettings.jsx   # Branch, update, service management (~300 lines)
-│   │
-│   └── automation/
-│       ├── AutomationPage.jsx   # Automation layout (~200 lines)
-│       ├── AutomationConfig.jsx # Automation settings form (~400 lines)
-│       └── AutomationWidget.jsx # Dashboard status widget (~150 lines)
-│
-└── utils/
-    ├── formatters.js          # Time formatting, number formatting (~80 lines)
-    ├── sparkline.js           # Sparkline SVG generation (~50 lines)
-    └── constants.js           # Default values, color maps, thresholds (~50 lines)
-```
+| File | Lines | Description |
+|------|-------|-------------|
+| `MigrationRecommendationsSection.jsx` | 1,631 | Recommendations, filters, outcomes, history |
+| `AutomationStatusSection.jsx` | 1,180 | Automation panel, run history, in-progress |
+| `MigrationModals.jsx` | 681 | Migration dialog, tags, batch confirm, cancel |
+| `GuestTagManagement.jsx` | 548 | Guest tagging table with filters/sort |
+| `ClusterMap.jsx` | 534 | Visual cluster diagram with migration flow |
+| `SystemModals.jsx` | 456 | Update modal + branch manager modal |
+| `GuestDetailsModal.jsx` | 452 | Guest resources, tags, migration options |
+| `NodeDetailsModal.jsx` | 434 | Node stats, penalties, suitability modal |
+| `AIRecommendationsSection.jsx` | 318 | AI-enhanced recommendations panel |
+| `EvacuationModals.jsx` | 294 | Evacuation plan + confirmation modals |
+| `NodeStatusSection.jsx` | 281 | Node metrics grid, sparklines, penalties |
+| `DashboardHeader.jsx` | 240 | Logo, title, cluster stats, resources |
+| `DashboardFooter.jsx` | 74 | Footer bar with timestamps |
 
-### Step-by-Step Breakdown
+#### `src/components/settings/` (5 files, 2,087 lines total)
 
-#### Step 2.1: Set Up esbuild
-- Install esbuild: `npm install --save-dev esbuild`
-- Create build script that replaces the Babel step
-- Verify the existing app works with the new build
-- Update `update.sh` and `install.sh` to use esbuild instead of Babel
+| File | Lines | Description |
+|------|-------|-------------|
+| `PenaltyScoringSection.jsx` | 584 | Penalty config with simulator |
+| `NotificationsSection.jsx` | 523 | All notification providers |
+| `AdvancedSystemSettings.jsx` | 500 | Advanced system config |
+| `DataCollectionSection.jsx` | 281 | Collection optimization |
+| `AIProviderSection.jsx` | 199 | AI provider config forms |
 
-#### Step 2.2: Extract Icons → `src/components/icons/Icons.jsx`
-- Move all 40+ SVG icon components (the simplest extraction)
-- Export each as a named export
-- Update imports in the main file
-- **Low risk** — pure presentational components with no state
+#### `src/components/automation/` (6 files, 2,490 lines total)
 
-#### Step 2.3: Extract API Client → `src/api/client.js`
-- Consolidate all `fetch('/api/...')` calls into a single module
-- Each function takes parameters and returns parsed JSON
-- Handles error responses consistently
-- Components call `api.fetchAnalysis()` instead of inline fetch
+| File | Lines | Description |
+|------|-------|-------------|
+| `TimeWindowsSection.jsx` | 887 | Timezone, timeline, window management |
+| `MigrationLogsSection.jsx` | 385 | History table, logs, pagination |
+| `MainSettingsSection.jsx` | 349 | Enable/disable, dry run, presets |
+| `SafetyRulesSection.jsx` | 347 | Safety toggles and limits |
+| `DecisionTreeFlowchart.jsx` | 293 | Migration decision tree diagram |
+| `DistributionBalancingSection.jsx` | 229 | Distribution config |
 
-#### Step 2.4: Extract Utility Functions → `src/utils/`
-- `formatters.js`: `formatLocalTime()`, `getTimezoneAbbr()`, number formatters
-- `sparkline.js`: `generateSparkline()` SVG generation
-- `constants.js`: default config values, color maps, grid presets
+#### `src/hooks/` (11 files, 1,919 lines total)
 
-#### Step 2.5: Extract Custom Hooks → `src/hooks/`
-- Group related `useState` + `useEffect` + handler functions into custom hooks
-- `useClusterData`: data fetching, polling, refresh logic
-- `useConfig`: configuration state, save/load, validation
-- `useMigrations`: migration execution, tracking, batch operations
-- `useAutomation`: automation status, config, run/test
-- `useDarkMode`: theme toggle with localStorage persistence
-
-#### Step 2.6: Extract Common Components → `src/components/common/`
-- `SkeletonLoaders.jsx`: `SkeletonCard`, `SkeletonNodeCard`, `SkeletonClusterMap`
-- `Modal.jsx`: reusable modal wrapper (currently inlined in multiple places)
-- `StatusBadge.jsx`: status indicators used across pages
-
-#### Step 2.7: Extract Dashboard Components → `src/components/dashboard/`
-- This is the largest extraction — do one component at a time:
-  1. `Header.jsx` — relatively self-contained
-  2. `ClusterMap.jsx` — complex but isolated visualization
-  3. `NodeCards.jsx` — node status cards
-  4. `Recommendations.jsx` — recommendation panels
-  5. `GuestList.jsx` — guest table with sorting/filtering
-  6. `MigrationDialog.jsx` — migration confirmation modal
-  7. `EvacuationPanel.jsx` — evacuation UI
-  8. `MaintenanceMode.jsx` — maintenance controls
-  9. `TaggedGuests.jsx` — tag management
-  10. `DashboardPage.jsx` — orchestrates the above
-
-#### Step 2.8: Extract Settings Components → `src/components/settings/`
-- `GeneralSettings.jsx`, `AISettings.jsx`, `PenaltyConfig.jsx`
-- `TokenSettings.jsx`, `SystemSettings.jsx`
-- `SettingsPage.jsx` — layout wrapper
-
-#### Step 2.9: Extract Automation Components → `src/components/automation/`
-- `AutomationConfig.jsx` — full config form
-- `AutomationWidget.jsx` — dashboard widget
-- `AutomationPage.jsx` — page layout
-
-#### Step 2.10: Slim Down Root `app.jsx`
-- Root component handles only:
-  - Page routing (dashboard / settings / automation)
-  - Top-level providers/context
-  - Composing page components
-- Target: ~200 lines
+| File | Lines | Description |
+|------|-------|-------------|
+| `useMigrations.js` | 496 | Migration execution, tracking, tags, guest management |
+| `useAutomation.js` | 262 | Automation status/config, run history, time windows |
+| `useClusterData.js` | 248 | Data fetching, node scores, charts, sparklines |
+| `useUpdates.js` | 177 | System info, updates, branch management |
+| `useConfig.js` | 174 | Config loading/saving, penalty config |
+| `useAIRecommendations.js` | 151 | AI provider config, AI analysis |
+| `useRecommendations.js` | 146 | Recommendations, thresholds, feedback |
+| `useUIState.js` | 132 | Page routing, collapsed sections, localStorage |
+| `useAuth.js` | 77 | Permissions, token validation |
+| `useEvacuation.js` | 44 | Maintenance nodes, evacuation state |
+| `useDarkMode.js` | 12 | Dark mode toggle with class management |
 
 ---
 
-## Phase 3: Shared Improvements
+## Remaining Work
 
-### Step 3.1: Add a Shared Constants Module
-- Python: `proxbalance/constants.py` — default configs, file paths, penalty defaults
-- JS: `src/utils/constants.js` — API paths, default UI state, color maps
+### Phase 3.1: Shared Constants — DONE
 
-### Step 3.2: Centralize Error Handling
-- Python: Flask error handlers in `proxbalance/__init__.py` instead of try/except in every route
-- JS: API client returns consistent error objects, components handle uniformly
+**Backend** — `proxbalance/constants.py` (56 lines):
+- `BASE_PATH`, `GIT_REPO_PATH` (environment-aware)
+- `CACHE_FILE`, `CONFIG_FILE`, `SESSIONS_DIR`, `OUTCOMES_FILE`, `SCORE_HISTORY_FILE`
+- `DISK_PREFIXES`, `MAX_OUTCOME_ENTRIES`, `POST_CAPTURE_DELAY_SECONDS`, `SCORE_HISTORY_MAX_ENTRIES`
+- `config_manager.py` re-exports for backward compatibility
 
-### Step 3.3: Add Type Hints (Python)
-- Add type hints to all extracted module functions
-- Enables IDE support and catches bugs during development
-- Can be validated with `mypy` in CI later
+**Frontend** — `src/utils/constants.js` (10 lines):
+- `API_BASE` (deduplicated from 8 files)
+- `DEFAULT_CPU_THRESHOLD`, `DEFAULT_MEM_THRESHOLD`, `DEFAULT_IOWAIT_THRESHOLD`
+- `RECOMMENDATIONS_REFRESH_INTERVAL`, `AUTOMATION_STATUS_REFRESH_INTERVAL`
+
+### Phase 3.2: Centralized Error Handling — DONE
+
+**Backend** — `proxbalance/error_handlers.py` (108 lines):
+- `api_success()` / `api_error()` response helpers
+- `@api_route` decorator for automatic exception handling
+- `register_error_handlers(app)` for Flask-level 404/405/500 handlers
+- Registered in `app.py`
+
+### Phase 3.3: Type Hints Completion — DONE
+
+| File | Estimated Coverage | Target | Status |
+|------|-------------------|--------|--------|
+| `config_manager.py` | 100% | 100% | **Done** (9 functions) |
+| `evacuation.py` | 100% | 100% | **Done** (9 functions) |
+| `scoring.py` | 100% | 100% | **Done** |
+| `recommendations.py` | 100% | 100% | **Done** |
+| `migrations.py` | 100% | 100% | **Done** |
+| `forecasting.py` | 100% | 100% | **Done** |
+| `patterns.py` | 100% | 100% | **Done** |
+| `outcomes.py` | 100% | 100% | **Done** |
+| `execution_planner.py` | 100% | 100% | **Done** |
+| `reporting.py` | 100% | 100% | **Done** |
 
 ---
 
-## Execution Order & Priority
+## Execution Order for Remaining Work
 
-| Priority | Phase | Effort | Impact | Risk |
-|----------|-------|--------|--------|------|
-| 1 | 1.1-1.3 | Low | Foundation for all backend work | Low |
-| 2 | 1.4-1.6 | Medium | Extracts core algorithm (~1,500 lines from app.py) | Medium |
-| 3 | 1.7-1.8 | Medium | Extracts migration/evacuation (~700 lines) | Medium |
-| 4 | 1.9-1.10 | High | Routes into blueprints — largest change | Medium |
-| 5 | 2.1-2.2 | Low | Build system + icons extraction | Low |
-| 6 | 2.3-2.5 | Medium | API client + hooks — enables all component extractions | Medium |
-| 7 | 2.6-2.10 | High | Component extractions — most lines moved | Medium |
-| 8 | 3.1-3.3 | Low | Polish and developer experience | Low |
+| Priority | Step | Effort | Impact |
+|----------|------|--------|--------|
+| ~~**1**~~ | ~~2.5: Extract frontend hooks from index.jsx~~ | ~~High~~ | **Done** (658 lines) |
+| ~~**1**~~ | ~~3.1: Shared constants (deduplicate API_BASE etc.)~~ | ~~Low~~ | **Done** (constants.py + constants.js) |
+| ~~**2**~~ | ~~3.2: Centralized Flask error handling~~ | ~~Medium~~ | **Done** (error_handlers.py) |
+| ~~**3**~~ | ~~3.3: Type hints completion (all 10 modules)~~ | ~~Low~~ | **Done** (10 modules, 100% coverage) |
 
 ### Guiding Principles
 
-1. **One module, one responsibility** — each file should be describable in one sentence
+1. **One module, one responsibility** — each file describable in one sentence
 2. **Extract, don't rewrite** — move existing code, fix imports, verify behavior
-3. **Keep `app.py` as a shim** — don't break deployment scripts during transition
-4. **Test after each step** — verify the server starts and routes respond after every extraction
+3. **Keep `app.py` as a shim** — don't break deployment scripts
+4. **Commit after each extraction** — prevent progress loss, enable rollback
 5. **No new features during refactoring** — only structural changes
 6. **Preserve all existing behavior** — this is a refactor, not a redesign
 
-### Expected Outcome
+---
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Largest Python file | 6,114 lines | ~500 lines (any single module) |
-| Largest JSX file | 11,827 lines | ~500 lines (any single component) |
-| Python modules | 9 files | ~20 files in organized package |
-| JSX components | 1 file | ~25 files in organized directories |
-| Find a route handler | Search 6K lines | Open `routes/<domain>.py` |
-| Find a React component | Search 12K lines | Open `components/<section>/<Name>.jsx` |
-| Modify scoring algorithm | Edit massive app.py | Edit focused `scoring.py` |
-| Add a new API endpoint | Add to monolith | Add to relevant blueprint |
+## Metrics
+
+### Overall Progress
+
+| Metric | Original | Current | Target |
+|--------|----------|---------|--------|
+| Largest Python file | 2,165 | 900 (scoring.py) | ~800 |
+| Largest JSX file | 12,321 | 658 (index.jsx) | ~500 |
+| Python domain modules | 6 | 16 | 16 |
+| JSX component files | 3 | 27 | 27 |
+| Frontend hooks | 0 | 11 | 11 |
+| Dead code lines | 12,321 | 0 | 0 |
+
+### Lines Eliminated from Monolithic Files
+
+| File | Original | Current | Removed |
+|------|----------|---------|---------|
+| `src/app.jsx` | 12,321 | deleted | -12,321 |
+| `index.jsx` | 2,547 | 658 | -1,889 |
+| `DashboardPage.jsx` | 7,005 | 416 | -6,589 |
+| `AutomationPage.jsx` | 2,634 | 223 | -2,411 |
+| `SettingsPage.jsx` | 2,240 | 213 | -2,027 |
+| `scoring.py` | 1,147 | 900 | -247 |
+| `recommendations.py` | 2,165 | 838 | -1,327 |
+| `migrations.py` | 860 | 643 | -217 |
+| `evacuation.py` | 975 | 821 | -154 |
+| **Total** | **31,894** | **3,712** | **-28,182 (-88%)** |

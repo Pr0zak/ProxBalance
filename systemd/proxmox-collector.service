@@ -7,6 +7,8 @@ Type=oneshot
 User=root
 WorkingDirectory=/opt/proxmox-balance-manager
 Environment="PATH=/opt/proxmox-balance-manager/venv/bin"
+# Sync timer interval with config before each collection run
+ExecStartPre=-/opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/update_timer.py
 # Try API-based collector first, fall back to SSH-based if not available
 ExecStart=/bin/bash -c 'if [ -f /opt/proxmox-balance-manager/collector_api.py ]; then /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/collector_api.py; else /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/collector.py; fi'
 StandardOutput=journal

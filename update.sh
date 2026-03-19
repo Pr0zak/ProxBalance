@@ -97,6 +97,12 @@ pct exec $CTID -- chmod +x $REPO_PATH/*.py
 echo "Restarting services..."
 pct exec $CTID -- systemctl restart proxmox-balance
 pct exec $CTID -- systemctl restart nginx
+# Restart timers so they re-anchor after daemon-reload
+for timer in proxmox-collector proxmox-balance-automigrate proxmox-balance-recommendations; do
+    if pct exec $CTID -- systemctl is-enabled "${timer}.timer" >/dev/null 2>&1; then
+        pct exec $CTID -- systemctl restart "${timer}.timer"
+    fi
+done
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"

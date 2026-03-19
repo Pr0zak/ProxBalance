@@ -126,11 +126,36 @@ OnUnitActiveSec={interval_minutes}min
         return False
 
 
+def update_migration_outcomes():
+    """Update pending migration outcomes by calling the local API.
+
+    This runs on each recommendation cycle to capture post-migration metrics
+    at the 5-minute, 1-hour, and 24-hour windows.
+    """
+    try:
+        response = requests.post(
+            'http://127.0.0.1:5000/api/migrate/outcomes/refresh',
+            timeout=30
+        )
+        if response.status_code == 200:
+            result = response.json()
+            updated = result.get('updated', 0)
+            if updated > 0:
+                logger.info(f"✓ Updated {updated} migration outcome(s)")
+        else:
+            logger.debug(f"Outcome refresh returned status {response.status_code}")
+    except Exception as e:
+        logger.debug(f"Could not refresh migration outcomes: {e}")
+
+
 def generate_recommendations():
     """Generate recommendations by calling the local API and adjust timer interval."""
     start_time = time.time()
 
     try:
+        # Update pending migration outcomes before generating recommendations
+        update_migration_outcomes()
+
         # Get cluster size for interval calculation
         num_nodes, num_guests = get_cluster_size()
         logger.info(f"Cluster size: {num_nodes} nodes, {num_guests} guests")

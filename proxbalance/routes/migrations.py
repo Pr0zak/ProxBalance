@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH
+from proxbalance.error_handlers import api_route
 from proxbalance.migrations import (
     execute_migration as _execute_migration,
     execute_batch_migration as _execute_batch_migration,
@@ -117,21 +118,19 @@ def validate_migration():
 
 
 @migrations_bp.route("/api/migrate/rollback-info/<int:vmid>", methods=["GET"])
+@api_route
 def rollback_info(vmid):
     """Return rollback availability information for a guest."""
-    try:
-        config = load_config()
-        if config.get("error"):
-            return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
+    config = load_config()
+    if config.get("error"):
+        return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
 
-        info = _get_rollback_info(vmid, config=config)
-        return jsonify({"success": True, "rollback_info": info})
-    except Exception as e:
-        print(f"Error getting rollback info for {vmid}: {e}", file=sys.stderr)
-        return jsonify({"success": False, "error": str(e)}), 500
+    info = _get_rollback_info(vmid, config=config)
+    return jsonify({"success": True, "rollback_info": info})
 
 
 @migrations_bp.route("/api/migrate/rollback", methods=["POST"])
+@api_route
 def execute_rollback():
     """Execute a rollback migration — migrate a guest back to its original node."""
     data = request.json or {}
@@ -222,9 +221,6 @@ def execute_rollback():
 
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
-    except Exception as e:
-        print(f"Error executing rollback for {vmid}: {e}", file=sys.stderr)
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -232,42 +228,36 @@ def execute_rollback():
 # ---------------------------------------------------------------------------
 
 @migrations_bp.route("/api/migrate/outcomes", methods=["GET"])
+@api_route
 def get_migration_outcomes():
     """Return migration outcomes with optional vmid filter and limit."""
-    try:
-        vmid_filter = request.args.get("vmid", type=int)
-        limit = request.args.get("limit", default=20, type=int)
+    vmid_filter = request.args.get("vmid", type=int)
+    limit = request.args.get("limit", default=20, type=int)
 
-        outcomes = _load_migration_outcomes()
+    outcomes = _load_migration_outcomes()
 
-        # Filter by vmid if provided
-        if vmid_filter is not None:
-            outcomes = [o for o in outcomes if o.get("vmid") == vmid_filter]
+    # Filter by vmid if provided
+    if vmid_filter is not None:
+        outcomes = [o for o in outcomes if o.get("vmid") == vmid_filter]
 
-        # Return most recent first, limited
-        outcomes = list(reversed(outcomes))[:limit]
+    # Return most recent first, limited
+    outcomes = list(reversed(outcomes))[:limit]
 
-        return jsonify({
-            "success": True,
-            "outcomes": outcomes,
-            "total": len(outcomes),
-        })
-    except Exception as e:
-        print(f"Error fetching migration outcomes: {e}", file=sys.stderr)
-        return jsonify({"success": False, "error": str(e)}), 500
+    return jsonify({
+        "success": True,
+        "outcomes": outcomes,
+        "total": len(outcomes),
+    })
 
 
 @migrations_bp.route("/api/migrate/outcomes/refresh", methods=["POST"])
+@api_route
 def refresh_migration_outcomes():
     """Trigger post-migration metric capture for pending outcomes."""
-    try:
-        result = _update_post_metrics()
-        return jsonify({
-            "success": True,
-            "updated": result.get("updated", 0),
-            "skipped": result.get("skipped", 0),
-            "error": result.get("error"),
-        })
-    except Exception as e:
-        print(f"Error refreshing migration outcomes: {e}", file=sys.stderr)
-        return jsonify({"success": False, "error": str(e)}), 500
+    result = _update_post_metrics()
+    return jsonify({
+        "success": True,
+        "updated": result.get("updated", 0),
+        "skipped": result.get("skipped", 0),
+        "error": result.get("error"),
+    })

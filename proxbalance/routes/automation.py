@@ -3,6 +3,7 @@ import json, os, sys, subprocess, re, time
 from datetime import datetime, timedelta
 from pathlib import Path
 from proxbalance.config_manager import load_config, CONFIG_FILE, BASE_PATH
+from proxbalance.error_handlers import api_route
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -12,6 +13,7 @@ def read_cache():
 
 
 @automation_bp.route("/api/automigrate/status", methods=["GET"])
+@api_route
 def get_automigrate_status():
     """Get automation status and next run time"""
     try:
@@ -31,36 +33,13 @@ def get_automigrate_status():
         except Exception:
             timer_active = False
 
-        # Load history
-        history_file = os.path.join(BASE_PATH, 'migration_history.json')
-        history = {"migrations": [], "state": {}}
-        if os.path.exists(history_file):
-            try:
-                with open(history_file, 'r') as f:
-                    history = json.load(f)
-            except:
-                pass
-
-        # Get recent migrations (last 7 days)
-        all_migrations = history.get('migrations', [])
-        seven_days_ago = datetime.now() - timedelta(days=7)
-
-        recent = []
-        for migration in all_migrations:
-            try:
-                # Parse timestamp (may or may not have 'Z' suffix)
-                timestamp_str = migration.get('timestamp', '')
-                if timestamp_str:
-                    # Remove 'Z' if present and parse
-                    timestamp_str = timestamp_str.rstrip('Z')
-                    migration_date = datetime.fromisoformat(timestamp_str)
-
-                    # Include if within last 7 days
-                    if migration_date >= seven_days_ago:
-                        recent.append(migration)
-            except (ValueError, TypeError):
-                # If timestamp parsing fails, include it anyway (better to show than hide)
-                recent.append(migration)
+        # Load history from SQLite
+        from proxbalance import migration_db
+        recent = migration_db.get_recent_migrations(days=7, limit=500)
+        history = {
+            "migrations": recent,
+            "state": migration_db.get_all_automation_state(),
+        }
 
         # Check for in-progress migrations using cluster tasks endpoint
         in_progress_migrations = []
@@ -432,6 +411,134 @@ def get_automigrate_status():
         state = history.get('state', {}).copy()
         state['current_window'] = current_window
 
+        # Load intelligent migration tracking data
+        intelligent_tracking = {"enabled": False}
+        try:
+            rules = auto_config.get('rules', {})
+            im_config = rules.get('intelligent_migrations', {})
+            im_enabled = im_config.get('enabled', False)
+            tracked = migration_db.get_all_tracking()
+            observing_count = sum(1 for v in tracked.values() if v.get('status') == 'observing')
+            ready_count = sum(1 for v in tracked.values() if v.get('status') == 'ready')
+            items = [{
+                "vmid": v.get('vmid'),
+                "name": v.get('guest_name', ''),
+                "source_node": v.get('source_node', ''),
+                "last_target_node": v.get('last_target_node', ''),
+                "consecutive_count": v.get('consecutive_count', 0),
+                "status": v.get('status', 'observing'),
+                "first_seen": v.get('first_seen', ''),
+            } for v in tracked.values()]
+            # Learning progress data
+            guest_profiles_count = 0
+            try:
+                from proxbalance.guest_profiles import load_guest_profiles
+                guest_profiles_count = len(load_guest_profiles().get('profiles', {}))
+            except Exception:
+                pass
+
+            outcomes_count = 0
+            avg_accuracy = None
+            try:
+                from proxbalance.outcomes import get_outcome_statistics
+                stats = get_outcome_statistics()
+                outcomes_count = stats.get('total_completed', 0)
+                avg_accuracy = stats.get('avg_accuracy_pct')
+            except Exception:
+                pass
+
+            data_collection_hours = 0
+            # Try score_history from SQLite (most accurate - has hourly snapshots)
+            try:
+                from proxbalance.forecasting import get_score_history as fetch_sh
+                sh_data = fetch_sh(limit=720)
+                if sh_data:
+                    earliest_ts = sh_data[0].get('timestamp', '')
+                    if earliest_ts:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest_ts.rstrip('Z').split('+')[0])
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+            except Exception:
+                pass
+            # Fallback to recommendation tracking first_seen
+            if data_collection_hours == 0 and tracked:
+                first_seen_times = [v.get('first_seen', '') for v in tracked.values() if v.get('first_seen')]
+                if first_seen_times:
+                    earliest = min(first_seen_times)
+                    try:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest.rstrip('Z'))
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                    except Exception:
+                        pass
+            # Fallback to guest_profiles earliest observation
+            if data_collection_hours == 0:
+                try:
+                    from proxbalance.guest_profiles import load_guest_profiles as load_gp
+                    profiles = load_gp().get('profiles', {})
+                    earliest_obs = None
+                    for p in profiles.values():
+                        obs_list = p.get('observations', [])
+                        if obs_list:
+                            ts = obs_list[0].get('timestamp', '')
+                            if ts and (earliest_obs is None or ts < earliest_obs):
+                                earliest_obs = ts
+                    if earliest_obs:
+                        from datetime import datetime as dt, timezone
+                        first_dt = dt.fromisoformat(earliest_obs.rstrip('Z').split('+')[0])
+                        data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+            # Fallback to cluster_cache.json first_collected_at / collected_at
+            if data_collection_hours == 0:
+                try:
+                    cache_file = os.path.join(BASE_PATH, 'cluster_cache.json')
+                    if os.path.exists(cache_file):
+                        from datetime import datetime as dt, timezone
+                        with open(cache_file, 'r') as f:
+                            cache_data = json.load(f)
+                        first_collected = cache_data.get('first_collected_at') or cache_data.get('collected_at', '')
+                        if first_collected:
+                            first_dt = dt.fromisoformat(first_collected.rstrip('Z').split('+')[0])
+                            data_collection_hours = round((dt.now(timezone.utc).replace(tzinfo=None) - first_dt).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+
+            # Intelligence level suggestion
+            suggested_level = None
+            current_level = im_config.get('intelligence_level', 'basic')
+            if current_level == 'basic' and outcomes_count >= 3 and guest_profiles_count >= 5:
+                suggested_level = 'standard'
+            elif current_level == 'standard':
+                score_history_count = 0
+                try:
+                    from proxbalance.forecasting import get_score_history as fetch_sh2
+                    score_history_count = len(fetch_sh2(limit=720))
+                except Exception:
+                    pass
+                if score_history_count >= 168 and outcomes_count >= 10:
+                    suggested_level = 'full'
+
+            intelligent_tracking = {
+                "enabled": im_enabled,
+                "intelligence_level": im_config.get('intelligence_level', None),
+                "observation_periods": im_config.get('observation_periods', 3),
+                "total_tracked": len(tracked),
+                "observing_count": observing_count,
+                "ready_count": ready_count,
+                "items": items,
+                "suggested_level": suggested_level,
+                "learning_progress": {
+                    "data_collection_hours": data_collection_hours,
+                    "min_required_hours": im_config.get('minimum_data_collection_hours', 24),
+                    "guest_profiles_count": guest_profiles_count,
+                    "outcomes_count": outcomes_count,
+                    "avg_prediction_accuracy": avg_accuracy,
+                },
+            }
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "enabled": auto_config.get('enabled', False),
@@ -442,7 +549,8 @@ def get_automigrate_status():
             "recent_migrations": recent,
             "in_progress_migrations": in_progress_migrations,
             "state": state,
-            "filter_reasons": history.get('state', {}).get('last_filter_reasons', [])
+            "filter_reasons": history.get('state', {}).get('last_filter_reasons', []),
+            "intelligent_tracking": intelligent_tracking
         })
 
     except Exception as e:
@@ -453,16 +561,16 @@ def get_automigrate_status():
 
 
 @automation_bp.route("/api/automigrate/history", methods=["GET"])
+@api_route
 def get_automigrate_history():
     """Get automation run history with decisions, or individual migration history"""
     try:
-        history_file = os.path.join(BASE_PATH, 'migration_history.json')
-
-        if not os.path.exists(history_file):
-            return jsonify({"success": True, "runs": [], "migrations": [], "total": 0})
-
-        with open(history_file, 'r') as f:
-            history = json.load(f)
+        from proxbalance import migration_db as mdb
+        history = {
+            "migrations": mdb.get_all_migrations(limit=2000),
+            "state": mdb.get_all_automation_state(),
+            "run_history": mdb.get_run_history(limit=50),
+        }
 
         # Get query parameters
         limit = request.args.get('limit', 50, type=int)
@@ -516,6 +624,7 @@ def get_automigrate_history():
 
 
 @automation_bp.route("/api/automigrate/test", methods=["POST"])
+@api_route
 def test_automigrate():
     """Test automation logic without executing migrations"""
     try:
@@ -557,6 +666,7 @@ def test_automigrate():
 
 
 @automation_bp.route("/api/automigrate/run", methods=["POST"])
+@api_route
 def run_automigrate():
     """Manually trigger automation check now"""
     try:
@@ -648,6 +758,7 @@ def run_automigrate():
 
 
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
+@api_route
 def automigrate_config():
     """Get or update automated migration configuration"""
     if request.method == "GET":
@@ -680,6 +791,17 @@ def automigrate_config():
 
             # Keys that belong at the root config level, not under automated_migrations
             root_level_keys = {'distribution_balancing'}
+
+            # Check if cooldown_minutes is being changed — if so, record a reset timestamp
+            # so that the automigrate service ignores older migration history for cooldown checks
+            incoming_rules = updates.get('rules', {})
+            if 'cooldown_minutes' in incoming_rules:
+                current_rules = config.get('automated_migrations', {}).get('rules', {})
+                old_cooldown = current_rules.get('cooldown_minutes')
+                new_cooldown = incoming_rules['cooldown_minutes']
+                if old_cooldown is not None and old_cooldown != new_cooldown:
+                    incoming_rules['cooldown_reset_at'] = datetime.utcnow().isoformat() + 'Z'
+                    updates['rules'] = incoming_rules
 
             # Update configuration (deep merge)
             for key, value in updates.items():
@@ -743,6 +865,7 @@ OnUnitActiveSec={interval_minutes}min
 
 
 @automation_bp.route("/api/automigrate/toggle-timer", methods=["POST"])
+@api_route
 def automigrate_toggle_timer():
     """Toggle the automated migration timer on/off"""
     try:
@@ -796,6 +919,7 @@ def automigrate_toggle_timer():
 
 
 @automation_bp.route("/api/automigrate/logs", methods=["GET"])
+@api_route
 def automigrate_logs():
     """Get logs from the automated migration service"""
     try:
