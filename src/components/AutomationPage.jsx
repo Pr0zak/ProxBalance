@@ -1,6 +1,7 @@
 import {
   ArrowLeft, ChevronDown, Clock, Info
 } from './Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../utils/designTokens.js';
 
 import MainSettingsSection from './automation/MainSettingsSection.jsx';
 import DecisionTreeFlowchart from './automation/DecisionTreeFlowchart.jsx';
@@ -62,22 +63,22 @@ export default function AutomationPage(props) {
 
   if (!automationConfig) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center">
         <div className="text-gray-600 dark:text-gray-400">Loading automation settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 pb-20 sm:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 pb-20 sm:pb-0">
       <div className="max-w-5xl mx-auto p-4">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6">
+        <div className={GLASS_CARD}>
           <div className="flex items-center justify-between flex-wrap gap-y-3">
             <div className="flex items-center gap-4 min-w-0">
               <button
                 onClick={() => setCurrentPage('dashboard')}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 shrink-0"
+                className={BTN_ICON}
                 title="Back to Dashboard"
               >
                 <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
@@ -130,15 +131,15 @@ export default function AutomationPage(props) {
         />
 
         {/* 3. Migration Settings (grouped: Scoring, Thresholds, Smart Migrations, Distribution) */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 overflow-hidden">
+        <div className={GLASS_CARD + ' overflow-hidden'}>
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, migrationSettingsGroup: !prev.migrationSettingsGroup }))}
             className="w-full flex items-center justify-between text-left p-4 sm:p-6 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration Settings</h2>
             <ChevronDown
-              size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.migrationSettingsGroup ? '' : '-rotate-180'}`}
+              size={ICON.section}
+              className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.migrationSettingsGroup ? 'rotate-180' : ''}`}
             />
           </button>
 

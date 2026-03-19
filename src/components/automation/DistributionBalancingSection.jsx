@@ -1,4 +1,5 @@
 import { ChevronDown } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
@@ -8,7 +9,7 @@ export default function DistributionBalancingSection({
 }) {
   const outerClass = embedded
     ? ''
-    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+    : GLASS_CARD + ' overflow-hidden';
 
   return (
         <div className={outerClass}>
@@ -21,8 +22,8 @@ export default function DistributionBalancingSection({
               : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
             }
             <ChevronDown
-              size={embedded ? 20 : 24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.distributionBalancing ? '' : '-rotate-180'}`}
+              size={embedded ? 20 : ICON.section}
+              className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -83,7 +84,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Minimum difference in guest counts to trigger balancing
@@ -106,7 +107,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Only migrate guests with this many CPU cores or less (0 = no limit)
@@ -129,7 +130,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Only migrate guests with this much memory or less (0 = no limit)

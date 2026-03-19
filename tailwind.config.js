@@ -6,7 +6,18 @@ module.exports = {
   ],
   darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        gray: { 850: '#1a2332', 950: '#0f1724' }
+      },
+      backdropBlur: {
+        xs: '2px'
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem'
+      }
+    },
   },
   plugins: [],
 }

@@ -1,7 +1,8 @@
 import {
-  Server, ChevronDown, ChevronUp, Cpu, MemoryStick, Database, Zap, Globe,
+  Server, ChevronDown, Cpu, MemoryStick, Database, Zap, Globe,
   RefreshCw, CheckCircle, Folder
 } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 export default function ClusterMap({
   data,
@@ -21,11 +22,11 @@ export default function ClusterMap({
   if (!data) return null;
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+    <div className={`${GLASS_CARD} overflow-hidden`}>
       <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
-            <Server size={24} className="text-white" />
+          <div className={iconBadge('teal', 'cyan')}>
+            <Server size={ICON.section} className="text-white" />
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
@@ -36,11 +37,7 @@ export default function ClusterMap({
             className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
             title={collapsedSections.clusterMap ? "Expand section" : "Collapse section"}
           >
-            {collapsedSections.clusterMap ? (
-              <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-            ) : (
-              <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-            )}
+            <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
           </button>
         </div>
         {!collapsedSections.clusterMap && (
@@ -262,6 +259,11 @@ export default function ClusterMap({
                     <div className="w-0.5 h-8 bg-gradient-to-b from-blue-400 to-transparent dark:from-blue-600"></div>
                   )}
 
+                  {/* No guests label */}
+                  {nodeGuests.length === 0 && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500 italic mt-2">No guests</div>
+                  )}
+
                   {/* Guests */}
                   <div className="flex flex-wrap gap-3 justify-center max-w-xs">
                     {nodeGuests.map(guest => {
@@ -296,7 +298,7 @@ export default function ClusterMap({
                       }
 
                       const sizeRatio = maxResources > 0 ? (resourceValue / maxResources) : 0.3;
-                      const size = Math.max(30, Math.min(80, 30 + (sizeRatio * 50)));
+                      const size = Math.max(36, Math.min(80, 36 + (sizeRatio * 44)));
 
                       const getGuestColor = () => {
                         const guestType = (guest.type || '').toUpperCase();
@@ -314,13 +316,14 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className="relative group">
                           <div
-                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
+                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
                             style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`}}
                             onClick={() => {
                               if (!isMigrating) {
                                 setSelectedGuestDetails({...guest, currentNode: node.name});
                               }
                             }}
+                            aria-label={guest.name || `Guest ${guest.vmid}`}
                           >
                             {guest.vmid}
                           </div>
@@ -345,7 +348,7 @@ export default function ClusterMap({
                                 guest.mount_points.has_unshared_bind_mount
                                   ? 'bg-orange-500'
                                   : 'bg-cyan-400'
-                              } rounded-full w-3 h-3 shadow-lg ring-2 ring-white dark:ring-gray-800`}
+                              } rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-white dark:ring-gray-800`}
                               title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
                             />
                           )}
@@ -353,7 +356,7 @@ export default function ClusterMap({
                           {/* Pinned Disk Indicator - Border Dot (Top Left) */}
                           {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3 h-3 shadow-lg ring-2 ring-white dark:ring-gray-800"
+                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-white dark:ring-gray-800"
                               title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
                             />
                           )}

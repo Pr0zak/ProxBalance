@@ -1,3 +1,5 @@
+import { INPUT_FIELD } from '../utils/designTokens.js';
+
 const { useState, useEffect, useRef } = React;
 
 /**
@@ -11,7 +13,7 @@ const { useState, useEffect, useRef } = React;
  *   isFloat   – use parseFloat instead of parseInt (default false)
  *   ...rest   – passed through to <input> (min, max, step, className, etc.)
  */
-export default function NumberField({ value, onCommit, isFloat, className, ...props }) {
+export default function NumberField({ value, onCommit, isFloat, className = INPUT_FIELD, ...props }) {
   const [localVal, setLocalVal] = useState(String(value ?? ''));
   const committedRef = useRef(value);
 

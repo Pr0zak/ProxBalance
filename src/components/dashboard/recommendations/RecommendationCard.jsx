@@ -3,6 +3,7 @@ import {
   Terminal, Folder, RotateCcw, Play, Lock, RefreshCw,
   TrendingUp, TrendingDown, Minus, Zap, Activity
 } from '../../Icons.jsx';
+import { INNER_CARD } from '../../../utils/designTokens.js';
 
 export default function RecommendationCard({
   rec, idx, penaltyConfig, recommendationData,
@@ -20,12 +21,12 @@ export default function RecommendationCard({
   const changedTarget = changeLog?.changed_targets?.find(r => String(r.vmid) === String(rec.vmid));
 
   return (
-    <div className={`border rounded p-4 transition-all duration-300 ${
+    <div className={`rounded-xl p-3 sm:p-4 transition-all duration-300 ${
       isCompleted
-        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 opacity-75'
+        ? 'border border-green-300 dark:border-green-700 bg-green-50/80 dark:bg-green-900/20 opacity-75'
         : isMaintenance
-        ? 'border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
-        : 'border-gray-200 dark:border-gray-700'
+        ? 'border border-yellow-400 dark:border-yellow-600 bg-yellow-50/80 dark:bg-yellow-900/10'
+        : INNER_CARD
     }`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -108,7 +109,7 @@ export default function RecommendationCard({
                     <span className="inline-flex items-center gap-1.5 min-w-[120px]" title={`Score improvement: +${rec.score_improvement.toFixed(1)} penalty points`}>
                       <span className="text-xs text-gray-500 dark:text-gray-400">+{rec.score_improvement.toFixed(0)}</span>
                       <span className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]">
-                        <span className={`block h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                        <span className={`block h-full rounded-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
                       </span>
                     </span>
                   );

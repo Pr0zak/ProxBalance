@@ -1,6 +1,7 @@
 import {
   Server, X, Activity, CheckCircle, XCircle, AlertTriangle, MoveRight, Loader, Lock
 } from '../Icons.jsx';
+import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 
 export default function NodeDetailsModal({
   selectedNode, setSelectedNode,
@@ -17,8 +18,8 @@ export default function NodeDetailsModal({
   if (!selectedNode) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60] sm:p-4" onClick={() => setSelectedNode(null)}>
-      <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedNode(null)}>
+      <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-2xl')} !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header - sticky so close button is always reachable */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -36,6 +37,7 @@ export default function NodeDetailsModal({
           <button
             onClick={() => setSelectedNode(null)}
             className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+            aria-label="Close"
           >
             <X size={22} />
           </button>

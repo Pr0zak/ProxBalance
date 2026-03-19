@@ -99,7 +99,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4 pb-20 sm:pb-4 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -281,6 +281,7 @@ export default function DashboardPage({
           setChartPeriod={setChartPeriod}
           nodeScores={nodeScores}
           generateSparkline={generateSparkline}
+          darkMode={darkMode}
         />
 
         <MigrationRecommendationsSection

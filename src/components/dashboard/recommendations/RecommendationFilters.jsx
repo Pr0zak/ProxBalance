@@ -1,4 +1,5 @@
 import { Filter } from '../../Icons.jsx';
+import { INNER_CARD, BTN_SECONDARY } from '../../../utils/designTokens.js';
 
 export default function RecommendationFilters({
   recommendations,
@@ -24,7 +25,7 @@ export default function RecommendationFilters({
         )}
       </button>
       {showRecFilters && (
-        <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-2">
+        <div className={`flex flex-wrap items-center gap-2 p-2 mb-2 ${INNER_CARD}`}>
           <select
             value={recFilterConfidence}
             onChange={e => setRecFilterConfidence(e.target.value)}
@@ -69,7 +70,7 @@ export default function RecommendationFilters({
           </select>
           <button
             onClick={() => setRecSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-            className="text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+            className="text-xs px-2 py-1.5 rounded-xl border border-gray-200/50 dark:border-gray-600/50 bg-white/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-gray-600/80 transition-all duration-150"
             title={`Sort direction: ${recSortDir}`}
           >
             {recSortDir === 'desc' ? '\u2193 Desc' : '\u2191 Asc'}

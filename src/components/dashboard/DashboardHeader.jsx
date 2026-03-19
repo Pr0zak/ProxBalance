@@ -1,8 +1,9 @@
 import {
   Server, HardDrive, Activity, RefreshCw, CheckCircle,
   AlertCircle, AlertTriangle, Sun, Moon, Settings,
-  ChevronDown, ChevronUp, GitHub, GitBranch, ProxBalanceLogo
+  ChevronDown, GitHub, GitBranch, ProxBalanceLogo
 } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 export default function DashboardHeader({
   data,
@@ -15,7 +16,7 @@ export default function DashboardHeader({
   recommendations
 }) {
   return (
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 overflow-hidden">
+        <div className={`${GLASS_CARD} overflow-hidden`}>
           {/* Minimal Header - Always Visible */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
             <div className="flex items-center gap-3">
@@ -66,7 +67,7 @@ export default function DashboardHeader({
               {systemInfo && systemInfo.updates_available && (
                 <button
                   onClick={() => setShowUpdateModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded hover:bg-yellow-700 dark:hover:bg-yellow-600"
+                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-xl hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-all duration-150"
                   title={`${systemInfo.commits_behind} update(s) available`}
                 >
                   <RefreshCw size={18} />
@@ -77,21 +78,21 @@ export default function DashboardHeader({
                 href="https://github.com/Pr0zak/ProxBalance"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={BTN_ICON}
                 title="View on GitHub"
               >
                 <GitHub size={20} className="text-gray-700 dark:text-gray-300" />
               </a>
               <button
                 onClick={toggleDarkMode}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={BTN_ICON}
                 title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
               </button>
               <button
                 onClick={() => setCurrentPage('settings')}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                className={BTN_ICON}
                 title="Settings"
               >
                 <Settings size={20} className="text-gray-700 dark:text-gray-300" />
@@ -101,7 +102,7 @@ export default function DashboardHeader({
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                 title={dashboardHeaderCollapsed ? "Expand Header" : "Collapse Header"}
               >
-                {dashboardHeaderCollapsed ? <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" /> : <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />}
+                <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!dashboardHeaderCollapsed ? 'rotate-180' : ''}`} />
               </button>
             </div>
           </div>
@@ -124,8 +125,8 @@ export default function DashboardHeader({
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shrink-0">
-                      <Server size={24} className="text-white" />
+                    <div className={iconBadge('blue', 'indigo')}>
+                      <Server size={ICON.section} className="text-white" />
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>

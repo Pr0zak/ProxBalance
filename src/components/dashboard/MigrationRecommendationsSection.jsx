@@ -1,7 +1,8 @@
 import {
-  Activity, RefreshCw, CheckCircle, ChevronDown, ChevronUp,
+  Activity, RefreshCw, CheckCircle, ChevronDown,
   Eye
 } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 import { formatLocalTime } from '../../utils/formatters.js';
 import useIsMobile from '../../utils/useIsMobile.js';
@@ -72,13 +73,13 @@ export default function MigrationRecommendationsSection({
   };
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-24 overflow-hidden">
+    <div className={GLASS_CARD.replace('mb-6', 'mb-24') + ' overflow-hidden'}>
       {/* Section Header */}
       <div className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 bg-gradient-to-br from-orange-600 to-red-600 rounded-lg shadow-md shrink-0">
-              <Activity size={24} className="text-white" />
+            <div className={iconBadge('orange', 'red')}>
+              <Activity size={ICON.section} className="text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -88,11 +89,7 @@ export default function MigrationRecommendationsSection({
                   className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-200"
                   title={collapsedSections.recommendations ? "Expand section" : "Collapse section"}
                 >
-                  {collapsedSections.recommendations ? (
-                    <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" />
-                  ) : (
-                    <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" />
-                  )}
+                  <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.recommendations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               <div className="flex items-center gap-2 mt-0.5">

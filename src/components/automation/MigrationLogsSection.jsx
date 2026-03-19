@@ -2,6 +2,7 @@ import {
   ArrowRight, Bell, CheckCircle, Clock, Download, Info,
   RefreshCw, Settings, XCircle
 } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,
@@ -14,7 +15,7 @@ export default function MigrationLogsSection({
 }) {
   return (<>
         {/* Migration Logs & History */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={GLASS_CARD + ' overflow-hidden'}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
             <div className="flex items-center gap-2 min-w-0">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration Logs & History</h2>
@@ -89,7 +90,7 @@ export default function MigrationLogsSection({
                       setMigrationHistoryPageSize(Number(e.target.value));
                       setMigrationHistoryPage(1);
                     }}
-                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className={`${SELECT_FIELD} px-2 py-1 text-xs`}
                   >
                     <option value={5}>5 per page</option>
                     <option value={10}>10 per page</option>
@@ -359,10 +360,10 @@ export default function MigrationLogsSection({
         </div>
 
         {/* Notification Settings - Link to Settings page */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={GLASS_CARD + ' overflow-hidden'}>
           <div className="flex items-center justify-between flex-wrap gap-y-3">
             <div className="flex items-center gap-3 min-w-0">
-              <Bell size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <Bell size={ICON.section} className="text-blue-600 dark:text-blue-400 shrink-0" />
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notification Settings</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

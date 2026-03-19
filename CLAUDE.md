@@ -73,7 +73,7 @@ ProxBalance/
 │       └── system.py            # /api/update/*, /api/health, etc.
 │
 ├── src/                         # Frontend source (React JSX, componentized)
-│   ├── index.jsx                # Root component + hook composition (~658 lines)
+│   ├── index.jsx                # Root component + hook composition (~560 lines)
 │   ├── hooks/                   # 11 custom React hooks
 │   │   ├── useDarkMode.js       # Dark mode toggle
 │   │   ├── useAuth.js           # Permissions, token validation
@@ -88,9 +88,10 @@ ProxBalance/
 │   │   └── useAutomation.js     # Automation status/config, run history
 │   ├── components/
 │   │   ├── DashboardPage.jsx    # Dashboard wrapper (~416 lines)
-│   │   ├── dashboard/           # 13 dashboard sub-components
+│   │   ├── MobileTabBar.jsx     # Reusable mobile bottom tab navigation
+│   │   ├── dashboard/           # 14 dashboard sub-components (includes NodeChart.jsx)
 │   │   ├── AutomationPage.jsx   # Automation wrapper (~223 lines)
-│   │   ├── automation/          # 6 automation sub-components
+│   │   ├── automation/          # 8 automation sub-components
 │   │   ├── SettingsPage.jsx     # Settings wrapper (~213 lines)
 │   │   ├── settings/            # 5 settings sub-components
 │   │   ├── ErrorBoundary.jsx     # Error boundary (prevents white-screen crashes)
@@ -100,6 +101,7 @@ ProxBalance/
 │   │   └── client.js            # API client with error handling
 │   └── utils/
 │       ├── constants.js         # Shared frontend constants (API_BASE, thresholds)
+│       ├── designTokens.js      # Centralized design tokens (glass cards, buttons, modals)
 │       ├── formatters.js        # Utility formatting functions
 │       └── useIsMobile.js       # Mobile responsiveness hook
 │
@@ -182,7 +184,7 @@ ProxBalance/
    - `proxbalance/cache.py` — In-memory TTL cache (60-second default)
    - `proxbalance/error_handlers.py` — Centralized error handling, `@api_route` decorator
 
-3. **Frontend** (`src/`, `index.html`) — React SPA bundled by esbuild. Componentized architecture: `src/index.jsx` is the root composition layer (~658 lines) that wires 11 custom hooks together; page components delegate to 24 sub-components across `dashboard/`, `settings/`, and `automation/` directories. Built output goes to `assets/js/app.js`. React and ReactDOM are loaded as global scripts in `index.html` (not bundled).
+3. **Frontend** (`src/`, `index.html`) — React SPA bundled by esbuild. Componentized architecture: `src/index.jsx` is the root composition layer (~560 lines) that wires 11 custom hooks together; page components delegate to 27 sub-components across `dashboard/`, `settings/`, and `automation/` directories. Uses a **glassmorphism design system** with centralized tokens in `src/utils/designTokens.js`. Built output goes to `assets/js/app.js`. React and ReactDOM are loaded as global scripts in `index.html` (not bundled).
 
 ### Background Services (systemd timers)
 
@@ -243,6 +245,29 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 
 **Production path**: `/opt/proxmox-balance-manager`
 
+**Deployment note**: Nginx serves static files from `/var/www/html/`, not `/opt/proxmox-balance-manager/`. After building, the `post_update.sh` script copies built assets to the nginx root. If deploying manually, copy `assets/js/app.js`, `assets/css/tailwind.css`, and `index.html` to `/var/www/html/`.
+
+### Design System (Glassmorphism)
+
+The UI uses a **glassmorphism/depth aesthetic** — backdrop-blur, frosted glass cards, layered depth — applied equally across all pages. All design tokens are centralized in `src/utils/designTokens.js`.
+
+**Key tokens:**
+- `GLASS_CARD` — Primary section cards: backdrop-blur-xl, semi-transparent bg, rounded-2xl, subtle shadow
+- `GLASS_CARD_SUBTLE` — Secondary/less prominent cards
+- `INNER_CARD` — Nested cards inside glass cards
+- `BTN_PRIMARY` / `BTN_SECONDARY` / `BTN_DANGER` / `BTN_ICON` — Buttons with rounded-xl, colored shadow glow, press feedback, focus rings
+- `MODAL_OVERLAY` / `MODAL_CONTAINER` — Glass modals with backdrop-blur and entrance animation
+- `iconBadge(color)` — Gradient icon badges for section headers
+- `ICON` — Standardized icon sizes: `{ section: 22, page: 26, action: 16, inline: 14 }`
+
+**Rules:**
+- **Never copy-paste Tailwind classes** for cards, buttons, or modals. Import from `designTokens.js`.
+- Section headers use `iconBadge('color')` for the icon badge and `ICON.section` for icon size.
+- Collapsible sections use a **single rotating ChevronDown** (not ChevronDown/ChevronUp ternary): `<ChevronDown className={\`transition-transform duration-200 \${!collapsed ? 'rotate-180' : ''}\`} />`
+- Page backgrounds use gradient: `bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950`
+- Modal entrance uses CSS `modal-enter` animation class (defined in `src/input.css`)
+- Animations are **minimal**: chevron rotations and modal entrances only — no section collapse animations.
+
 ## Key Files to Know
 
 ### Backend
@@ -263,10 +288,13 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 - **`notifications.py`** — Multi-provider notifications (Pushover, Email, Telegram, Discord, Slack, Webhooks).
 
 ### Frontend
-- **`src/index.jsx`** — Root component and hook composition layer (~658 lines). Wires 11 custom hooks together, handles chart rendering, page routing with prop passing.
+- **`src/index.jsx`** — Root component and hook composition layer (~560 lines). Wires 11 custom hooks together, page routing with prop passing. Chart rendering is delegated to `NodeChart.jsx`.
+- **`src/utils/designTokens.js`** — Centralized design tokens for the glassmorphism UI. Exports `GLASS_CARD`, `GLASS_CARD_SUBTLE`, `INNER_CARD`, `BTN_PRIMARY`, `BTN_SECONDARY`, `BTN_DANGER`, `BTN_ICON`, `MODAL_OVERLAY`, `MODAL_CONTAINER`, `BADGE`, `TEXT_HEADING`, `TEXT_SUBHEADING`, `ICON` sizes, and `iconBadge()` helper. **All UI components import from here — never copy-paste Tailwind classes for cards/buttons/modals.**
 - **`src/hooks/`** — 11 custom React hooks encapsulating all state management (data fetching, migrations, automation, auth, config, etc.). Hooks accept `deps` objects for cross-hook references.
-- **`src/components/DashboardPage.jsx`** — Dashboard wrapper (~416 lines) delegating to 13 sub-components in `dashboard/`.
-- **`src/components/AutomationPage.jsx`** — Automation wrapper (~223 lines) delegating to 6 sub-components in `automation/`.
+- **`src/components/MobileTabBar.jsx`** — Reusable mobile bottom tab navigation with last-update timestamp. Used on all 3 pages.
+- **`src/components/dashboard/NodeChart.jsx`** — Self-contained Chart.js component per node. Manages its own chart lifecycle (create/destroy).
+- **`src/components/DashboardPage.jsx`** — Dashboard wrapper (~416 lines) delegating to 14 sub-components in `dashboard/`.
+- **`src/components/AutomationPage.jsx`** — Automation wrapper (~223 lines) delegating to 8 sub-components in `automation/`.
 - **`src/components/SettingsPage.jsx`** — Settings wrapper (~213 lines) delegating to 5 sub-components in `settings/`.
 - **`src/api/client.js`** — Centralized API client for all backend calls.
 - **`src/utils/constants.js`** — Shared frontend constants (`API_BASE`, default thresholds, refresh intervals).
@@ -399,10 +427,14 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **`config.json` contains secrets** — Never commit it. Use `config.example.json` for reference. The GET `/api/config` endpoint redacts secret fields (token secrets, passwords, API keys) via `_redact_config()` in `routes/config.py`. Secrets are only accepted on POST, never returned on GET.
 - **Modular architecture** — `app.py` is a thin ~63-line entry point. Route handlers are in `proxbalance/routes/` (use `@api_route` decorator). Core logic is in `proxbalance/` domain modules (19 modules). Do not add large blocks of code back into `app.py`.
 - **SQLite storage** — All time-series data, metrics, profiles, outcomes, and migration history live in `proxbalance.db` (WAL mode). Only `cluster_cache.json`, `config.json`, `recommendations_cache.json`, and evacuation sessions remain as JSON. The database is initialized via `init_db()` in `app.py` and `collector_api.py` on startup.
-- **`src/app.jsx` was deleted** — The frontend is now fully componentized. `src/index.jsx` (~658 lines) is the root composition layer. UI is split into 24 sub-components across `dashboard/`, `settings/`, and `automation/` directories. State lives in 11 custom hooks in `src/hooks/`.
+- **`src/app.jsx` was deleted** — The frontend is now fully componentized. `src/index.jsx` (~560 lines) is the root composition layer. UI is split into 27 sub-components across `dashboard/`, `settings/`, and `automation/` directories. State lives in 11 custom hooks in `src/hooks/`.
+- **Design tokens are mandatory** — All card, button, modal, and badge classes must come from `src/utils/designTokens.js`. Never copy-paste raw Tailwind class strings for these elements. See the "Design System (Glassmorphism)" section above.
+- **Chart rendering is per-component** — `NodeChart.jsx` manages its own Chart.js lifecycle. The root `index.jsx` no longer manages chart instances.
+- **Mobile tab bar** — `MobileTabBar.jsx` is a shared component used on all 3 pages. Do not duplicate mobile navigation markup.
+- **Nginx serves from `/var/www/html/`** — After building, assets must be copied there (handled by `post_update.sh`). The backend runs on port 5000 and is proxied by nginx.
 - **Hook dependency pattern** — Hooks accept a `deps` object for cross-hook references (e.g., `useMigrations(API_BASE, { setData, setError })`). The root component wires hooks together and creates wrapper functions for cross-hook calls.
 - **Frontend build** — Uses esbuild, not Babel. Run `./build.sh` to rebuild. Output goes to `assets/js/app.js`.
-- **No package.json committed** — It's gitignored. Use `npx esbuild` or install locally.
+- **No package.json committed** — Both `package.json` and `package-lock.json` are intentionally gitignored. This is a deliberate design choice to keep Node.js dependencies ephemeral. `build.sh` falls back to `npx` when local binaries aren't installed. To install locally: `npm install tailwindcss@3 esbuild`. Do not commit `package.json`.
 - **Systemd timers** — Collection, recommendations, and auto-migration are separate systemd services, not in-process cron jobs.
 - **Blueprint routing** — All routes use full paths (e.g., `/api/config`), not url_prefix. Find a route by searching for `@*_bp.route('/api/...')` in `proxbalance/routes/`.
 - **Shared state** — Blueprints access shared objects (cache_manager, update_manager) via `current_app.config['key']`.
@@ -413,3 +445,15 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **Line ending enforcement** — `.gitattributes` enforces LF line endings for all text files.
 - **Backward-compatible re-exports** — When modules are extracted, original modules re-export the moved functions to avoid breaking existing imports (e.g., `config_manager.py` re-exports from `constants.py`).
 - **All domain modules are type-hinted** — All core domain modules have 100% function signature type hints using `typing` module.
+
+## Custom Skills (Slash Commands)
+
+Skills are in `.claude/skills/` and available via `/command`:
+
+| Command | Description |
+|---------|-------------|
+| `/build` | Build the frontend (esbuild + Tailwind) |
+| `/deploy [ctid]` | Deploy to the production LXC container via update.sh |
+| `/check-cluster` | Check cluster health, automation, and recommendations via MCP |
+| `/review [file\|branch]` | Code review for security, bugs, and style issues |
+| `/test` | Run Python syntax checks, shell validation, pytest, and import verification |

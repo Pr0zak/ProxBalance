@@ -1,6 +1,7 @@
 import { RefreshCw, Save, CheckCircle, Server } from '../Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
 import { API_BASE } from '../../utils/constants.js';
+import { INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 const { useState } = React;
 
 export default function DataCollectionSection({
@@ -105,7 +106,7 @@ export default function DataCollectionSection({
                                 if (guestTimeframeSelect) guestTimeframeSelect.value = preset.guest_tf;
                               }
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={`${SELECT_FIELD} w-full`}
                           >
                             <option value="small">Small (&lt; 30 VMs/CTs) - 5 min intervals</option>
                             <option value="medium">Medium (30-100 VMs/CTs) - 15 min intervals</option>
@@ -124,7 +125,7 @@ export default function DataCollectionSection({
                             defaultValue={config?.collection_interval_minutes || 15}
                             min="1"
                             max="240"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={INPUT_FIELD}
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             How often to collect full cluster metrics
@@ -156,7 +157,7 @@ export default function DataCollectionSection({
                             defaultValue={config?.collection_optimization?.max_parallel_workers || 5}
                             min="1"
                             max="10"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={INPUT_FIELD}
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Number of nodes to process concurrently
@@ -186,7 +187,7 @@ export default function DataCollectionSection({
                             <select
                               id="nodeTimeframe"
                               defaultValue={config?.collection_optimization?.node_rrd_timeframe || 'day'}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                              className={`${SELECT_FIELD} w-full`}
                             >
                               <option value="hour">Hour (~60 points)</option>
                               <option value="day">Day (~1440 points)</option>
@@ -199,7 +200,7 @@ export default function DataCollectionSection({
                             <select
                               id="guestTimeframe"
                               defaultValue={config?.collection_optimization?.guest_rrd_timeframe || 'hour'}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                              className={`${SELECT_FIELD} w-full`}
                             >
                               <option value="hour">Hour (~60 points)</option>
                               <option value="day">Day (~1440 points)</option>

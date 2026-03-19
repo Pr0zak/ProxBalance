@@ -1,6 +1,7 @@
 import {
   AlertTriangle, ChevronDown, Zap
 } from '../../Icons.jsx';
+import { INNER_CARD } from '../../../utils/designTokens.js';
 
 export default function AlertsBanner({
   recommendationData, collapsedSections, setCollapsedSections
@@ -17,12 +18,12 @@ export default function AlertsBanner({
       {hasAdvisories && (
         <div className="mb-4 space-y-2">
           {recommendationData.capacity_advisories.map((adv, i) => (
-            <div key={i} className={`rounded-lg border p-3 text-sm ${
+            <div key={i} className={`rounded-xl border p-3 text-sm ${
               adv.severity === 'critical'
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200'
+                ? 'bg-red-50/80 dark:bg-red-900/20 border-red-300/60 dark:border-red-700/50 text-red-800 dark:text-red-200'
                 : adv.severity === 'warning'
-                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'
-                : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
+                ? 'bg-yellow-50/80 dark:bg-yellow-900/20 border-yellow-300/60 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-200'
+                : 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-300/60 dark:border-blue-700/50 text-blue-800 dark:text-blue-200'
             }`}>
               <div className="flex items-start gap-2">
                 <AlertTriangle size={16} className={`shrink-0 mt-0.5 ${
@@ -49,7 +50,7 @@ export default function AlertsBanner({
 
       {/* Migration Conflicts */}
       {hasConflicts && (
-        <div className="mb-4 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm">
+        <div className="mb-4 rounded-xl border border-orange-300/60 dark:border-orange-700/50 bg-orange-50/80 dark:bg-orange-900/20 p-3 text-sm">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400" />
             <span className="font-semibold text-orange-800 dark:text-orange-200">
@@ -88,10 +89,10 @@ export default function AlertsBanner({
           {!collapsedSections.forecastAlerts && (
             <div className="space-y-2">
               {recommendationData.forecasts.map((fc, idx) => (
-                <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border ${
-                  fc.severity === 'critical' ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
-                  : fc.severity === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
-                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                <div key={idx} className={`flex items-start gap-3 p-3 rounded-xl border ${
+                  fc.severity === 'critical' ? 'bg-red-50/80 dark:bg-red-900/20 border-red-300/60 dark:border-red-700/50'
+                  : fc.severity === 'warning' ? 'bg-amber-50/80 dark:bg-amber-900/20 border-amber-300/60 dark:border-amber-700/50'
+                  : 'bg-blue-50/80 dark:bg-blue-900/20 border-blue-300/60 dark:border-blue-700/50'
                 }`}>
                   <div className={`shrink-0 p-1.5 rounded-full ${
                     fc.severity === 'critical' ? 'bg-red-100 dark:bg-red-800' : fc.severity === 'warning' ? 'bg-amber-100 dark:bg-amber-800' : 'bg-blue-100 dark:bg-blue-800'

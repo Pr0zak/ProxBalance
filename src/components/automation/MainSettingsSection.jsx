@@ -1,6 +1,7 @@
 import {
   AlertTriangle, ChevronDown, X, Power
 } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
@@ -11,15 +12,15 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
 
   return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={GLASS_CARD + ' overflow-hidden'}>
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, mainSettings: !prev.mainSettings }))}
             className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Core Settings</h2>
             <ChevronDown
-              size={24}
-              className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.mainSettings ? '' : '-rotate-180'}`}
+              size={ICON.section}
+              className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.mainSettings ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -135,7 +136,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                 max="60"
                 value={automationConfig.check_interval_minutes || 5}
                 onCommit={(val) => saveAutomationConfig({ check_interval_minutes: val })}
-                className="w-32 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                className={`${INPUT_FIELD} w-32`}
               />
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 How often to check for migrations
@@ -155,7 +156,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                     max="100"
                     value={automationConfig.rules?.min_confidence_score || 75}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, min_confidence_score: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                 </div>
                 <div>
@@ -167,7 +168,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                     max="20"
                     value={automationConfig.rules?.max_migrations_per_run || 3}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_migrations_per_run: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                 </div>
                 <div>
@@ -179,7 +180,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                     max="1440"
                     value={automationConfig.rules?.cooldown_minutes || 30}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, cooldown_minutes: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Wait time between migrations of the same VM
@@ -194,7 +195,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                     max="10"
                     value={automationConfig.rules?.max_concurrent_migrations || 1}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Maximum simultaneous migrations
@@ -209,7 +210,7 @@ export default function MainSettingsSection({ automationConfig, saveAutomationCo
                     max="300"
                     value={automationConfig.rules?.grace_period_seconds !== undefined ? automationConfig.rules.grace_period_seconds : 30}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, grace_period_seconds: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Wait time between migrations for cluster to settle (0 = no wait)

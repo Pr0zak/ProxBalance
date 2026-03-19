@@ -1,4 +1,5 @@
 import { ChevronDown } from '../../Icons.jsx';
+import { INNER_CARD } from '../../../utils/designTokens.js';
 
 export default function SkippedGuests({
   recommendationData, penaltyConfig, collapsedSections, setCollapsedSections
@@ -21,7 +22,7 @@ export default function SkippedGuests({
       {!collapsedSections.skippedGuests && (
         <div className="mt-2 space-y-1">
           {recommendationData.skipped_guests.slice(0, 20).map((skipped, idx) => (
-            <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700">
+            <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-white/50 dark:bg-gray-700/30 rounded-xl border border-gray-200/50 dark:border-gray-600/30">
               <span className={`shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${
                 skipped.reason === 'insufficient_improvement'
                   ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'

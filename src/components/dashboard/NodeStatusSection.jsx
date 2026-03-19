@@ -1,4 +1,6 @@
-import { HardDrive, ChevronDown, ChevronUp, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
+import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
+import NodeChart from './NodeChart.jsx';
 
 export default function NodeStatusSection({
   data,
@@ -9,13 +11,14 @@ export default function NodeStatusSection({
   chartPeriod, setChartPeriod,
   nodeScores,
   generateSparkline,
+  darkMode,
 }) {
   return (
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={`${GLASS_CARD} overflow-hidden`}>
           <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg shadow-md shrink-0">
-                <HardDrive size={24} className="text-white" />
+              <div className={iconBadge('cyan', 'blue')}>
+                <HardDrive size={ICON.section} className="text-white" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
@@ -26,11 +29,7 @@ export default function NodeStatusSection({
                 className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                 title={collapsedSections.nodeStatus ? "Expand section" : "Collapse section"}
               >
-                {collapsedSections.nodeStatus ? (
-                  <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-                )}
+                <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.nodeStatus ? 'rotate-180' : ''}`} />
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -56,7 +55,7 @@ export default function NodeStatusSection({
                     <button
                       key={cols}
                       onClick={() => setNodeGridColumns(cols)}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`px-3 py-1.5 text-sm rounded transition-colors ${
                         nodeGridColumns === cols
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -73,7 +72,7 @@ export default function NodeStatusSection({
                 <select
                   value={chartPeriod}
                   onChange={(e) => setChartPeriod(e.target.value)}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className={SELECT_FIELD}
                 >
                   <option value="1h">1 Hour</option>
                   <option value="6h">6 Hours</option>
@@ -93,8 +92,8 @@ export default function NodeStatusSection({
                 const predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name];
                 const before = showPredicted && recommendationData?.summary?.batch_impact?.before?.node_scores?.[node.name];
                 return (
-                <div key={node.name} className={`border rounded p-3 hover:shadow-md transition-shadow ${
-                  showPredicted && predicted ? 'border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800' : 'border-gray-200 dark:border-gray-700'
+                <div key={node.name} className={`${INNER_CARD} hover:shadow-md transition-shadow ${
+                  showPredicted && predicted ? 'border-indigo-300 dark:border-indigo-600 ring-1 ring-indigo-200 dark:ring-indigo-800' : ''
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{node.name}</h3>
@@ -111,7 +110,7 @@ export default function NodeStatusSection({
                           }
                         </span>
                       )}
-                      <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status}></span>
+                      <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status} aria-label={node.status} role="status"></span>
                     </div>
                   </div>
                   <div className="space-y-1.5 text-xs">
@@ -322,7 +321,7 @@ export default function NodeStatusSection({
             'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
           }`}>
             {Object.values(data.nodes).map(node => (
-              <div key={node.name} className="border border-gray-200 dark:border-gray-700 rounded p-4">
+              <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{node.name}</h3>
                   <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
@@ -338,7 +337,13 @@ export default function NodeStatusSection({
 
                 {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
                   <div className="mt-4" style={{height: '200px'}}>
-                    <canvas id={`chart-${node.name}`}></canvas>
+                    <NodeChart
+                      nodeName={node.name}
+                      trendData={node.trend_data}
+                      chartPeriod={chartPeriod}
+                      darkMode={darkMode}
+                      nodeScore={nodeScores?.[node.name]}
+                    />
                   </div>
                 )}
               </div>

@@ -1,4 +1,5 @@
 import { X, Check, XCircle, AlertTriangle } from '../Icons.jsx';
+import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 
 export default function EvacuationModals({
   evacuationPlan, setEvacuationPlan,
@@ -16,12 +17,12 @@ export default function EvacuationModals({
     <>
       {/* Global Evacuation Plan Modal */}
       {evacuationPlan && planNode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => {
+        <div className={MODAL_OVERLAY} onClick={() => {
           setEvacuationPlan(null);
           setPlanNode(null);
           setGuestTargets({});
         }}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-4xl').replace('overflow-y-auto', 'overflow-hidden')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                 Evacuation Plan for {evacuationPlan.source_node}
@@ -33,6 +34,7 @@ export default function EvacuationModals({
                   setGuestTargets({});
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                aria-label="Close"
               >
                 <X size={24} />
               </button>
@@ -175,11 +177,11 @@ export default function EvacuationModals({
 
       {/* Global Confirmation Modal */}
       {showConfirmModal && evacuationPlan && planNode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirmModal(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className={MODAL_OVERLAY} onClick={() => setShowConfirmModal(false)}>
+          <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-2xl')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
-              <button onClick={() => setShowConfirmModal(false)}>
+              <button onClick={() => setShowConfirmModal(false)} aria-label="Close">
                 <XCircle size={24} />
               </button>
             </div>

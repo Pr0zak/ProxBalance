@@ -1,9 +1,10 @@
 import {
-  Clock, ChevronDown, ChevronUp, XCircle, CheckCircle, Pause, Settings,
+  Clock, ChevronDown, XCircle, CheckCircle, Pause, Settings,
   Play, Loader, X, Info, AlertTriangle, RefreshCw, ClipboardList,
   Download, MinusCircle, ChevronRight, Minus, Eye
 } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -30,16 +31,15 @@ export default function AutomationStatusSection({
   if (!automationStatus) return null;
 
   return (
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={`${GLASS_CARD} overflow-hidden`}>
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`p-2.5 rounded-lg shadow-md shrink-0 ${
-                  automationStatus.enabled
-                    ? 'bg-gradient-to-br from-green-600 to-emerald-600'
-                    : 'bg-gradient-to-br from-gray-500 to-gray-600'
-                }`}>
-                  <Clock size={24} className="text-white" />
+                <div className={automationStatus.enabled
+                    ? iconBadge('green', 'emerald')
+                    : iconBadge('gray')
+                }>
+                  <Clock size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Automated Migrations</h2>
@@ -65,11 +65,7 @@ export default function AutomationStatusSection({
                   className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                   title={collapsedSections.automatedMigrations ? "Expand section" : "Collapse section"}
                 >
-                  {collapsedSections.automatedMigrations ? (
-                    <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-                  ) : (
-                    <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-                  )}
+                  <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.automatedMigrations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
@@ -466,6 +462,7 @@ export default function AutomationStatusSection({
                               onClick={() => setCancelMigrationModal(migration)}
                               className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-red-700 dark:text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
                               title="Cancel migration"
+                              aria-label={`Cancel migration for ${migration.name || migration.vmid}`}
                             >
                               <X size={12} /> Cancel
                             </button>
@@ -514,11 +511,7 @@ export default function AutomationStatusSection({
                       {formatRelativeTime(automationStatus.state.last_run.timestamp)}
                     </span>
                   </div>
-                  {collapsedSections.lastRunSummary ? (
-                    <ChevronDown size={18} className="text-gray-500" />
-                  ) : (
-                    <ChevronUp size={18} className="text-gray-500" />
-                  )}
+                  <ChevronDown size={ICON.action} className={`text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
                 </button>
 
                 {!collapsedSections.lastRunSummary && (
