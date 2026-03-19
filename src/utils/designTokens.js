@@ -76,9 +76,17 @@ export const SELECT_FIELD =
 export const BADGE =
   'px-2.5 py-0.5 rounded-full text-xs font-semibold backdrop-blur-sm';
 
-/** Status badge with icon — pass color name (green, red, yellow, etc.) */
-export const statusBadge = (color) =>
-  `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-${color}-100/80 dark:bg-${color}-900/30 text-${color}-700 dark:text-${color}-300`;
+/** Status badge with icon — pass color name. Static map for Tailwind JIT. */
+const STATUS_BADGE_MAP = {
+  green:  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100/80 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  red:    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  yellow: 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100/80 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+  blue:   'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+  orange: 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100/80 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  purple: 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100/80 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+  gray:   'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100/80 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300',
+};
+export const statusBadge = (color) => STATUS_BADGE_MAP[color] || STATUS_BADGE_MAP.gray;
 
 // ---------------------------------------------------------------------------
 // Table
