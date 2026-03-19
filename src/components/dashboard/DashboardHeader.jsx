@@ -25,7 +25,7 @@ export default function DashboardHeader({
               </div>
               <div>
                 <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>ProxBalance</h1>
-                {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization</p>}
+                {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization <span className="text-xs text-blue-500 dark:text-blue-400 font-semibold ml-1">Glass UI</span></p>}
                 {dashboardHeaderCollapsed && data && data.nodes && (() => {
                   const nodes = Object.values(data.nodes);
                   const totalCPU = (nodes.reduce((sum, node) => sum + (node.cpu_percent || 0), 0) / nodes.length).toFixed(1);
