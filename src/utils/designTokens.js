@@ -23,10 +23,24 @@ export const INNER_CARD =
 // Section header icon badge
 // ---------------------------------------------------------------------------
 
-/** Gradient icon badge for section headers — pass one or two Tailwind color names */
+/**
+ * Gradient icon badge for section headers.
+ * Uses a static lookup so Tailwind JIT can detect all class strings.
+ * Call: iconBadge('blue', 'indigo') or iconBadge('gray')
+ */
+const ICON_BADGE_MAP = {
+  'blue,indigo':   'p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 shrink-0',
+  'cyan,blue':     'p-2.5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/25 shrink-0',
+  'teal,cyan':     'p-2.5 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg shadow-teal-500/25 shrink-0',
+  'orange,red':    'p-2.5 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg shadow-orange-500/25 shrink-0',
+  'purple,pink':   'p-2.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/25 shrink-0',
+  'violet,purple': 'p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25 shrink-0',
+  'green,emerald': 'p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg shadow-green-500/25 shrink-0',
+  'gray':          'p-2.5 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl shadow-lg shadow-gray-500/25 shrink-0',
+};
 export const iconBadge = (from, to) => {
-  const toColor = to || from;
-  return `p-2.5 bg-gradient-to-br from-${from}-500 to-${toColor}-600 rounded-xl shadow-lg shadow-${from}-500/25 shrink-0`;
+  const key = to ? `${from},${to}` : from;
+  return ICON_BADGE_MAP[key] || `p-2.5 bg-gradient-to-br from-${from}-500 to-${(to || from)}-600 rounded-xl shadow-lg shadow-${from}-500/25 shrink-0`;
 };
 
 // ---------------------------------------------------------------------------
