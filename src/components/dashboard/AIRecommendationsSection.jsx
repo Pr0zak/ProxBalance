@@ -2,7 +2,7 @@ import {
   Activity, RefreshCw, CheckCircle, AlertTriangle, Shield, Lock,
   Play, ChevronDown, AlertCircle
 } from '../Icons.jsx';
-import { GLASS_CARD_SUBTLE, iconBadge, BTN_PRIMARY, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD_SUBTLE, iconBadge, BTN_PRIMARY, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
 
 export default function AIRecommendationsSection({
   config, aiEnabled,
@@ -39,7 +39,7 @@ export default function AIRecommendationsSection({
                   <select
                     value={aiAnalysisPeriod}
                     onChange={(e) => setAiAnalysisPeriod(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    className={SELECT_FIELD}
                   >
                     <option value="1h">Last Hour</option>
                     <option value="6h">Last 6 Hours</option>

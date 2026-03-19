@@ -63,7 +63,7 @@ export default function InsightsDrawer({
       {/* Drawer Panel */}
       <div
         ref={drawerRef}
-        className={`absolute top-0 right-0 h-full ${drawerWidth} bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl shadow-black/20 border-l border-white/20 dark:border-gray-700/50 flex flex-col transform transition-transform duration-200`}
+        className={`absolute top-0 right-0 h-full ${drawerWidth} bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl shadow-black/20 border-l border-white/20 dark:border-gray-700/50 flex flex-col drawer-enter`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-gray-700/50 shrink-0">

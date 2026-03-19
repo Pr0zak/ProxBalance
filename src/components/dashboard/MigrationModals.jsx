@@ -3,7 +3,7 @@ import {
   AlertTriangle, Info, List, ArrowRight, Terminal, CheckCircle
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON } from '../../utils/designTokens.js';
+import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 
 export default function MigrationModals({
   showMigrationDialog, setShowMigrationDialog,
@@ -63,7 +63,7 @@ export default function MigrationModals({
             <select
               value={migrationTarget}
               onChange={(e) => setMigrationTarget(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className={`${SELECT_FIELD} w-full`}
             >
               <option value="">Select target node...</option>
               {data && data.nodes && Object.values(data.nodes)
@@ -116,6 +116,7 @@ export default function MigrationModals({
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close"
             >
               <XCircle size={24} />
             </button>
@@ -266,7 +267,7 @@ export default function MigrationModals({
                     handleAddTag();
                   }
                 }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className={INPUT_FIELD}
                 placeholder="e.g., exclude_database, affinity_web"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -317,7 +318,7 @@ export default function MigrationModals({
         <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
-            <button onClick={() => setConfirmRemoveTag(null)}>
+            <button onClick={() => setConfirmRemoveTag(null)} aria-label="Close">
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
@@ -352,7 +353,7 @@ export default function MigrationModals({
         <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
-            <button onClick={() => setConfirmMigration(null)}>
+            <button onClick={() => setConfirmMigration(null)} aria-label="Close">
               <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
             </button>
           </div>
@@ -423,6 +424,7 @@ export default function MigrationModals({
               <button
                 onClick={() => setShowBatchConfirmation(false)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                aria-label="Close"
               >
                 <X size={24} />
               </button>

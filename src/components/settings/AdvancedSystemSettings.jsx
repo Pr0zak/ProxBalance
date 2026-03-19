@@ -3,7 +3,7 @@ import {
   RefreshCw, Download, Upload, Server
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { GLASS_CARD } from '../../utils/designTokens.js';
+import { GLASS_CARD, INPUT_FIELD, ICON } from '../../utils/designTokens.js';
 const { useState } = React;
 
 export default function AdvancedSystemSettings({
@@ -24,7 +24,7 @@ export default function AdvancedSystemSettings({
                         className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <AlertTriangle className="text-red-600 dark:text-red-500 shrink-0" size={24} />
+                          <AlertTriangle className="text-red-600 dark:text-red-500 shrink-0" size={ICON.section} />
                           <div className="min-w-0">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Advanced System Settings</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Data management, debugging, API configuration, and system controls</p>
@@ -32,7 +32,7 @@ export default function AdvancedSystemSettings({
                         </div>
                         <ChevronDown
                           className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${showAdvancedSettings ? 'rotate-180' : ''}`}
-                          size={20}
+                          size={ICON.section}
                         />
                       </button>
 
@@ -101,7 +101,7 @@ export default function AdvancedSystemSettings({
                           <select
                             value={logLevel}
                             onChange={(e) => setLogLevel(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={INPUT_FIELD}
                           >
                             <option value="ERROR">ERROR - Only critical errors</option>
                             <option value="WARN">WARN - Warnings and errors</option>
@@ -157,7 +157,7 @@ export default function AdvancedSystemSettings({
                             value={proxmoxTokenId}
                             onChange={(e) => setProxmoxTokenId(e.target.value)}
                             placeholder="proxbalance@pam!proxbalance"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                            className={`${INPUT_FIELD} font-mono`}
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Format: user@realm!tokenname (e.g., proxbalance@pam!proxbalance)
@@ -172,7 +172,7 @@ export default function AdvancedSystemSettings({
                             value={proxmoxTokenSecret}
                             onChange={(e) => setProxmoxTokenSecret(e.target.value)}
                             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                            className={`${INPUT_FIELD} font-mono`}
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             The UUID token secret from Proxmox
@@ -272,7 +272,7 @@ export default function AdvancedSystemSettings({
                             id="proxmoxHostInput"
                             defaultValue={config?.proxmox_host || ''}
                             placeholder="10.0.0.3 or pve-node1"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={INPUT_FIELD}
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             IP address or hostname of the Proxmox node to connect to

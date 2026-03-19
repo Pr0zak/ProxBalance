@@ -1,5 +1,5 @@
 import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 
 export default function NodeStatusSection({
@@ -18,7 +18,7 @@ export default function NodeStatusSection({
           <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
             <div className="flex items-center gap-3 min-w-0">
               <div className={iconBadge('cyan')}>
-                <HardDrive size={24} className="text-white" />
+                <HardDrive size={ICON.section} className="text-white" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Node Status</h2>
@@ -55,7 +55,7 @@ export default function NodeStatusSection({
                     <button
                       key={cols}
                       onClick={() => setNodeGridColumns(cols)}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                      className={`px-3 py-1.5 text-sm rounded transition-colors ${
                         nodeGridColumns === cols
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
@@ -72,7 +72,7 @@ export default function NodeStatusSection({
                 <select
                   value={chartPeriod}
                   onChange={(e) => setChartPeriod(e.target.value)}
-                  className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className={SELECT_FIELD}
                 >
                   <option value="1h">1 Hour</option>
                   <option value="6h">6 Hours</option>
@@ -110,7 +110,7 @@ export default function NodeStatusSection({
                           }
                         </span>
                       )}
-                      <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status}></span>
+                      <span className={`w-2 h-2 rounded-full ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status} aria-label={node.status} role="status"></span>
                     </div>
                   </div>
                   <div className="space-y-1.5 text-xs">

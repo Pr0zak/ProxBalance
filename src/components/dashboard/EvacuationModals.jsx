@@ -34,6 +34,7 @@ export default function EvacuationModals({
                   setGuestTargets({});
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                aria-label="Close"
               >
                 <X size={24} />
               </button>
@@ -180,7 +181,7 @@ export default function EvacuationModals({
           <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-2xl')} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Evacuation</h3>
-              <button onClick={() => setShowConfirmModal(false)}>
+              <button onClick={() => setShowConfirmModal(false)} aria-label="Close">
                 <XCircle size={24} />
               </button>
             </div>

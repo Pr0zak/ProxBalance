@@ -1,8 +1,9 @@
 import {
   Tag, ChevronDown, HardDrive, Shield, CheckCircle, X, Plus,
-  Play, Power, Loader, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight
+  Play, Power, Loader
 } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import Pagination from '../Pagination.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD, TABLE_HEADER, TABLE_ROW, TABLE_ROW_STRIPED } from '../../utils/designTokens.js';
 
 export default function GuestTagManagement({
   data,
@@ -30,13 +31,24 @@ export default function GuestTagManagement({
 }) {
   if (!data) return null;
 
+  const filteredGuestsCount = guestSearchFilter
+    ? Object.values(data.guests).filter(guest => {
+        const searchLower = guestSearchFilter.toLowerCase();
+        return guest.vmid.toString().includes(searchLower) ||
+          (guest.name || '').toLowerCase().includes(searchLower) ||
+          guest.node.toLowerCase().includes(searchLower) ||
+          guest.type.toLowerCase().includes(searchLower) ||
+          guest.status.toLowerCase().includes(searchLower);
+      }).length
+    : Object.keys(data.guests).length;
+
   return (
           <div className={`${GLASS_CARD_SUBTLE} overflow-hidden`}>
             <div className="flex items-center justify-between gap-2 mb-3 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className={iconBadge('purple')}>
-                  <Tag size={18} className="text-white sm:hidden" />
-                  <Tag size={24} className="text-white hidden sm:block" />
+                  <Tag size={ICON.action} className="text-white sm:hidden" />
+                  <Tag size={ICON.section} className="text-white hidden sm:block" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white">Guest Tag Management</h2>
@@ -108,7 +120,7 @@ export default function GuestTagManagement({
                         setGuestSearchFilter(e.target.value);
                         setGuestCurrentPage(1);
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      className={INPUT_FIELD}
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -119,7 +131,7 @@ export default function GuestTagManagement({
                         setGuestPageSize(Number(e.target.value));
                         setGuestCurrentPage(1);
                       }}
-                      className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                      className={SELECT_FIELD}
                     >
                       <option value="10">10</option>
                       <option value="25">25</option>
@@ -142,12 +154,12 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             Type
                             {guestSortField === 'type' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
@@ -160,12 +172,12 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`hidden sm:table-cell ${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             ID
                             {guestSortField === 'vmid' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
@@ -178,12 +190,12 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             Name
                             {guestSortField === 'name' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
@@ -196,12 +208,12 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             Node
                             {guestSortField === 'node' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
@@ -214,12 +226,12 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             Status
                             {guestSortField === 'status' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
@@ -232,16 +244,16 @@ export default function GuestTagManagement({
                               setGuestSortDirection('asc');
                             }
                           }}
-                          className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 select-none"
+                          className={`hidden sm:table-cell ${TABLE_HEADER} cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                         >
                           <div className="flex items-center gap-1">
                             Tags
                             {guestSortField === 'tags' && (
-                              <span>{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold">{guestSortDirection === 'asc' ? '\u2191' : '\u2193'}</span>
                             )}
                           </div>
                         </th>
-                        {canMigrate && <th className="hidden sm:table-cell text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>}
+                        {canMigrate && <th className={`hidden sm:table-cell ${TABLE_HEADER}`}>Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -325,7 +337,7 @@ export default function GuestTagManagement({
                       return (
                       <tr
                         key={guest.vmid}
-                        className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 ${canMigrate ? 'sm:cursor-default cursor-pointer' : ''}`}
+                        className={`${TABLE_ROW} ${TABLE_ROW_STRIPED} ${canMigrate ? 'sm:cursor-default cursor-pointer' : ''}`}
                         onClick={() => {
                           if (canMigrate && window.innerWidth < 640) {
                             setTagModalGuest(guest);
@@ -414,8 +426,9 @@ export default function GuestTagManagement({
                                   setTagModalGuest(guest);
                                   setShowTagModal(true);
                                 }}
-                                className="sm:hidden p-1 text-purple-500 hover:text-purple-400 hover:bg-purple-900/30 rounded transition-colors"
+                                className="sm:hidden p-2 text-purple-500 hover:text-purple-400 hover:bg-purple-900/30 rounded transition-colors"
                                 title="Manage tags"
+                                aria-label="Manage tags"
                               >
                                 <Tag size={14} />
                               </button>
@@ -432,6 +445,7 @@ export default function GuestTagManagement({
                                     onClick={() => handleRemoveTag(guest, 'ignore')}
                                     className="hover:bg-yellow-300 dark:hover:bg-yellow-700 rounded-full p-0.5"
                                     title="Remove ignore tag"
+                                    aria-label="Remove tag"
                                   >
                                     <X size={12} />
                                   </button>
@@ -446,6 +460,7 @@ export default function GuestTagManagement({
                                     onClick={() => handleRemoveTag(guest, 'auto_migrate_ok')}
                                     className="hover:bg-green-300 dark:hover:bg-green-700 rounded-full p-0.5"
                                     title="Remove auto_migrate_ok tag"
+                                    aria-label="Remove tag"
                                   >
                                     <X size={12} />
                                   </button>
@@ -460,6 +475,7 @@ export default function GuestTagManagement({
                                     onClick={() => handleRemoveTag(guest, tag)}
                                     className="hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5"
                                     title={`Remove tag "${tag}"`}
+                                    aria-label="Remove tag"
                                   >
                                     <X size={12} />
                                   </button>
@@ -493,71 +509,13 @@ export default function GuestTagManagement({
                   </table>
                 </div>
 
-                {/* Pagination controls */}
-                {(() => {
-                  const filteredGuestsCount = guestSearchFilter
-                    ? Object.values(data.guests).filter(guest => {
-                        const searchLower = guestSearchFilter.toLowerCase();
-                        return guest.vmid.toString().includes(searchLower) ||
-                          (guest.name || '').toLowerCase().includes(searchLower) ||
-                          guest.node.toLowerCase().includes(searchLower) ||
-                          guest.type.toLowerCase().includes(searchLower) ||
-                          guest.status.toLowerCase().includes(searchLower);
-                      }).length
-                    : Object.keys(data.guests).length;
-
-                  const totalPages = Math.ceil(filteredGuestsCount / guestPageSize);
-
-                  if (totalPages <= 1) return null;
-
-                  const startIndex = (guestCurrentPage - 1) * guestPageSize + 1;
-                  const endIndex = Math.min(guestCurrentPage * guestPageSize, filteredGuestsCount);
-
-                  return (
-                    <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                        Showing {startIndex}-{endIndex} of {filteredGuestsCount} guests
-                      </div>
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <button
-                          onClick={() => setGuestCurrentPage(1)}
-                          disabled={guestCurrentPage === 1}
-                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                          title="First"
-                        >
-                          <ChevronsLeft size={14} className="sm:hidden" /><span className="hidden sm:inline">First</span>
-                        </button>
-                        <button
-                          onClick={() => setGuestCurrentPage(guestCurrentPage - 1)}
-                          disabled={guestCurrentPage === 1}
-                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                          title="Previous"
-                        >
-                          <ChevronLeft size={14} className="sm:hidden" /><span className="hidden sm:inline">Prev</span>
-                        </button>
-                        <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                          {guestCurrentPage} / {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setGuestCurrentPage(guestCurrentPage + 1)}
-                          disabled={guestCurrentPage === totalPages}
-                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                          title="Next"
-                        >
-                          <ChevronRight size={14} className="sm:hidden" /><span className="hidden sm:inline">Next</span>
-                        </button>
-                        <button
-                          onClick={() => setGuestCurrentPage(totalPages)}
-                          disabled={guestCurrentPage === totalPages}
-                          className="px-2 sm:px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs sm:text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                          title="Last"
-                        >
-                          <ChevronsRight size={14} className="sm:hidden" /><span className="hidden sm:inline">Last</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <Pagination
+                  currentPage={guestCurrentPage}
+                  totalPages={Math.ceil(filteredGuestsCount / guestPageSize)}
+                  totalItems={filteredGuestsCount}
+                  pageSize={guestPageSize}
+                  onPageChange={setGuestCurrentPage}
+                />
               </div>
             )}
           </div>

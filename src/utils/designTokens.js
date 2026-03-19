@@ -44,11 +44,45 @@ export const BTN_ICON =
   'p-2 rounded-xl bg-white/60 dark:bg-gray-700/50 backdrop-blur border border-gray-200/30 dark:border-gray-600/30 hover:bg-white/80 dark:hover:bg-gray-600/60 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-gray-400/50 focus:ring-offset-2 dark:focus:ring-offset-gray-900';
 
 // ---------------------------------------------------------------------------
+// Form inputs
+// ---------------------------------------------------------------------------
+
+export const INPUT_FIELD =
+  'w-full px-3 py-2 bg-white/60 dark:bg-gray-700/60 backdrop-blur border border-gray-200/50 dark:border-gray-600/50 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50';
+
+export const SELECT_FIELD =
+  'px-3 py-2 bg-white/60 dark:bg-gray-700/60 backdrop-blur border border-gray-200/50 dark:border-gray-600/50 rounded-xl text-sm text-gray-900 dark:text-white transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50';
+
+// ---------------------------------------------------------------------------
 // Badge / pill
 // ---------------------------------------------------------------------------
 
 export const BADGE =
   'px-2.5 py-0.5 rounded-full text-xs font-semibold backdrop-blur-sm';
+
+/** Status badge with icon — pass color name (green, red, yellow, etc.) */
+export const statusBadge = (color) =>
+  `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-${color}-100/80 dark:bg-${color}-900/30 text-${color}-700 dark:text-${color}-300`;
+
+// ---------------------------------------------------------------------------
+// Table
+// ---------------------------------------------------------------------------
+
+export const TABLE_HEADER =
+  'text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300 select-none';
+
+export const TABLE_ROW =
+  'border-b border-gray-100/50 dark:border-gray-700/50 hover:bg-white/40 dark:hover:bg-gray-700/30 transition-colors';
+
+export const TABLE_ROW_STRIPED =
+  'even:bg-gray-50/30 dark:even:bg-gray-800/20';
+
+// ---------------------------------------------------------------------------
+// Empty state
+// ---------------------------------------------------------------------------
+
+export const EMPTY_STATE =
+  'flex flex-col items-center justify-center py-8 sm:py-12 text-center';
 
 // ---------------------------------------------------------------------------
 // Modals

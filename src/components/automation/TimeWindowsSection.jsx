@@ -1,7 +1,7 @@
 import {
-  Calendar, Check, ChevronDown, Edit, Info, Moon, Plus, Save, Trash, X
+  Calendar, Check, ChevronDown, Clock, Edit, Info, Moon, Plus, Save, Trash, X
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -61,7 +61,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                       timezone: e.target.value
                     }
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  className={`${SELECT_FIELD} w-full`}
                 >
                   <option value="UTC">UTC (Server Time)</option>
                   <option value="America/New_York">Eastern Time (ET)</option>
@@ -266,8 +266,12 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
 
             if (allWindows.length === 0) {
               return (
-                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  No time windows configured - migrations allowed at any time
+                <div className={EMPTY_STATE + ' mb-3'}>
+                  <div className="p-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-2xl mb-4">
+                    <Clock size={32} className="text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No time windows configured</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">Add migration or blackout windows to control when automated migrations can run.</p>
                 </div>
               );
             }
@@ -336,7 +340,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                   }
                                 });
                               }}
-                              className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                              className={INPUT_FIELD}
                             />
                           </div>
 
@@ -425,7 +429,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                       }
                                     });
                                   }}
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                                  className={`${SELECT_FIELD} flex-1`}
                                 >
                                   {Array.from({ length: 24 }, (_, i) => (
                                     <option key={i} value={i.toString().padStart(2, '0')}>
@@ -448,7 +452,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                       }
                                     });
                                   }}
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                                  className={`${SELECT_FIELD} flex-1`}
                                 >
                                   {Array.from({ length: 12 }, (_, i) => i * 5).map(minute => (
                                     <option key={minute} value={minute.toString().padStart(2, '0')}>
@@ -476,7 +480,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                       }
                                     });
                                   }}
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                                  className={`${SELECT_FIELD} flex-1`}
                                 >
                                   {Array.from({ length: 24 }, (_, i) => (
                                     <option key={i} value={i.toString().padStart(2, '0')}>
@@ -499,7 +503,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                       }
                                     });
                                   }}
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                                  className={`${SELECT_FIELD} flex-1`}
                                 >
                                   {Array.from({ length: 12 }, (_, i) => i * 5).map(minute => (
                                     <option key={minute} value={minute.toString().padStart(2, '0')}>
@@ -624,7 +628,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                     value={newWindowData.name}
                     onChange={(e) => setNewWindowData({ ...newWindowData, name: e.target.value })}
                     placeholder={newWindowData.type === 'migration' ? 'e.g., Weekend Maintenance' : 'e.g., Business Hours'}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                 </div>
 
@@ -719,7 +723,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             const currentMinute = newWindowData.start_time?.split(':')[1] || '00';
                             setNewWindowData({ ...newWindowData, start_time: `${e.target.value}:${currentMinute}` });
                           }}
-                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          className={`${SELECT_FIELD} flex-1`}
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={i.toString().padStart(2, '0')}>
@@ -734,7 +738,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             const currentHour = newWindowData.start_time?.split(':')[0] || '00';
                             setNewWindowData({ ...newWindowData, start_time: `${currentHour}:${e.target.value}` });
                           }}
-                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          className={`${SELECT_FIELD} flex-1`}
                         >
                           {Array.from({ length: 12 }, (_, i) => i * 5).map(minute => (
                             <option key={minute} value={minute.toString().padStart(2, '0')}>
@@ -756,7 +760,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             const currentMinute = newWindowData.end_time?.split(':')[1] || '00';
                             setNewWindowData({ ...newWindowData, end_time: `${e.target.value}:${currentMinute}` });
                           }}
-                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          className={`${SELECT_FIELD} flex-1`}
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={i.toString().padStart(2, '0')}>
@@ -771,7 +775,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             const currentHour = newWindowData.end_time?.split(':')[0] || '00';
                             setNewWindowData({ ...newWindowData, end_time: `${currentHour}:${e.target.value}` });
                           }}
-                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                          className={`${SELECT_FIELD} flex-1`}
                         >
                           {Array.from({ length: 12 }, (_, i) => i * 5).map(minute => (
                             <option key={minute} value={minute.toString().padStart(2, '0')}>

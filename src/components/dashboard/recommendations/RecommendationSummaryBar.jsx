@@ -42,7 +42,7 @@ export default function RecommendationSummaryBar({ recommendationData }) {
       </div>
       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
         <div
-          className={`h-2 rounded-full transition-all ${
+          className={`h-2 rounded-full transition-all duration-500 ${
             summary.cluster_health >= 70 ? 'bg-green-500' :
             summary.cluster_health >= 50 ? 'bg-yellow-500' :
             summary.cluster_health >= 30 ? 'bg-orange-500' :

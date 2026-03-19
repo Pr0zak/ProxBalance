@@ -1,5 +1,6 @@
 import { RefreshCw } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
+import { INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 
 export default function AIProviderSection({
   aiEnabled, setAiEnabled, aiProvider, setAiProvider,
@@ -37,7 +38,7 @@ export default function AIProviderSection({
                           <select
                             value={aiProvider}
                             onChange={(e) => setAiProvider(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            className={`${SELECT_FIELD} w-full`}
                           >
                             <option value="none">None</option>
                             <option value="openai">OpenAI (GPT-4)</option>
@@ -58,7 +59,7 @@ export default function AIProviderSection({
                                 value={openaiKey}
                                 onChange={(e) => setOpenaiKey(e.target.value)}
                                 placeholder="sk-..."
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className={INPUT_FIELD}
                               />
                             </div>
                             <div>
@@ -70,7 +71,7 @@ export default function AIProviderSection({
                                 value={openaiModel}
                                 onChange={(e) => setOpenaiModel(e.target.value)}
                                 placeholder="gpt-4o"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className={INPUT_FIELD}
                               />
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 See available models at <a href="https://platform.openai.com/docs/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">OpenAI Models</a>
@@ -91,7 +92,7 @@ export default function AIProviderSection({
                                 value={anthropicKey}
                                 onChange={(e) => setAnthropicKey(e.target.value)}
                                 placeholder="sk-ant-..."
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className={INPUT_FIELD}
                               />
                             </div>
                             <div>
@@ -103,7 +104,7 @@ export default function AIProviderSection({
                                 value={anthropicModel}
                                 onChange={(e) => setAnthropicModel(e.target.value)}
                                 placeholder="claude-3-5-sonnet-20241022"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className={INPUT_FIELD}
                               />
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 See available models at <a href="https://docs.anthropic.com/en/docs/about-claude/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Anthropic Models</a>
@@ -123,7 +124,7 @@ export default function AIProviderSection({
                                 type="text"
                                 value={localUrl}
                                 onChange={(e) => setLocalUrl(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className={INPUT_FIELD}
                                 placeholder="http://localhost:11434"
                               />
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">The URL where Ollama is running</p>
@@ -168,7 +169,7 @@ export default function AIProviderSection({
                                 <select
                                   value={localModel}
                                   onChange={(e) => setLocalModel(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className={`${SELECT_FIELD} w-full`}
                                 >
                                   {localAvailableModels.map(model => (
                                     <option key={model} value={model}>{model}</option>
@@ -179,7 +180,7 @@ export default function AIProviderSection({
                                   type="text"
                                   value={localModel}
                                   onChange={(e) => setLocalModel(e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  className={INPUT_FIELD}
                                   placeholder="llama3.1:8b"
                                 />
                               )}

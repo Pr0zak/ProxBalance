@@ -1,6 +1,6 @@
 import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { GLASS_CARD } from '../../utils/designTokens.js';
+import { GLASS_CARD, ICON } from '../../utils/designTokens.js';
 const { useState, useEffect } = React;
 
 export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded }) {
@@ -82,7 +82,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         }
         {setCollapsedSections && (
           <ChevronDown
-            size={embedded ? 20 : 24}
+            size={embedded ? 20 : ICON.section}
             className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
           />
         )}

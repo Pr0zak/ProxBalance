@@ -109,7 +109,7 @@ export default function RecommendationCard({
                     <span className="inline-flex items-center gap-1.5 min-w-[120px]" title={`Score improvement: +${rec.score_improvement.toFixed(1)} penalty points`}>
                       <span className="text-xs text-gray-500 dark:text-gray-400">+{rec.score_improvement.toFixed(0)}</span>
                       <span className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden min-w-[60px]">
-                        <span className={`block h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                        <span className={`block h-full rounded-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
                       </span>
                     </span>
                   );

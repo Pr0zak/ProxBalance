@@ -25,6 +25,7 @@ const SystemModals = ({
               <button
                 onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
                 className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+                aria-label="Close"
               >
                 <X size={20} className="text-gray-600 dark:text-gray-400" />
               </button>
@@ -239,6 +240,7 @@ const SystemModals = ({
               <button
                 onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
                 className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+                aria-label="Close"
               >
                 <X size={20} className="text-gray-600 dark:text-gray-400" />
               </button>

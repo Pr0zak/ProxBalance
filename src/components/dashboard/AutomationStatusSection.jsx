@@ -40,7 +40,7 @@ export default function AutomationStatusSection({
                     ? 'bg-gradient-to-br from-green-600 to-emerald-600'
                     : 'bg-gradient-to-br from-gray-500 to-gray-600'
                 }`}>
-                  <Clock size={24} className="text-white" />
+                  <Clock size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Automated Migrations</h2>
@@ -463,6 +463,7 @@ export default function AutomationStatusSection({
                               onClick={() => setCancelMigrationModal(migration)}
                               className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-red-700 dark:text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
                               title="Cancel migration"
+                              aria-label={`Cancel migration for ${migration.name || migration.vmid}`}
                             >
                               <X size={12} /> Cancel
                             </button>
@@ -511,7 +512,7 @@ export default function AutomationStatusSection({
                       {formatRelativeTime(automationStatus.state.last_run.timestamp)}
                     </span>
                   </div>
-                  <ChevronDown size={18} className={`text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.action} className={`text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
                 </button>
 
                 {!collapsedSections.lastRunSummary && (

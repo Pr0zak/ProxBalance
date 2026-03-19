@@ -434,7 +434,7 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **Nginx serves from `/var/www/html/`** — After building, assets must be copied there (handled by `post_update.sh`). The backend runs on port 5000 and is proxied by nginx.
 - **Hook dependency pattern** — Hooks accept a `deps` object for cross-hook references (e.g., `useMigrations(API_BASE, { setData, setError })`). The root component wires hooks together and creates wrapper functions for cross-hook calls.
 - **Frontend build** — Uses esbuild, not Babel. Run `./build.sh` to rebuild. Output goes to `assets/js/app.js`.
-- **No package.json committed** — It's gitignored. Use `npx esbuild` or install locally.
+- **No package.json committed** — Both `package.json` and `package-lock.json` are intentionally gitignored. This is a deliberate design choice to keep Node.js dependencies ephemeral. `build.sh` falls back to `npx` when local binaries aren't installed. To install locally: `npm install tailwindcss@3 esbuild`. Do not commit `package.json`.
 - **Systemd timers** — Collection, recommendations, and auto-migration are separate systemd services, not in-process cron jobs.
 - **Blueprint routing** — All routes use full paths (e.g., `/api/config`), not url_prefix. Find a route by searching for `@*_bp.route('/api/...')` in `proxbalance/routes/`.
 - **Shared state** — Blueprints access shared objects (cache_manager, update_manager) via `current_app.config['key']`.

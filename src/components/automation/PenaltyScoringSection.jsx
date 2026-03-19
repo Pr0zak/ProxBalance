@@ -1,5 +1,5 @@
 import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye, Shield, AlertTriangle } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 import { API_BASE } from '../../utils/constants.js';
@@ -237,7 +237,7 @@ export default function PenaltyScoringSection({
                     max="100"
                     value={effectiveMsi}
                     onCommit={(val) => updateSetting('min_score_improvement', val)}
-                    className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    className={`${INPUT_FIELD} w-24`}
                   />
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     points
@@ -395,7 +395,7 @@ export default function PenaltyScoringSection({
                           step="0.1" min="0" max="1" isFloat
                           value={penaltyConfig.weight_current}
                           onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_current: val})}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          className={INPUT_FIELD}
                         />
                       </div>
                       <div>
@@ -406,7 +406,7 @@ export default function PenaltyScoringSection({
                           step="0.1" min="0" max="1" isFloat
                           value={penaltyConfig.weight_24h}
                           onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_24h: val})}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          className={INPUT_FIELD}
                         />
                       </div>
                       <div>
@@ -417,7 +417,7 @@ export default function PenaltyScoringSection({
                           step="0.1" min="0" max="1" isFloat
                           value={penaltyConfig.weight_7d}
                           onCommit={(val) => setPenaltyConfig({...penaltyConfig, weight_7d: val})}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          className={INPUT_FIELD}
                         />
                       </div>
                     </div>
@@ -445,7 +445,7 @@ export default function PenaltyScoringSection({
                             min="0"
                             value={penaltyConfig[key]}
                             onCommit={(val) => setPenaltyConfig({...penaltyConfig, [key]: val})}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                            className={INPUT_FIELD}
                           />
                         </div>
                       ))}
@@ -468,7 +468,7 @@ export default function PenaltyScoringSection({
                             min="0"
                             value={penaltyConfig[key]}
                             onCommit={(val) => setPenaltyConfig({...penaltyConfig, [key]: val})}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                            className={INPUT_FIELD}
                           />
                         </div>
                       ))}
@@ -488,7 +488,7 @@ export default function PenaltyScoringSection({
                             min="0"
                             value={penaltyConfig[key]}
                             onCommit={(val) => setPenaltyConfig({...penaltyConfig, [key]: val})}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                            className={INPUT_FIELD}
                           />
                         </div>
                       ))}
@@ -506,7 +506,7 @@ export default function PenaltyScoringSection({
                         min="1" max="100"
                         value={penaltyConfig.min_score_improvement !== undefined ? penaltyConfig.min_score_improvement : 15}
                         onCommit={(val) => setPenaltyConfig({...penaltyConfig, min_score_improvement: val})}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        className={INPUT_FIELD}
                       />
                     </div>
                   </div>

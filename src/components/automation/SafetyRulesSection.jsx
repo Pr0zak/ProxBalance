@@ -1,7 +1,7 @@
 import {
   AlertTriangle, ChevronDown, X
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import { ToggleRow } from '../Toggle.jsx';
 
@@ -126,7 +126,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     max="100"
                     value={automationConfig.safety_checks?.max_node_cpu_percent || 85}
                     onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -138,7 +138,7 @@ export default function SafetyRulesSection({ automationConfig, saveAutomationCon
                     max="100"
                     value={automationConfig.safety_checks?.max_node_memory_percent || 90}
                     onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                 </div>
               </div>

@@ -79,7 +79,7 @@ export default function MigrationRecommendationsSection({
         <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className={iconBadge('orange')}>
-              <Activity size={24} className="text-white" />
+              <Activity size={ICON.section} className="text-white" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">

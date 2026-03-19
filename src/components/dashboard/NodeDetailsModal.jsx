@@ -37,6 +37,7 @@ export default function NodeDetailsModal({
           <button
             onClick={() => setSelectedNode(null)}
             className="ml-2 shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+            aria-label="Close"
           >
             <X size={22} />
           </button>

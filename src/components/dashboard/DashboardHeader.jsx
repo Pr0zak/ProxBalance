@@ -126,7 +126,7 @@ export default function DashboardHeader({
                 <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={iconBadge('blue')}>
-                      <Server size={24} className="text-white" />
+                      <Server size={ICON.section} className="text-white" />
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Cluster Resource Utilization</h3>

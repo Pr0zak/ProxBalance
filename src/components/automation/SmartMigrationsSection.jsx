@@ -1,7 +1,7 @@
 import {
   ChevronDown, X, CheckCircle, Info
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
@@ -148,7 +148,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                     max="10"
                     value={obsPeriods}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Consecutive times a recommendation must appear before acting
@@ -163,7 +163,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                     max="72"
                     value={minDataHours}
                     onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } })}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    className={INPUT_FIELD}
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     How long the system must observe before first migration (0 = no minimum)
@@ -191,7 +191,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                       max="72"
                       value={imConfig?.observation_window_hours || 24}
                       onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_window_hours: val } } })}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      className={INPUT_FIELD}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Max age for observation tracking
@@ -206,7 +206,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                       max="168"
                       value={imConfig?.cycle_window_hours || 48}
                       onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, cycle_window_hours: val } } })}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      className={INPUT_FIELD}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       How far back to check for migration cycles
@@ -224,7 +224,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                         isFloat
                         value={imConfig?.min_cost_benefit_ratio !== undefined ? imConfig.min_cost_benefit_ratio : 1.0}
                         onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, min_cost_benefit_ratio: val } } })}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        className={INPUT_FIELD}
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Minimum improvement-to-cost ratio required
@@ -243,7 +243,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                         isFloat
                         value={imConfig?.risk_confidence_multiplier !== undefined ? imConfig.risk_confidence_multiplier : 1.2}
                         onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, risk_confidence_multiplier: val } } })}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        className={INPUT_FIELD}
                       />
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Higher values require more confidence for risky moves
@@ -259,7 +259,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                       max="168"
                       value={imConfig?.stale_retention_hours || 48}
                       onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, stale_retention_hours: val } } })}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      className={INPUT_FIELD}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       How long to keep stale tracking data before cleanup

@@ -1,5 +1,5 @@
 import { ChevronDown } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
@@ -84,7 +84,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Minimum difference in guest counts to trigger balancing
@@ -107,7 +107,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Only migrate guests with this many CPU cores or less (0 = no limit)
@@ -130,7 +130,7 @@ export default function DistributionBalancingSection({
                     setConfig(newConfig);
                     saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
                   }}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                  className={INPUT_FIELD}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Only migrate guests with this much memory or less (0 = no limit)

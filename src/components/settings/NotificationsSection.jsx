@@ -3,14 +3,14 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { GLASS_CARD } from '../../utils/designTokens.js';
+import { GLASS_CARD, INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   return (
                     <div className={GLASS_CARD}>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Bell className="text-gray-600 dark:text-gray-400 shrink-0" size={24} />
+                          <Bell className="text-gray-600 dark:text-gray-400 shrink-0" size={ICON.section} />
                           <div className="min-w-0">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
@@ -126,7 +126,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Pushover */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.pushover = { ...(providers.pushover || {}), api_token: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">User Key</label>
@@ -167,7 +167,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.pushover = { ...(providers.pushover || {}), user_key: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -179,7 +179,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.pushover = { ...(providers.pushover || {}), priority: parseInt(e.target.value) };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white">
+                                  className={`${SELECT_FIELD} w-full`}>
                                   <option value={-1}>Low</option>
                                   <option value={0}>Normal</option>
                                   <option value={1}>High</option>
@@ -194,7 +194,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.pushover = { ...(providers.pushover || {}), sound: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white">
+                                  className={`${SELECT_FIELD} w-full`}>
                                   <option value="pushover">Pushover (default)</option>
                                   <option value="bike">Bike</option>
                                   <option value="bugle">Bugle</option>
@@ -226,7 +226,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Email (SMTP) */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), smtp_host: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP Port</label>
@@ -267,7 +267,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), smtp_port: val };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -280,7 +280,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), smtp_username: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
@@ -291,7 +291,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), smtp_password: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -304,7 +304,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), from_address: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">To Addresses</label>
@@ -315,7 +315,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.email = { ...(providers.email || {}), to_addresses: e.target.value.split(',').map(a => a.trim()).filter(a => a) };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                             </div>
                             <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
@@ -332,7 +332,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Telegram */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.telegram = { ...(providers.telegram || {}), bot_token: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Chat ID</label>
@@ -373,7 +373,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                     providers.telegram = { ...(providers.telegram || {}), chat_id: e.target.value };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
-                                  className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                  className={INPUT_FIELD} />
                               </div>
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Create a bot via <span className="font-mono">@BotFather</span> on Telegram and add it to your group/channel</p>
@@ -381,7 +381,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Discord */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -410,14 +410,14 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.discord = { ...(providers.discord || {}), webhook_url: e.target.value };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
-                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                className={INPUT_FIELD} />
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Server Settings &gt; Integrations &gt; Webhooks &gt; New Webhook</p>
                           </div>
                         </div>
 
                         {/* Slack */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -446,14 +446,14 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.slack = { ...(providers.slack || {}), webhook_url: e.target.value };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
-                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                className={INPUT_FIELD} />
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Create an Incoming Webhook in your Slack workspace settings</p>
                           </div>
                         </div>
 
                         {/* Generic Webhook */}
-                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800/50 rounded border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -482,7 +482,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.webhook = { ...(providers.webhook || {}), url: e.target.value };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
-                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white" />
+                                className={INPUT_FIELD} />
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Sends a JSON POST with title, message, priority, and timestamp</p>
                           </div>
