@@ -481,9 +481,6 @@ const ProxmoxBalanceManager = () => {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ProxBalance</h1>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => ui.setShowIconLegend(true)} className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" title="Icon Reference">
-                <HelpCircle size={20} className="text-gray-600 dark:text-gray-300" />
-              </button>
               <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
                 {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
               </button>
