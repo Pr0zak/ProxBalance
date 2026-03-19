@@ -125,7 +125,7 @@ export default function DashboardHeader({
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={iconBadge('blue')}>
+                    <div className={iconBadge('blue', 'indigo')}>
                       <Server size={ICON.section} className="text-white" />
                     </div>
                     <div className="min-w-0">

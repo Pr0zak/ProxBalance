@@ -25,7 +25,7 @@ export default function ClusterMap({
     <div className={`${GLASS_CARD} overflow-hidden`}>
       <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
         <div className="flex items-center gap-3 min-w-0">
-          <div className={iconBadge('blue')}>
+          <div className={iconBadge('teal', 'cyan')}>
             <Server size={ICON.section} className="text-white" />
           </div>
           <div className="min-w-0">

@@ -18,7 +18,7 @@ export default function AIRecommendationsSection({
           <div className={`hidden ${GLASS_CARD_SUBTLE}`}>
             <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={iconBadge('purple')}>
+                <div className={iconBadge('violet', 'purple')}>
                   <Activity size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">

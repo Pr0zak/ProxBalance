@@ -23,9 +23,11 @@ export const INNER_CARD =
 // Section header icon badge
 // ---------------------------------------------------------------------------
 
-/** Gradient icon badge for section headers — pass a Tailwind color name */
-export const iconBadge = (color) =>
-  `p-2.5 bg-gradient-to-br from-${color}-500 to-${color}-600 rounded-xl shadow-lg shadow-${color}-500/25 shrink-0`;
+/** Gradient icon badge for section headers — pass one or two Tailwind color names */
+export const iconBadge = (from, to) => {
+  const toColor = to || from;
+  return `p-2.5 bg-gradient-to-br from-${from}-500 to-${toColor}-600 rounded-xl shadow-lg shadow-${from}-500/25 shrink-0`;
+};
 
 // ---------------------------------------------------------------------------
 // Buttons
