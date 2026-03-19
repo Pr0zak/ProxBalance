@@ -3,6 +3,7 @@ import {
   AlertTriangle, Info, List, ArrowRight, Terminal, CheckCircle
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
+import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON } from '../../utils/designTokens.js';
 
 export default function MigrationModals({
   showMigrationDialog, setShowMigrationDialog,
@@ -31,8 +32,8 @@ export default function MigrationModals({
   return (<>
     {/* Migration Dialog Modal */}
     {showMigrationDialog && selectedGuest && canMigrate && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowMigrationDialog(false)}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={MODAL_OVERLAY} onClick={() => setShowMigrationDialog(false)}>
+        <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md">
               <Activity size={24} className="text-white" />
@@ -107,8 +108,8 @@ export default function MigrationModals({
 
     {/* Tag Management Modal */}
     {showTagModal && tagModalGuest && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={MODAL_OVERLAY} onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}>
+        <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
@@ -312,8 +313,8 @@ export default function MigrationModals({
 
     {/* Remove Tag Confirmation Modal */}
     {confirmRemoveTag && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmRemoveTag(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={MODAL_OVERLAY} onClick={() => setConfirmRemoveTag(null)}>
+        <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
             <button onClick={() => setConfirmRemoveTag(null)}>
@@ -347,8 +348,8 @@ export default function MigrationModals({
 
     {/* Migration Confirmation Modal */}
     {confirmMigration && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmMigration(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={MODAL_OVERLAY} onClick={() => setConfirmMigration(null)}>
+        <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
             <button onClick={() => setConfirmMigration(null)}>
@@ -410,8 +411,8 @@ export default function MigrationModals({
 
     {/* Batch Migration Confirmation Modal */}
     {showBatchConfirmation && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className={MODAL_OVERLAY}>
+        <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-4xl').replace('overflow-y-auto', 'overflow-hidden')} flex flex-col`}>
           {/* Modal Header */}
           <div className="border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between">
@@ -586,8 +587,8 @@ export default function MigrationModals({
 
     {/* Cancel Migration Confirmation Modal */}
     {cancelMigrationModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setCancelMigrationModal(null)}>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className={MODAL_OVERLAY} onClick={() => setCancelMigrationModal(null)}>
+        <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-4">
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />

@@ -1,9 +1,10 @@
 import {
-  Clock, ChevronDown, ChevronUp, XCircle, CheckCircle, Pause, Settings,
+  Clock, ChevronDown, XCircle, CheckCircle, Pause, Settings,
   Play, Loader, X, Info, AlertTriangle, RefreshCw, ClipboardList,
   Download, MinusCircle, ChevronRight, Minus, Eye
 } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -30,7 +31,7 @@ export default function AutomationStatusSection({
   if (!automationStatus) return null;
 
   return (
-        <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={`${GLASS_CARD} overflow-hidden`}>
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -65,11 +66,7 @@ export default function AutomationStatusSection({
                   className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                   title={collapsedSections.automatedMigrations ? "Expand section" : "Collapse section"}
                 >
-                  {collapsedSections.automatedMigrations ? (
-                    <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-                  ) : (
-                    <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-                  )}
+                  <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.automatedMigrations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
@@ -514,11 +511,7 @@ export default function AutomationStatusSection({
                       {formatRelativeTime(automationStatus.state.last_run.timestamp)}
                     </span>
                   </div>
-                  {collapsedSections.lastRunSummary ? (
-                    <ChevronDown size={18} className="text-gray-500" />
-                  ) : (
-                    <ChevronUp size={18} className="text-gray-500" />
-                  )}
+                  <ChevronDown size={18} className={`text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
                 </button>
 
                 {!collapsedSections.lastRunSummary && (

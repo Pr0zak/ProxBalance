@@ -21,6 +21,8 @@ import {
   Activity, Clock, HelpCircle
 } from './components/Icons.jsx';
 import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
+import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from './utils/designTokens.js';
+import MobileTabBar from './components/MobileTabBar.jsx';
 
 const { useState, useEffect } = React;
 
@@ -180,102 +182,6 @@ const ProxmoxBalanceManager = () => {
     }
   }, [migrations.selectedGuestDetails?.vmid]);
 
-  // Chart rendering effect
-  useEffect(() => {
-    if (!cluster.data || !cluster.data.nodes) return;
-    if (ui.collapsedSections.nodeStatus) return;
-    if (!cluster.chartJsLoaded || typeof Chart === 'undefined') return;
-
-    Object.values(cluster.charts).forEach(chart => {
-      try { chart.destroy(); } catch (e) { console.error('Error destroying chart:', e); }
-    });
-    const newCharts = {};
-
-    Object.values(cluster.data.nodes).forEach(node => {
-      if (!node.trend_data || typeof node.trend_data !== 'object') return;
-
-      const canvas = document.getElementById(`chart-${node.name}`);
-      if (!canvas) return;
-
-      let sourceTimeframe = 'day';
-      const periodSeconds = {
-        '1h': 3600, '6h': 6 * 3600, '12h': 12 * 3600, '24h': 24 * 3600,
-        '7d': 7 * 24 * 3600, '30d': 30 * 24 * 3600, '1y': 365 * 24 * 3600
-      }[cluster.chartPeriod] || 24 * 3600;
-
-      if (cluster.chartPeriod === '1h') sourceTimeframe = 'hour';
-      else if (['6h', '12h', '24h'].includes(cluster.chartPeriod)) sourceTimeframe = 'day';
-      else if (cluster.chartPeriod === '7d') sourceTimeframe = 'week';
-      else if (cluster.chartPeriod === '30d') sourceTimeframe = 'month';
-      else if (cluster.chartPeriod === '1y') sourceTimeframe = 'year';
-
-      const trendData = node.trend_data?.[sourceTimeframe] || node.trend_data?.day || [];
-      if (!trendData || trendData.length === 0) return;
-
-      const now = Math.floor(Date.now() / 1000);
-      const filteredData = trendData.filter(point => (now - point.time) <= periodSeconds);
-      if (filteredData.length === 0) return;
-
-      const sampleRate = { '1h': 2, '6h': 5, '12h': 10, '24h': 20, '7d': 20, '30d': 25, '1y': 25 }[cluster.chartPeriod] || 1;
-      const sampledData = filteredData.filter((point, index, arr) =>
-        index === 0 || index === arr.length - 1 || index % sampleRate === 0
-      );
-
-      const ctx = canvas.getContext('2d');
-      const isDark = darkMode;
-
-      try {
-        newCharts[node.name] = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: sampledData.map(point => {
-              const date = new Date(point.time * 1000);
-              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            }),
-            datasets: [
-              { label: 'CPU %', data: sampledData.map(p => p.cpu), borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true },
-              { label: 'Memory %', data: sampledData.map(p => p.mem), borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.4, fill: true },
-              { label: 'IOWait %', data: sampledData.map(p => p.iowait || 0), borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.4, fill: true }
-            ]
-          },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-              legend: { display: true, position: 'top', labels: { color: isDark ? '#9ca3af' : '#4b5563', font: { size: 11 } } },
-              tooltip: { backgroundColor: isDark ? '#1f2937' : '#ffffff', titleColor: isDark ? '#f3f4f6' : '#111827', bodyColor: isDark ? '#d1d5db' : '#374151', borderColor: isDark ? '#374151' : '#e5e7eb', borderWidth: 1 },
-              annotation: {
-                annotations: cluster.nodeScores && cluster.nodeScores[node.name] ? {
-                  scoreLine: {
-                    type: 'line',
-                    yMin: cluster.nodeScores[node.name].suitability_rating,
-                    yMax: cluster.nodeScores[node.name].suitability_rating,
-                    borderColor: (() => { const r = cluster.nodeScores[node.name].suitability_rating; if (r >= 70) return 'rgba(34, 197, 94, 0.7)'; if (r >= 50) return 'rgba(234, 179, 8, 0.7)'; if (r >= 30) return 'rgba(249, 115, 22, 0.7)'; return 'rgba(239, 68, 68, 0.7)'; })(),
-                    borderWidth: 3, borderDash: [5, 5],
-                    label: {
-                      display: true, content: `Suitability: ${cluster.nodeScores[node.name].suitability_rating}%`, position: 'start',
-                      backgroundColor: (() => { const r = cluster.nodeScores[node.name].suitability_rating; if (r >= 70) return 'rgba(34, 197, 94, 0.9)'; if (r >= 50) return 'rgba(234, 179, 8, 0.9)'; if (r >= 30) return 'rgba(249, 115, 22, 0.9)'; return 'rgba(239, 68, 68, 0.9)'; })(),
-                      color: '#ffffff', font: { size: 11, weight: 'bold' }, padding: 4
-                    }
-                  }
-                } : {}
-              }
-            },
-            scales: {
-              x: { display: true, grid: { color: isDark ? '#374151' : '#e5e7eb' }, ticks: { color: isDark ? '#9ca3af' : '#6b7280', maxTicksLimit: 8, font: { size: 10 } } },
-              y: { display: true, min: 0, max: 100, grid: { color: isDark ? '#374151' : '#e5e7eb' }, ticks: { color: isDark ? '#9ca3af' : '#6b7280', font: { size: 10 }, callback: function(value) { return value + '%'; } } }
-            }
-          }
-        });
-      } catch (error) {
-        console.error(`Error creating chart for node ${node.name}:`, error);
-      }
-    });
-
-    cluster.setCharts(newCharts);
-    return () => { Object.values(newCharts).forEach(chart => chart.destroy()); };
-  }, [cluster.data, cluster.chartPeriod, darkMode, ui.collapsedSections.nodeStatus, recs.cpuThreshold, recs.memThreshold, ui.currentPage, cluster.chartJsLoaded]);
-
   // Composite handleRefresh that refreshes all domains
   const handleRefresh = async () => {
     await cluster.handleRefresh({ setRefreshElapsed: ui.setRefreshElapsed });
@@ -366,24 +272,7 @@ const ProxmoxBalanceManager = () => {
       formatLocalTime={formatLocalTime}
       getTimezoneAbbr={getTimezoneAbbr}
     />
-    {isMobile && (
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
-        <div className="flex items-center justify-around h-14">
-          <button onClick={() => ui.setCurrentPage('dashboard')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-            <Activity size={20} />
-            <span className="text-xs">Dashboard</span>
-          </button>
-          <button onClick={() => ui.setCurrentPage('automation')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-            <Clock size={20} />
-            <span className="text-xs">Automation</span>
-          </button>
-          <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
-            <Settings size={20} />
-            <span className="text-xs font-semibold">Settings</span>
-          </button>
-        </div>
-      </div>
-    )}
+    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
     </>;
   }
 
@@ -448,43 +337,26 @@ const ProxmoxBalanceManager = () => {
       testingAutomation={automation.testingAutomation}
       testResult={automation.testResult}
     />
-    {isMobile && (
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
-        <div className="flex items-center justify-around h-14">
-          <button onClick={() => ui.setCurrentPage('dashboard')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-            <Activity size={20} />
-            <span className="text-xs">Dashboard</span>
-          </button>
-          <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
-            <Clock size={20} />
-            <span className="text-xs font-semibold">Automation</span>
-          </button>
-          <button onClick={() => ui.setCurrentPage('settings')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-            <Settings size={20} />
-            <span className="text-xs">Settings</span>
-          </button>
-        </div>
-      </div>
-    )}
+    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
     </>;
   }
 
   // No data - show loading/error
   if (!cluster.data) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 pb-20 sm:pb-4">
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 min-h-screen p-4 pb-20 sm:pb-4">
         {iconLegendModal}
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <div className={`flex items-center justify-between mb-6 ${GLASS_CARD}`}>
             <div className="flex items-center gap-3">
               <ProxBalanceLogo size={40} />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ProxBalance</h1>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+              <button onClick={() => setDarkMode(!darkMode)} className={BTN_ICON} title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
                 {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
               </button>
-              <button onClick={() => ui.setCurrentPage('settings')} className="p-2 rounded-lg bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600" title="Settings">
+              <button onClick={() => ui.setCurrentPage('settings')} className={`${BTN_PRIMARY} !p-2`} title="Settings">
                 <Settings size={20} />
               </button>
             </div>
@@ -507,7 +379,7 @@ const ProxmoxBalanceManager = () => {
           )}
 
           {cluster.loading && !cluster.error && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+            <div className={`${GLASS_CARD} p-8 text-center`}>
               <div className="flex flex-col items-center gap-4">
                 <RefreshCw size={48} className="text-blue-600 dark:text-blue-400 animate-spin" />
                 <div>
@@ -634,24 +506,7 @@ const ProxmoxBalanceManager = () => {
     setGuestMigrationOptions={migrations.setGuestMigrationOptions}
     API_BASE={API_BASE}
   />
-  {isMobile && (
-    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 sm:hidden">
-      <div className="flex items-center justify-around h-14">
-        <button onClick={() => {}} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-orange-600 dark:text-orange-400">
-          <Activity size={20} />
-          <span className="text-xs font-semibold">Dashboard</span>
-        </button>
-        <button onClick={() => ui.setCurrentPage('automation')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-          <Clock size={20} />
-          <span className="text-xs">Automation</span>
-        </button>
-        <button onClick={() => ui.setCurrentPage('settings')} className="flex flex-col items-center justify-center gap-0.5 px-3 py-1 text-gray-500 dark:text-gray-400">
-          <Settings size={20} />
-          <span className="text-xs">Settings</span>
-        </button>
-      </div>
-    </div>
-  )}
+  {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
   </>;
 };
 

@@ -1,7 +1,8 @@
 import {
-  Tag, ChevronDown, ChevronUp, HardDrive, Shield, CheckCircle, X, Plus,
+  Tag, ChevronDown, HardDrive, Shield, CheckCircle, X, Plus,
   Play, Power, Loader, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight
 } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 export default function GuestTagManagement({
   data,
@@ -30,10 +31,10 @@ export default function GuestTagManagement({
   if (!data) return null;
 
   return (
-          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6 mb-6 overflow-hidden">
+          <div className={`${GLASS_CARD_SUBTLE} overflow-hidden`}>
             <div className="flex items-center justify-between gap-2 mb-3 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="p-1.5 sm:p-2.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md shrink-0">
+                <div className={iconBadge('purple')}>
                   <Tag size={18} className="text-white sm:hidden" />
                   <Tag size={24} className="text-white hidden sm:block" />
                 </div>
@@ -47,11 +48,7 @@ export default function GuestTagManagement({
                 className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 shrink-0"
                 title={collapsedSections.taggedGuests ? "Expand section" : "Collapse section"}
               >
-                {collapsedSections.taggedGuests ? (
-                  <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" />
-                )}
+                <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.taggedGuests ? 'rotate-180' : ''}`} />
               </button>
             </div>
 

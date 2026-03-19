@@ -1,4 +1,5 @@
 import { Activity, CheckCircle } from '../../Icons.jsx';
+import { INNER_CARD } from '../../../utils/designTokens.js';
 
 export default function RecommendationSummaryBar({ recommendationData }) {
   if (!recommendationData?.summary) return null;
@@ -6,14 +7,14 @@ export default function RecommendationSummaryBar({ recommendationData }) {
   const summary = recommendationData.summary;
 
   return (
-    <div className={`mb-4 rounded-lg border p-4 ${
+    <div className={`mb-4 rounded-xl p-3 sm:p-4 ${
       summary.urgency === 'high'
-        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+        ? 'bg-yellow-50/80 dark:bg-yellow-900/20 border border-yellow-300/60 dark:border-yellow-700/50'
         : summary.urgency === 'medium'
-        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700'
+        ? 'bg-orange-50/80 dark:bg-orange-900/20 border border-orange-300/60 dark:border-orange-700/50'
         : summary.urgency === 'none'
-        ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
-        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+        ? 'bg-green-50/80 dark:bg-green-900/20 border border-green-300/60 dark:border-green-700/50'
+        : INNER_CARD
     }`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">

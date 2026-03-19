@@ -413,3 +413,15 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **Line ending enforcement** — `.gitattributes` enforces LF line endings for all text files.
 - **Backward-compatible re-exports** — When modules are extracted, original modules re-export the moved functions to avoid breaking existing imports (e.g., `config_manager.py` re-exports from `constants.py`).
 - **All domain modules are type-hinted** — All core domain modules have 100% function signature type hints using `typing` module.
+
+## Custom Skills (Slash Commands)
+
+Skills are in `.claude/skills/` and available via `/command`:
+
+| Command | Description |
+|---------|-------------|
+| `/build` | Build the frontend (esbuild + Tailwind) |
+| `/deploy [ctid]` | Deploy to the production LXC container via update.sh |
+| `/check-cluster` | Check cluster health, automation, and recommendations via MCP |
+| `/review [file\|branch]` | Code review for security, bugs, and style issues |
+| `/test` | Run Python syntax checks, shell validation, pytest, and import verification |

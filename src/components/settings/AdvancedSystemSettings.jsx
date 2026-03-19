@@ -3,6 +3,7 @@ import {
   RefreshCw, Download, Upload, Server
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
+import { GLASS_CARD } from '../../utils/designTokens.js';
 const { useState } = React;
 
 export default function AdvancedSystemSettings({
@@ -17,7 +18,7 @@ export default function AdvancedSystemSettings({
 }) {
   return (<>
                     {/* Advanced System Settings - Collapsible */}
-                    <div className="border-2 border-red-500 dark:border-red-600 rounded-lg p-4 bg-red-50 dark:bg-red-900/20">
+                    <div className={`${GLASS_CARD} border-red-500/50 dark:border-red-600/50`}>
                       <button
                         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
                         className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"

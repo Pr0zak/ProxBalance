@@ -1,6 +1,7 @@
 import {
   ChevronDown, X, CheckCircle, Info
 } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 
@@ -43,7 +44,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
 
   const outerClass = embedded
     ? ''
-    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+    : GLASS_CARD + ' overflow-hidden';
 
   return (
     <div className={outerClass}>
@@ -61,8 +62,8 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
           </p>
         </div>
         <ChevronDown
-          size={embedded ? 20 : 24}
-          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.smartMigrations ? '' : '-rotate-180'}`}
+          size={embedded ? 20 : ICON.section}
+          className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.smartMigrations ? 'rotate-180' : ''}`}
         />
       </button>
 

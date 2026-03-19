@@ -1,6 +1,7 @@
 import {
   X, BarChart2, Terminal, Activity, Calendar, List, RefreshCw, Info
 } from '../../Icons.jsx';
+import { MODAL_OVERLAY, iconBadge, ICON } from '../../../utils/designTokens.js';
 
 import ScoringExplainer from './insights/ScoringExplainer.jsx';
 import EngineDiagnostics from './insights/EngineDiagnostics.jsx';
@@ -55,20 +56,20 @@ export default function InsightsDrawer({
     <div className="fixed inset-0 z-[60]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/30 transition-opacity"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Drawer Panel */}
       <div
         ref={drawerRef}
-        className={`absolute top-0 right-0 h-full ${drawerWidth} bg-white dark:bg-gray-800 shadow-2xl flex flex-col transform transition-transform duration-200`}
+        className={`absolute top-0 right-0 h-full ${drawerWidth} bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl shadow-2xl shadow-black/20 border-l border-white/20 dark:border-gray-700/50 flex flex-col transform transition-transform duration-200`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-gray-700/50 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
-              <BarChart2 size={18} className="text-gray-600 dark:text-gray-300" />
+            <div className={iconBadge('gray')}>
+              <BarChart2 size={ICON.action} className="text-white" />
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white">Insights & Analytics</h3>
@@ -77,14 +78,14 @@ export default function InsightsDrawer({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-white/60 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/60 transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-2">
+        <div className="flex border-b border-white/20 dark:border-gray-700/50 shrink-0 px-2">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

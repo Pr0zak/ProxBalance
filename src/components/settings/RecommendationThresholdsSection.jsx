@@ -1,5 +1,6 @@
 import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
+import { GLASS_CARD } from '../../utils/designTokens.js';
 const { useState, useEffect } = React;
 
 export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded }) {
@@ -67,7 +68,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
   const outerClass = embedded
     ? ''
-    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+    : `${GLASS_CARD} overflow-hidden`;
 
   return (
     <div className={outerClass}>

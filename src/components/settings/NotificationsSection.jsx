@@ -3,10 +3,11 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
+import { GLASS_CARD } from '../../utils/designTokens.js';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   return (
-                    <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700/30">
+                    <div className={GLASS_CARD}>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <Bell className="text-gray-600 dark:text-gray-400 shrink-0" size={24} />

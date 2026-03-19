@@ -1,6 +1,7 @@
 import {
   Calendar, Check, ChevronDown, Edit, Info, Moon, Plus, Save, Trash, X
 } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -41,7 +42,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
 
   return (<>
         {/* Time Windows (Unified) */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden">
+        <div className={GLASS_CARD + ' overflow-hidden'}>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Time Windows</h2>
 
           {/* Timezone Selector */}

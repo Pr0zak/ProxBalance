@@ -1,4 +1,5 @@
 import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye, Shield, AlertTriangle } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 import { API_BASE } from '../../utils/constants.js';
@@ -96,7 +97,7 @@ export default function PenaltyScoringSection({
 
   const outerClass = embedded
     ? ''
-    : 'bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-6 overflow-hidden';
+    : GLASS_CARD + ' overflow-hidden';
 
   const HeadingTag = embedded ? 'h3' : 'h2';
   const headingClass = embedded
@@ -111,8 +112,8 @@ export default function PenaltyScoringSection({
       >
         <HeadingTag className={headingClass}>Scoring & Sensitivity</HeadingTag>
         <ChevronDown
-          size={embedded ? 20 : 24}
-          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${collapsedSections.penaltyScoring ? '' : '-rotate-180'}`}
+          size={embedded ? 20 : ICON.section}
+          className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.penaltyScoring ? 'rotate-180' : ''}`}
         />
       </button>
 

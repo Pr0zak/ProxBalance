@@ -1,8 +1,9 @@
 import {
   HardDrive, Package, X, Activity, AlertCircle, Folder,
-  ChevronDown, ChevronUp, AlertTriangle, CheckCircle,
+  ChevronDown, AlertTriangle, CheckCircle,
   BarChart2, RefreshCw, MoveRight, TrendingUp, TrendingDown, Minus
 } from '../Icons.jsx';
+import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
@@ -15,8 +16,8 @@ export default function GuestDetailsModal({
   if (!selectedGuestDetails) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60] sm:p-4" onClick={() => setSelectedGuestDetails(null)}>
-      <div className="bg-white dark:bg-gray-800 rounded-t-xl sm:rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedGuestDetails(null)}>
+      <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-3xl')} !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -177,7 +178,7 @@ export default function GuestDetailsModal({
                     Mount Points ({selectedGuestDetails.mount_points.mount_count})
                   </h4>
                 </div>
-                {guestModalCollapsed.mountPoints ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${guestModalCollapsed.mountPoints ? '' : 'rotate-180'}`} />
               </button>
 
               {!guestModalCollapsed.mountPoints && (
@@ -278,7 +279,7 @@ export default function GuestDetailsModal({
                     Cannot Migrate - {selectedGuestDetails.local_disks.pinned_reason}
                   </h4>
                 </div>
-                {guestModalCollapsed.passthroughDisks ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronUp size={16} className="text-gray-500" />}
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${guestModalCollapsed.passthroughDisks ? '' : 'rotate-180'}`} />
               </button>
 
               {!guestModalCollapsed.passthroughDisks && (
@@ -351,7 +352,7 @@ export default function GuestDetailsModal({
                 </h4>
                 <span className="text-xs text-gray-500 dark:text-gray-400">Score comparison across all nodes</span>
               </div>
-              {guestModalCollapsed.migrationOptions ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+              <ChevronDown size={16} className={`text-gray-500 transition-transform ${guestModalCollapsed.migrationOptions ? 'rotate-180' : ''}`} />
             </button>
 
             {guestModalCollapsed.migrationOptions && (

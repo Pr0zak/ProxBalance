@@ -1,7 +1,8 @@
 import {
   Activity, RefreshCw, CheckCircle, AlertTriangle, Shield, Lock,
-  Play, ChevronDown, ChevronUp, AlertCircle
+  Play, ChevronDown, AlertCircle
 } from '../Icons.jsx';
+import { GLASS_CARD_SUBTLE, iconBadge, BTN_PRIMARY, ICON } from '../../utils/designTokens.js';
 
 export default function AIRecommendationsSection({
   config, aiEnabled,
@@ -14,26 +15,22 @@ export default function AIRecommendationsSection({
   if (!config?.ai_recommendations_enabled || !aiEnabled) return null;
 
   return (
-          <div className="hidden bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-850 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className={`hidden ${GLASS_CARD_SUBTLE}`}>
             <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2.5 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg shadow-md shrink-0">
-                  <Activity size={24} className="text-white" />
+                <div className={iconBadge('purple')}>
+                  <Activity size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
                 </div>
                 <button
                   onClick={() => toggleSection('aiRecommendations')}
-                  className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+                  className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
                   title={collapsedSections.aiRecommendations ? "Expand section" : "Collapse section"}
                 >
-                  {collapsedSections.aiRecommendations ? (
-                    <ChevronDown size={22} className="text-gray-600 dark:text-gray-400" />
-                  ) : (
-                    <ChevronUp size={22} className="text-gray-600 dark:text-gray-400" />
-                  )}
+                  <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.aiRecommendations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
