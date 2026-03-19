@@ -2,7 +2,9 @@
 # Hotfix for 502 error after upgrade
 # Installs missing flask-compress package and updates to latest version
 
-CTID=${1}
+set -euo pipefail
+
+CTID=${1:-}
 
 if [ -z "$CTID" ]; then
     echo "Usage: $0 <container-id>"

@@ -18,5 +18,11 @@ ExecStart=/opt/proxmox-balance-manager/venv/bin/gunicorn \
 Restart=always
 RestartSec=3
 
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+ReadWritePaths=/opt/proxmox-balance-manager
+
 [Install]
 WantedBy=multi-user.target

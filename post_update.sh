@@ -2,7 +2,7 @@
 # Post-update script that runs after git pull
 # This ensures the new code is used for file operations
 
-set -e
+set -euo pipefail
 
 echo "Running post-update tasks..."
 

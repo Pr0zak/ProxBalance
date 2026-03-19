@@ -114,6 +114,58 @@ def check_permissions():
             })
 
 
+# Fields that must never be exposed via GET
+_SECRET_FIELDS = frozenset({
+    'proxmox_api_token_secret',
+    'proxmox_password',
+})
+
+_SECRET_AI_FIELDS = frozenset({
+    'api_key',
+})
+
+_SECRET_NOTIFICATION_FIELDS = frozenset({
+    'api_token',
+    'user_key',
+    'bot_token',
+    'webhook_url',
+    'smtp_password',
+})
+
+
+def _redact_config(config: dict) -> dict:
+    """Return a copy of config with secret fields replaced by '***'."""
+    redacted = dict(config)
+
+    for field in _SECRET_FIELDS:
+        if redacted.get(field):
+            redacted[field] = '***'
+
+    # Redact AI provider keys
+    if 'ai_config' in redacted:
+        redacted['ai_config'] = dict(redacted['ai_config'])
+        for provider, provider_config in redacted['ai_config'].items():
+            if isinstance(provider_config, dict):
+                redacted['ai_config'][provider] = dict(provider_config)
+                for field in _SECRET_AI_FIELDS:
+                    if redacted['ai_config'][provider].get(field):
+                        redacted['ai_config'][provider][field] = '***'
+
+    # Redact notification provider secrets
+    if 'notifications' in redacted:
+        redacted['notifications'] = dict(redacted['notifications'])
+        if 'providers' in redacted['notifications']:
+            redacted['notifications']['providers'] = dict(redacted['notifications']['providers'])
+            for provider, provider_config in redacted['notifications']['providers'].items():
+                if isinstance(provider_config, dict):
+                    redacted['notifications']['providers'][provider] = dict(provider_config)
+                    for field in _SECRET_NOTIFICATION_FIELDS:
+                        if redacted['notifications']['providers'][provider].get(field):
+                            redacted['notifications']['providers'][provider][field] = '***'
+
+    return redacted
+
+
 @config_bp.route("/api/config", methods=["GET"])
 @api_route
 def get_config():
@@ -126,7 +178,7 @@ def get_config():
             "error": config.get('message')
         }), 500
 
-    return jsonify({"success": True, "config": config})
+    return jsonify({"success": True, "config": _redact_config(config)})
 
 
 @config_bp.route("/api/config", methods=["POST"])
@@ -222,7 +274,7 @@ def update_config():
     return jsonify({
         "success": True,
         "message": "Configuration updated successfully",
-        "config": config
+        "config": _redact_config(config)
     })
 
 
@@ -247,7 +299,7 @@ def export_config():
             "proxbalance_version": "2.0",
             "config_version": 1
         },
-        "configuration": config
+        "configuration": _redact_config(config)
     }
 
     # Create JSON string

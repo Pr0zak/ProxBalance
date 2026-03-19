@@ -1,3 +1,5 @@
+import { MIGRATION_POLL_INTERVAL } from '../utils/constants.js';
+
 const { useState } = React;
 
 export function useMigrations(API_BASE, deps = {}) {
@@ -167,9 +169,10 @@ export function useMigrations(API_BASE, deps = {}) {
       } catch (err) {
         console.error('Error polling migration task:', err);
       }
-    }, 3000);
+    }, MIGRATION_POLL_INTERVAL);
 
-    setTimeout(() => clearInterval(pollInterval), 300000);
+    // No timeout — polling self-terminates when migration completes or is cancelled.
+    // Interval is also cleaned up when the component detects !is_migrating.
   };
 
   const executeMigration = async (rec) => {

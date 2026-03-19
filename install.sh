@@ -177,9 +177,9 @@ prompt_user() {
 
   read user_input
   if [ -z "$user_input" ] && [ -n "$default_value" ]; then
-    eval "$var_name='$default_value'"
+    printf -v "$var_name" '%s' "$default_value"
   else
-    eval "$var_name='$user_input'"
+    printf -v "$var_name" '%s' "$user_input"
   fi
 }
 
@@ -396,7 +396,8 @@ select_network() {
       echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter gateway (e.g., 10.0.0.1): "
       read gateway
 
-      if [[ ! "$ip_addr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      if [[ ! "$ip_addr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || ! IFS='.' read -ra octets <<< "$ip_addr" || \
+         (( ${octets[0]} > 255 || ${octets[1]} > 255 || ${octets[2]} > 255 || ${octets[3]} > 255 )); then
         msg_error "Invalid IP address format"
         select_network
         return
@@ -786,8 +787,10 @@ create_container() {
   fi
 
   # Create container and capture output
-  local error_log="/tmp/proxbalance_create_error_$$.log"
-  local output_log="/tmp/proxbalance_create_output_$$.log"
+  local error_log
+  error_log=$(mktemp /tmp/proxbalance_create_error.XXXXXX)
+  local output_log
+  output_log=$(mktemp /tmp/proxbalance_create_output.XXXXXX)
 
   (
     if [ -n "$password_arg" ]; then

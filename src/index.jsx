@@ -1,3 +1,4 @@
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
@@ -21,7 +22,7 @@ import {
 } from './components/Icons.jsx';
 import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
 
-const { useState, useEffect, useMemo, useCallback, useRef } = React;
+const { useState, useEffect } = React;
 
 const ProxmoxBalanceManager = () => {
   const isMobile = useIsMobile(640);
@@ -658,4 +659,4 @@ const ProxmoxBalanceManager = () => {
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<ProxmoxBalanceManager />);
+root.render(<ErrorBoundary><ProxmoxBalanceManager /></ErrorBoundary>);

@@ -93,6 +93,7 @@ ProxBalance/
 │   │   ├── automation/          # 6 automation sub-components
 │   │   ├── SettingsPage.jsx     # Settings wrapper (~213 lines)
 │   │   ├── settings/            # 5 settings sub-components
+│   │   ├── ErrorBoundary.jsx     # Error boundary (prevents white-screen crashes)
 │   │   ├── Icons.jsx            # SVG icon components
 │   │   └── Skeletons.jsx        # Loading skeleton components
 │   ├── api/
@@ -295,7 +296,7 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 ### Bash (Shell Scripts)
 - **Style**: Google Shell Style Guide, 2-space indentation
 - **Variables**: Always quoted (`"$variable"`)
-- **Safety**: `set -euo pipefail` at script start
+- **Safety**: `set -euo pipefail` at script start. Use `mktemp` for temporary files (not predictable `/tmp` paths). Use `printf -v` for safe variable assignment (not `eval`).
 - **Visual**: Color-coded output with unicode markers (checkmarks, crosses, info diamonds)
 - **Section separators**: Double-line box-drawing characters for major sections
 
@@ -388,13 +389,14 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 2. Installs Python, Node.js, Nginx, and all dependencies
 3. Configures systemd services and timers
 4. Creates Proxmox API tokens automatically
-5. Services: Nginx (port 80) → Gunicorn (port 5000) + background systemd timers
+5. Services: Nginx (port 80, with security headers) → Gunicorn (port 5000) + background systemd timers
+6. Systemd services run with hardening: `NoNewPrivileges=true`, `ProtectSystem=strict`, `PrivateTmp=true`
 
 **Upgrade path**: `upgrade-to-v2.sh` handles migration from v1 to the modular v2 architecture.
 
 ## Important Notes for AI Assistants
 
-- **`config.json` contains secrets** — Never commit it. Use `config.example.json` for reference.
+- **`config.json` contains secrets** — Never commit it. Use `config.example.json` for reference. The GET `/api/config` endpoint redacts secret fields (token secrets, passwords, API keys) via `_redact_config()` in `routes/config.py`. Secrets are only accepted on POST, never returned on GET.
 - **Modular architecture** — `app.py` is a thin ~63-line entry point. Route handlers are in `proxbalance/routes/` (use `@api_route` decorator). Core logic is in `proxbalance/` domain modules (19 modules). Do not add large blocks of code back into `app.py`.
 - **SQLite storage** — All time-series data, metrics, profiles, outcomes, and migration history live in `proxbalance.db` (WAL mode). Only `cluster_cache.json`, `config.json`, `recommendations_cache.json`, and evacuation sessions remain as JSON. The database is initialized via `init_db()` in `app.py` and `collector_api.py` on startup.
 - **`src/app.jsx` was deleted** — The frontend is now fully componentized. `src/index.jsx` (~658 lines) is the root composition layer. UI is split into 24 sub-components across `dashboard/`, `settings/`, and `automation/` directories. State lives in 11 custom hooks in `src/hooks/`.
@@ -404,7 +406,8 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **Systemd timers** — Collection, recommendations, and auto-migration are separate systemd services, not in-process cron jobs.
 - **Blueprint routing** — All routes use full paths (e.g., `/api/config`), not url_prefix. Find a route by searching for `@*_bp.route('/api/...')` in `proxbalance/routes/`.
 - **Shared state** — Blueprints access shared objects (cache_manager, update_manager) via `current_app.config['key']`.
-- **Error handling pattern** — Both backend and frontend return `{ error: true, message: "..." }` objects rather than throwing exceptions. Follow this pattern.
+- **Error handling pattern** — Both backend and frontend return `{ error: true, message: "..." }` objects rather than throwing exceptions. Follow this pattern. The root React component is wrapped in an `ErrorBoundary` that prevents white-screen crashes.
+- **Python dependencies are pinned** — `requirements.txt` uses exact versions (`==`). Update versions explicitly when upgrading.
 - **Branch workflow** — Development happens on `DEV`, merged to `main` for releases.
 - **No CI/CD** — No GitHub Actions or other CI configuration. No linting config files committed. Use `black` and `flake8` manually.
 - **Line ending enforcement** — `.gitattributes` enforces LF line endings for all text files.

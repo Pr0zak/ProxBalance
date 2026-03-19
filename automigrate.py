@@ -22,6 +22,9 @@ import requests
 # Constants
 MIGRATION_TASK_TYPES = ('qmigrate', 'vzmigrate')
 MAX_RUN_HISTORY = 50
+DEFAULT_CYCLE_WINDOW_HOURS = 72
+DEFAULT_LOOKBACK_HOURS = 168  # 7 days
+MAX_ACTIVITY_LOG_ENTRIES = 50
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -167,7 +170,7 @@ def _check_time_window(config, window_key, window_label, default_when_empty):
         tz = pytz.timezone(global_tz)
         now = datetime.now(tz)
         return False, f"Outside all {window_label}s (Current time: {now.strftime('%A')} {now.strftime('%H:%M')} {global_tz})"
-    except:
+    except Exception:
         return False, f"Outside all {window_label}s"
 
 
@@ -568,8 +571,7 @@ def execute_migration(
         return {"success": True, "dry_run": True}
 
     try:
-        import time
-        start_time = time.time()
+        start_time = time_module.time()
 
         # Call migration API endpoint
         response = requests.post(
@@ -600,7 +602,7 @@ def execute_migration(
         poll_interval = 5  # Check every 5 seconds
 
         while True:
-            time.sleep(poll_interval)
+            time_module.sleep(poll_interval)
 
             try:
                 # Check task status
@@ -618,7 +620,7 @@ def execute_migration(
                         # Check if task is complete
                         if status == 'stopped':
                             exitstatus = task_status.get('exitstatus', 'unknown')
-                            duration = int(time.time() - start_time)
+                            duration = int(time_module.time() - start_time)
 
                             if exitstatus == 'OK':
                                 logger.info(f"Migration completed successfully for VM {vmid} (duration: {duration}s)")
@@ -648,7 +650,7 @@ def execute_migration(
             try:
                 error_detail = e.response.json().get('error', str(e))
                 error_msg = f"{error_msg}: {error_detail}"
-            except:
+            except Exception:
                 pass
         logger.error(f"Error migrating VM {vmid}: {error_msg}")
         return {"success": False, "error": error_msg}
@@ -758,7 +760,7 @@ def verify_guest_on_node(vmid: int, expected_node: str, config: Dict[str, Any]) 
         return True, "Verification failed, proceeding with caution"
 
 
-def _count_recent_migrations(vmid: int, lookback_hours: int = 168) -> int:
+def _count_recent_migrations(vmid: int, lookback_hours: int = DEFAULT_LOOKBACK_HOURS) -> int:
     """
     Count how many times a VM has been successfully migrated within the
     lookback window (default 7 days). Used for escalating cooldowns on
@@ -1018,7 +1020,7 @@ def update_recommendation_tracking(
     return tracking, ready, observing
 
 
-def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = 72) -> Tuple[bool, str]:
+def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = DEFAULT_CYCLE_WINDOW_HOURS) -> Tuple[bool, str]:
     """
     Detect migration cycling by checking if the VM has recently been on the
     proposed target node. Catches both simple rollbacks (A->B->A) and multi-hop

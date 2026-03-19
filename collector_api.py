@@ -737,8 +737,8 @@ class ProxmoxAPICollector:
                         try:
                             from proxbalance.guest_profiles import update_guest_profile
                             update_guest_profile(str(vmid), guest_rrd_summary, node_name)
-                        except Exception:
-                            pass  # Graceful degradation
+                        except Exception as e:
+                            print(f"Warning: Guest profile update failed for {vmid}: {e}", file=sys.stderr)
 
             # Check HA status
             ha_sid = f"{'vm' if guest_type == 'VM' else 'ct'}:{vmid}"

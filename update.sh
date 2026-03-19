@@ -3,7 +3,7 @@
 # Shows what's new before updating
 # Runs from the Proxmox host and reaches into the LXC container via pct exec
 
-set -e
+set -euo pipefail
 
 CTID=${1:-336}
 
