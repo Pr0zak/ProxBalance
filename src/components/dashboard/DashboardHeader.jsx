@@ -24,7 +24,7 @@ export default function DashboardHeader({
                 <ProxBalanceLogo size={dashboardHeaderCollapsed ? 64 : 128} />
               </div>
               <div>
-                <h1 className={`font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}>ProxBalance</h1>
+                <h1 className={`transition-all ${dashboardHeaderCollapsed ? 'text-xl' : 'text-2xl sm:text-3xl'}`}><span className="font-light text-gray-900 dark:text-gray-200">Prox</span><span className="font-extrabold bg-gradient-to-r from-blue-900 to-blue-600 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">Balance</span></h1>
                 {!dashboardHeaderCollapsed && <p className="text-sm text-gray-500 dark:text-gray-400">Cluster Optimization</p>}
                 {dashboardHeaderCollapsed && data && data.nodes && (() => {
                   const nodes = Object.values(data.nodes);

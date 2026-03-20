@@ -65,8 +65,8 @@ export default function DashboardFooter({
             </>
           )}
         </div>
-        <div className="text-xs font-semibold bg-gradient-to-r from-yellow-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
-          ProxBalance
+        <div className="text-xs">
+          <span className="font-light text-gray-600 dark:text-gray-400">Prox</span><span className="font-extrabold bg-gradient-to-r from-blue-900 to-blue-600 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">Balance</span>
         </div>
       </div>
     </div>
