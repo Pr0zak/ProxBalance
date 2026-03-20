@@ -76,5 +76,5 @@ export const TrendingUp = ({ size, className }) => (<svg width={size} height={si
 export const TrendingDown = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>);
 
 export const ProxBalanceLogo = ({ size = 32 }) => (
-  <img src="/assets/logo_icon_v2.svg?v=2" alt="ProxBalance Logo" width={size} height={size} />
+  <img src="/assets/favicon.svg?v=3" alt="ProxBalance Logo" width={size} height={size} />
 );
