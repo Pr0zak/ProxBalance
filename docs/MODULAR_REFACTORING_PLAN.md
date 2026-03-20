@@ -129,16 +129,20 @@
 | `DataCollectionSection.jsx` | 281 | Collection optimization |
 | `AIProviderSection.jsx` | 199 | AI provider config forms |
 
-#### `src/components/automation/` (6 files, 2,490 lines total)
+#### `src/components/automation/` (10 files, 3,140 lines total)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `TimeWindowsSection.jsx` | 887 | Timezone, timeline, window management |
-| `MigrationLogsSection.jsx` | 385 | History table, logs, pagination |
-| `MainSettingsSection.jsx` | 349 | Enable/disable, dry run, presets |
-| `SafetyRulesSection.jsx` | 347 | Safety toggles and limits |
-| `DecisionTreeFlowchart.jsx` | 293 | Migration decision tree diagram |
-| `DistributionBalancingSection.jsx` | 229 | Distribution config |
+| `TimeWindowsSection.jsx` | 856 | Timezone, timeline, window management |
+| `PenaltyScoringSection.jsx` | 571 | Penalty config with simulator |
+| `MigrationLogsSection.jsx` | 363 | History table, logs, pagination |
+| `DecisionTreeFlowchart.jsx` | 300 | Migration decision tree diagram |
+| `SmartMigrationsSection.jsx` | 276 | Intelligence levels, observation tuning |
+| `QuickSetupSection.jsx` | 199 | Enable/disable, dry run, sensitivity |
+| `GuestSelectionSection.jsx` | 189 | Triggers, limits, guest rules |
+| `MigrationBehaviorSection.jsx` | 149 | Smart migrations, safety, scoring |
+| `DistributionBalancingSection.jsx` | 145 | Distribution config |
+| `ScheduleSection.jsx` | 92 | Timing controls, time windows |
 
 #### `src/hooks/` (11 files, 1,919 lines total)
 

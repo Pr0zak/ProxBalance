@@ -1,7 +1,7 @@
 import {
-  ArrowLeft, Clock, Info
+  ArrowLeft, Clock
 } from './Icons.jsx';
-import { GLASS_CARD, BTN_ICON, ICON } from '../utils/designTokens.js';
+import { GLASS_CARD, BTN_ICON } from '../utils/designTokens.js';
 
 import QuickSetupSection from './automation/QuickSetupSection.jsx';
 import ScheduleSection from './automation/ScheduleSection.jsx';
@@ -70,22 +70,6 @@ export default function AutomationPage(props) {
             <div className="flex items-center gap-3 min-w-0">
               <Clock size={28} className="text-blue-600 dark:text-blue-400 shrink-0" />
               <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
-              <span className="relative group inline-block">
-                <Info size={18} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
-                <div className="absolute top-full right-0 sm:right-auto sm:left-1/2 sm:transform sm:-translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-700 w-72" style={{whiteSpace: 'normal'}}>
-                  <div className="font-semibold mb-1.5">How Automated Migrations Work</div>
-                  <div className="space-y-1 text-gray-300">
-                    <p>1. Runs on a schedule (every N minutes)</p>
-                    <p>2. Fetches current recommendations from the engine</p>
-                    <p>3. Validates each migration against safety rules</p>
-                    <p>4. Executes approved migrations one at a time</p>
-                    <p>5. Waits for cooldown between migrations</p>
-                  </div>
-                  <div className="absolute top-0 right-1 sm:right-auto sm:left-1/2 sm:transform sm:-translate-x-1/2 -translate-y-full">
-                    <div className="border-8 border-transparent border-b-gray-900 dark:border-b-gray-800"></div>
-                  </div>
-                </div>
-              </span>
             </div>
           </div>
         </div>

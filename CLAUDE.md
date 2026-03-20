@@ -90,8 +90,8 @@ ProxBalance/
 │   │   ├── DashboardPage.jsx    # Dashboard wrapper (~416 lines)
 │   │   ├── MobileTabBar.jsx     # Reusable mobile bottom tab navigation
 │   │   ├── dashboard/           # 14 dashboard sub-components (includes NodeChart.jsx)
-│   │   ├── AutomationPage.jsx   # Automation wrapper (~223 lines)
-│   │   ├── automation/          # 8 automation sub-components
+│   │   ├── AutomationPage.jsx   # Automation wrapper (~170 lines)
+│   │   ├── automation/          # 10 automation sub-components
 │   │   ├── SettingsPage.jsx     # Settings wrapper (~213 lines)
 │   │   ├── settings/            # 5 settings sub-components
 │   │   ├── ErrorBoundary.jsx     # Error boundary (prevents white-screen crashes)
@@ -294,7 +294,7 @@ The UI uses a **glassmorphism/depth aesthetic** — backdrop-blur, frosted glass
 - **`src/components/MobileTabBar.jsx`** — Reusable mobile bottom tab navigation with last-update timestamp. Used on all 3 pages.
 - **`src/components/dashboard/NodeChart.jsx`** — Self-contained Chart.js component per node. Manages its own chart lifecycle (create/destroy).
 - **`src/components/DashboardPage.jsx`** — Dashboard wrapper (~416 lines) delegating to 14 sub-components in `dashboard/`.
-- **`src/components/AutomationPage.jsx`** — Automation wrapper (~223 lines) delegating to 8 sub-components in `automation/`.
+- **`src/components/AutomationPage.jsx`** — Automation wrapper (~170 lines) delegating to 10 sub-components in `automation/`. Organized into 5 logical sections: Quick Setup, When to Migrate, What to Migrate, How to Migrate, History & Logs.
 - **`src/components/SettingsPage.jsx`** — Settings wrapper (~213 lines) delegating to 5 sub-components in `settings/`.
 - **`src/api/client.js`** — Centralized API client for all backend calls.
 - **`src/utils/constants.js`** — Shared frontend constants (`API_BASE`, default thresholds, refresh intervals).
