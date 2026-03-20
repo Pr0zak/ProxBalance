@@ -21,6 +21,6 @@
     <g transform="translate(-62,-36)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.45" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.65"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
   </g>
   <text x="252" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="70" fill="#cbd5e1" letter-spacing="-3">Prox</text>
-  <text x="418" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="70" fill="url(#fBlueD)" letter-spacing="-3">Balance</text>
+  <text x="390" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="70" fill="url(#fBlueD)" letter-spacing="-3">Balance</text>
   <text x="254" y="160" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="400" font-size="14" fill="#475569" letter-spacing="4.5">PROXMOX VE CLUSTER OPTIMIZER</text>
 </svg>
