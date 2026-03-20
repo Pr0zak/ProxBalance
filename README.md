@@ -1,9 +1,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/logo_v3_dark.svg" width="500"/>
-  <source media="(prefers-color-scheme: light)" srcset="assets/logo_v3.svg" width="500"/>
-  <img src="assets/logo_v3.svg" alt="ProxBalance Logo" width="500"/>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo_v3_dark.svg" width="700"/>
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo_v3.svg" width="700"/>
+  <img src="assets/logo_v3.svg" alt="ProxBalance Logo" width="700"/>
 </picture>
 
 <br/>
