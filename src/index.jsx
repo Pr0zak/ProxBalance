@@ -350,7 +350,7 @@ const ProxmoxBalanceManager = () => {
           <div className={`flex items-center justify-between mb-6 ${GLASS_CARD}`}>
             <div className="flex items-center gap-3">
               <ProxBalanceLogo size={40} />
-              <h1 className="text-2xl"><span className="font-light text-gray-900 dark:text-gray-200">Prox</span><span className="font-extrabold bg-gradient-to-r from-blue-900 to-blue-600 dark:from-blue-300 dark:to-blue-400 bg-clip-text text-transparent">Balance</span></h1>
+              <h1 className="text-2xl"><span className="font-light text-gray-900 dark:text-gray-200">Prox</span><span className="font-extrabold text-blue-600 dark:text-blue-400">Balance</span></h1>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => setDarkMode(!darkMode)} className={BTN_ICON} title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
