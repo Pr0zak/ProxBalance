@@ -109,7 +109,7 @@ ProxBalance/
 ├── tailwind.config.js           # Tailwind CSS configuration
 ├── assets/                      # SVG logos, favicon, and built JS
 │   ├── js/app.js                # Bundled frontend output (built by esbuild, gitignored)
-│   ├── logo_v2.svg, favicon.svg, etc.
+│   ├── logo_v3.svg, logo_v3_dark.svg, favicon.svg, etc.
 │
 ├── config.example.json          # Configuration template (149 lines)
 ├── requirements.txt             # Python dependencies (7 packages)

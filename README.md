@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo_v2.svg" alt="ProxBalance Logo" width="200"/>
+<img src="assets/logo_v3.svg" alt="ProxBalance Logo" width="200"/>
 
 <br/>
 <br/>

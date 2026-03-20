@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 280" fill="none">
+  <defs>
+    <linearGradient id="fBlueD" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="fCoreD" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(120,140)">
+    <line x1="0" y1="-36" x2="0" y2="-52" stroke="#3b82f6" stroke-width="2" opacity="0.25"/><line x1="31" y1="-18" x2="45" y2="-26" stroke="#3b82f6" stroke-width="2" opacity="0.25"/><line x1="31" y1="18" x2="45" y2="26" stroke="#3b82f6" stroke-width="2" opacity="0.25"/><line x1="0" y1="36" x2="0" y2="52" stroke="#3b82f6" stroke-width="2" opacity="0.25"/><line x1="-31" y1="18" x2="-45" y2="26" stroke="#3b82f6" stroke-width="2" opacity="0.25"/><line x1="-31" y1="-18" x2="-45" y2="-26" stroke="#3b82f6" stroke-width="2" opacity="0.25"/>
+    <polygon points="0,-36 31,-18 31,18 0,36 -31,18 -31,-18" fill="url(#fCoreD)" stroke="#3b82f6" stroke-width="1"/>
+    <line x1="-11" y1="-9" x2="11" y2="-9" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/><line x1="0" y1="-9" x2="0" y2="6" stroke="#f97316" stroke-width="2" opacity="0.9"/><polygon points="0,6 -5,13 5,13" fill="#f97316" opacity="0.8"/><line x1="-11" y1="-9" x2="-11" y2="0" stroke="#fb923c" stroke-width="1.5" opacity="0.6"/><line x1="11" y1="-9" x2="11" y2="0" stroke="#fb923c" stroke-width="1.5" opacity="0.6"/><rect x="-15" y="0" width="8" height="2.5" rx="1" fill="#fb923c" opacity="0.5"/><rect x="7" y="0" width="8" height="2.5" rx="1" fill="#fb923c" opacity="0.5"/>
+    <g transform="translate(0,-72)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.4" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.6"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
+    <g transform="translate(62,-36)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.3" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.5"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
+    <g transform="translate(62,36)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.4"/><circle r="3" fill="#fbbf24" opacity="0.85"/></g>
+    <g transform="translate(0,72)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.25" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.45"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
+    <g transform="translate(-62,36)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.35" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.55"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
+    <g transform="translate(-62,-36)"><polygon points="0,-22 19,-11 19,11 0,22 -19,11 -19,-11" fill="#3b82f6" fill-opacity="0.45" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.65"/><circle r="3" fill="#93c5fd" opacity="0.6"/></g>
+  </g>
+  <text x="252" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="70" fill="#cbd5e1" letter-spacing="-3">Prox</text>
+  <text x="418" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="70" fill="url(#fBlueD)" letter-spacing="-3">Balance</text>
+  <text x="254" y="160" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="400" font-size="14" fill="#475569" letter-spacing="4.5">PROXMOX VE CLUSTER OPTIMIZER</text>
+</svg>
