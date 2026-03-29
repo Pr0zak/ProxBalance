@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 import json, os, sys, subprocess, re, time
 from datetime import datetime, timedelta
 from pathlib import Path
-from proxbalance.config_manager import load_config, CONFIG_FILE, BASE_PATH
+from proxbalance.config_manager import load_config, save_config, CONFIG_FILE, BASE_PATH
 from proxbalance.error_handlers import api_route
 
 automation_bp = Blueprint("automation", __name__)
@@ -816,9 +816,12 @@ def automigrate_config():
                 else:
                     config['automated_migrations'][key] = value
 
-            # Save configuration
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(config, f, indent=2)
+            # Save configuration atomically
+            if not save_config(config):
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to save configuration"
+                }), 500
 
             # Update systemd timer if check_interval_minutes changed
             if 'check_interval_minutes' in updates:

@@ -243,8 +243,11 @@ def update_config():
                 config["ai_config"]["local"] = {}
             config["ai_config"]["local"].update(ai_data["local"])
 
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
+    if not save_config(config):
+        return jsonify({
+            "success": False,
+            "error": "Failed to save configuration"
+        }), 500
 
     # Restart collector if API credentials changed
     if any(key in data for key in ["proxmox_auth_method", "proxmox_api_token_id", "proxmox_api_token_secret"]):
@@ -342,9 +345,10 @@ def backup_config():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     backup_file = os.path.join(backup_dir, f"config_backup_{timestamp}.json")
 
-    # Save backup
+    # Save backup (redact secrets so backups never contain credentials)
+    redacted = _redact_config(config)
     with open(backup_file, 'w') as f:
-        json.dump(config, f, indent=2)
+        json.dump(redacted, f, indent=2)
 
     # Rotate backups - keep only last 5
     backup_files = sorted(glob.glob(os.path.join(backup_dir, 'config_backup_*.json')))
@@ -478,12 +482,16 @@ def import_config():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_file = os.path.join(backup_dir, f"config_backup_pre_import_{timestamp}.json")
 
+        redacted_backup = _redact_config(current_config)
         with open(backup_file, 'w') as f:
-            json.dump(current_config, f, indent=2)
+            json.dump(redacted_backup, f, indent=2)
 
-    # Save imported configuration
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    # Save imported configuration atomically
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Failed to save imported configuration"
+        }), 500
 
     # Restart services if credentials changed
     systemctl_cmd = "/usr/bin/systemctl"

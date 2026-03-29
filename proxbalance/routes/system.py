@@ -377,10 +377,42 @@ def change_host():
             "error": "Host is required"
         }), 400
 
+    # SSRF validation: block obviously dangerous targets
+    import ipaddress
+    _host_lower = new_host.lower()
+
+    # Block cloud metadata endpoints
+    if 'metadata' in _host_lower or _host_lower in (
+        'metadata.google.internal', '169.254.169.254',
+    ):
+        return jsonify({
+            "success": False,
+            "error": "Invalid host: cloud metadata endpoints are not allowed"
+        }), 400
+
+    # Block loopback and link-local addresses
+    try:
+        addr = ipaddress.ip_address(new_host)
+        if addr.is_loopback or addr.is_link_local:
+            return jsonify({
+                "success": False,
+                "error": "Invalid host: loopback and link-local addresses are not allowed"
+            }), 400
+    except ValueError:
+        # Not a bare IP — check hostname patterns
+        if _host_lower in ('localhost', 'localhost.localdomain'):
+            return jsonify({
+                "success": False,
+                "error": "Invalid host: loopback hostnames are not allowed"
+            }), 400
+
     # Load current config
-    config_path = CONFIG_FILE
-    with open(config_path, 'r') as f:
-        config_data = json.load(f)
+    config_data = load_config()
+    if config_data.get('error'):
+        return jsonify({
+            "success": False,
+            "error": config_data.get('message')
+        }), 500
 
     # Get API credentials for testing
     api_token_id = config_data.get('proxmox_api_token_id', '')
@@ -443,9 +475,12 @@ def change_host():
     # Connection test passed, update config
     config_data['proxmox_host'] = new_host
 
-    # Write updated config
-    with open(config_path, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    # Write updated config atomically
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Failed to save configuration"
+        }), 500
 
     # Restart collector service to apply changes
     subprocess.run(
@@ -483,8 +518,12 @@ def update_collection_settings():
         }), 400
 
     # Load current config
-    with open(CONFIG_FILE, 'r') as f:
-        config_data = json.load(f)
+    config_data = load_config()
+    if config_data.get('error'):
+        return jsonify({
+            "success": False,
+            "error": config_data.get('message')
+        }), 500
 
     # Update collection settings
     if interval:
@@ -495,9 +534,12 @@ def update_collection_settings():
             config_data['collection_optimization'] = {}
         config_data['collection_optimization'].update(opt_config)
 
-    # Write updated config
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    # Write updated config atomically
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Failed to save configuration"
+        }), 500
 
     # Update systemd timer
     timer_warning = None
@@ -559,8 +601,12 @@ def update_recommendation_thresholds():
             if val < 1 or val > 100:
                 return jsonify({"success": False, "error": f"{name} must be between 1 and 100"}), 400
 
-    with open(CONFIG_FILE, 'r') as f:
-        config_data = json.load(f)
+    config_data = load_config()
+    if config_data.get('error'):
+        return jsonify({
+            "success": False,
+            "error": config_data.get('message')
+        }), 500
 
     if 'recommendation_thresholds' not in config_data:
         config_data['recommendation_thresholds'] = {}
@@ -572,8 +618,11 @@ def update_recommendation_thresholds():
     if iowait is not None:
         config_data['recommendation_thresholds']['iowait_threshold'] = float(iowait)
 
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Failed to save configuration"
+        }), 500
 
     return jsonify({
         "success": True,
@@ -744,14 +793,20 @@ def recreate_token():
         }), 500
 
     # Update config.json with new token secret
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    with open(config_path, 'r') as f:
-        config_data = json.load(f)
+    config_data = load_config()
+    if config_data.get('error'):
+        return jsonify({
+            "success": False,
+            "error": "Token recreated but failed to update config: " + config_data.get('message', '')
+        }), 500
 
     config_data['proxmox_api_token_secret'] = token_secret
 
-    with open(config_path, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Token recreated but failed to save config"
+        }), 500
 
     return jsonify({
         "success": True,
@@ -797,15 +852,21 @@ def delete_token():
         }), 500
 
     # Clear from config.json
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    with open(config_path, 'r') as f:
-        config_data = json.load(f)
+    config_data = load_config()
+    if config_data.get('error'):
+        return jsonify({
+            "success": False,
+            "error": "Token deleted but failed to update config: " + config_data.get('message', '')
+        }), 500
 
     config_data['proxmox_api_token_id'] = ''
     config_data['proxmox_api_token_secret'] = ''
 
-    with open(config_path, 'w') as f:
-        json.dump(config_data, f, indent=2)
+    if not save_config(config_data):
+        return jsonify({
+            "success": False,
+            "error": "Token deleted but failed to save config"
+        }), 500
 
     return jsonify({
         "success": True,
