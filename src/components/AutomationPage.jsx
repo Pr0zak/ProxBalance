@@ -1,7 +1,10 @@
 import {
-  ArrowLeft, Clock
+  Clock
 } from './Icons.jsx';
-import { GLASS_CARD, BTN_ICON } from '../utils/designTokens.js';
+import {
+  GLASS_CARD, TEXT_HEADING, TEXT_SUBHEADING,
+  SUB_TAB, SUB_TAB_ACTIVE, SUB_TAB_INACTIVE
+} from '../utils/designTokens.js';
 
 import QuickSetupSection from './automation/QuickSetupSection.jsx';
 import ScheduleSection from './automation/ScheduleSection.jsx';
@@ -9,6 +12,16 @@ import GuestSelectionSection from './automation/GuestSelectionSection.jsx';
 import MigrationBehaviorSection from './automation/MigrationBehaviorSection.jsx';
 import MigrationLogsSection from './automation/MigrationLogsSection.jsx';
 import DecisionTreeFlowchart from './automation/DecisionTreeFlowchart.jsx';
+
+const { useState } = React;
+
+const TABS = [
+  { id: 'schedule', label: 'Schedule' },
+  { id: 'filters', label: 'Filters' },
+  { id: 'behavior', label: 'Behavior' },
+  { id: 'history', label: 'History & Logs' },
+  { id: 'reference', label: 'Reference' },
+];
 
 export default function AutomationPage(props) {
   const {
@@ -46,35 +59,26 @@ export default function AutomationPage(props) {
     setMigrationLogsTab,
   } = props;
 
+  const [activeTab, setActiveTab] = useState('schedule');
+
   if (!automationConfig) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center">
-        <div className="text-gray-600 dark:text-gray-400">Loading automation settings...</div>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-400">Loading automation settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 pb-20 sm:pb-0">
-      <div className="max-w-5xl mx-auto p-4">
-        {/* Header */}
-        <div className={GLASS_CARD}>
-          <div className="flex items-center gap-4 min-w-0">
-            <button
-              onClick={() => setCurrentPage('dashboard')}
-              className={BTN_ICON}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft size={20} className="text-gray-700 dark:text-gray-300" />
-            </button>
-            <div className="flex items-center gap-3 min-w-0">
-              <Clock size={28} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white">Automated Migrations</h1>
-            </div>
-          </div>
+    <div className="pb-20 sm:pb-0">
+      <div className="max-w-screen-2xl mx-auto p-4">
+        {/* Page header */}
+        <div className="mb-4">
+          <h1 className={TEXT_HEADING}>Automation Configuration</h1>
+          <p className={`${TEXT_SUBHEADING} mt-1`}>Configure automated migration scheduling and behavior</p>
         </div>
 
-        {/* 1. Quick Setup (always open) */}
+        {/* Quick Setup — always visible above tabs */}
         <QuickSetupSection
           automationConfig={automationConfig}
           saveAutomationConfig={saveAutomationConfig}
@@ -87,80 +91,103 @@ export default function AutomationPage(props) {
           fetchMigrationSettingsAction={fetchMigrationSettingsAction}
         />
 
-        {/* 2. When to Migrate */}
-        <ScheduleSection
-          automationConfig={automationConfig}
-          saveAutomationConfig={saveAutomationConfig}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-          setError={setError}
-        />
+        {/* Horizontal sub-tabs */}
+        <div className="flex items-center gap-0 border-b border-slate-700/50 mb-4 overflow-x-auto">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`${SUB_TAB} ${activeTab === tab.id ? SUB_TAB_ACTIVE : SUB_TAB_INACTIVE}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {/* 3. What to Migrate */}
-        <GuestSelectionSection
-          automationConfig={automationConfig}
-          saveAutomationConfig={saveAutomationConfig}
-          config={config}
-          fetchConfig={fetchConfig}
-          setConfig={setConfig}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-        />
+        {/* Tab content */}
+        {activeTab === 'schedule' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ScheduleSection
+              automationConfig={automationConfig}
+              saveAutomationConfig={saveAutomationConfig}
+              collapsedSections={collapsedSections}
+              setCollapsedSections={setCollapsedSections}
+              setError={setError}
+            />
+          </div>
+        )}
 
-        {/* 4. How to Migrate */}
-        <MigrationBehaviorSection
-          automationConfig={automationConfig}
-          saveAutomationConfig={saveAutomationConfig}
-          automationStatus={automationStatus}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-          penaltyConfig={penaltyConfig}
-          setPenaltyConfig={setPenaltyConfig}
-          penaltyDefaults={penaltyDefaults}
-          penaltyConfigSaved={penaltyConfigSaved}
-          savingPenaltyConfig={savingPenaltyConfig}
-          penaltyPresets={penaltyPresets}
-          activePreset={activePreset}
-          applyPenaltyPreset={applyPenaltyPreset}
-          cpuThreshold={cpuThreshold}
-          memThreshold={memThreshold}
-          iowaitThreshold={iowaitThreshold}
-          savePenaltyConfig={savePenaltyConfig}
-          resetPenaltyConfig={resetPenaltyConfig}
-          migrationSettings={migrationSettings}
-          setMigrationSettings={setMigrationSettings}
-          migrationSettingsDefaults={migrationSettingsDefaults}
-          migrationSettingsDescriptions={migrationSettingsDescriptions}
-          effectivePenaltyConfig={effectivePenaltyConfig}
-          hasExpertOverrides={hasExpertOverrides}
-          savingMigrationSettings={savingMigrationSettings}
-          migrationSettingsSaved={migrationSettingsSaved}
-          saveMigrationSettingsAction={saveMigrationSettingsAction}
-          resetMigrationSettingsAction={resetMigrationSettingsAction}
-          fetchMigrationSettingsAction={fetchMigrationSettingsAction}
-        />
+        {activeTab === 'filters' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <GuestSelectionSection
+              automationConfig={automationConfig}
+              saveAutomationConfig={saveAutomationConfig}
+              config={config}
+              fetchConfig={fetchConfig}
+              setConfig={setConfig}
+              collapsedSections={collapsedSections}
+              setCollapsedSections={setCollapsedSections}
+            />
+          </div>
+        )}
 
-        {/* 5. History & Logs */}
-        <MigrationLogsSection
-          automationStatus={automationStatus}
-          automigrateLogs={automigrateLogs}
-          migrationHistoryPage={migrationHistoryPage}
-          setMigrationHistoryPage={setMigrationHistoryPage}
-          migrationHistoryPageSize={migrationHistoryPageSize}
-          setMigrationHistoryPageSize={setMigrationHistoryPageSize}
-          migrationLogsTab={migrationLogsTab}
-          setMigrationLogsTab={setMigrationLogsTab}
-          setAutomigrateLogs={setAutomigrateLogs}
-          logRefreshTime={logRefreshTime}
-          setLogRefreshTime={setLogRefreshTime}
-          fetchAutomationStatus={fetchAutomationStatus}
-        />
+        {activeTab === 'behavior' && (
+          <MigrationBehaviorSection
+            automationConfig={automationConfig}
+            saveAutomationConfig={saveAutomationConfig}
+            automationStatus={automationStatus}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+            penaltyConfig={penaltyConfig}
+            setPenaltyConfig={setPenaltyConfig}
+            penaltyDefaults={penaltyDefaults}
+            penaltyConfigSaved={penaltyConfigSaved}
+            savingPenaltyConfig={savingPenaltyConfig}
+            penaltyPresets={penaltyPresets}
+            activePreset={activePreset}
+            applyPenaltyPreset={applyPenaltyPreset}
+            cpuThreshold={cpuThreshold}
+            memThreshold={memThreshold}
+            iowaitThreshold={iowaitThreshold}
+            savePenaltyConfig={savePenaltyConfig}
+            resetPenaltyConfig={resetPenaltyConfig}
+            migrationSettings={migrationSettings}
+            setMigrationSettings={setMigrationSettings}
+            migrationSettingsDefaults={migrationSettingsDefaults}
+            migrationSettingsDescriptions={migrationSettingsDescriptions}
+            effectivePenaltyConfig={effectivePenaltyConfig}
+            hasExpertOverrides={hasExpertOverrides}
+            savingMigrationSettings={savingMigrationSettings}
+            migrationSettingsSaved={migrationSettingsSaved}
+            saveMigrationSettingsAction={saveMigrationSettingsAction}
+            resetMigrationSettingsAction={resetMigrationSettingsAction}
+            fetchMigrationSettingsAction={fetchMigrationSettingsAction}
+          />
+        )}
 
-        {/* Reference: Decision Flowchart */}
-        <DecisionTreeFlowchart
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-        />
+        {activeTab === 'history' && (
+          <MigrationLogsSection
+            automationStatus={automationStatus}
+            automigrateLogs={automigrateLogs}
+            migrationHistoryPage={migrationHistoryPage}
+            setMigrationHistoryPage={setMigrationHistoryPage}
+            migrationHistoryPageSize={migrationHistoryPageSize}
+            setMigrationHistoryPageSize={setMigrationHistoryPageSize}
+            migrationLogsTab={migrationLogsTab}
+            setMigrationLogsTab={setMigrationLogsTab}
+            setAutomigrateLogs={setAutomigrateLogs}
+            logRefreshTime={logRefreshTime}
+            setLogRefreshTime={setLogRefreshTime}
+            fetchAutomationStatus={fetchAutomationStatus}
+          />
+        )}
+
+        {activeTab === 'reference' && (
+          <DecisionTreeFlowchart
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+          />
+        )}
       </div>
     </div>
   );
