@@ -11,7 +11,7 @@ import json
 import fcntl
 import logging
 import time as time_module
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Any
 import uuid
@@ -25,6 +25,7 @@ MAX_RUN_HISTORY = 50
 DEFAULT_CYCLE_WINDOW_HOURS = 72
 DEFAULT_LOOKBACK_HOURS = 168  # 7 days
 MAX_ACTIVITY_LOG_ENTRIES = 50
+DEFAULT_MIGRATION_POLL_TIMEOUT = 7200  # 2 hours
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -49,12 +50,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def acquire_lock() -> int:
+class AutomigrateLock:
+    """Context manager for automigrate file lock.
+
+    Ensures the lock is always released, even on unhandled exceptions.
+
+    Usage:
+        with AutomigrateLock() as lock:
+            # do work while holding the lock
+            pass
+    """
+
+    def __init__(self):
+        self._lock_fd: Optional[Any] = None
+
+    def __enter__(self) -> 'AutomigrateLock':
+        self._lock_fd = _acquire_lock()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if self._lock_fd:
+            _release_lock(self._lock_fd)
+            self._lock_fd = None
+        return False  # Do not suppress exceptions
+
+
+def _acquire_lock() -> Any:
     """
     Prevent concurrent runs using file lock.
 
+    Internal function — use AutomigrateLock context manager instead.
+
     Returns:
-        File descriptor of the lock file
+        File object for the lock file
 
     Raises:
         SystemExit: If another instance is already running
@@ -70,12 +98,14 @@ def acquire_lock() -> int:
         sys.exit(1)
 
 
-def release_lock(lock_fd: int):
-    """Release the file lock."""
-    fcntl.flock(lock_fd, fcntl.LOCK_UN)
-    lock_fd.close()
-    if LOCK_FILE.exists():
-        LOCK_FILE.unlink()
+def _release_lock(lock_fd: Any):
+    """Release the file lock. Internal — use AutomigrateLock context manager."""
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
+    finally:
+        if LOCK_FILE.exists():
+            LOCK_FILE.unlink()
 
 
 def load_config() -> Dict[str, Any]:
@@ -598,11 +628,27 @@ def execute_migration(
 
         logger.info(f"Migration started for VM {vmid}, task_id: {task_id}. Polling for completion...")
 
-        # Poll task status until completion (no timeout - systemd service has TimeoutStartSec=infinity)
+        # Poll task status until completion or configurable max timeout (default 2 hours)
         poll_interval = 5  # Check every 5 seconds
+        auto_config = config.get('automated_migrations', {})
+        max_poll_timeout = auto_config.get('migration_poll_timeout_seconds', DEFAULT_MIGRATION_POLL_TIMEOUT)
 
         while True:
             time_module.sleep(poll_interval)
+
+            elapsed = time_module.time() - start_time
+            if elapsed > max_poll_timeout:
+                logger.warning(
+                    f"Migration poll timeout for VM {vmid} after {int(elapsed)}s "
+                    f"(max {max_poll_timeout}s). Task {task_id} may still be running on Proxmox."
+                )
+                return {
+                    "success": False,
+                    "task_id": task_id,
+                    "duration": int(elapsed),
+                    "status": "timeout",
+                    "error": f"Migration poll timed out after {max_poll_timeout}s"
+                }
 
             try:
                 # Check task status
@@ -768,7 +814,7 @@ def _count_recent_migrations(vmid: int, lookback_hours: int = DEFAULT_LOOKBACK_H
     """
     from proxbalance.db import get_connection
     conn = get_connection()
-    cutoff = (datetime.utcnow() - timedelta(hours=lookback_hours)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=lookback_hours)).isoformat()
     row = conn.execute(
         "SELECT COUNT(*) as cnt FROM migration_history "
         "WHERE vmid = ? AND timestamp >= ? AND dry_run = 0 AND status != 'failed'",
@@ -800,7 +846,7 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
     reset_time = None
     if cooldown_reset_at:
         try:
-            reset_time = datetime.fromisoformat(cooldown_reset_at.replace('Z', '+00:00')).replace(tzinfo=None)
+            reset_time = datetime.fromisoformat(cooldown_reset_at.replace('Z', '+00:00'))
         except (ValueError, TypeError):
             pass
 
@@ -827,7 +873,7 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
         return False
 
     try:
-        migration_time = datetime.fromisoformat(row["timestamp"].replace('Z', '+00:00')).replace(tzinfo=None)
+        migration_time = datetime.fromisoformat(row["timestamp"].replace('Z', '+00:00'))
     except (ValueError, TypeError):
         return False
 
@@ -835,7 +881,7 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
     if reset_time and migration_time < reset_time:
         return False
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cooldown_threshold = now - timedelta(minutes=effective_cooldown)
 
     if migration_time > cooldown_threshold:
@@ -863,7 +909,7 @@ def record_migration(migration_record: Dict[str, Any]):
     migration_db.record_migration(record)
 
     # Update automation state
-    migration_db.set_automation_state('last_run', datetime.utcnow().isoformat() + 'Z')
+    migration_db.set_automation_state('last_run', datetime.now(timezone.utc).isoformat())
     migration_db.set_automation_state('in_progress', False)
     if migration_record.get('window_name'):
         migration_db.set_automation_state('current_window', migration_record['window_name'])
@@ -913,7 +959,7 @@ def update_recommendation_tracking(
     observation_periods = intelligent_config.get('observation_periods') or 3
     observation_window_hours = intelligent_config.get('observation_window_hours') or 1
     min_data_hours = intelligent_config.get('minimum_data_collection_hours') or 0
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     window_cutoff = now - timedelta(hours=observation_window_hours)
 
     # Build set of current recommendation keys
@@ -933,12 +979,12 @@ def update_recommendation_tracking(
         entry = tracked[k]
         if 'stale_since' not in entry:
             # Just went stale — mark it, reset consecutive count
-            entry['stale_since'] = now.isoformat() + 'Z'
+            entry['stale_since'] = now.isoformat()
             entry['consecutive_count'] = 0
             entry['status'] = 'stale'
         else:
             # Already stale — check retention period
-            stale_since = datetime.fromisoformat(entry['stale_since'].rstrip('Z'))
+            stale_since = datetime.fromisoformat(entry['stale_since'].replace('Z', '+00:00'))
             if stale_since < stale_cutoff:
                 keys_to_delete.append(k)
     for k in keys_to_delete:
@@ -956,7 +1002,7 @@ def update_recommendation_tracking(
         guest_name = rec.get('name', f'VM-{vmid}')
 
         observation = {
-            "timestamp": now.isoformat() + 'Z',
+            "timestamp": now.isoformat(),
             "confidence": confidence,
             "score_improvement": score_improvement,
             "target_node": target_node
@@ -969,7 +1015,7 @@ def update_recommendation_tracking(
                 del entry['stale_since']
                 entry['consecutive_count'] = 0
             entry["consecutive_count"] += 1
-            entry["last_seen"] = now.isoformat() + 'Z'
+            entry["last_seen"] = now.isoformat()
             entry["source_node"] = source_node  # Keep current source updated
             entry["last_target_node"] = target_node
             entry["observations"].append(observation)
@@ -979,8 +1025,8 @@ def update_recommendation_tracking(
                 "guest_name": guest_name,
                 "source_node": source_node,
                 "last_target_node": target_node,
-                "first_seen": now.isoformat() + 'Z',
-                "last_seen": now.isoformat() + 'Z',
+                "first_seen": now.isoformat(),
+                "last_seen": now.isoformat(),
                 "consecutive_count": 1,
                 "observations": [observation]
             }
@@ -989,7 +1035,7 @@ def update_recommendation_tracking(
         # Prune observations older than window
         entry["observations"] = [
             obs for obs in entry["observations"]
-            if datetime.fromisoformat(obs["timestamp"].rstrip('Z')) > window_cutoff
+            if datetime.fromisoformat(obs["timestamp"].replace('Z', '+00:00')) > window_cutoff
         ]
 
         # Recalculate averages
@@ -1005,7 +1051,7 @@ def update_recommendation_tracking(
         count_met = entry["consecutive_count"] >= observation_periods
         time_met = True
         if min_data_hours > 0:
-            first_seen = datetime.fromisoformat(entry["first_seen"].rstrip('Z'))
+            first_seen = datetime.fromisoformat(entry["first_seen"].replace('Z', '+00:00'))
             hours_tracked = (now - first_seen).total_seconds() / 3600
             time_met = hours_tracked >= min_data_hours
 
@@ -1031,7 +1077,7 @@ def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = DE
 
     from proxbalance.db import get_connection
     conn = get_connection()
-    cutoff = (datetime.utcnow() - timedelta(hours=cycle_window_hours)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=cycle_window_hours)).isoformat()
 
     rows = conn.execute(
         "SELECT source_node, target_node FROM migration_history "
@@ -1112,7 +1158,7 @@ def is_in_known_peak_period(source_node: str) -> Tuple[bool, str]:
         if not daily or daily.get('pattern_confidence') not in ('high', 'medium'):
             return False, ""
 
-        current_hour = datetime.utcnow().hour
+        current_hour = datetime.now(timezone.utc).hour
         peak_hours = daily.get('peak_hours', [])
         spread = daily.get('spread', 0)
 
@@ -1201,13 +1247,12 @@ def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, A
 
 def main():
     """Main automation logic."""
-    lock_fd = None
     activity_log = []  # Initialize activity log at function level
     run_start_time = time_module.time()  # Track run duration
 
     # Initialize last_run summary object
     last_run_summary = {
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'status': 'running',  # Will be updated at the end
         'migrations_executed': 0,
         'migrations_successful': 0,
@@ -1221,8 +1266,8 @@ def main():
         }
     }
 
-    try:
-        lock_fd = acquire_lock()
+    with AutomigrateLock():
+      try:
         logger.info("Starting automated migration check")
 
         # Initialize SQLite database
@@ -1375,8 +1420,8 @@ def main():
                         count = entry.get('consecutive_count', 1)
                         min_hours = intelligent_config.get('minimum_data_collection_hours') or 0
                         if min_hours > 0 and count >= obs_periods:
-                            first_seen = datetime.fromisoformat(entry.get('first_seen', '').rstrip('Z'))
-                            hours_tracked = (datetime.utcnow() - first_seen).total_seconds() / 3600
+                            first_seen = datetime.fromisoformat(entry.get('first_seen', '').replace('Z', '+00:00'))
+                            hours_tracked = (datetime.now(timezone.utc) - first_seen).total_seconds() / 3600
                             obs_msg = f"observing {count}/{obs_periods}, waiting for {min_hours}h data (seen for {hours_tracked:.1f}h)"
                         else:
                             obs_msg = f"observing {count}/{obs_periods}"
@@ -1621,7 +1666,7 @@ def main():
                     # Avoid duplicates from previous iterations
                     if not any(a.get('vmid') == d.get('vmid') and a.get('reason') == d.get('reason') for a in activity_log):
                         activity_log.append({
-                            'timestamp': datetime.utcnow().isoformat() + 'Z',
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
                             'vmid': d.get('vmid'),
                             'name': d.get('name', f"VM-{d.get('vmid')}"),
                             'action': d.get('action', 'filtered'),
@@ -1681,7 +1726,7 @@ def main():
                 logger.info(f"Skipping migration of VM {vmid} to {target}: {target_msg}")
                 guest = cache_data.get('guests', {}).get(str(vmid), {})
                 activity_log.append({
-                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
                     'vmid': vmid,
                     'name': guest.get('name', f'VM-{vmid}'),
                     'action': 'skipped',
@@ -1705,7 +1750,7 @@ def main():
                 logger.info(f"VM {vmid} already has a migration in progress, skipping")
                 guest = cache_data.get('guests', {}).get(str(vmid), {})
                 activity_log.append({
-                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
                     'vmid': vmid,
                     'name': guest.get('name', f'VM-{vmid}'),
                     'action': 'skipped',
@@ -1732,7 +1777,7 @@ def main():
                     logger.warning(f"Skipping VM {vmid}: {verify_msg}")
                     guest = cache_data.get('guests', {}).get(str(vmid), {})
                     activity_log.append({
-                        'timestamp': datetime.utcnow().isoformat() + 'Z',
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
                         'vmid': vmid,
                         'name': guest.get('name', f'VM-{vmid}'),
                         'action': 'skipped',
@@ -1821,7 +1866,7 @@ def main():
             # Record migration with task_id if available
             migration_record = {
                 'id': str(uuid.uuid4()),
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'vmid': vmid,
                 'name': rec['name'],
                 'source_node': rec.get('source_node') or rec.get('current_node'),
@@ -1957,7 +2002,7 @@ def main():
                                 # Record companion migration
                                 record_migration({
                                     'id': str(uuid.uuid4()),
-                                    'timestamp': datetime.utcnow().isoformat(),
+                                    'timestamp': datetime.now(timezone.utc).isoformat(),
                                     'vmid': comp_vmid,
                                     'name': comp_name,
                                     'source_node': comp_source,
@@ -1979,7 +2024,7 @@ def main():
 
                                 record_migration({
                                     'id': str(uuid.uuid4()),
-                                    'timestamp': datetime.utcnow().isoformat(),
+                                    'timestamp': datetime.now(timezone.utc).isoformat(),
                                     'vmid': comp_vmid,
                                     'name': comp_name,
                                     'source_node': comp_source,
@@ -2043,12 +2088,12 @@ def main():
 
         return 0
 
-    except Exception as e:
+      except Exception as e:
         logger.exception(f"Unexpected error in automigrate: {e}")
         last_run_summary['status'] = 'error'
         return 1
 
-    finally:
+      finally:
         # Calculate total run duration
         last_run_summary['duration_seconds'] = int(time_module.time() - run_start_time)
 
@@ -2070,8 +2115,6 @@ def main():
         except Exception:
             pass
 
-        if lock_fd:
-            release_lock(lock_fd)
         logger.info("Automated migration check complete")
 
 
