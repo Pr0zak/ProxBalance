@@ -566,14 +566,14 @@ def validate_token():
             try:
                 nodes = proxmox.nodes.get()
                 permissions.append(f"✓ Can access {len(nodes)} node(s)")
-            except:
+            except Exception:
                 permissions.append("✗ Cannot access nodes")
 
             # Test VM/CT access
             try:
                 vms = [r for r in resources if r.get('type') in ['qemu', 'lxc']]
                 permissions.append(f"✓ Can see {len(vms)} guest(s)")
-            except:
+            except Exception:
                 permissions.append("✗ Cannot list guests")
 
             # Try to get ACL to determine actual permissions
@@ -587,7 +587,7 @@ def validate_token():
                         path = acl.get('path', '/')
                         roleid = acl.get('roleid', 'Unknown')
                         permissions.append(f"✓ Role '{roleid}' on path '{path}'")
-            except:
+            except Exception:
                 # Can't read ACLs, but that's okay - we already tested basic access
                 permissions.append("ℹ Cannot read ACL details (limited permissions)")
 

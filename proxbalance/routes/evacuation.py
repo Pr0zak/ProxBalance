@@ -122,11 +122,11 @@ def verify_storage_availability():
             try:
                 guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
                 guest_type = "qemu"
-            except:
+            except Exception:
                 try:
                     guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
                     guest_type = "lxc"
-                except:
+                except Exception:
                     guest_storage_info.append({
                         "vmid": vmid,
                         "type": "unknown",
@@ -292,7 +292,7 @@ def evacuate_node():
                 guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
                 guest_status = proxmox.nodes(source_node).qemu(vmid).status.current.get()
                 guest_type = "qemu"
-            except:
+            except Exception:
                 try:
                     guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
                     guest_status = proxmox.nodes(source_node).lxc(vmid).status.current.get()

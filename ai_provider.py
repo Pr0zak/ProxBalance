@@ -461,7 +461,7 @@ class AnthropicProvider(AIProvider):
                     parsed = json.loads(fixed_content)
                     _record_ai_success()
                     return parsed
-                except:
+                except (ValueError, TypeError):
                     # JSON parse failure after successful HTTP — count as failure
                     _record_ai_failure()
                     # If still failing, return error with original content snippet
@@ -478,7 +478,7 @@ class AnthropicProvider(AIProvider):
             try:
                 error_json = e.response.json()
                 error_detail = f"{e.response.status_code} {error_json.get('error', {}).get('type', 'Unknown')}: {error_json.get('error', {}).get('message', str(e))}"
-            except:
+            except (ValueError, KeyError):
                 pass
             return {
                 "success": False,

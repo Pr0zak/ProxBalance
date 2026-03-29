@@ -212,11 +212,11 @@ def verify_storage_availability(proxmox: Any, source_node: str, target_nodes: Li
                 try:
                     guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
                     guest_type = "qemu"
-                except:
+                except Exception:
                     try:
                         guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
                         guest_type = "lxc"
-                    except:
+                    except Exception:
                         guest_storage_info.append({
                             "vmid": vmid,
                             "type": "unknown",

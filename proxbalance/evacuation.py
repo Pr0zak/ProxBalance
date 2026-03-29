@@ -218,7 +218,7 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
                     guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
                     guest_status = proxmox.nodes(source_node).qemu(vmid).status.current.get()
                     guest_type = "qemu"
-                except:
+                except Exception:
                     try:
                         guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
                         guest_status = proxmox.nodes(source_node).lxc(vmid).status.current.get()
@@ -532,7 +532,7 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                 try:
                     guest_config = proxmox.nodes(source_node).qemu(vmid).config.get()
                     guest_type = "qemu"
-                except:
+                except Exception:
                     try:
                         guest_config = proxmox.nodes(source_node).lxc(vmid).config.get()
                         guest_type = "lxc"

@@ -123,12 +123,12 @@ def get_task_status(node, taskid):
             try:
                 vm_config = proxmox.nodes(node).qemu(vmid).config.get()
                 guest_type = 'qemu'
-            except:
+            except Exception:
                 # If not a VM, try CT
                 try:
                     vm_config = proxmox.nodes(node).lxc(vmid).config.get()
                     guest_type = 'lxc'
-                except:
+                except Exception:
                     # Guest might have moved during migration, try to find it
                     try:
                         cluster_resources = proxmox.cluster.resources.get(type='vm')
@@ -143,7 +143,7 @@ def get_task_status(node, taskid):
                                     vm_config = proxmox.nodes(actual_node).lxc(vmid).config.get()
                                     guest_type = 'lxc'
                                 break
-                    except:
+                    except Exception:
                         pass
 
             if vm_config:
