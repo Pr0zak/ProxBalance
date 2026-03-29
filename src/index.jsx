@@ -243,6 +243,9 @@ const ProxmoxBalanceManager = () => {
       lastUpdate={cluster.lastUpdate}
       onRefresh={handleRefresh}
       refreshing={cluster.loading}
+      systemInfo={updates.systemInfo}
+      onShowUpdate={() => updates.setShowUpdateModal(true)}
+      onShowBranches={() => { updates.fetchBranches(); updates.setShowBranchModal(true); }}
     />
   );
 

@@ -14,13 +14,11 @@ import EvacuationModals from './dashboard/EvacuationModals.jsx';
 import MigrationModals from './dashboard/MigrationModals.jsx';
 import AutomationStatusSection from './dashboard/AutomationStatusSection.jsx';
 import GuestTagManagement from './dashboard/GuestTagManagement.jsx';
-import DashboardHeader from './dashboard/DashboardHeader.jsx';
 import ClusterMap from './dashboard/ClusterMap.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
 import SystemModals from './dashboard/SystemModals.jsx';
-import DashboardFooter from './dashboard/DashboardFooter.jsx';
 
 export default function DashboardPage({
   // Data & loading
@@ -147,23 +145,6 @@ export default function DashboardPage({
         <GuestFilterBar
           data={data}
           onGuestClick={setSelectedGuestDetails}
-        />
-
-        <DashboardHeader
-          data={data}
-          darkMode={darkMode}
-          toggleDarkMode={toggleDarkMode}
-          setCurrentPage={setCurrentPage}
-          dashboardHeaderCollapsed={dashboardHeaderCollapsed}
-          setDashboardHeaderCollapsed={setDashboardHeaderCollapsed}
-          handleLogoHover={handleLogoHover}
-          logoBalancing={logoBalancing}
-          clusterHealth={clusterHealth}
-          systemInfo={systemInfo}
-          setShowUpdateModal={setShowUpdateModal}
-          setShowBranchModal={setShowBranchModal}
-          fetchBranches={fetchBranches}
-          recommendations={recommendations}
         />
 
         {/* Automated Migrations Status */}
@@ -407,16 +388,5 @@ export default function DashboardPage({
       fetchAutomationStatus={fetchAutomationStatus}
     />
 
-    <DashboardFooter
-      lastUpdate={lastUpdate}
-      backendCollected={backendCollected}
-      handleRefresh={handleRefresh}
-      loading={loading}
-      systemInfo={systemInfo}
-      data={data}
-      fetchBranches={fetchBranches}
-      setShowBranchModal={setShowBranchModal}
-      clearTestingMode={clearTestingMode}
-    />
   </>);
 }

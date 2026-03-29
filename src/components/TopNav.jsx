@@ -1,4 +1,4 @@
-import { ProxBalanceLogo, Sun, Moon, RefreshCw } from './Icons.jsx';
+import { ProxBalanceLogo, Sun, Moon, RefreshCw, GitBranch, GitHub } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, BTN_ICON
@@ -17,7 +17,8 @@ export default function TopNav({
   currentPage, setCurrentPage,
   darkMode, toggleDarkMode,
   connected, lastUpdate,
-  onRefresh, refreshing
+  onRefresh, refreshing,
+  systemInfo, onShowUpdate, onShowBranches
 }) {
   const timeAgo = useMemo(() => {
     if (!lastUpdate) return null;
@@ -27,7 +28,7 @@ export default function TopNav({
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
-  }, [lastUpdate, Math.floor(Date.now() / 30000)]); // re-calc every 30s
+  }, [lastUpdate, Math.floor(Date.now() / 30000)]);
 
   return (
     <nav className={TOP_NAV}>
@@ -57,16 +58,40 @@ export default function TopNav({
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Update available */}
+            {systemInfo?.updates_available && (
+              <button
+                onClick={onShowUpdate}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-900/30 text-yellow-400 border border-yellow-700/30 hover:bg-yellow-900/50 transition-colors"
+                title={`${systemInfo.commits_behind} update(s) available`}
+              >
+                <RefreshCw size={12} />
+                Update
+              </button>
+            )}
+
             {/* Connection badge */}
             <span className={`hidden sm:inline-flex ${connected ? CONNECTION_BADGE_ONLINE : CONNECTION_BADGE_OFFLINE}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
               {connected ? 'Connected' : 'Disconnected'}
             </span>
 
+            {/* Branch info */}
+            {systemInfo?.branch && (
+              <button
+                onClick={onShowBranches}
+                className="hidden lg:flex items-center gap-1 text-xs text-gray-500 hover:text-blue-400 transition-colors"
+                title="Manage branches"
+              >
+                <GitBranch size={12} />
+                <span className="font-mono">{systemInfo.branch.length > 16 ? systemInfo.branch.substring(0, 16) + '...' : systemInfo.branch}</span>
+              </button>
+            )}
+
             {/* Last update */}
             {timeAgo && (
-              <span className="hidden lg:inline text-xs text-gray-500">
-                Updated {timeAgo}
+              <span className="hidden xl:inline text-xs text-gray-500">
+                {timeAgo}
               </span>
             )}
 
@@ -74,6 +99,17 @@ export default function TopNav({
             <button onClick={onRefresh} className={BTN_ICON} title="Refresh">
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             </button>
+
+            {/* GitHub */}
+            <a
+              href="https://github.com/Pr0zak/ProxBalance"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${BTN_ICON} hidden sm:flex`}
+              title="GitHub"
+            >
+              <GitHub size={16} />
+            </a>
 
             {/* Dark mode toggle */}
             <button onClick={toggleDarkMode} className={BTN_ICON} title={darkMode ? 'Light Mode' : 'Dark Mode'}>
