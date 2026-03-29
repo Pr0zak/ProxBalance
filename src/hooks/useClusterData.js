@@ -221,27 +221,39 @@ export function useClusterData(API_BASE, deps = {}) {
     }
   };
 
-  // Lazy load Chart.js library
+  // Load a script with CDN primary and local fallback
+  const loadScript = (cdnUrl, localUrl) => {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = cdnUrl;
+      script.onload = resolve;
+      script.onerror = () => {
+        console.warn(`CDN failed for ${cdnUrl}, trying local fallback`);
+        script.remove();
+        const fallback = document.createElement('script');
+        fallback.src = localUrl;
+        fallback.onload = resolve;
+        fallback.onerror = reject;
+        document.head.appendChild(fallback);
+      };
+      document.head.appendChild(script);
+    });
+  };
+
+  // Lazy load Chart.js library (CDN with local fallback)
   const loadChartJs = async () => {
     if (chartJsLoaded || chartJsLoading) return;
 
     setChartJsLoading(true);
     try {
-      await new Promise((resolve, reject) => {
-        const script1 = document.createElement('script');
-        script1.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-        script1.onload = resolve;
-        script1.onerror = reject;
-        document.head.appendChild(script1);
-      });
-
-      await new Promise((resolve, reject) => {
-        const script2 = document.createElement('script');
-        script2.src = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js';
-        script2.onload = resolve;
-        script2.onerror = reject;
-        document.head.appendChild(script2);
-      });
+      await loadScript(
+        'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+        'assets/js/chart.umd.min.js'
+      );
+      await loadScript(
+        'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js',
+        'assets/js/chartjs-plugin-annotation.min.js'
+      );
 
       setChartJsLoaded(true);
     } catch (error) {

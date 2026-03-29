@@ -381,6 +381,13 @@ def change_host():
     import ipaddress
     _host_lower = new_host.lower()
 
+    # Block full URL injection (host should be a bare hostname or IP, not a URL)
+    if '://' in new_host:
+        return jsonify({
+            "success": False,
+            "error": "Invalid host: provide a hostname or IP address, not a URL"
+        }), 400
+
     # Block cloud metadata endpoints
     if 'metadata' in _host_lower or _host_lower in (
         'metadata.google.internal', '169.254.169.254',
