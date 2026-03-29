@@ -1,7 +1,7 @@
 import {
   GLASS_CARD, INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, SELECT_FIELD
 } from '../../utils/designTokens.js';
-import { ChevronDown, ChevronRight } from '../Icons.jsx';
+import { ChevronDown } from '../Icons.jsx';
 
 const { useState, useMemo } = React;
 
@@ -13,13 +13,11 @@ const FILTERS = [
   { id: 'stopped', label: 'Stopped' },
 ];
 
-/** Format bytes to human-readable */
-function formatBytes(bytes) {
-  if (!bytes) return '0 B';
-  const gb = bytes / (1024 * 1024 * 1024);
+/** Format GB/MB for display */
+function formatMem(gb) {
+  if (gb == null) return '—';
   if (gb >= 1) return `${gb.toFixed(1)} GB`;
-  const mb = bytes / (1024 * 1024);
-  return `${mb.toFixed(0)} MB`;
+  return `${(gb * 1024).toFixed(0)} MB`;
 }
 
 export default function GuestFilterBar({ data, onGuestClick }) {
@@ -29,38 +27,44 @@ export default function GuestFilterBar({ data, onGuestClick }) {
   const [sortBy, setSortBy] = useState('node');
 
   const { guestsByNode, totalGuests } = useMemo(() => {
-    if (!data?.nodes) return { guestsByNode: {}, totalGuests: 0 };
+    if (!data?.guests) return { guestsByNode: {}, totalGuests: 0 };
 
+    const guestsDict = data.guests || {};
+    const allGuests = Object.values(guestsDict);
+
+    // Group by node, applying filters
     const byNode = {};
     let total = 0;
 
-    data.nodes.forEach(node => {
-      const guests = (node.guests || []).filter(guest => {
-        // Search filter
-        if (search) {
-          const q = search.toLowerCase();
-          const name = (guest.name || '').toLowerCase();
-          const vmid = String(guest.vmid || '');
-          if (!name.includes(q) && !vmid.includes(q)) return false;
-        }
-        // Type filter
-        if (filter === 'vm' && guest.type !== 'qemu') return false;
-        if (filter === 'lxc' && guest.type !== 'lxc') return false;
-        // Status filter
-        if (filter === 'running' && guest.status !== 'running') return false;
-        if (filter === 'stopped' && guest.status !== 'stopped') return false;
-        return true;
-      }).sort((a, b) => {
+    allGuests.forEach(guest => {
+      // Search filter
+      if (search) {
+        const q = search.toLowerCase();
+        const name = (guest.name || '').toLowerCase();
+        const vmid = String(guest.vmid || '');
+        if (!name.includes(q) && !vmid.includes(q)) return;
+      }
+      // Type filter (data uses VM/LXC uppercase)
+      if (filter === 'vm' && guest.type !== 'VM') return;
+      if (filter === 'lxc' && guest.type !== 'LXC') return;
+      // Status filter
+      if (filter === 'running' && guest.status !== 'running') return;
+      if (filter === 'stopped' && guest.status !== 'stopped') return;
+
+      const nodeName = guest.node || 'unknown';
+      if (!byNode[nodeName]) byNode[nodeName] = [];
+      byNode[nodeName].push(guest);
+      total++;
+    });
+
+    // Sort guests within each node
+    Object.values(byNode).forEach(guests => {
+      guests.sort((a, b) => {
         if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
-        if (sortBy === 'cpu') return (b.cpu_usage || 0) - (a.cpu_usage || 0);
-        if (sortBy === 'mem') return (b.mem_used || 0) - (a.mem_used || 0);
+        if (sortBy === 'cpu') return (b.cpu_current || 0) - (a.cpu_current || 0);
+        if (sortBy === 'mem') return (b.mem_used_gb || 0) - (a.mem_used_gb || 0);
         return (a.vmid || 0) - (b.vmid || 0);
       });
-
-      if (guests.length > 0) {
-        byNode[node.node] = guests;
-        total += guests.length;
-      }
     });
 
     return { guestsByNode: byNode, totalGuests: total };
@@ -119,7 +123,7 @@ export default function GuestFilterBar({ data, onGuestClick }) {
             />
             <span className="text-sm font-medium text-gray-300">{nodeName}</span>
             <span className="text-xs text-gray-500">
-              {guests.filter(g => g.type === 'qemu').length} VMs, {guests.filter(g => g.type === 'lxc').length} LXCs
+              {guests.filter(g => g.type === 'VM').length} VMs, {guests.filter(g => g.type === 'LXC').length} LXCs
             </span>
           </button>
 
@@ -143,18 +147,22 @@ export default function GuestFilterBar({ data, onGuestClick }) {
 
                   {/* Type badge */}
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                    guest.type === 'qemu'
+                    guest.type === 'VM'
                       ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30'
                       : 'bg-orange-900/30 text-orange-400 border border-orange-800/30'
                   }`}>
-                    {guest.type === 'qemu' ? 'VM' : 'LXC'}
+                    {guest.type}
                   </span>
 
                   {/* Metrics */}
                   {guest.status === 'running' && (
                     <div className="flex items-center gap-4 ml-auto text-xs text-gray-500 tabular-nums">
-                      <span>CPU <span className="text-gray-300">{((guest.cpu_usage || 0) * 100).toFixed(0)}%</span></span>
-                      <span>Mem <span className="text-gray-300">{formatBytes(guest.mem_used)}</span></span>
+                      {guest.cpu_current != null && (
+                        <span>CPU <span className="text-gray-300">{guest.cpu_current.toFixed(0)}%</span></span>
+                      )}
+                      {guest.mem_used_gb != null && (
+                        <span>Mem <span className="text-gray-300">{formatMem(guest.mem_used_gb)}</span></span>
+                      )}
                     </div>
                   )}
                   {guest.status !== 'running' && (

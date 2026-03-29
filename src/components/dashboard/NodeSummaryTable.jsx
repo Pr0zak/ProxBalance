@@ -7,7 +7,7 @@ import { ChevronDown } from '../Icons.jsx';
 const { useState, useMemo } = React;
 
 /** Inline progress bar with label */
-function MetricBar({ label, pct, detail }) {
+function MetricBar({ pct, detail }) {
   const clampedPct = Math.min(100, Math.max(0, pct || 0));
   return (
     <div className="min-w-[120px]">
@@ -55,28 +55,42 @@ export default function NodeSummaryTable({ data, nodeScores, onNodeClick }) {
 
   const nodes = useMemo(() => {
     if (!data?.nodes) return [];
-    return data.nodes.map(node => {
-      const cpuPct = (node.cpu_usage || 0) * 100;
-      const memPct = node.maxmem > 0 ? ((node.mem_used || 0) / node.maxmem) * 100 : 0;
-      const diskTotal = (node.storage || []).reduce((sum, s) => sum + (s.total || 0), 0);
-      const diskUsed = (node.storage || []).reduce((sum, s) => sum + (s.used || 0), 0);
-      const diskPct = diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0;
-      const score = nodeScores?.[node.node]?.suitability_score;
-      const vms = (node.guests || []).filter(g => g.type === 'qemu').length;
-      const cts = (node.guests || []).filter(g => g.type === 'lxc').length;
-      const memGB = (node.mem_used || 0) / (1024 * 1024 * 1024);
-      const memTotalGB = (node.maxmem || 0) / (1024 * 1024 * 1024);
-      const cpuCores = node.maxcpu || 0;
+    const nodesArr = Array.isArray(data.nodes) ? data.nodes : Object.values(data.nodes);
+    const guestsDict = data.guests || {};
+
+    return nodesArr.map(node => {
+      const cpuPct = node.cpu_percent || 0;
+      const memPct = node.mem_percent || 0;
+      const totalMemGB = node.total_mem_gb || 0;
+      const usedMemGB = totalMemGB * (memPct / 100);
+
+      // Storage: array of {total_gb, used_gb, usage_pct}
+      const storageArr = node.storage || [];
+      const diskTotalGB = storageArr.reduce((sum, s) => sum + (s.total_gb || 0), 0);
+      const diskUsedGB = storageArr.reduce((sum, s) => sum + (s.used_gb || 0), 0);
+      const diskPct = diskTotalGB > 0 ? (diskUsedGB / diskTotalGB) * 100 : 0;
+
+      const score = nodeScores?.[node.name]?.suitability_score;
+
+      // node.guests is array of VMIDs (integers)
+      const guestVmids = node.guests || [];
+      let vms = 0, cts = 0;
+      guestVmids.forEach(vmid => {
+        const g = guestsDict[String(vmid)];
+        if (g) {
+          if (g.type === 'VM') vms++;
+          else cts++;
+        }
+      });
 
       return {
-        name: node.node,
+        name: node.name,
         status: node.status,
         online: node.status === 'online',
         uptime: node.uptime,
         cpuPct, memPct, diskPct, score, vms, cts,
-        cpuDetail: `${cpuCores} cores`,
-        memDetail: `${memGB.toFixed(1)}/${memTotalGB.toFixed(0)} GB`,
-        pveVersion: node.pveversion || '',
+        cpuDetail: `${node.cpu_cores || 0} cores`,
+        memDetail: `${usedMemGB.toFixed(1)}/${totalMemGB.toFixed(0)} GB`,
         raw: node
       };
     }).sort((a, b) => {
@@ -134,14 +148,7 @@ export default function NodeSummaryTable({ data, nodeScores, onNodeClick }) {
                 onClick={() => onNodeClick?.(node.raw)}
               >
                 <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white">{node.name}</span>
-                    {node.pveVersion && (
-                      <span className="text-[10px] text-gray-500 bg-slate-700/60 px-1.5 py-0.5 rounded">
-                        PVE {node.pveVersion.split('/')[0]?.replace('pve-manager/', '')}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-sm font-medium text-white">{node.name}</span>
                 </td>
                 <td className="p-3"><StatusDot online={node.online} /></td>
                 <td className="p-3 text-xs text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>

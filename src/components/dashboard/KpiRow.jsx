@@ -8,10 +8,11 @@ import { Server, Activity, CheckCircle, MoveRight } from '../Icons.jsx';
 export default function KpiRow({ data, nodeScores, automationStatus, recommendations }) {
   if (!data) return null;
 
-  const nodes = data.nodes || [];
+  const nodesObj = data.nodes || {};
+  const nodes = Object.values(nodesObj);
   const onlineNodes = nodes.filter(n => n.status === 'online').length;
   const totalNodes = nodes.length;
-  const allGuests = nodes.reduce((acc, n) => acc + (n.guests || []).length, 0);
+  const allGuests = Object.keys(data.guests || {}).length;
 
   // Average cluster score from nodeScores
   let avgScore = null;
@@ -39,7 +40,7 @@ export default function KpiRow({ data, nodeScores, automationStatus, recommendat
     {
       label: 'Cluster Score',
       value: avgScore !== null ? `${avgScore}` : '—',
-      icon: <CheckCircle size={18} className={avgScore !== null ? scoreColor(avgScore).replace('text-', 'text-') : 'text-gray-500'} />,
+      icon: <CheckCircle size={18} className={avgScore !== null ? scoreColor(avgScore) : 'text-gray-500'} />,
       color: avgScore !== null ? scoreColor(avgScore) : 'text-gray-500',
       suffix: avgScore !== null ? '/100' : ''
     },
