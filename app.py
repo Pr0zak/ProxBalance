@@ -10,13 +10,13 @@ proxbalance/ domain modules (scoring, recommendations, migrations, etc.).
 
 import os
 import subprocess
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_compress import Compress
 from update_manager import UpdateManager
 
 from proxbalance.config_manager import (
-    BASE_PATH, CACHE_FILE, GIT_REPO_PATH, SESSIONS_DIR,
+    BASE_PATH, CACHE_FILE, GIT_REPO_PATH, SESSIONS_DIR, load_config,
 )
 from proxbalance.cache import CacheManager
 from proxbalance.db import init_db
@@ -28,8 +28,31 @@ from proxbalance.error_handlers import register_error_handlers
 # ---------------------------------------------------------------------------
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
+
+# CORS: restrict to configured origins, or same-origin only by default
+_startup_cfg = load_config()
+_allowed_origins = _startup_cfg.get('allowed_origins', []) if not _startup_cfg.get('error') else []
+CORS(app, origins=_allowed_origins)
 Compress(app)
+
+
+# ---------------------------------------------------------------------------
+# Optional API key authentication
+# ---------------------------------------------------------------------------
+
+@app.before_request
+def _check_api_key():
+    """Require API key if configured. Skip for health endpoint and non-API paths."""
+    if not request.path.startswith('/api/') or request.path == '/api/health':
+        return None
+    cfg = load_config()
+    api_key = cfg.get('api_key', '') if not cfg.get('error') else ''
+    if not api_key:
+        return None
+    provided = request.headers.get('X-API-Key') or request.args.get('api_key')
+    if provided != api_key:
+        return jsonify({"error": True, "message": "Unauthorized — invalid or missing API key"}), 401
+    return None
 
 # ---------------------------------------------------------------------------
 # Shared state accessible via current_app.config in blueprints

@@ -1,4 +1,8 @@
 {
+  "api_key": "",
+  "_comment_api_key": "Optional API key to protect all /api/ endpoints. Leave empty to disable authentication.",
+  "allowed_origins": [],
+  "_comment_allowed_origins": "List of allowed CORS origins, e.g. [\"https://myserver.local\"]. Empty list restricts to same-origin only.",
   "collection_interval_minutes": 60,
   "ui_refresh_interval_minutes": 15,
   "proxmox_host": "10.0.0.3",
