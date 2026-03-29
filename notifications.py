@@ -723,12 +723,24 @@ class NotificationManager:
 # Module-level helper (drop-in replacement for automigrate.py)
 # ---------------------------------------------------------------------------
 
+_cached_manager: Dict[str, Any] = {"instance": None, "config_hash": None}
+
+
+def _notification_config_hash(config: Dict[str, Any]) -> int:
+    """Compute a lightweight hash of the notification-related config keys."""
+    am_notif = config.get("automated_migrations", {}).get("notifications", {})
+    # Use repr() for a deterministic string; hash() is fast and sufficient
+    return hash(repr(sorted(am_notif.items())) if isinstance(am_notif, dict) else repr(am_notif))
+
+
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
     """
     Send notification for an event.
 
     Drop-in replacement for the old send_notification() in automigrate.py.
     Supports both legacy webhook config and new multi-provider config.
+    Caches the NotificationManager instance and reuses it when the
+    notification config has not changed.
 
     Args:
         config: Full application configuration dict
@@ -738,7 +750,13 @@ def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, A
         data: Event-specific data
     """
     try:
-        manager = NotificationManager(config)
+        cfg_hash = _notification_config_hash(config)
+        if _cached_manager["config_hash"] == cfg_hash and _cached_manager["instance"] is not None:
+            manager = _cached_manager["instance"]
+        else:
+            manager = NotificationManager(config)
+            _cached_manager["instance"] = manager
+            _cached_manager["config_hash"] = cfg_hash
         manager.notify(event_type, data)
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")

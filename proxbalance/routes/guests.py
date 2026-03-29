@@ -14,7 +14,7 @@ def read_cache():
 @guests_bp.route("/api/guests/<int:vmid>/location", methods=["GET"])
 @api_route
 def get_guest_location(vmid):
-    """Get current location and status of a guest from Proxmox (fast, no full collection)"""
+    """Get current location and status of a guest from Proxmox (fast, single API call)"""
     config = load_config()
     if config.get("error"):
         return jsonify({"success": False, "error": config["message"]}), 500
@@ -24,41 +24,19 @@ def get_guest_location(vmid):
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-    # Search all nodes for this guest
-    for node in proxmox.nodes.get():
-        node_name = node['node']
-
-        # Check VMs
-        try:
-            vms = proxmox.nodes(node_name).qemu.get()
-            for vm in vms:
-                if vm['vmid'] == vmid:
-                    return jsonify({
-                        "success": True,
-                        "vmid": vmid,
-                        "node": node_name,
-                        "type": "VM",
-                        "status": vm.get('status', 'unknown'),
-                        "name": vm.get('name', f'vm-{vmid}')
-                    })
-        except:
-            pass
-
-        # Check CTs
-        try:
-            cts = proxmox.nodes(node_name).lxc.get()
-            for ct in cts:
-                if ct['vmid'] == vmid:
-                    return jsonify({
-                        "success": True,
-                        "vmid": vmid,
-                        "node": node_name,
-                        "type": "CT",
-                        "status": ct.get('status', 'unknown'),
-                        "name": ct.get('name', f'ct-{vmid}')
-                    })
-        except:
-            pass
+    # Single API call to get all VMs and CTs across the cluster
+    resources = proxmox.cluster.resources.get(type='vm')
+    for resource in resources:
+        if resource.get('vmid') == vmid:
+            guest_type = "VM" if resource.get('type') == 'qemu' else "CT"
+            return jsonify({
+                "success": True,
+                "vmid": vmid,
+                "node": resource.get('node', 'unknown'),
+                "type": guest_type,
+                "status": resource.get('status', 'unknown'),
+                "name": resource.get('name', f'{guest_type.lower()}-{vmid}')
+            })
 
     return jsonify({"success": False, "error": f"Guest {vmid} not found"}), 404
 
@@ -66,7 +44,7 @@ def get_guest_location(vmid):
 @guests_bp.route("/api/guests/locations", methods=["GET"])
 @api_route
 def get_all_guest_locations():
-    """Get current locations of all guests from Proxmox (fast, lightweight)"""
+    """Get current locations of all guests from Proxmox (fast, two API calls)"""
     config = load_config()
     if config.get("error"):
         return jsonify({"success": False, "error": config["message"]}), 500
@@ -79,7 +57,7 @@ def get_all_guest_locations():
     guests = {}
     nodes = {}
 
-    # Get all nodes and their guests
+    # Get node status info (single call)
     for node in proxmox.nodes.get():
         node_name = node['node']
         nodes[node_name] = {
@@ -88,37 +66,21 @@ def get_all_guest_locations():
             'guests': []
         }
 
-        # Get VMs
-        try:
-            vms = proxmox.nodes(node_name).qemu.get()
-            for vm in vms:
-                vmid = vm['vmid']
-                guests[vmid] = {
-                    'vmid': vmid,
-                    'node': node_name,
-                    'type': 'VM',
-                    'status': vm.get('status', 'unknown'),
-                    'name': vm.get('name', f'vm-{vmid}')
-                }
-                nodes[node_name]['guests'].append(vmid)
-        except Exception as e:
-            print(f"Error getting VMs from {node_name}: {str(e)}", file=sys.stderr)
-
-        # Get CTs
-        try:
-            cts = proxmox.nodes(node_name).lxc.get()
-            for ct in cts:
-                vmid = ct['vmid']
-                guests[vmid] = {
-                    'vmid': vmid,
-                    'node': node_name,
-                    'type': 'CT',
-                    'status': ct.get('status', 'unknown'),
-                    'name': ct.get('name', f'ct-{vmid}')
-                }
-                nodes[node_name]['guests'].append(vmid)
-        except Exception as e:
-            print(f"Error getting CTs from {node_name}: {str(e)}", file=sys.stderr)
+    # Get all VMs and CTs across the cluster in a single call
+    resources = proxmox.cluster.resources.get(type='vm')
+    for resource in resources:
+        vmid = resource.get('vmid')
+        node_name = resource.get('node', 'unknown')
+        guest_type = 'VM' if resource.get('type') == 'qemu' else 'CT'
+        guests[vmid] = {
+            'vmid': vmid,
+            'node': node_name,
+            'type': guest_type,
+            'status': resource.get('status', 'unknown'),
+            'name': resource.get('name', f'{guest_type.lower()}-{vmid}')
+        }
+        if node_name in nodes:
+            nodes[node_name]['guests'].append(vmid)
 
     return jsonify({
         "success": True,

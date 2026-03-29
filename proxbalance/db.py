@@ -7,6 +7,7 @@ one-time migration of legacy JSON files to SQLite.
 Single database: proxbalance.db with WAL mode for concurrent read access.
 """
 
+import atexit
 import json
 import os
 import shutil
@@ -84,6 +85,13 @@ def close_all() -> None:
         except Exception:
             pass
         _local.conn = None
+
+
+# Register atexit handler so that the main-thread connection is closed when
+# gunicorn workers or standalone scripts exit.  This prevents orphaned WAL
+# files (the -wal and -shm sidecars) that can accumulate when processes die
+# without explicitly closing their SQLite connections.
+atexit.register(close_all)
 
 
 # ---------------------------------------------------------------------------

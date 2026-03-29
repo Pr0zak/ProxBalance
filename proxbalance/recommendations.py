@@ -10,6 +10,7 @@ maintenance mode evacuation, and distribution balancing.
 import os
 import sys
 import json
+import time
 import traceback
 from typing import Any, Dict, List, Optional, Set, Union
 from datetime import datetime, timezone
@@ -53,6 +54,13 @@ from proxbalance.recommendation_analysis import (
     detect_migration_conflicts as _detect_migration_conflicts,
 )
 from proxbalance.patterns import get_node_seasonal_baseline
+
+# ---------------------------------------------------------------------------
+# Module-level storage cache — avoid rebuilding on every recommendation run
+# ---------------------------------------------------------------------------
+
+_storage_cache: Dict[str, Any] = {"data": None, "expires": 0}
+_STORAGE_CACHE_TTL = 300  # 5 minutes
 from proxbalance.guest_profiles import get_guest_profile
 
 # Lazy import for trend analysis (may not have data yet)
@@ -319,21 +327,29 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     skipped_guests = []
     pending_target_guests = dict(initial_pending_guests) if initial_pending_guests else {}
 
-    # Get Proxmox client for storage compatibility checks
+    # Get Proxmox client for storage compatibility checks (with time-based cache)
     proxmox = None
     storage_cache = {}
     try:
-        config = load_config()
-        try:
-            proxmox = get_proxmox_client(config)
-        except ValueError:
-            pass  # proxmox remains None, storage compatibility checks will be skipped
+        now = time.monotonic()
+        if _storage_cache["data"] is not None and now < _storage_cache["expires"]:
+            storage_cache = _storage_cache["data"]
+            print(f"Using cached storage data for {len(storage_cache)} nodes", file=sys.stderr)
+        else:
+            config = load_config()
+            try:
+                proxmox = get_proxmox_client(config)
+            except ValueError:
+                pass  # proxmox remains None, storage compatibility checks will be skipped
 
-        if proxmox:
-            # Build storage cache once for all compatibility checks (major performance boost!)
-            print(f"Building storage cache for {len(nodes)} nodes...", file=sys.stderr)
-            storage_cache = build_storage_cache(nodes, proxmox)
-            print(f"\u2713 Storage cache built for {len(storage_cache)} nodes", file=sys.stderr)
+            if proxmox:
+                # Build storage cache once for all compatibility checks (major performance boost!)
+                print(f"Building storage cache for {len(nodes)} nodes...", file=sys.stderr)
+                storage_cache = build_storage_cache(nodes, proxmox)
+                print(f"\u2713 Storage cache built for {len(storage_cache)} nodes", file=sys.stderr)
+                # Cache the result for 5 minutes
+                _storage_cache["data"] = storage_cache
+                _storage_cache["expires"] = now + _STORAGE_CACHE_TTL
     except Exception as e:
         print(f"Warning: Could not initialize Proxmox client for storage checks: {e}", file=sys.stderr)
 

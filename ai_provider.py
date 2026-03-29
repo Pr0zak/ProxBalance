@@ -2,10 +2,56 @@
 """AI Provider abstraction layer for ProxBalance migration recommendations"""
 
 import json
+import logging
 import re
 import requests
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from abc import ABC, abstractmethod
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Circuit breaker — disable AI temporarily after consecutive failures
+# ---------------------------------------------------------------------------
+
+_circuit_breaker: Dict[str, Any] = {"failures": 0, "open_until": None}
+
+CIRCUIT_BREAKER_THRESHOLD = 3       # consecutive failures before opening
+CIRCUIT_BREAKER_TIMEOUT = timedelta(minutes=5)
+
+
+def _record_ai_success() -> None:
+    """Reset the circuit breaker after a successful AI call."""
+    _circuit_breaker["failures"] = 0
+    _circuit_breaker["open_until"] = None
+
+
+def _record_ai_failure() -> None:
+    """Increment failure count and open the circuit if threshold reached."""
+    _circuit_breaker["failures"] += 1
+    if _circuit_breaker["failures"] >= CIRCUIT_BREAKER_THRESHOLD:
+        _circuit_breaker["open_until"] = datetime.now() + CIRCUIT_BREAKER_TIMEOUT
+        logger.warning(
+            "AI circuit breaker OPEN — %d consecutive failures, "
+            "disabling AI for %s",
+            _circuit_breaker["failures"],
+            CIRCUIT_BREAKER_TIMEOUT,
+        )
+
+
+def _circuit_is_open() -> bool:
+    """Return True if the circuit breaker is currently open (AI disabled)."""
+    open_until = _circuit_breaker["open_until"]
+    if open_until is None:
+        return False
+    if datetime.now() >= open_until:
+        # Half-open: allow the next request through to probe recovery
+        _circuit_breaker["open_until"] = None
+        _circuit_breaker["failures"] = 0
+        logger.info("AI circuit breaker HALF-OPEN — allowing next request")
+        return False
+    return True
 
 
 class AIProvider(ABC):
@@ -303,9 +349,12 @@ class OpenAIProvider(AIProvider):
 
             result = response.json()
             content = result['choices'][0]['message']['content']
-            return json.loads(content)
+            parsed = json.loads(content)
+            _record_ai_success()
+            return parsed
 
         except Exception as e:
+            _record_ai_failure()
             return {
                 "success": False,
                 "error": str(e),
@@ -344,8 +393,11 @@ class OpenAIProvider(AIProvider):
             response.raise_for_status()
             result = response.json()
             content = result['choices'][0]['message']['content']
-            return json.loads(content)
+            parsed = json.loads(content)
+            _record_ai_success()
+            return parsed
         except Exception as e:
+            _record_ai_failure()
             # Fail gracefully - return recommendations without enhancement
             return {"success": False, "error": str(e), "insights": []}
 
@@ -398,14 +450,20 @@ class AnthropicProvider(AIProvider):
 
             # Try to parse JSON, with fallback for common issues
             try:
-                return json.loads(content)
+                parsed = json.loads(content)
+                _record_ai_success()
+                return parsed
             except json.JSONDecodeError as je:
                 # Try to fix common JSON issues
                 # Remove trailing commas before } or ]
                 fixed_content = re.sub(r',(\s*[}\]])', r'\1', content)
                 try:
-                    return json.loads(fixed_content)
+                    parsed = json.loads(fixed_content)
+                    _record_ai_success()
+                    return parsed
                 except:
+                    # JSON parse failure after successful HTTP — count as failure
+                    _record_ai_failure()
                     # If still failing, return error with original content snippet
                     return {
                         "success": False,
@@ -414,6 +472,7 @@ class AnthropicProvider(AIProvider):
                     }
 
         except requests.exceptions.HTTPError as e:
+            _record_ai_failure()
             # Get detailed error from Anthropic API
             error_detail = str(e)
             try:
@@ -427,6 +486,7 @@ class AnthropicProvider(AIProvider):
                 "recommendations": []
             }
         except Exception as e:
+            _record_ai_failure()
             return {
                 "success": False,
                 "error": str(e),
@@ -468,8 +528,11 @@ class AnthropicProvider(AIProvider):
 
             content = self._extract_json_from_response(content)
 
-            return json.loads(content)
+            parsed = json.loads(content)
+            _record_ai_success()
+            return parsed
         except Exception as e:
+            _record_ai_failure()
             return {"success": False, "error": str(e), "insights": []}
 
 
@@ -502,9 +565,12 @@ class LocalLLMProvider(AIProvider):
 
             result = response.json()
             content = result.get('response', '{}')
-            return json.loads(content)
+            parsed = json.loads(content)
+            _record_ai_success()
+            return parsed
 
         except Exception as e:
+            _record_ai_failure()
             return {
                 "success": False,
                 "error": str(e),
@@ -545,8 +611,11 @@ For each, explain why the target is suitable and any concerns. Return JSON:
             response.raise_for_status()
             result = response.json()
             content = result.get('response', '{}')
-            return json.loads(content)
+            parsed = json.loads(content)
+            _record_ai_success()
+            return parsed
         except Exception as e:
+            _record_ai_failure()
             return {"success": False, "error": str(e), "insights": []}
 
 
@@ -601,9 +670,16 @@ def get_ai_provider() -> Optional[AIProvider]:
     """
     Get configured AI provider instance.
 
+    Returns None when the circuit breaker is open (AI provider has had
+    too many consecutive failures).
+
     Returns:
         AIProvider instance if configured, None otherwise
     """
+    if _circuit_is_open():
+        logger.info("AI provider skipped — circuit breaker is open")
+        return None
+
     from proxbalance.config_manager import load_config
     config = load_config()
     return AIProviderFactory.create_provider(config)
