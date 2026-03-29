@@ -604,6 +604,6 @@ def get_ai_provider() -> Optional[AIProvider]:
     Returns:
         AIProvider instance if configured, None otherwise
     """
-    from app import load_config
+    from proxbalance.config_manager import load_config
     config = load_config()
     return AIProviderFactory.create_provider(config)

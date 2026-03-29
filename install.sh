@@ -381,9 +381,19 @@ select_network() {
   read choice
   choice=${choice:-1}
 
+  # Optional VLAN tag
+  echo ""
+  echo -ne "${PROMPT_COLOR}${ARROW}${CL} VLAN tag ${DIM_COLOR}(leave blank for none)${CL}: "
+  read vlan_tag
+
+  if [ -n "$vlan_tag" ] && { [[ ! "$vlan_tag" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$vlan_tag" -gt 4094 ]; }; then
+    msg_warn "Invalid VLAN tag (must be 1-4094), ignoring"
+    vlan_tag=""
+  fi
+
   case $choice in
     1)
-      NET_CONFIG="name=eth0,bridge=vmbr0,ip=dhcp"
+      NET_CONFIG="name=eth0,bridge=vmbr0,ip=dhcp${vlan_tag:+,tag=${vlan_tag}}"
       echo ""
       msg_ok "Network: ${VALUE_COLOR}DHCP (Automatic)${CL}"
       ;;
@@ -403,15 +413,18 @@ select_network() {
         return
       fi
 
-      NET_CONFIG="name=eth0,bridge=vmbr0,ip=${ip_addr}/${cidr},gw=${gateway}"
+      NET_CONFIG="name=eth0,bridge=vmbr0,ip=${ip_addr}/${cidr},gw=${gateway}${vlan_tag:+,tag=${vlan_tag}}"
       echo ""
       msg_ok "Static IP: ${VALUE_COLOR}${ip_addr}/${cidr}${CL} via ${VALUE_COLOR}${gateway}${CL}"
       ;;
     *)
       msg_error "Invalid selection"
       select_network
+      return
       ;;
   esac
+
+  [ -n "$vlan_tag" ] && msg_ok "VLAN tag: ${VALUE_COLOR}${vlan_tag}${CL}"
 }
 
 select_storage() {
