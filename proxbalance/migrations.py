@@ -10,7 +10,7 @@ import os
 import sys
 import json
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -238,7 +238,7 @@ def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: s
         cache_file = Path(BASE_PATH) / "cluster_cache.json"
         if cache_file.exists():
             import os
-            cache_age_seconds = (datetime.utcnow() - datetime.utcfromtimestamp(os.path.getmtime(cache_file))).total_seconds()
+            cache_age_seconds = (datetime.now(timezone.utc) - datetime.fromtimestamp(os.path.getmtime(cache_file), tz=timezone.utc)).total_seconds()
             cache_age_minutes = cache_age_seconds / 60
 
             if cache_age_minutes > 30:
@@ -477,8 +477,43 @@ def _load_migration_history() -> Dict[str, Any]:
 
 
 def _save_migration_history(history: Dict[str, Any]) -> bool:
-    """No-op for backward compatibility — writes go through migration_db."""
-    return True
+    """Persist migration records and automation state via migration_db.
+
+    Iterates over the 'migrations' list in *history* and writes any new
+    records to SQLite using :func:`migration_db.record_migration`.  Also
+    updates automation state if present.
+
+    Args:
+        history: Dict with optional 'migrations' list and 'state' dict.
+
+    Returns:
+        True on success, False on error.
+    """
+    from proxbalance import migration_db
+
+    try:
+        # Persist each migration record that has not yet been written.
+        # Records coming from the rollback flow include an 'id' key that
+        # doubles as the migration_id — pass it through so record_migration
+        # can use it.
+        for record in history.get("migrations", []):
+            # Only write records that have an 'id' but no 'migration_id'
+            # (i.e. freshly created by the rollback handler).  Records that
+            # already have 'migration_id' were read from the DB and should
+            # not be re-inserted.
+            if record.get("id") and not record.get("migration_id"):
+                migration_db.record_migration(record)
+
+        # Persist automation state if provided
+        state = history.get("state")
+        if state and isinstance(state, dict):
+            migration_db.set_automation_state_bulk(state)
+
+        return True
+    except Exception as e:
+        import sys
+        print(f"Error saving migration history: {e}", file=sys.stderr)
+        return False
 
 
 def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -551,7 +586,10 @@ def get_rollback_info(vmid: int, config: Optional[Dict[str, Any]] = None) -> Dic
         info["detail"] = "Could not parse migration timestamp"
         return info
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
+    # Ensure migration_time is timezone-aware for comparison
+    if migration_time.tzinfo is None:
+        migration_time = migration_time.replace(tzinfo=timezone.utc)
     elapsed = now - migration_time
     elapsed_minutes = elapsed.total_seconds() / 60.0
 

@@ -1,7 +1,7 @@
 import json
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
@@ -46,11 +46,11 @@ def execute_migration():
         proxmox, vmid, target_node, source_node, guest_type,
     )
 
-    # Record outcome tracking if migration succeeded
-    if result.get("success") and pre_snapshot:
-        predicted = data.get("predicted_improvement")
-        _record_outcome(vmid, source_node, target_node, guest_type,
-                        pre_snapshot, predicted_improvement=predicted)
+    # NOTE: Outcome tracking is NOT recorded here. A "success" response from
+    # execute_migration means the migration task was *started*, not *completed*.
+    # Outcome recording happens asynchronously — either via the automigrate
+    # service (which polls task status) or via the /api/migrate/outcomes/refresh
+    # endpoint which captures post-migration metrics once the task finishes.
 
     return jsonify(result), status
 
@@ -191,7 +191,7 @@ def execute_rollback():
         history = _load_migration_history()
         migration_record = {
             "id": str(uuid.uuid4()),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "vmid": vmid,
             "source_node": current_node,
             "target_node": original_node,
@@ -207,7 +207,7 @@ def execute_rollback():
 
         history.setdefault("migrations", []).append(migration_record)
         history["state"] = {
-            "last_run": datetime.utcnow().isoformat() + "Z",
+            "last_run": datetime.now(timezone.utc).isoformat() + "Z",
             "in_progress": False,
         }
         _save_migration_history(history)

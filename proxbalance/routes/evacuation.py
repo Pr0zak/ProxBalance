@@ -31,7 +31,14 @@ def get_evacuation_status(session_id):
 @api_route
 def get_node_storage(node):
     """Get all available storage on a specific node"""
-    proxmox = get_proxmox_client()
+    config = load_config()
+    if isinstance(config, dict) and config.get("error"):
+        return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
+
+    try:
+        proxmox = get_proxmox_client(config)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
     # Get all storage for the node
     storage_list = proxmox.nodes(node).storage.get()
@@ -81,7 +88,14 @@ def verify_storage_availability():
     if not source_node or not target_nodes:
         return jsonify({"success": False, "error": "Missing required parameters"}), 400
 
-    proxmox = get_proxmox_client()
+    config = load_config()
+    if isinstance(config, dict) and config.get("error"):
+        return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
+
+    try:
+        proxmox = get_proxmox_client(config)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
     # Get storage info for all target nodes
     target_storage_map = {}
