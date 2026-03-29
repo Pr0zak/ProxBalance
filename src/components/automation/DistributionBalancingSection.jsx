@@ -18,12 +18,12 @@ export default function DistributionBalancingSection({
             className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             {embedded
-              ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Distribution Balancing</h3>
-              : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Distribution Balancing</h2>
+              ? <h3 className="text-base font-bold text-white">Distribution Balancing</h3>
+              : <h2 className="text-xl font-bold text-white">Distribution Balancing</h2>
             }
             <ChevronDown
               size={embedded ? 20 : ICON.section}
-              className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
+              className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -46,18 +46,18 @@ export default function DistributionBalancingSection({
 
             {/* Help section */}
             <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
+              <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-200 flex items-center gap-1 list-none">
                 <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
                 How does this work?
               </summary>
-              <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+              <div className="mt-3 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+                <p className="text-sm text-blue-200 mb-2">
                   Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>.
                 </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                <p className="text-xs text-blue-300 mb-2">
                   A node with many small VMs (DNS, monitoring, utilities) may show low resource usage but still suffer from management overhead and uneven workload distribution.
                 </p>
-                <ol className="text-xs text-blue-700 dark:text-blue-300 list-decimal list-inside space-y-1">
+                <ol className="text-xs text-blue-300 list-decimal list-inside space-y-1">
                   <li>Counts running guests on each node</li>
                   <li>If difference exceeds the threshold, finds small eligible guests on the overloaded node</li>
                   <li>Recommends migrating them to underloaded nodes</li>
@@ -70,7 +70,7 @@ export default function DistributionBalancingSection({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Guest Count Threshold */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Guest Count Threshold
                 </label>
                 <NumberField
@@ -86,14 +86,14 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Minimum difference in guest counts to trigger balancing
                 </p>
               </div>
 
               {/* Max CPU Cores */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Max CPU Cores
                 </label>
                 <NumberField
@@ -109,14 +109,14 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Only migrate guests with this many CPU cores or less (0 = no limit)
                 </p>
               </div>
 
               {/* Max Memory GB */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
                   Max Memory (GB)
                 </label>
                 <NumberField
@@ -132,7 +132,7 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Only migrate guests with this much memory or less (0 = no limit)
                 </p>
               </div>

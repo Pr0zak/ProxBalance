@@ -121,15 +121,15 @@ export default function IconLegend({ darkMode, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/20 border border-white/20 dark:border-gray-700/50 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col modal-enter"
+        className="bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/20 border border-slate-700/50 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col modal-enter"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <HelpCircle size={20} /> Icon Reference
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Close">
-            <X size={20} className="text-gray-500 dark:text-gray-400" />
+          <button onClick={onClose} className="p-1 hover:bg-slate-700 rounded" title="Close">
+            <X size={20} className="text-gray-400" />
           </button>
         </div>
 
@@ -141,7 +141,7 @@ export default function IconLegend({ darkMode, onClose }) {
               placeholder="Search icons..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-600 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
         </div>
@@ -149,22 +149,22 @@ export default function IconLegend({ darkMode, onClose }) {
         <div className="overflow-y-auto p-4 pt-2 space-y-4">
           {filteredGroups.map(group => (
             <div key={group.label}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">{group.label}</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">{group.label}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {group.icons.map(({ Icon, name }) => (
                   <div
                     key={name}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700/50 text-sm"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-700/50 text-sm"
                   >
-                    <Icon size={16} className="text-gray-600 dark:text-gray-300 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-200 truncate">{name}</span>
+                    <Icon size={16} className="text-gray-300 flex-shrink-0" />
+                    <span className="text-gray-200 truncate">{name}</span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
           {filteredGroups.length === 0 && (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4">No icons match your search.</p>
+            <p className="text-center text-gray-400 py-4">No icons match your search.</p>
           )}
         </div>
       </div>

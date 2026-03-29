@@ -13,7 +13,7 @@ function WindowTypeButtons({ currentType, onSelect }) {
         className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
           currentType === 'migration'
             ? 'bg-green-600 text-white'
-            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+            : 'bg-gray-600 text-gray-300'
         }`}
       >
         <Calendar size={14} />
@@ -24,7 +24,7 @@ function WindowTypeButtons({ currentType, onSelect }) {
         className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
           currentType === 'blackout'
             ? 'bg-red-600 text-white'
-            : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+            : 'bg-gray-600 text-gray-300'
         }`}
       >
         <Moon size={14} />
@@ -46,16 +46,16 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
         {/* Time Windows (Unified) */}
         <div className={outerClass}>
           {embedded
-            ? <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Time Windows</h3>
-            : <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Time Windows</h2>
+            ? <h3 className="text-base font-bold text-white mb-4">Time Windows</h3>
+            : <h2 className="text-xl font-bold text-white mb-4">Time Windows</h2>
           }
 
           {/* Timezone Selector */}
-          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="mb-4 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
             <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <Info size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
                   Timezone for Time Windows
                 </label>
                 <select
@@ -87,14 +87,14 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                   <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
                   <option value="Pacific/Auckland">Auckland (NZDT/NZST)</option>
                 </select>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                <p className="text-xs text-gray-400 mt-2">
                   All time windows below use this timezone. Current server time (UTC): {new Date().toUTCString()}
                 </p>
               </div>
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p className="text-sm text-gray-400 mb-4">
             Configure when migrations are allowed (Migration Windows) or blocked (Blackout Windows).
             If no windows are configured, migrations are allowed at any time.
           </p>
@@ -111,8 +111,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
             const today = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
 
             return (
-              <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              <div className="mb-4 p-4 bg-slate-700 rounded-lg">
+                <div className="text-sm font-semibold text-gray-300 mb-3">
                   Weekly Schedule Overview
                 </div>
 
@@ -128,15 +128,15 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                         {/* Day Label */}
                         <div className={`w-20 flex-shrink-0 text-xs font-medium flex items-center ${
                           isToday
-                            ? 'text-blue-600 dark:text-blue-400 font-bold'
-                            : 'text-gray-600 dark:text-gray-400'
+                            ? 'text-blue-400 font-bold'
+                            : 'text-gray-400'
                         }`}>
                           {day.slice(0, 3)}
-                          {isToday && <span className="ml-1 text-blue-600 dark:text-blue-400">●</span>}
+                          {isToday && <span className="ml-1 text-blue-400">●</span>}
                         </div>
 
                         {/* Timeline Bar */}
-                        <div className="flex-1 relative h-6 bg-gray-200 dark:bg-gray-600 rounded overflow-visible">
+                        <div className="flex-1 relative h-6 bg-gray-600 rounded overflow-visible">
                           {/* Hour tick marks - every hour */}
                           {Array.from({ length: 25 }, (_, hour) => {
                             const isMajorTick = hour % 6 === 0;
@@ -147,15 +147,15 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                 key={`tick-${hour}`}
                                 className={`absolute bottom-0 z-0 ${
                                   isMajorTick
-                                    ? 'h-full border-l-2 border-gray-400 dark:border-gray-500'
+                                    ? 'h-full border-l-2 border-gray-500'
                                     : isMinorTick
-                                    ? 'h-2/3 border-l border-gray-350 dark:border-gray-500'
-                                    : 'h-1/3 border-l border-gray-300 dark:border-gray-550'
+                                    ? 'h-2/3 border-l border-gray-500'
+                                    : 'h-1/3 border-l border-gray-550'
                                 }`}
                                 style={{ left: `${(hour / 24) * 100}%` }}
                               >
                                 {isMajorTick && hour < 24 && (
-                                  <div className="absolute -top-3 -translate-x-1/2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                                  <div className="absolute -top-3 -translate-x-1/2 text-[10px] font-medium text-gray-400">
                                     {hour.toString().padStart(2, '0')}
                                   </div>
                                 )}
@@ -182,7 +182,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             return (
                               <div
                                 key={`blackout-${idx}`}
-                                className="absolute top-0 bottom-0 bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 transition-colors z-10 cursor-pointer"
+                                className="absolute top-0 bottom-0 bg-red-600 hover:bg-red-700 transition-colors z-10 cursor-pointer"
                                 style={{ left: `${startPercent}%`, width: `${width}%` }}
                                 title={`${window.name}: ${window.start_time}-${window.end_time} (BLOCKED) - Click to edit`}
                                 onClick={() => {
@@ -217,7 +217,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             return (
                               <div
                                 key={`migration-${idx}`}
-                                className="absolute top-0 bottom-0 bg-green-500 dark:bg-green-600 hover:bg-green-600 dark:hover:bg-green-700 transition-colors z-10 cursor-pointer"
+                                className="absolute top-0 bottom-0 bg-green-600 hover:bg-green-700 transition-colors z-10 cursor-pointer"
                                 style={{ left: `${startPercent}%`, width: `${width}%` }}
                                 title={`${window.name}: ${window.start_time}-${window.end_time} (ALLOWED) - Click to edit`}
                                 onClick={() => {
@@ -242,16 +242,16 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                 {/* Legend */}
                 <div className="flex items-center gap-4 mt-6 text-xs">
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-500 dark:bg-green-600 rounded"></div>
-                    <span className="text-gray-600 dark:text-gray-400">Migrations Allowed</span>
+                    <div className="w-4 h-4 bg-green-600 rounded"></div>
+                    <span className="text-gray-400">Migrations Allowed</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-500 dark:bg-red-600 rounded"></div>
-                    <span className="text-gray-600 dark:text-gray-400">Migrations Blocked</span>
+                    <div className="w-4 h-4 bg-red-600 rounded"></div>
+                    <span className="text-gray-400">Migrations Blocked</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500"></div>
-                    <span className="text-gray-600 dark:text-gray-400">No Restriction</span>
+                    <div className="w-4 h-4 bg-gray-600 rounded border border-gray-500"></div>
+                    <span className="text-gray-400">No Restriction</span>
                   </div>
                 </div>
               </div>
@@ -272,11 +272,11 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
             if (allWindows.length === 0) {
               return (
                 <div className={EMPTY_STATE + ' mb-3'}>
-                  <div className="p-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-2xl mb-4">
-                    <Clock size={32} className="text-gray-400 dark:text-gray-500" />
+                  <div className="p-4 bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-2xl mb-4">
+                    <Clock size={32} className="text-gray-500" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">No time windows configured</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">Add migration or blackout windows to control when automated migrations can run.</p>
+                  <p className="text-sm font-medium text-gray-300 mb-1">No time windows configured</p>
+                  <p className="text-xs text-gray-400 max-w-xs">Add migration or blackout windows to control when automated migrations can run.</p>
                 </div>
               );
             }
@@ -293,15 +293,15 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                       data-window-index={idx}
                       className={`p-3 rounded-lg border ${
                         isMigration
-                          ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-700'
-                          : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-700'
+                          ? 'bg-green-900/10 border-green-700'
+                          : 'bg-red-900/10 border-red-700'
                       }`}
                     >
                       {isEditing ? (
                         <div className="space-y-3">
                           {/* Type Toggle */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Window Type</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Window Type</label>
                             <WindowTypeButtons
                               currentType={isMigration ? 'migration' : 'blackout'}
                               onSelect={(type) => {
@@ -329,7 +329,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
 
                           {/* Window Name */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Window Name</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Window Name</label>
                             <input
                               type="text"
                               value={window.name}
@@ -352,7 +352,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Days of Week */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Days of Week</label>
+                              <label className="block text-sm font-medium text-gray-300">Days of Week</label>
                               <label className="flex items-center cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -378,7 +378,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                     isMigration ? 'text-green-600 focus:ring-green-500' : 'text-red-600 focus:ring-red-500'
                                   }`}
                                 />
-                                <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
+                                <span className="ml-2 text-xs font-semibold text-blue-400">All Days</span>
                               </label>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -409,7 +409,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                       isMigration ? 'text-green-600 focus:ring-green-500' : 'text-red-600 focus:ring-red-500'
                                     }`}
                                   />
-                                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{day.slice(0, 3)}</span>
+                                  <span className="ml-2 text-sm text-gray-300">{day.slice(0, 3)}</span>
                                 </label>
                               ))}
                             </div>
@@ -418,7 +418,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Start/End Time */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
+                              <label className="block text-sm font-medium text-gray-300 mb-1">Start Time</label>
                               <div className="flex gap-2">
                                 <select
                                   value={window.start_time?.split(':')[0] || '00'}
@@ -442,7 +442,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                     </option>
                                   ))}
                                 </select>
-                                <span className="flex items-center text-gray-500 dark:text-gray-400">:</span>
+                                <span className="flex items-center text-gray-400">:</span>
                                 <select
                                   value={window.start_time?.split(':')[1] || '00'}
                                   onChange={(e) => {
@@ -469,7 +469,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                               </div>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
+                              <label className="block text-sm font-medium text-gray-300 mb-1">End Time</label>
                               <div className="flex gap-2">
                                 <select
                                   value={window.end_time?.split(':')[0] || '00'}
@@ -493,7 +493,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                     </option>
                                   ))}
                                 </select>
-                                <span className="flex items-center text-gray-500 dark:text-gray-400">:</span>
+                                <span className="flex items-center text-gray-400">:</span>
                                 <select
                                   value={window.end_time?.split(':')[1] || '00'}
                                   onChange={(e) => {
@@ -546,10 +546,10 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
 
                           {/* Window Info */}
                           <div className="flex-1">
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-white">
                               {window.name || `${isMigration ? 'Migration' : 'Blackout'} ${window.originalIndex + 1}`}
                             </span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
+                            <span className="text-sm text-gray-400 ml-2">
                               {window.days?.join(', ')} {window.start_time}-{window.end_time}
                             </span>
                           </div>
@@ -609,14 +609,14 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
           {showTimeWindowForm ? (
             <div className={`rounded-lg p-4 mb-3 border ${
               newWindowData.type === 'migration'
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
-                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
+                ? 'bg-green-900/20 border-green-700'
+                : 'bg-red-900/20 border-red-700'
             }`}>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Add Time Window</h4>
+              <h4 className="font-semibold text-white mb-3">Add Time Window</h4>
               <div className="space-y-3">
                 {/* Type Toggle */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Window Type</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Window Type</label>
                   <WindowTypeButtons
                     currentType={newWindowData.type}
                     onSelect={(type) => setNewWindowData({ ...newWindowData, type })}
@@ -625,7 +625,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
 
                 {/* Window Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Window Name
                   </label>
                   <input
@@ -640,7 +640,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                 {/* Days of Week */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-gray-300">
                       Days of Week
                     </label>
                     <label className="flex items-center cursor-pointer">
@@ -661,7 +661,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             : 'text-red-600 focus:ring-red-500'
                         }`}
                       />
-                      <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
+                      <span className="ml-2 text-xs font-semibold text-blue-400">All Days</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -683,7 +683,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                               : 'text-red-600 focus:ring-red-500'
                           }`}
                         />
-                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{day.slice(0, 3)}</span>
+                        <span className="ml-2 text-sm text-gray-300">{day.slice(0, 3)}</span>
                       </label>
                     ))}
                   </div>
@@ -692,25 +692,25 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                 {/* Start/End Time */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-gray-300">
                       Time Range
                     </label>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '00:00', end_time: '23:59' })}
-                        className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
                       >
                         All Day
                       </button>
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '09:00', end_time: '17:00' })}
-                        className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
                       >
                         Business Hours
                       </button>
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '22:00', end_time: '06:00' })}
-                        className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
                       >
                         Night
                       </button>
@@ -718,7 +718,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Start Time
                       </label>
                       <div className="flex gap-2">
@@ -736,7 +736,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             </option>
                           ))}
                         </select>
-                        <span className="flex items-center text-gray-500 dark:text-gray-400">:</span>
+                        <span className="flex items-center text-gray-400">:</span>
                         <select
                           value={newWindowData.start_time?.split(':')[1] || '00'}
                           onChange={(e) => {
@@ -755,7 +755,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         End Time
                       </label>
                       <div className="flex gap-2">
@@ -773,7 +773,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             </option>
                           ))}
                         </select>
-                        <span className="flex items-center text-gray-500 dark:text-gray-400">:</span>
+                        <span className="flex items-center text-gray-400">:</span>
                         <select
                           value={newWindowData.end_time?.split(':')[1] || '00'}
                           onChange={(e) => {
@@ -833,7 +833,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                       setNewWindowData({ name: '', type: 'migration', days: [], start_time: '00:00', end_time: '00:00' });
                       setShowTimeWindowForm(false);
                     }}
-                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
                   >
                     <X size={14} />
                     Cancel

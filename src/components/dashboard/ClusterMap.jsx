@@ -29,25 +29,25 @@ export default function ClusterMap({
             <Server size={ICON.section} className="text-white" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Cluster Map</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Visual cluster overview</p>
+            <h2 className="text-lg sm:text-2xl font-bold text-white">Cluster Map</h2>
+            <p className="text-sm text-gray-400 mt-0.5">Visual cluster overview</p>
           </div>
           <button
             onClick={() => toggleSection('clusterMap')}
-            className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+            className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
             title={collapsedSections.clusterMap ? "Expand section" : "Collapse section"}
           >
-            <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
+            <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
           </button>
         </div>
         {!collapsedSections.clusterMap && (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Show Powered Off:</span>
+              <span className="text-sm text-gray-400">Show Powered Off:</span>
               <button
                 onClick={() => setShowPoweredOffGuests(!showPoweredOffGuests)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  showPoweredOffGuests ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                  showPoweredOffGuests ? 'bg-blue-600' : 'bg-gray-600'
                 }`}
                 title={showPoweredOffGuests ? 'Click to hide powered off VMs/CTs' : 'Click to show powered off VMs/CTs'}
               >
@@ -58,14 +58,14 @@ export default function ClusterMap({
                 />
               </button>
             </div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">View by:</span>
-            <div className="flex flex-wrap rounded-lg bg-gray-100 dark:bg-gray-700 p-1">
+            <span className="text-sm text-gray-400">View by:</span>
+            <div className="flex flex-wrap rounded-lg bg-slate-700 p-1">
               <button
                 onClick={() => setClusterMapViewMode('cpu')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'cpu'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title="CPU"
               >
@@ -76,7 +76,7 @@ export default function ClusterMap({
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'memory'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title="Memory"
               >
@@ -87,7 +87,7 @@ export default function ClusterMap({
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'allocated'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title="Allocated"
               >
@@ -98,7 +98,7 @@ export default function ClusterMap({
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'disk_io'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title="Disk I/O"
               >
@@ -109,7 +109,7 @@ export default function ClusterMap({
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'network'
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
                 title="Network"
               >
@@ -167,24 +167,24 @@ export default function ClusterMap({
                       onClick={() => setSelectedNode(node)}
                       className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                       maintenanceNodes.has(node.name)
-                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-600 hover:border-yellow-600 dark:hover:border-yellow-500'
+                        ? 'bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
                         : node.status === 'online'
-                        ? 'bg-gray-50 dark:bg-gray-900 border-blue-500 dark:border-blue-600 hover:border-blue-600 dark:hover:border-blue-500'
-                        : 'bg-gray-100 dark:bg-gray-800 border-gray-400 dark:border-gray-600'
+                        ? 'bg-gray-900 border-blue-600 hover:border-blue-500'
+                        : 'bg-slate-800 border-gray-600'
                     }`}>
                       {/* Node header */}
                       <div className="flex flex-col items-center z-10">
-                        <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`} />
-                        <div className="text-sm font-bold text-gray-900 dark:text-white mt-1">{node.name}</div>
+                        <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-400' : node.status === 'online' ? 'text-blue-400' : 'text-gray-500'}`} />
+                        <div className="text-sm font-bold text-white mt-1">{node.name}</div>
                         {maintenanceNodes.has(node.name) && (
                           <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
                             MAINTENANCE
                           </div>
                         )}
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                        <div className="text-xs text-gray-400">
                           {nodeGuests.length} guests
                           {!showPoweredOffGuests && poweredOffCount > 0 && (
-                            <span className="text-gray-500 dark:text-gray-500"> (+{poweredOffCount} off)</span>
+                            <span className="text-gray-500"> (+{poweredOffCount} off)</span>
                           )}
                         </div>
                       </div>
@@ -194,9 +194,9 @@ export default function ClusterMap({
                         {/* CPU Bar */}
                         <div>
                           <div className="text-[10px] sm:text-xs mb-0.5">
-                            <span className="text-gray-600 dark:text-gray-400 font-medium">CPU</span>
+                            <span className="text-gray-400 font-medium">CPU</span>
                           </div>
-                          <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className="w-full h-2.5 sm:h-3 bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 (node.cpu_percent || 0) > 80 ? 'bg-red-500' :
@@ -211,9 +211,9 @@ export default function ClusterMap({
                         {/* Memory Bar */}
                         <div>
                           <div className="text-[10px] sm:text-xs mb-0.5">
-                            <span className="text-gray-600 dark:text-gray-400 font-medium">MEM</span>
+                            <span className="text-gray-400 font-medium">MEM</span>
                           </div>
-                          <div className="w-full h-2.5 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div className="w-full h-2.5 sm:h-3 bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 (node.mem_percent || 0) > 80 ? 'bg-red-500' :
@@ -228,7 +228,7 @@ export default function ClusterMap({
                     </div>
 
                     {/* Host tooltip */}
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 dark:border-gray-600 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
                       <div className="font-bold text-sm mb-2 text-blue-400 border-b border-gray-700 pb-2">{node.name}</div>
                       {maintenanceNodes.has(node.name) && (
                         <div className="text-yellow-400 font-bold bg-yellow-900/30 px-2 py-1 rounded mb-2">🔧 MAINTENANCE MODE</div>
@@ -256,12 +256,12 @@ export default function ClusterMap({
 
                   {/* Connection line */}
                   {nodeGuests.length > 0 && (
-                    <div className="w-0.5 h-8 bg-gradient-to-b from-blue-400 to-transparent dark:from-blue-600"></div>
+                    <div className="w-0.5 h-8 bg-gradient-to-b from-blue-600 to-transparent"></div>
                   )}
 
                   {/* No guests label */}
                   {nodeGuests.length === 0 && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500 italic mt-2">No guests</div>
+                    <div className="text-xs text-gray-500 italic mt-2">No guests</div>
                   )}
 
                   {/* Guests */}
@@ -302,9 +302,9 @@ export default function ClusterMap({
 
                       const getGuestColor = () => {
                         const guestType = (guest.type || '').toUpperCase();
-                        if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-500 dark:bg-green-600';
-                        if (guestType === 'VM' || guestType === 'QEMU') return 'bg-purple-500 dark:bg-purple-600';
-                        return 'bg-gray-500 dark:bg-gray-600';
+                        if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-600';
+                        if (guestType === 'VM' || guestType === 'QEMU') return 'bg-purple-600';
+                        return 'bg-gray-600';
                       };
 
                       // Check migration status for this guest
@@ -348,7 +348,7 @@ export default function ClusterMap({
                                 guest.mount_points.has_unshared_bind_mount
                                   ? 'bg-orange-500'
                                   : 'bg-cyan-400'
-                              } rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-white dark:ring-gray-800`}
+                              } rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800`}
                               title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
                             />
                           )}
@@ -356,13 +356,13 @@ export default function ClusterMap({
                           {/* Pinned Disk Indicator - Border Dot (Top Left) */}
                           {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-white dark:ring-gray-800"
+                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
                               title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
                             />
                           )}
 
                           {/* Guest tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 dark:border-gray-600 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
                             <div className="font-bold text-sm mb-2 text-blue-400 border-b border-gray-700 pb-2">
                               {guest.name || `Guest ${guest.vmid}`}
                               <span className="ml-2 text-gray-400 font-normal text-xs">
@@ -462,13 +462,13 @@ export default function ClusterMap({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-400">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-purple-500 dark:bg-purple-600"></div>
+              <div className="w-6 h-6 rounded-full bg-purple-600"></div>
               <span>VM</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-green-500 dark:bg-green-600"></div>
+              <div className="w-6 h-6 rounded-full bg-green-600"></div>
               <span>Container</span>
             </div>
             <div className="flex items-center gap-2">

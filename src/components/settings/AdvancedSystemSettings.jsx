@@ -18,32 +18,32 @@ export default function AdvancedSystemSettings({
 }) {
   return (<>
                     {/* Advanced System Settings - Collapsible */}
-                    <div className={`${GLASS_CARD} border-red-500/50 dark:border-red-600/50`}>
+                    <div className={`${GLASS_CARD} border-red-600/50`}>
                       <button
                         onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
                         className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <AlertTriangle className="text-red-600 dark:text-red-500 shrink-0" size={ICON.section} />
+                          <AlertTriangle className="text-red-500 shrink-0" size={ICON.section} />
                           <div className="min-w-0">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Advanced System Settings</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Data management, debugging, API configuration, and system controls</p>
+                            <h3 className="text-lg font-semibold text-white">Advanced System Settings</h3>
+                            <p className="text-sm text-gray-400">Data management, debugging, API configuration, and system controls</p>
                           </div>
                         </div>
                         <ChevronDown
-                          className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${showAdvancedSettings ? 'rotate-180' : ''}`}
+                          className={`text-gray-400 transition-transform shrink-0 ${showAdvancedSettings ? 'rotate-180' : ''}`}
                           size={ICON.section}
                         />
                       </button>
 
                       {showAdvancedSettings && (
                         <div className="mt-4 space-y-6">
-                          <hr className="border-gray-300 dark:border-gray-600" />
+                          <hr className="border-slate-600" />
 
                           {/* Data Management */}
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Data Management</h3>
-                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <h3 className="text-lg font-semibold text-white mb-4">Data Management</h3>
+                      <div className="space-y-3 p-4 bg-slate-700/50 rounded">
                         <button
                           onClick={() => {
                             const dataStr = JSON.stringify(data, null, 2);
@@ -55,7 +55,7 @@ export default function AdvancedSystemSettings({
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
-                          className="w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
                         >
                           <Download size={16} />
                           Export Cluster Data (JSON)
@@ -80,7 +80,7 @@ export default function AdvancedSystemSettings({
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
-                          className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded hover:bg-green-700 dark:hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
                         >
                           <Download size={16} />
                           Export Guest List (CSV)
@@ -88,14 +88,14 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-gray-300 dark:border-gray-600" />
+                    <hr className="border-slate-600" />
 
                     {/* Debug & Logging */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Debug & Logging</h3>
-                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <h3 className="text-lg font-semibold text-white mb-4">Debug & Logging</h3>
+                      <div className="space-y-4 p-4 bg-slate-700/50 rounded">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
                             Log Level
                           </label>
                           <select
@@ -116,7 +116,7 @@ export default function AdvancedSystemSettings({
                             onChange={(e) => setVerboseLogging(e.target.checked)}
                             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                           />
-                          <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          <label className="ml-2 text-sm text-gray-300">
                             Enable Verbose Logging (includes API calls and data processing)
                           </label>
                         </div>
@@ -125,7 +125,7 @@ export default function AdvancedSystemSettings({
                             onClick={() => {
                               window.open('/api/logs/download?service=proxmox-balance', '_blank');
                             }}
-                            className="w-full px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-gray-500 text-white rounded hover:bg-slate-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Download size={16} />
                             Download API Logs
@@ -134,7 +134,7 @@ export default function AdvancedSystemSettings({
                             onClick={() => {
                               window.open('/api/logs/download?service=proxmox-collector', '_blank');
                             }}
-                            className="w-full px-4 py-2 bg-gray-600 dark:bg-gray-500 text-white rounded hover:bg-gray-700 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-gray-500 text-white rounded hover:bg-slate-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Download size={16} />
                             Download Collector Logs
@@ -143,13 +143,13 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-gray-300 dark:border-gray-600" />
+                    <hr className="border-slate-600" />
 
                     <div id="proxmox-api-config">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Proxmox API Configuration</h3>
-                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <h3 className="text-lg font-semibold text-white mb-4">Proxmox API Configuration</h3>
+                      <div className="space-y-4 p-4 bg-slate-700/50 rounded">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
                             API Token ID
                           </label>
                           <input
@@ -159,12 +159,12 @@ export default function AdvancedSystemSettings({
                             placeholder="proxbalance@pam!proxbalance"
                             className={`${INPUT_FIELD} font-mono`}
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             Format: user@realm!tokenname (e.g., proxbalance@pam!proxbalance)
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
                             API Token Secret
                           </label>
                           <input
@@ -174,14 +174,14 @@ export default function AdvancedSystemSettings({
                             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                             className={`${INPUT_FIELD} font-mono`}
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             The UUID token secret from Proxmox
                           </p>
                         </div>
                         <button
                           onClick={validateToken}
                           disabled={validatingToken || !proxmoxTokenId || !proxmoxTokenSecret}
-                          className="w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                           {validatingToken ? (
                             <>
@@ -199,39 +199,39 @@ export default function AdvancedSystemSettings({
                         {tokenValidationResult && (
                           <div className={`p-4 rounded border ${
                             tokenValidationResult.success
-                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                              ? 'bg-green-900/20 border-green-800'
+                              : 'bg-red-900/20 border-red-800'
                           }`}>
                             <div className="flex items-start gap-2">
                               {tokenValidationResult.success ? (
-                                <CheckCircle size={20} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                                <CheckCircle size={20} className="text-green-400 shrink-0 mt-0.5" />
                               ) : (
-                                <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
                               )}
                               <div className="flex-1">
                                 <p className={`font-semibold text-sm mb-1 ${
                                   tokenValidationResult.success
-                                    ? 'text-green-900 dark:text-green-200'
-                                    : 'text-red-900 dark:text-red-200'
+                                    ? 'text-green-200'
+                                    : 'text-red-200'
                                 }`}>
                                   {tokenValidationResult.message}
                                 </p>
                                 {tokenValidationResult.success && (
                                   <>
                                     {tokenValidationResult.version && (
-                                      <p className="text-xs text-green-800 dark:text-green-300 mb-2">
+                                      <p className="text-xs text-green-300 mb-2">
                                         Proxmox VE Version: {tokenValidationResult.version}
                                       </p>
                                     )}
                                     {tokenValidationResult.permissions && tokenValidationResult.permissions.length > 0 && (
                                       <div className="mt-2">
-                                        <p className="text-xs font-semibold text-green-900 dark:text-green-200 mb-1">
+                                        <p className="text-xs font-semibold text-green-200 mb-1">
                                           Token Permissions:
                                         </p>
-                                        <ul className="text-xs text-green-800 dark:text-green-300 space-y-1 ml-4">
+                                        <ul className="text-xs text-green-300 space-y-1 ml-4">
                                           {tokenValidationResult.permissions.map((perm, idx) => (
                                             <li key={idx} className="flex items-start gap-1">
-                                              <span className="text-green-600 dark:text-green-400">•</span>
+                                              <span className="text-green-400">•</span>
                                               <span>{perm}</span>
                                             </li>
                                           ))}
@@ -245,26 +245,26 @@ export default function AdvancedSystemSettings({
                           </div>
                         )}
 
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
-                          <p className="text-sm text-blue-900 dark:text-blue-200">
+                        <div className="bg-blue-900/30 border border-blue-800 rounded p-3">
+                          <p className="text-sm text-blue-200">
                             <strong>Tip:</strong> Use the installation script to automatically create an API token with proper permissions. Click "Validate Token" after entering credentials to verify connectivity and check permissions.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <hr className="border-gray-300 dark:border-gray-600" />
+                    <hr className="border-slate-600" />
 
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Proxmox Host Configuration</h3>
-                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
-                          <p className="text-sm text-blue-900 dark:text-blue-200">
+                      <h3 className="text-lg font-semibold text-white mb-4">Proxmox Host Configuration</h3>
+                      <div className="space-y-4 p-4 bg-slate-700/50 rounded">
+                        <div className="bg-blue-900/30 border border-blue-800 rounded p-3 mb-4">
+                          <p className="text-sm text-blue-200">
                             <strong>Current Proxmox Host:</strong> {config?.proxmox_host || 'Not configured'}
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
                             New Proxmox Host IP/Hostname
                           </label>
                           <input
@@ -274,7 +274,7 @@ export default function AdvancedSystemSettings({
                             placeholder="10.0.0.3 or pve-node1"
                             className={INPUT_FIELD}
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             IP address or hostname of the Proxmox node to connect to
                           </p>
                         </div>
@@ -297,8 +297,8 @@ export default function AdvancedSystemSettings({
                           }}
                           className={`w-full px-4 py-2 text-white rounded font-medium flex items-center justify-center gap-1.5 ${
                             confirmHostChange
-                              ? 'bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600'
-                              : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
+                              ? 'bg-orange-500 hover:bg-orange-600'
+                              : 'bg-blue-500 hover:bg-blue-600'
                           }`}
                         >
                           {confirmHostChange ? (<><AlertTriangle size={14} /> Click again to confirm</>) : (<><Server size={14} /> Update Proxmox Host</>)}
@@ -306,27 +306,27 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-gray-300 dark:border-gray-600" />
+                    <hr className="border-slate-600" />
 
                     {/* Configuration Export/Import */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Configuration Backup & Restore</h3>
-                      <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="text-lg font-semibold text-white mb-4">Configuration Backup & Restore</h3>
+                      <div className="space-y-4 p-4 bg-slate-700/50 rounded">
+                        <p className="text-sm text-gray-400">
                           Export your configuration for backup or import it on a fresh installation. Automatic backups are created before each import.
                         </p>
 
                         {/* Export Configuration */}
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Export Configuration</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <div className="p-4 bg-blue-900/20 border border-blue-800 rounded">
+                          <h4 className="font-semibold text-white mb-2">Export Configuration</h4>
+                          <p className="text-sm text-gray-400 mb-3">
                             Download all settings as a JSON file for backup or migration to another instance.
                           </p>
                           <button
                             onClick={() => {
                               window.location.href = `${API_BASE}/config/export`;
                             }}
-                            className="w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Download size={16} />
                             Export Configuration
@@ -334,9 +334,9 @@ export default function AdvancedSystemSettings({
                         </div>
 
                         {/* Import Configuration */}
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Import Configuration</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <div className="p-4 bg-green-900/20 border border-green-800 rounded">
+                          <h4 className="font-semibold text-white mb-2">Import Configuration</h4>
+                          <p className="text-sm text-gray-400 mb-3">
                             Upload a configuration file to restore settings. Your current configuration will be automatically backed up before import.
                           </p>
 
@@ -394,7 +394,7 @@ export default function AdvancedSystemSettings({
 
                           <button
                             onClick={() => window.configFileInput?.click()}
-                            className="w-full px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded hover:bg-green-700 dark:hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Upload size={16} />
                             Import Configuration
@@ -402,9 +402,9 @@ export default function AdvancedSystemSettings({
                         </div>
 
                         {/* Manual Backup */}
-                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Create Backup</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <div className="p-4 bg-purple-900/20 border border-purple-800 rounded">
+                          <h4 className="font-semibold text-white mb-2">Create Backup</h4>
+                          <p className="text-sm text-gray-400 mb-3">
                             Create a manual backup of your current configuration. Last 5 backups are kept automatically.
                           </p>
                           <button
@@ -425,24 +425,24 @@ export default function AdvancedSystemSettings({
                                 alert('Error creating backup: ' + error.message);
                               });
                             }}
-                            className="w-full px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Save size={16} />
                             Create Backup Now
                           </button>
                         </div>
 
-                        <div className="text-xs text-gray-500 dark:text-gray-400 italic p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                        <div className="text-xs text-gray-400 italic p-3 bg-yellow-900/20 border border-yellow-800 rounded">
                           <strong>Note:</strong> Backups are stored in /opt/proxmox-balance-manager/backups/ and rotated automatically (last 5 kept).
                         </div>
                       </div>
                     </div>
 
-                    <hr className="border-gray-300 dark:border-gray-600" />
+                    <hr className="border-slate-600" />
 
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Service Management</h3>
-                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded">
+                      <h3 className="text-lg font-semibold text-white mb-4">Service Management</h3>
+                      <div className="space-y-3 p-4 bg-slate-700/50 rounded">
                         <button
                           onClick={() => {
                             if (confirm('Restart ProxBalance API service?\n\nThis will briefly interrupt data collection.')) {
@@ -462,7 +462,7 @@ export default function AdvancedSystemSettings({
                               .catch(error => setError('Error: ' + error.message));
                             }
                           }}
-                          className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded hover:bg-orange-700 dark:hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
                         >
                           <RefreshCw size={16} />
                           Restart API Service
@@ -486,7 +486,7 @@ export default function AdvancedSystemSettings({
                               .catch(error => setError('Error: ' + error.message));
                             }
                           }}
-                          className="w-full px-4 py-2 bg-orange-600 dark:bg-orange-500 text-white rounded hover:bg-orange-700 dark:hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
                         >
                           <RefreshCw size={16} />
                           Restart Collector Service

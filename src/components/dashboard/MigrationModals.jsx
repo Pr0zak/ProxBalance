@@ -39,25 +39,25 @@ export default function MigrationModals({
               <Activity size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Migrate Guest</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Move VM or container</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Migrate Guest</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Move VM or container</p>
             </div>
           </div>
 
           <div className="mb-4 space-y-2">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-sm text-gray-400">
               <strong>Guest:</strong> {selectedGuest.name || `Guest ${selectedGuest.vmid}`} ({selectedGuest.vmid})
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-sm text-gray-400">
               <strong>Type:</strong> {((selectedGuest.type || '').toUpperCase() === 'VM' || (selectedGuest.type || '').toUpperCase() === 'QEMU') ? 'VM' : 'Container'}
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-sm text-gray-400">
               <strong>Current Node:</strong> {selectedGuest.currentNode}
             </div>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Target Node
             </label>
             <select
@@ -79,7 +79,7 @@ export default function MigrationModals({
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowMigrationDialog(false)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center gap-1.5"
+              className="px-4 py-2 border border-slate-600 text-gray-300 rounded hover:bg-slate-700 flex items-center justify-center gap-1.5"
             >
               <X size={14} /> Cancel
             </button>
@@ -111,11 +111,11 @@ export default function MigrationModals({
       <div className={MODAL_OVERLAY} onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}>
         <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Add Tag</h3>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Add Tag</h3>
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-gray-400 hover:text-gray-300"
               aria-label="Close"
             >
               <XCircle size={24} />
@@ -125,17 +125,17 @@ export default function MigrationModals({
           {/* Modal Body */}
           <div className="p-4 sm:p-6">
             <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                Guest: <span className="font-semibold text-gray-900 dark:text-white">[{tagModalGuest.type} {tagModalGuest.vmid}] {tagModalGuest.name}</span>
+              <p className="text-sm text-gray-400 mb-2">
+                Guest: <span className="font-semibold text-white">[{tagModalGuest.type} {tagModalGuest.vmid}] {tagModalGuest.name}</span>
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Node: <span className="font-semibold text-gray-900 dark:text-white">{tagModalGuest.node}</span>
+              <p className="text-sm text-gray-400">
+                Node: <span className="font-semibold text-white">{tagModalGuest.node}</span>
               </p>
             </div>
 
             {/* Quick Add Buttons */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Quick Add
               </label>
               <div className="flex flex-wrap gap-2">
@@ -184,7 +184,7 @@ export default function MigrationModals({
                         setError(`Error adding tag: ${error.message}`);
                       }
                     }}
-                    className="px-3 py-1.5 text-sm bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 rounded hover:bg-yellow-200 dark:hover:bg-yellow-900/50"
+                    className="px-3 py-1.5 text-sm bg-yellow-900/30 text-yellow-200 border border-yellow-700 rounded hover:bg-yellow-900/50"
                   >
                     + ignore
                   </button>
@@ -234,20 +234,20 @@ export default function MigrationModals({
                         setError(`Error adding tag: ${error.message}`);
                       }
                     }}
-                    className="px-3 py-1.5 text-sm bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700 rounded hover:bg-green-200 dark:hover:bg-green-900/50"
+                    className="px-3 py-1.5 text-sm bg-green-900/30 text-green-200 border border-green-700 rounded hover:bg-green-900/50"
                   >
                     + auto_migrate_ok
                   </button>
                 )}
                 <button
                   onClick={() => setNewTag('exclude_')}
-                  className="px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                  className="px-3 py-1.5 text-sm bg-blue-900/30 text-blue-200 border border-blue-700 rounded hover:bg-blue-900/50"
                 >
                   + exclude_...
                 </button>
                 <button
                   onClick={() => setNewTag('affinity_')}
-                  className="px-3 py-1.5 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                  className="px-3 py-1.5 text-sm bg-purple-900/30 text-purple-200 border border-purple-700 rounded hover:bg-purple-900/50"
                 >
                   + affinity_...
                 </button>
@@ -255,7 +255,7 @@ export default function MigrationModals({
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Or Enter Custom Tag
               </label>
               <input
@@ -270,7 +270,7 @@ export default function MigrationModals({
                 className={INPUT_FIELD}
                 placeholder="e.g., exclude_database, affinity_web"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity | <span className="font-mono">affinity_[name]</span> = keep together
               </p>
             </div>
@@ -278,12 +278,12 @@ export default function MigrationModals({
             {/* Current Tags */}
             {tagModalGuest.tags.all_tags.length > 0 && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Current Tags
                 </label>
                 <div className="flex flex-wrap gap-1">
                   {tagModalGuest.tags.all_tags.map(tag => (
-                    <span key={tag} className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded font-medium">
+                    <span key={tag} className="text-xs px-2 py-1 bg-gray-700 text-gray-200 rounded font-medium">
                       {tag}
                     </span>
                   ))}
@@ -293,10 +293,10 @@ export default function MigrationModals({
           </div>
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-700">
             <button
               onClick={() => { setShowTagModal(false); setNewTag(''); setTagModalGuest(null); }}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-300 bg-gray-700 rounded hover:bg-gray-600"
             >
               <X size={14} /> Cancel
             </button>
@@ -316,23 +316,23 @@ export default function MigrationModals({
     {confirmRemoveTag && (
       <div className={MODAL_OVERLAY} onClick={() => setConfirmRemoveTag(null)}>
         <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Tag Removal</h3>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Confirm Tag Removal</h3>
             <button onClick={() => setConfirmRemoveTag(null)} aria-label="Close">
-              <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+              <XCircle size={24} className="text-gray-400 hover:text-gray-300" />
             </button>
           </div>
 
           <div className="p-4 sm:p-6">
-            <p className="text-gray-700 dark:text-gray-300">
-              Remove tag <span className="font-mono font-semibold text-red-600 dark:text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
+            <p className="text-gray-300">
+              Remove tag <span className="font-mono font-semibold text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-slate-700">
             <button
               onClick={() => setConfirmRemoveTag(null)}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
             >
               <X size={14} /> Cancel
             </button>
@@ -351,50 +351,50 @@ export default function MigrationModals({
     {confirmMigration && (
       <div className={MODAL_OVERLAY} onClick={() => setConfirmMigration(null)}>
         <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Confirm Migration</h3>
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Confirm Migration</h3>
             <button onClick={() => setConfirmMigration(null)} aria-label="Close">
-              <XCircle size={24} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+              <XCircle size={24} className="text-gray-400 hover:text-gray-300" />
             </button>
           </div>
 
           <div className="p-4 sm:p-6">
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
-              Start migration for <span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
+            <p className="text-gray-300 mb-4">
+              Start migration for <span className="font-semibold text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
             </p>
 
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 space-y-2 text-sm">
+            <div className="bg-gray-900/50 rounded-lg p-4 space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">From:</span>
-                <span className="font-semibold text-red-600 dark:text-red-400">{confirmMigration.source_node}</span>
+                <span className="text-gray-400">From:</span>
+                <span className="font-semibold text-red-400">{confirmMigration.source_node}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">To:</span>
-                <span className="font-semibold text-green-600 dark:text-green-400">{confirmMigration.target_node}</span>
+                <span className="text-gray-400">To:</span>
+                <span className="font-semibold text-green-400">{confirmMigration.target_node}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Memory:</span>
-                <span className="font-mono text-gray-900 dark:text-gray-100">{(confirmMigration.mem_gb || 0).toFixed(1)} GB</span>
+                <span className="text-gray-400">Memory:</span>
+                <span className="font-mono text-gray-100">{(confirmMigration.mem_gb || 0).toFixed(1)} GB</span>
               </div>
               {confirmMigration.score_improvement !== undefined && (
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Improvement:</span>
-                  <span className="font-semibold text-green-600 dark:text-green-400">+{confirmMigration.score_improvement.toFixed(1)}</span>
+                  <span className="text-gray-400">Improvement:</span>
+                  <span className="font-semibold text-green-400">+{confirmMigration.score_improvement.toFixed(1)}</span>
                 </div>
               )}
             </div>
 
             {confirmMigration.reason && (
-              <div className="mt-4 text-xs text-gray-600 dark:text-gray-400">
+              <div className="mt-4 text-xs text-gray-400">
                 <span className="font-medium">Reason:</span> {confirmMigration.reason}
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-slate-700">
             <button
               onClick={() => setConfirmMigration(null)}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
             >
               <X size={14} /> Cancel
             </button>
@@ -415,40 +415,40 @@ export default function MigrationModals({
       <div className={MODAL_OVERLAY}>
         <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-4xl').replace('overflow-y-auto', 'overflow-hidden')} flex flex-col`}>
           {/* Modal Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
+          <div className="border-b border-slate-700 px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
                 <AlertTriangle size={24} className="text-yellow-500" />
                 Confirm Batch Migration
               </h2>
               <button
                 onClick={() => setShowBatchConfirmation(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-gray-400 hover:text-gray-200"
                 aria-label="Close"
               >
                 <X size={24} />
               </button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm text-gray-400 mt-2">
               Review the migration plan below. Migrations will be executed <strong>sequentially</strong> (one at a time).
             </p>
           </div>
 
           {/* Modal Body - Scrollable Task List */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+            <div className="mb-4 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-200">
                 <Info size={20} />
                 <div>
                   <p className="font-semibold">Total Migrations: {pendingBatchMigrations.length}</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  <p className="text-sm text-blue-300 mt-1">
                     Each migration will be tracked with real-time progress. You can monitor the status panel for updates.
                   </p>
                 </div>
               </div>
             </div>
 
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
               <List size={18} />
               Migration Tasks
             </h3>
@@ -459,21 +459,21 @@ export default function MigrationModals({
                 const targetNode = data?.nodes?.[rec.target_node];
 
                 return (
-                  <div key={idx} className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                  <div key={idx} className="border border-slate-600 rounded-lg p-4 bg-gray-900/50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-mono bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                          <span className="text-sm font-mono bg-gray-700 px-2 py-1 rounded text-gray-300">
                             #{idx + 1}
                           </span>
-                          <span className="font-bold text-gray-900 dark:text-white">
+                          <span className="font-bold text-white">
                             [{rec.type} {rec.vmid}] {rec.name}
                           </span>
                           {rec.priority && (
                             <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                              rec.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
-                              rec.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
-                              'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                              rec.priority === 'high' ? 'bg-red-900/30 text-red-300' :
+                              rec.priority === 'medium' ? 'bg-yellow-900/30 text-yellow-300' :
+                              'bg-blue-900/30 text-blue-300'
                             }`}>
                               {rec.priority}
                             </span>
@@ -482,26 +482,26 @@ export default function MigrationModals({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 text-sm">
                           <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Source Node</div>
-                            <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                            <div className="text-xs text-gray-400 mb-1">Source Node</div>
+                            <div className="font-semibold text-red-400 flex items-center gap-2">
                               <ArrowRight size={14} />
                               {rec.source_node}
                             </div>
                             {sourceNode && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              <div className="text-xs text-gray-400 mt-1">
                                 CPU: {sourceNode.cpu_percent?.toFixed(1)}% | RAM: {sourceNode.mem_percent?.toFixed(1)}%
                               </div>
                             )}
                           </div>
 
                           <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Target Node</div>
-                            <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-2">
+                            <div className="text-xs text-gray-400 mb-1">Target Node</div>
+                            <div className="font-semibold text-green-400 flex items-center gap-2">
                               <ArrowRight size={14} />
                               {rec.target_node}
                             </div>
                             {targetNode && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              <div className="text-xs text-gray-400 mt-1">
                                 CPU: {targetNode.cpu_percent?.toFixed(1)}% | RAM: {targetNode.mem_percent?.toFixed(1)}%
                               </div>
                             )}
@@ -509,7 +509,7 @@ export default function MigrationModals({
                         </div>
 
                         {rec.reasoning && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs text-gray-400 mt-2 p-2 bg-slate-800 rounded border border-slate-700">
                             <span className="font-semibold">Reason:</span> {rec.reasoning}
                           </div>
                         )}
@@ -524,7 +524,7 @@ export default function MigrationModals({
                                 [commandKey]: !prev[commandKey]
                               }));
                             }}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                            className="text-xs text-blue-400 hover:underline flex items-center gap-1"
                           >
                             <Terminal size={12} />
                             {collapsedSections[`ai-command-${idx}`] ? 'Show' : 'Hide'} command
@@ -537,13 +537,13 @@ export default function MigrationModals({
                                 const btn = e.currentTarget;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copied!';
-                                btn.classList.add('bg-green-100', 'dark:bg-green-900');
+                                btn.classList.add('bg-green-900');
                                 setTimeout(() => {
                                   btn.textContent = originalText;
-                                  btn.classList.remove('bg-green-100', 'dark:bg-green-900');
+                                  btn.classList.remove('bg-green-900');
                                 }, 1000);
                               }}
-                              className="text-xs font-mono bg-gray-200 dark:bg-gray-700 p-2 rounded mt-1 text-gray-700 dark:text-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                              className="text-xs font-mono bg-gray-700 p-2 rounded mt-1 text-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                               title="Click to copy"
                             >
                               {rec.command}
@@ -559,9 +559,9 @@ export default function MigrationModals({
           </div>
 
           {/* Modal Footer */}
-          <div className="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-900/50">
+          <div className="border-t border-slate-700 px-4 sm:px-6 py-4 bg-gray-900/50">
             <div className="flex items-center justify-between gap-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-400">
                 <AlertTriangle size={16} className="inline mr-1 text-yellow-500" />
                 Migrations will execute one at a time to ensure system stability
               </div>
@@ -592,33 +592,33 @@ export default function MigrationModals({
       <div className={MODAL_OVERLAY} onClick={() => setCancelMigrationModal(null)}>
         <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-4">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
+            <div className="p-2 bg-red-900/30 rounded-lg">
+              <AlertTriangle className="text-red-400" size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Cancel Migration?</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <h3 className="text-lg font-bold text-gray-100">Cancel Migration?</h3>
+              <p className="text-sm text-gray-400 mt-1">
                 This will stop the migration in progress
               </p>
             </div>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-6 space-y-2">
+          <div className="bg-gray-900/50 rounded-lg p-4 mb-6 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-semibold text-gray-300">
                 {cancelMigrationModal.name}
               </span>
-              <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
+              <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs font-semibold">
                 {cancelMigrationModal.type === 'qemu' ? 'VM' : 'CT'} {cancelMigrationModal.vmid}
               </span>
             </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+            <div className="text-sm text-gray-400 flex items-center gap-2">
               <span className="font-mono">{cancelMigrationModal.source_node}</span>
               <ArrowRight size={14} />
               <span className="font-mono">{cancelMigrationModal.target_node}</span>
             </div>
             {cancelMigrationModal.progress_info && (
-              <div className="text-xs text-gray-500 dark:text-gray-500">
+              <div className="text-xs text-gray-500">
                 Progress: {cancelMigrationModal.progress_info.human_readable}
               </div>
             )}
@@ -627,7 +627,7 @@ export default function MigrationModals({
           <div className="flex gap-3 justify-end">
             <button
               onClick={() => setCancelMigrationModal(null)}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold transition-colors"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg font-semibold transition-colors"
             >
               <Play size={14} /> Keep Running
             </button>
@@ -658,7 +658,7 @@ export default function MigrationModals({
                 }
               }}
               disabled={cancellingMigration}
-              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'} dark:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
+              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800'} text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
             >
               {cancellingMigration ? (
                 <>

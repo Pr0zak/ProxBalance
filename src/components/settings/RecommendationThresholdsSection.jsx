@@ -77,21 +77,21 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
         {embedded
-          ? <h3 className="text-base font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h3>
-          : <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recommendation Thresholds</h2>
+          ? <h3 className="text-base font-bold text-white">Recommendation Thresholds</h3>
+          : <h2 className="text-xl font-bold text-white">Recommendation Thresholds</h2>
         }
         {setCollapsedSections && (
           <ChevronDown
             size={embedded ? 20 : ICON.section}
-            className={`text-gray-600 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
+            className={`text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
           />
         )}
       </button>
 
       {!isCollapsed && (
       <div className="space-y-4">
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-sm text-blue-900 dark:text-blue-200">
+        <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-200">
             <strong>When to recommend migrations:</strong> When a node's resource usage exceeds these thresholds,
             the engine will start recommending migrations to move guests off that node. Lower values mean more
             proactive balancing. These are used by both the dashboard and background recommendation services.
@@ -100,8 +100,8 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
         {/* CPU Threshold */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            CPU Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{cpuThreshold}%</span>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            CPU Threshold: <span className="font-bold text-blue-400">{cpuThreshold}%</span>
           </label>
           <input
             type="range"
@@ -110,23 +110,23 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
             step="5"
             value={cpuThreshold}
             onChange={(e) => setCpuThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
-          <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>10%</span>
             <span>Aggressive</span>
             <span>Relaxed</span>
             <span>95%</span>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Recommend moving guests when a node's CPU exceeds this level
           </p>
         </div>
 
         {/* Memory Threshold */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Memory Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{memThreshold}%</span>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Memory Threshold: <span className="font-bold text-blue-400">{memThreshold}%</span>
           </label>
           <input
             type="range"
@@ -135,23 +135,23 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
             step="5"
             value={memThreshold}
             onChange={(e) => setMemThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
-          <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>10%</span>
             <span>Aggressive</span>
             <span>Relaxed</span>
             <span>95%</span>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Recommend moving guests when a node's memory exceeds this level
           </p>
         </div>
 
         {/* IOWait Threshold */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            IOWait Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{iowaitThreshold}%</span>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            IOWait Threshold: <span className="font-bold text-blue-400">{iowaitThreshold}%</span>
           </label>
           <input
             type="range"
@@ -160,22 +160,22 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
             step="5"
             value={iowaitThreshold}
             onChange={(e) => setIowaitThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
-          <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>5%</span>
             <span>Aggressive</span>
             <span>Relaxed</span>
             <span>60%</span>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             Recommend moving guests when a node's IOWait exceeds this level
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          <div className="bg-red-900/30 border border-red-800 rounded-lg p-3">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
@@ -184,10 +184,10 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
           disabled={saving}
           className={`w-full px-4 py-2 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
             saved
-              ? 'bg-emerald-500 dark:bg-emerald-600'
+              ? 'bg-emerald-600'
               : saving
-                ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
-                : 'bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600'
+                ? 'bg-gray-600 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600'
           }`}
         >
           {saving ? (

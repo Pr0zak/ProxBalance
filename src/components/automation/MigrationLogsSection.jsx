@@ -18,10 +18,10 @@ export default function MigrationLogsSection({
         <div className={GLASS_CARD + ' overflow-hidden'}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
             <div className="flex items-center gap-2 min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration Logs & History</h2>
+              <h2 className="text-xl font-bold text-white">Migration Logs & History</h2>
               <span className="relative group inline-block">
-                <Info size={16} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
+                <Info size={16} className="text-gray-400 hover:text-blue-400 cursor-help" />
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
                   <div className="font-semibold mb-2 text-blue-400 border-b border-gray-700 pb-2">Migration Scoring System</div>
                   <div className="text-[11px] space-y-1">
                     <div className="text-gray-300">Migrations are scored using a penalty-based system:</div>
@@ -49,14 +49,14 @@ export default function MigrationLogsSection({
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
+          <div className="border-b border-slate-700 mb-4">
             <div className="flex gap-4">
               <button
                 onClick={() => setMigrationLogsTab('history')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   migrationLogsTab === 'history'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    ? 'border-blue-600 text-blue-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300'
                 }`}
               >
                 Migration History
@@ -65,8 +65,8 @@ export default function MigrationLogsSection({
                 onClick={() => setMigrationLogsTab('logs')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   migrationLogsTab === 'logs'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    ? 'border-blue-600 text-blue-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300'
                 }`}
               >
                 Script Logs
@@ -79,7 +79,7 @@ export default function MigrationLogsSection({
             <div>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
                 <div className="flex items-center gap-3 min-w-0 flex-wrap">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-gray-400">
                     {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0
                       ? `Showing ${((migrationHistoryPage - 1) * migrationHistoryPageSize) + 1}-${Math.min(migrationHistoryPage * migrationHistoryPageSize, automationStatus.recent_migrations.length)} of ${automationStatus.recent_migrations.length} migrations`
                       : 'No migrations'}
@@ -109,18 +109,18 @@ export default function MigrationLogsSection({
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
+                  <thead className="bg-slate-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Time</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">VM</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Migration</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Score</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Reason</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Duration</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Time</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">VM</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Migration</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Score</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Reason</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300">Duration</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="divide-y divide-gray-700">
                     {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 ? (
                       (() => {
                         const reversedMigrations = automationStatus.recent_migrations.slice().reverse();
@@ -146,20 +146,20 @@ export default function MigrationLogsSection({
                           : '-';
 
                         return (
-                          <tr key={migration.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                            <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                          <tr key={migration.id} className="hover:bg-gray-700/50">
+                            <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                               {timeDisplay}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              <div className="text-sm font-medium text-white">
                                 {migration.name}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                              <div className="text-xs text-gray-400">
                                 ID: {migration.vmid}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-xs">
-                              <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                              <div className="flex items-center gap-1 text-gray-400">
                                 <span className="font-mono">{migration.source_node}</span>
                                 <ArrowRight size={12} />
                                 <span className="font-mono">{migration.target_node}</span>
@@ -176,16 +176,16 @@ export default function MigrationLogsSection({
                                   return (
                                 <div className="flex items-center gap-1">
                                   <span className={`font-semibold ${
-                                    suitabilityPercent >= 70 ? 'text-green-600 dark:text-green-400' :
-                                    suitabilityPercent >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                    suitabilityPercent >= 30 ? 'text-orange-600 dark:text-orange-400' :
-                                    'text-red-600 dark:text-red-400'
+                                    suitabilityPercent >= 70 ? 'text-green-400' :
+                                    suitabilityPercent >= 50 ? 'text-yellow-400' :
+                                    suitabilityPercent >= 30 ? 'text-orange-400' :
+                                    'text-red-400'
                                   }`}>
                                     {suitabilityPercent}%
                                   </span>
                                   <span className="relative group inline-block">
-                                    <Info size={12} className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-help" />
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
+                                    <Info size={12} className="text-gray-400 hover:text-blue-400 cursor-help" />
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
                                       <div className="font-semibold mb-1 text-blue-400">Scoring Breakdown</div>
                                       <div className="text-[10px] space-y-0.5">
                                         <div>Target: {migration.target_node}</div>
@@ -215,7 +215,7 @@ export default function MigrationLogsSection({
                                 <span className="text-gray-400">N/A</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 max-w-xs">
+                            <td className="px-4 py-3 text-xs text-gray-400 max-w-xs">
                               <div className="truncate" title={migration.reason}>
                                 {migration.reason}
                               </div>
@@ -224,12 +224,12 @@ export default function MigrationLogsSection({
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-1 rounded text-xs font-semibold inline-flex items-center gap-1 ${
                                   migration.status === 'completed'
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                    ? 'bg-green-900/30 text-green-400'
                                     : migration.status === 'failed'
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    ? 'bg-red-900/30 text-red-400'
                                     : migration.status === 'timeout'
-                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                    ? 'bg-orange-900/30 text-orange-400'
+                                    : 'bg-gray-900/30 text-gray-400'
                                 }`}>
                                   {migration.status === 'completed' && <CheckCircle size={12} />}
                                   {migration.status === 'failed' && <XCircle size={12} />}
@@ -237,13 +237,13 @@ export default function MigrationLogsSection({
                                   {migration.status}
                                 </span>
                                 {migration.dry_run && (
-                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-900/30 text-yellow-400">
                                     DRY RUN
                                   </span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                            <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                               {durationDisplay}
                             </td>
                           </tr>
@@ -252,7 +252,7 @@ export default function MigrationLogsSection({
                       })()
                     ) : (
                       <tr>
-                        <td colSpan="7" className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <td colSpan="7" className="px-4 py-8 text-center text-sm text-gray-400">
                           No migration history available
                         </td>
                       </tr>
@@ -263,36 +263,36 @@ export default function MigrationLogsSection({
 
               {/* Pagination Controls */}
               {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
+                  <div className="text-sm text-gray-400">
                     Page {migrationHistoryPage} of {Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setMigrationHistoryPage(1)}
                       disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
                     >
                       First
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(migrationHistoryPage - 1)}
                       disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(migrationHistoryPage + 1)}
                       disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
                     >
                       Next
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize))}
                       disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300"
                     >
                       Last
                     </button>
@@ -306,7 +306,7 @@ export default function MigrationLogsSection({
           {migrationLogsTab === 'logs' && (
             <div>
               <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
-                <div className="text-xs text-gray-500 dark:text-gray-400 min-w-0">
+                <div className="text-xs text-gray-400 min-w-0">
                   {logRefreshTime && `Last updated: ${logRefreshTime}`}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -350,7 +350,7 @@ export default function MigrationLogsSection({
                   </button>
                 </div>
               </div>
-              <div className="bg-gray-900 dark:bg-black rounded border border-gray-700 p-4 max-h-96 overflow-y-auto">
+              <div className="bg-black rounded border border-gray-700 p-4 max-h-96 overflow-y-auto">
                 <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
                   {automigrateLogs || 'Click "Refresh" to load logs...'}
                 </pre>

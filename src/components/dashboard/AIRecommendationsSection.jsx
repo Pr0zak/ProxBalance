@@ -22,20 +22,20 @@ export default function AIRecommendationsSection({
                   <Activity size={ICON.section} className="text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">AI-Enhanced Recommendations</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-white">AI-Enhanced Recommendations</h2>
+                  <p className="text-sm text-gray-400 mt-0.5">AI-powered migration insights</p>
                 </div>
                 <button
                   onClick={() => toggleSection('aiRecommendations')}
-                  className="ml-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+                  className="ml-2 p-2 hover:bg-slate-700 rounded-xl transition-all duration-200"
                   title={collapsedSections.aiRecommendations ? "Expand section" : "Collapse section"}
                 >
-                  <ChevronDown size={ICON.section} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.aiRecommendations ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.aiRecommendations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Analysis Period:</label>
+                  <label className="text-sm font-medium text-gray-300">Analysis Period:</label>
                   <select
                     value={aiAnalysisPeriod}
                     onChange={(e) => setAiAnalysisPeriod(e.target.value)}
@@ -51,7 +51,7 @@ export default function AIRecommendationsSection({
                 <button
                   onClick={fetchAiRecommendations}
                   disabled={loadingAi}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:bg-gray-400"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
                 >
                   {loadingAi ? (
                     <>
@@ -71,7 +71,7 @@ export default function AIRecommendationsSection({
             {!collapsedSections.aiRecommendations && (
             <div className="transition-all duration-300 ease-in-out">
             {!aiRecommendations && !loadingAi && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <div className="text-center py-8 text-gray-400">
                 <Activity size={48} className="mx-auto mb-2" />
                 <p className="font-medium">AI Analysis Available</p>
                 <p className="text-sm">Click "Get AI Analysis" to receive AI-powered migration recommendations</p>
@@ -79,36 +79,36 @@ export default function AIRecommendationsSection({
             )}
 
             {aiRecommendations && !aiRecommendations.success && (
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded p-4">
-                <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+              <div className="bg-red-900/30 border border-red-800/50 rounded p-4">
+                <div className="flex items-center gap-2 text-red-200">
                   <AlertCircle size={20} />
                   <span className="font-medium">AI Analysis Error</span>
                 </div>
-                <p className="text-sm text-red-700 dark:text-red-300 mt-2">{aiRecommendations.error}</p>
+                <p className="text-sm text-red-300 mt-2">{aiRecommendations.error}</p>
               </div>
             )}
 
             {aiRecommendations && aiRecommendations.success && (
               <div className="space-y-4">
                 {aiRecommendations.analysis && (
-                  <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-4">
+                  <div className="bg-blue-900/30 border border-blue-800/50 rounded p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Activity size={20} className="text-blue-600 dark:text-blue-400" />
-                      <span className="font-medium text-blue-900 dark:text-blue-200">Cluster Analysis</span>
+                      <Activity size={20} className="text-blue-400" />
+                      <span className="font-medium text-blue-200">Cluster Analysis</span>
                     </div>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">{aiRecommendations.analysis}</p>
+                    <p className="text-sm text-blue-200">{aiRecommendations.analysis}</p>
                   </div>
                 )}
 
                 {aiRecommendations.predicted_issues && aiRecommendations.predicted_issues.length > 0 && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-4">
+                  <div className="bg-yellow-900/30 border border-yellow-800 rounded p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400" />
-                      <span className="font-medium text-yellow-900 dark:text-yellow-200">Predicted Issues</span>
+                      <AlertTriangle size={20} className="text-yellow-400" />
+                      <span className="font-medium text-yellow-200">Predicted Issues</span>
                     </div>
                     <div className="space-y-2">
                       {aiRecommendations.predicted_issues.map((issue, idx) => (
-                        <div key={idx} className="text-sm text-yellow-800 dark:text-yellow-200">
+                        <div key={idx} className="text-sm text-yellow-200">
                           <span className="font-medium">{issue.node}</span> - {issue.prediction}
                           <span className="ml-2 text-xs">({((issue.confidence || 0) * 100).toFixed(0)}% confidence)</span>
                         </div>
@@ -118,8 +118,8 @@ export default function AIRecommendationsSection({
                 )}
 
                 {aiRecommendations.recommendations && aiRecommendations.recommendations.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <CheckCircle size={48} className="mx-auto mb-2 text-green-500 dark:text-green-400" />
+                  <div className="text-center py-8 text-gray-400">
+                    <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
                     <p className="font-medium">No AI Recommendations</p>
                     <p className="text-sm">AI analysis found cluster is well-balanced</p>
                   </div>
@@ -134,19 +134,19 @@ export default function AIRecommendationsSection({
                       const isCompleted = completed !== undefined;
 
                       const priorityColors = {
-                        high: 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200',
-                        medium: 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200',
-                        low: 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200'
+                        high: 'bg-red-900/30 border-red-700 text-red-200',
+                        medium: 'bg-yellow-900/30 border-yellow-700 text-yellow-200',
+                        low: 'bg-green-900/30 border-green-700 text-green-200'
                       };
 
-                      const riskColor = rec.risk_score > 0.5 ? 'text-red-600 dark:text-red-400' :
-                                       rec.risk_score > 0.2 ? 'text-yellow-600 dark:text-yellow-400' :
-                                       'text-green-600 dark:text-green-400';
+                      const riskColor = rec.risk_score > 0.5 ? 'text-red-400' :
+                                       rec.risk_score > 0.2 ? 'text-yellow-400' :
+                                       'text-green-400';
 
                       return (
                         <div key={idx} className={`border rounded-lg p-4 transition-all duration-300 ${
                           isCompleted
-                            ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 opacity-75'
+                            ? 'border-green-700 bg-green-900/20 opacity-75'
                             : priorityColors[rec.priority] || priorityColors.medium
                         }`}>
                           <div className="flex items-start justify-between gap-4">
@@ -163,14 +163,14 @@ export default function AIRecommendationsSection({
                               </div>
 
                               <div className="text-sm mb-2">
-                                <span className="font-semibold text-red-700 dark:text-red-300">FROM:</span> {rec.source_node}
+                                <span className="font-semibold text-red-300">FROM:</span> {rec.source_node}
                                 <span className="mx-2">→</span>
-                                <span className="font-semibold text-green-700 dark:text-green-300">TO:</span> {rec.target_node}
+                                <span className="font-semibold text-green-300">TO:</span> {rec.target_node}
                               </div>
 
-                              <div className="bg-white dark:bg-gray-800 rounded p-3 mb-2">
+                              <div className="bg-slate-800 rounded p-3 mb-2">
                                 <div className="flex items-start gap-2 mb-1">
-                                  <Shield size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
+                                  <Shield size={16} className="text-blue-400 mt-0.5" />
                                   <div className="flex-1">
                                     <span className="font-semibold text-sm">AI Reasoning:</span>
                                     <p className="text-sm mt-1">{rec.reasoning}</p>
@@ -185,7 +185,7 @@ export default function AIRecommendationsSection({
                               </div>
 
                               {rec.estimated_impact && (
-                                <div className="bg-green-50 dark:bg-green-900/30 rounded p-2 text-xs">
+                                <div className="bg-green-900/30 rounded p-2 text-xs">
                                   <span className="font-semibold">Expected Impact:</span> {rec.estimated_impact}
                                 </div>
                               )}
@@ -196,7 +196,7 @@ export default function AIRecommendationsSection({
                                 // If migration is completed, show "Migrated" badge
                                 if (isCompleted) {
                                   return (
-                                    <div className="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded flex items-center gap-2">
+                                    <div className="px-4 py-2 bg-green-500 text-white rounded flex items-center gap-2">
                                       <CheckCircle size={16} />
                                       Migrated
                                     </div>
@@ -226,7 +226,7 @@ export default function AIRecommendationsSection({
                                   return (
                                     <button
                                       onClick={() => cancelMigration(rec.vmid, rec.target_node)}
-                                      className="px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 flex items-center gap-2 animate-pulse"
+                                      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
                                       title={tooltipText}
                                     >
                                       <RefreshCw size={16} className="animate-spin" />
@@ -272,7 +272,7 @@ export default function AIRecommendationsSection({
                                       });
                                     }}
                                     disabled={!canMigrate || status === 'running' || isMigrating}
-                                    className="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded hover:bg-purple-700 dark:hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                                     title={!canMigrate ? 'Read-only API token (PVEAuditor) - Cannot perform migrations' : isMigrating ? 'Migration in progress' : ''}
                                   >
                                     {!canMigrate ? (
