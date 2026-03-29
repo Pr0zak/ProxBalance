@@ -2,6 +2,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
+import TopNav from './components/TopNav.jsx';
 import IconLegend from './components/IconLegend.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr } from './utils/formatters.js';
@@ -21,7 +22,7 @@ import {
   Activity, Clock, HelpCircle
 } from './components/Icons.jsx';
 import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
-import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from './utils/designTokens.js';
+import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, PAGE_BG } from './utils/designTokens.js';
 import MobileTabBar from './components/MobileTabBar.jsx';
 
 const { useState, useEffect } = React;
@@ -231,9 +232,23 @@ const ProxmoxBalanceManager = () => {
     <IconLegend darkMode={darkMode} onClose={() => ui.setShowIconLegend(false)} />
   ) : null;
 
+  // Shared TopNav across all pages
+  const topNav = (
+    <TopNav
+      currentPage={ui.currentPage}
+      setCurrentPage={ui.setCurrentPage}
+      darkMode={darkMode}
+      toggleDarkMode={toggleDarkMode}
+      connected={!!cluster.data && !cluster.error}
+      lastUpdate={cluster.lastUpdate}
+      onRefresh={handleRefresh}
+      refreshing={cluster.loading}
+    />
+  );
+
   // Settings Page
   if (ui.currentPage === 'settings') {
-    return <>{iconLegendModal}<SettingsPage
+    return <div className={PAGE_BG}>{topNav}{iconLegendModal}<SettingsPage
       darkMode={darkMode} setDarkMode={setDarkMode}
       setCurrentPage={ui.setCurrentPage}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
@@ -273,12 +288,12 @@ const ProxmoxBalanceManager = () => {
       getTimezoneAbbr={getTimezoneAbbr}
     />
     {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-    </>;
+    </div>;
   }
 
   // Automation Settings Page
   if (ui.currentPage === 'automation') {
-    return <>{iconLegendModal}<AutomationPage
+    return <div className={PAGE_BG}>{topNav}{iconLegendModal}<AutomationPage
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
       automigrateLogs={automation.automigrateLogs}
@@ -338,39 +353,25 @@ const ProxmoxBalanceManager = () => {
       testResult={automation.testResult}
     />
     {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-    </>;
+    </div>;
   }
 
   // No data - show loading/error
   if (!cluster.data) {
     return (
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 min-h-screen p-4 pb-20 sm:pb-4">
+      <div className={PAGE_BG}>
+        {topNav}
         {iconLegendModal}
-        <div className="max-w-7xl mx-auto">
-          <div className={`flex items-center justify-between mb-6 ${GLASS_CARD}`}>
-            <div className="flex items-center gap-3">
-              <ProxBalanceLogo size={40} />
-              <h1 className="text-2xl"><span className="font-light text-gray-900 dark:text-gray-200">Prox</span><span className="font-extrabold text-blue-600 dark:text-blue-400">Balance</span></h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setDarkMode(!darkMode)} className={BTN_ICON} title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
-                {darkMode ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-gray-700" />}
-              </button>
-              <button onClick={() => ui.setCurrentPage('settings')} className={`${BTN_PRIMARY} !p-2`} title="Settings">
-                <Settings size={20} />
-              </button>
-            </div>
-          </div>
-
+        <div className="max-w-screen-2xl mx-auto p-4">
           {cluster.error && (
-            <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="mb-4 bg-red-900/20 border border-red-800/50 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle size={24} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-900 dark:text-red-200">Connection Error</h3>
-                  <p className="text-sm text-red-800 dark:text-red-300 mt-1">{cluster.error}</p>
-                  <button onClick={handleRefresh} disabled={cluster.loading} className="mt-3 px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                    <RefreshCw size={16} className={cluster.loading ? 'animate-spin' : ''} />
+                  <h3 className="text-base font-semibold text-red-200">Connection Error</h3>
+                  <p className="text-sm text-red-300/80 mt-1">{cluster.error}</p>
+                  <button onClick={handleRefresh} disabled={cluster.loading} className={`${BTN_DANGER} mt-3 flex items-center gap-2`}>
+                    <RefreshCw size={14} className={cluster.loading ? 'animate-spin' : ''} />
                     {cluster.loading ? 'Retrying...' : 'Retry'}
                   </button>
                 </div>
@@ -381,27 +382,24 @@ const ProxmoxBalanceManager = () => {
           {cluster.loading && !cluster.error && (
             <div className={`${GLASS_CARD} p-8 text-center`}>
               <div className="flex flex-col items-center gap-4">
-                <RefreshCw size={48} className="text-blue-600 dark:text-blue-400 animate-spin" />
+                <RefreshCw size={36} className="text-blue-400 animate-spin" />
                 <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-white">Loading cluster data...</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Please wait 30-60 seconds for initial data collection</p>
+                  <p className="text-base font-semibold text-white">Loading cluster data...</p>
+                  <p className="text-sm text-gray-400 mt-1">Please wait 30-60 seconds for initial data collection</p>
                 </div>
               </div>
             </div>
           )}
 
           {!cluster.loading && !cluster.error && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-8 text-center">
+            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-8 text-center">
               <div className="flex flex-col items-center gap-4">
-                <Info size={48} className="text-blue-600 dark:text-blue-400" />
+                <Info size={36} className="text-blue-400" />
                 <div>
-                  <p className="text-lg font-semibold text-blue-900 dark:text-blue-200">No Data Available</p>
-                  <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
-                    Waiting for cluster data collection. Please wait 30-60 seconds and refresh.
-                  </p>
-                  <button onClick={handleRefresh} className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2 mx-auto">
-                    <RefreshCw size={16} />
-                    Refresh
+                  <p className="text-base font-semibold text-blue-200">No Data Available</p>
+                  <p className="text-sm text-blue-300/70 mt-1">Waiting for cluster data collection. Please wait 30-60 seconds and refresh.</p>
+                  <button onClick={handleRefresh} className={`${BTN_PRIMARY} mt-4 flex items-center gap-2 mx-auto`}>
+                    <RefreshCw size={14} /> Refresh
                   </button>
                 </div>
               </div>
@@ -413,7 +411,7 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Dashboard Page
-  return <>{iconLegendModal}<DashboardPage
+  return <div className={PAGE_BG}>{topNav}{iconLegendModal}<DashboardPage
     data={cluster.data} setData={cluster.setData}
     loading={cluster.loading} error={cluster.error} setError={cluster.setError}
     config={configHook.config}
@@ -507,7 +505,7 @@ const ProxmoxBalanceManager = () => {
     API_BASE={API_BASE}
   />
   {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-  </>;
+  </div>;
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

@@ -1,9 +1,13 @@
 import {
   AlertCircle, Settings, X
 } from './Icons.jsx';
+import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
 const { useState } = React;
 
+import KpiRow from './dashboard/KpiRow.jsx';
+import NodeSummaryTable from './dashboard/NodeSummaryTable.jsx';
+import GuestFilterBar from './dashboard/GuestFilterBar.jsx';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -99,44 +103,51 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4 pb-20 sm:pb-4 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-4 pb-20 sm:pb-4 overflow-x-hidden">
+      <div className="max-w-screen-2xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
-          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-600 dark:border-red-400 p-4 rounded-r-lg shadow-lg">
+          <div className="mb-4 bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle size={24} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-red-900 dark:text-red-200 mb-1">
-                  API Token Authentication Failed
-                </h3>
-                <p className="text-sm text-red-800 dark:text-red-300 mb-3">
+                <h3 className="text-base font-bold text-red-200 mb-1">API Token Authentication Failed</h3>
+                <p className="text-sm text-red-300/80 mb-3">
                   ProxBalance cannot connect to the Proxmox API due to invalid or misconfigured token credentials.
-                  This prevents cluster data collection and monitoring.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={() => {
-                      setScrollToApiConfig(true);
-                      setCurrentPage('settings');
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded hover:bg-red-700 dark:hover:bg-red-600 font-medium"
-                  >
-                    <Settings size={16} />
-                    Fix Token Configuration
+                  <button onClick={() => { setScrollToApiConfig(true); setCurrentPage('settings'); }} className={`${BTN_DANGER} flex items-center gap-2`}>
+                    <Settings size={14} /> Fix Token Configuration
                   </button>
-                  <button
-                    onClick={() => setTokenAuthError(false)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                  >
-                    <X size={16} />
-                    Dismiss
+                  <button onClick={() => setTokenAuthError(false)} className={`${BTN_SECONDARY} flex items-center gap-2`}>
+                    <X size={14} /> Dismiss
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* NEW: KPI Summary Row */}
+        <KpiRow
+          data={data}
+          nodeScores={nodeScores}
+          automationStatus={automationStatus}
+          recommendations={recommendations}
+        />
+
+        {/* NEW: Node Summary Table */}
+        <NodeSummaryTable
+          data={data}
+          nodeScores={nodeScores}
+          onNodeClick={setSelectedNode}
+        />
+
+        {/* NEW: Guest Filter & Drill-down */}
+        <GuestFilterBar
+          data={data}
+          onGuestClick={setSelectedGuestDetails}
+        />
 
         <DashboardHeader
           data={data}
