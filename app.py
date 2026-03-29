@@ -8,6 +8,7 @@ proxbalance/routes/ as Flask Blueprints; core logic lives in
 proxbalance/ domain modules (scoring, recommendations, migrations, etc.).
 """
 
+import hmac
 import os
 import subprocess
 from flask import Flask, request, jsonify
@@ -31,8 +32,8 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 
 # CORS: restrict to configured origins, or same-origin only by default
 _startup_cfg = load_config()
-_allowed_origins = _startup_cfg.get('allowed_origins', []) if not _startup_cfg.get('error') else []
-CORS(app, origins=_allowed_origins)
+_cors_origins = _startup_cfg.get('cors_origins', []) if not _startup_cfg.get('error') else []
+CORS(app, origins=_cors_origins)
 Compress(app)
 
 
@@ -49,9 +50,14 @@ def _check_api_key():
     api_key = cfg.get('api_key', '') if not cfg.get('error') else ''
     if not api_key:
         return None
-    provided = request.headers.get('X-API-Key') or request.args.get('api_key')
-    if provided != api_key:
-        return jsonify({"error": True, "message": "Unauthorized — invalid or missing API key"}), 401
+    # Accept key via Authorization: Bearer <key> or X-API-Key header
+    provided = request.headers.get('X-API-Key', '')
+    if not provided:
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            provided = auth_header[7:]
+    if not provided or not hmac.compare_digest(provided, api_key):
+        return jsonify({"error": True, "message": "Invalid or missing API key"}), 401
     return None
 
 # ---------------------------------------------------------------------------
