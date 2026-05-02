@@ -231,7 +231,7 @@ export default function NodeSummaryTable({
     <div className={GLASS_CARD}>
       <button
         onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: !prev.nodeOverview }))}
-        className={`w-full flex items-center justify-between text-left ${collapsed ? '' : 'mb-3'} hover:opacity-80 transition-opacity`}
+        className="w-full flex items-center justify-between text-left mb-3 hover:opacity-80 transition-opacity"
       >
         <h2 className={TEXT_HEADING}>Nodes</h2>
         <ChevronDown
@@ -239,6 +239,44 @@ export default function NodeSummaryTable({
           className={`text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
         />
       </button>
+
+      {collapsed && (
+        <div className="flex flex-wrap gap-2">
+          {nodes.map(node => {
+            const isProblem = !node.online
+              || node.cpuPct >= 80
+              || node.memPct >= 80
+              || (node.score != null && node.score < 60);
+            const ringClass = isProblem ? 'ring-1 ring-red-500/40' : '';
+            return (
+              <button
+                key={node.name}
+                onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: false }))}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs hover:bg-slate-700/40 transition-colors focus:outline-none ${ringClass}`}
+                title={`${node.name} — click to expand`}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${node.online ? 'bg-green-400' : 'bg-red-400'}`} />
+                <span className="font-medium text-gray-200">{node.name}</span>
+                {node.online ? (
+                  <>
+                    <span className="text-gray-500">CPU</span>
+                    <span className={`tabular-nums ${metricTextColor(node.cpuPct)}`}>{Math.round(node.cpuPct)}%</span>
+                    <span className="text-gray-500">Mem</span>
+                    <span className={`tabular-nums ${metricTextColor(node.memPct)}`}>{Math.round(node.memPct)}%</span>
+                    {node.score != null && (
+                      <span className={`font-bold tabular-nums ${scoreColor(node.score)}`} title="Suitability score">
+                        {Math.round(node.score)}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-red-400">offline</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {!collapsed && (
         <>
