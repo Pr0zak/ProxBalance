@@ -7,7 +7,6 @@ const { useState } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import NodeSummaryTable from './dashboard/NodeSummaryTable.jsx';
-import GuestFilterBar from './dashboard/GuestFilterBar.jsx';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -134,19 +133,14 @@ export default function DashboardPage({
           recommendations={recommendations}
         />
 
-        {/* NEW: Node Summary Table */}
+        {/* Nodes table with embedded guest browser (per-row expand) */}
         <NodeSummaryTable
           data={data}
           nodeScores={nodeScores}
           onNodeClick={setSelectedNode}
+          onGuestClick={setSelectedGuestDetails}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
-        />
-
-        {/* NEW: Guest Filter & Drill-down */}
-        <GuestFilterBar
-          data={data}
-          onGuestClick={setSelectedGuestDetails}
         />
 
         {/* Automated Migrations Status */}
