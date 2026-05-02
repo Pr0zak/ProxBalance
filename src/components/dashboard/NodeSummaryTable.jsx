@@ -64,7 +64,7 @@ function formatMem(gb) {
   return `${(gb * 1024).toFixed(0)} MB`;
 }
 
-function GuestList({ guests, onGuestClick }) {
+export function GuestList({ guests, onGuestClick }) {
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
@@ -108,7 +108,9 @@ function GuestList({ guests, onGuestClick }) {
 
 export default function NodeSummaryTable({
   data, nodeScores, onNodeClick, onGuestClick,
-  collapsedSections, setCollapsedSections
+  collapsedSections, setCollapsedSections,
+  renderDrawer,
+  headerOverride,
 }) {
   const collapsed = collapsedSections?.nodeOverview;
   const [sortField, setSortField] = useState('name');
@@ -229,16 +231,18 @@ export default function NodeSummaryTable({
 
   return (
     <div className={GLASS_CARD}>
-      <button
-        onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: !prev.nodeOverview }))}
-        className="w-full flex items-center justify-between text-left mb-3 hover:opacity-80 transition-opacity"
-      >
-        <h2 className={TEXT_HEADING}>Nodes</h2>
-        <ChevronDown
-          size={ICON.section}
-          className={`text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
-        />
-      </button>
+      {headerOverride ?? (
+        <button
+          onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: !prev.nodeOverview }))}
+          className="w-full flex items-center justify-between text-left mb-3 hover:opacity-80 transition-opacity"
+        >
+          <h2 className={TEXT_HEADING}>Nodes</h2>
+          <ChevronDown
+            size={ICON.section}
+            className={`text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
+          />
+        </button>
+      )}
 
       {collapsed && (
         <div className="flex flex-wrap gap-2">
@@ -367,7 +371,10 @@ export default function NodeSummaryTable({
                       {isExpanded && (
                         <tr className="bg-slate-900/40">
                           <td colSpan={TOTAL_COLS} className="px-3 pb-3 pt-1">
-                            <GuestList guests={nodeGuests} onGuestClick={onGuestClick} />
+                            {renderDrawer
+                              ? renderDrawer({ node: node.raw, nodeName: node.name, guests: nodeGuests })
+                              : <GuestList guests={nodeGuests} onGuestClick={onGuestClick} />
+                            }
                           </td>
                         </tr>
                       )}
