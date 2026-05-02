@@ -24,6 +24,7 @@ export function useUIState() {
     const defaults = {
       clusterMap: false,
       maintenance: true,
+      nodeOverview: false,
       nodeStatus: true,
       recommendations: false,
       aiRecommendations: false,

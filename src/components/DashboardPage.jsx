@@ -139,6 +139,8 @@ export default function DashboardPage({
           data={data}
           nodeScores={nodeScores}
           onNodeClick={setSelectedNode}
+          collapsedSections={collapsedSections}
+          setCollapsedSections={setCollapsedSections}
         />
 
         {/* NEW: Guest Filter & Drill-down */}

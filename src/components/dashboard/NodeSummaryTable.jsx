@@ -1,6 +1,6 @@
 import {
   GLASS_CARD, TABLE_HEADER, TABLE_ROW, PROGRESS_BAR_BG,
-  metricColor, metricTextColor, scoreColor, TEXT_HEADING
+  metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON
 } from '../../utils/designTokens.js';
 import { ChevronDown } from '../Icons.jsx';
 
@@ -49,7 +49,8 @@ function formatUptime(seconds) {
   return `${hours}h ${mins}m`;
 }
 
-export default function NodeSummaryTable({ data, nodeScores, onNodeClick }) {
+export default function NodeSummaryTable({ data, nodeScores, onNodeClick, collapsedSections, setCollapsedSections }) {
+  const collapsed = collapsedSections?.nodeOverview;
   const [sortField, setSortField] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
 
@@ -124,7 +125,17 @@ export default function NodeSummaryTable({ data, nodeScores, onNodeClick }) {
 
   return (
     <div className={GLASS_CARD}>
-      <h2 className={`${TEXT_HEADING} mb-3`}>Node Overview</h2>
+      <button
+        onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: !prev.nodeOverview }))}
+        className={`w-full flex items-center justify-between text-left ${collapsed ? '' : 'mb-3'} hover:opacity-80 transition-opacity`}
+      >
+        <h2 className={TEXT_HEADING}>Node Overview</h2>
+        <ChevronDown
+          size={ICON.section}
+          className={`text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {!collapsed && (
       <div className="overflow-x-auto -mx-4 sm:-mx-5">
         <table className="w-full min-w-[700px]">
           <thead>
@@ -171,6 +182,7 @@ export default function NodeSummaryTable({ data, nodeScores, onNodeClick }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
