@@ -408,7 +408,13 @@ class NotificationManager:
         if not self.enabled or not self.providers:
             return False
 
-        if not self.notifications_config.get(f"on_{event_type}", True):
+        # Fall back to the per-event default from get_default_notifications_config()
+        # so a missing key behaves the same as the UI's unchecked state. Some
+        # events (e.g. resource_threshold, recommendations) default to False;
+        # using a blanket True here would fire them when the config omits the key.
+        flag_key = f"on_{event_type}"
+        default_flag = get_default_notifications_config().get(flag_key, True)
+        if not self.notifications_config.get(flag_key, default_flag):
             return False
 
         # Sub-filtering for action events by success/failure status
