@@ -3,10 +3,14 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import NodeSummaryTable from './dashboard/NodeSummaryTable.jsx';
+import LayoutPreviewPicker from './dashboard/LayoutPreviewPicker.jsx';
+import ClusterTabsA from './dashboard/preview/ClusterTabsA.jsx';
+import NodeCardStackB from './dashboard/preview/NodeCardStackB.jsx';
+import NodesWithTabbedDrawer from './dashboard/preview/NodesWithTabbedDrawer.jsx';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -18,6 +22,24 @@ import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
 import SystemModals from './dashboard/SystemModals.jsx';
+
+function ViewToggleC({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-1 mb-3 w-fit">
+      {['table', 'map'].map(v => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors capitalize ${
+            value === v ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function DashboardPage({
   // Data & loading
@@ -93,6 +115,13 @@ export default function DashboardPage({
 }) {
   // Dashboard Page - data is guaranteed to be available here
   const [showPredicted, setShowPredicted] = useState(false);
+
+  // Layout preview state (feat/cluster-overview-merge branch)
+  const [layoutPreview, setLayoutPreview] = useState(() => localStorage.getItem('dashboardLayoutPreview') || 'current');
+  useEffect(() => { localStorage.setItem('dashboardLayoutPreview', layoutPreview); }, [layoutPreview]);
+  const [previewCViewMode, setPreviewCViewMode] = useState(() => localStorage.getItem('previewCViewMode') || 'table');
+  useEffect(() => { localStorage.setItem('previewCViewMode', previewCViewMode); }, [previewCViewMode]);
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -133,15 +162,164 @@ export default function DashboardPage({
           recommendations={recommendations}
         />
 
-        {/* Nodes table with embedded guest browser (per-row expand) */}
-        <NodeSummaryTable
-          data={data}
-          nodeScores={nodeScores}
-          onNodeClick={setSelectedNode}
-          onGuestClick={setSelectedGuestDetails}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-        />
+        {/* PREVIEW: layout picker for feat/cluster-overview-merge */}
+        <LayoutPreviewPicker value={layoutPreview} onChange={setLayoutPreview} />
+
+        {/* Cluster sections block — variant chosen via picker above */}
+        {layoutPreview === 'current' && (
+          <>
+            <NodeSummaryTable
+              data={data}
+              nodeScores={nodeScores}
+              onNodeClick={setSelectedNode}
+              onGuestClick={setSelectedGuestDetails}
+              collapsedSections={collapsedSections}
+              setCollapsedSections={setCollapsedSections}
+            />
+            <ClusterMap
+              data={data}
+              collapsedSections={collapsedSections}
+              toggleSection={toggleSection}
+              showPoweredOffGuests={showPoweredOffGuests}
+              setShowPoweredOffGuests={setShowPoweredOffGuests}
+              clusterMapViewMode={clusterMapViewMode}
+              setClusterMapViewMode={setClusterMapViewMode}
+              maintenanceNodes={maintenanceNodes}
+              setSelectedNode={setSelectedNode}
+              setSelectedGuestDetails={setSelectedGuestDetails}
+              guestsMigrating={guestsMigrating}
+              migrationProgress={migrationProgress}
+              completedMigrations={completedMigrations}
+            />
+            <NodeStatusSection
+              data={data}
+              collapsedSections={collapsedSections}
+              toggleSection={toggleSection}
+              showPredicted={showPredicted}
+              setShowPredicted={setShowPredicted}
+              recommendationData={recommendationData}
+              recommendations={recommendations}
+              nodeGridColumns={nodeGridColumns}
+              setNodeGridColumns={setNodeGridColumns}
+              chartPeriod={chartPeriod}
+              setChartPeriod={setChartPeriod}
+              nodeScores={nodeScores}
+              generateSparkline={generateSparkline}
+              darkMode={darkMode}
+            />
+          </>
+        )}
+
+        {layoutPreview === 'A' && (
+          <ClusterTabsA
+            data={data}
+            nodeScores={nodeScores}
+            recommendationData={recommendationData}
+            recommendations={recommendations}
+            chartPeriod={chartPeriod}
+            setChartPeriod={setChartPeriod}
+            darkMode={darkMode}
+            generateSparkline={generateSparkline}
+            collapsedSections={collapsedSections}
+            setSelectedNode={setSelectedNode}
+            setSelectedGuestDetails={setSelectedGuestDetails}
+            showPoweredOffGuests={showPoweredOffGuests}
+            setShowPoweredOffGuests={setShowPoweredOffGuests}
+            clusterMapViewMode={clusterMapViewMode}
+            setClusterMapViewMode={setClusterMapViewMode}
+            maintenanceNodes={maintenanceNodes}
+            guestsMigrating={guestsMigrating}
+            migrationProgress={migrationProgress}
+            completedMigrations={completedMigrations}
+            showPredicted={showPredicted}
+            setShowPredicted={setShowPredicted}
+            nodeGridColumns={nodeGridColumns}
+            setNodeGridColumns={setNodeGridColumns}
+          />
+        )}
+
+        {layoutPreview === 'B' && (
+          <NodeCardStackB
+            data={data}
+            nodeScores={nodeScores}
+            recommendationData={recommendationData}
+            chartPeriod={chartPeriod}
+            darkMode={darkMode}
+            generateSparkline={generateSparkline}
+            setSelectedNode={setSelectedNode}
+            setSelectedGuestDetails={setSelectedGuestDetails}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+          />
+        )}
+
+        {layoutPreview === 'C' && (
+          <>
+            <ViewToggleC value={previewCViewMode} onChange={setPreviewCViewMode} />
+            {previewCViewMode === 'map' ? (
+              <ClusterMap
+                data={data}
+                collapsedSections={{ ...collapsedSections, clusterMap: false }}
+                toggleSection={() => {}}
+                showPoweredOffGuests={showPoweredOffGuests}
+                setShowPoweredOffGuests={setShowPoweredOffGuests}
+                clusterMapViewMode={clusterMapViewMode}
+                setClusterMapViewMode={setClusterMapViewMode}
+                maintenanceNodes={maintenanceNodes}
+                setSelectedNode={setSelectedNode}
+                setSelectedGuestDetails={setSelectedGuestDetails}
+                guestsMigrating={guestsMigrating}
+                migrationProgress={migrationProgress}
+                completedMigrations={completedMigrations}
+              />
+            ) : (
+              <NodesWithTabbedDrawer
+                data={data}
+                nodeScores={nodeScores}
+                recommendationData={recommendationData}
+                chartPeriod={chartPeriod}
+                darkMode={darkMode}
+                generateSparkline={generateSparkline}
+                setSelectedNode={setSelectedNode}
+                setSelectedGuestDetails={setSelectedGuestDetails}
+                collapsedSections={collapsedSections}
+                setCollapsedSections={setCollapsedSections}
+              />
+            )}
+          </>
+        )}
+
+        {layoutPreview === 'D' && (
+          <>
+            <ClusterMap
+              data={data}
+              collapsedSections={collapsedSections}
+              toggleSection={toggleSection}
+              showPoweredOffGuests={showPoweredOffGuests}
+              setShowPoweredOffGuests={setShowPoweredOffGuests}
+              clusterMapViewMode={clusterMapViewMode}
+              setClusterMapViewMode={setClusterMapViewMode}
+              maintenanceNodes={maintenanceNodes}
+              setSelectedNode={setSelectedNode}
+              setSelectedGuestDetails={setSelectedGuestDetails}
+              guestsMigrating={guestsMigrating}
+              migrationProgress={migrationProgress}
+              completedMigrations={completedMigrations}
+            />
+            <NodesWithTabbedDrawer
+              data={data}
+              nodeScores={nodeScores}
+              recommendationData={recommendationData}
+              chartPeriod={chartPeriod}
+              darkMode={darkMode}
+              generateSparkline={generateSparkline}
+              setSelectedNode={setSelectedNode}
+              setSelectedGuestDetails={setSelectedGuestDetails}
+              collapsedSections={collapsedSections}
+              setCollapsedSections={setCollapsedSections}
+            />
+          </>
+        )}
 
         {/* Automated Migrations Status */}
         <AutomationStatusSection
@@ -186,22 +364,6 @@ export default function DashboardPage({
           excludeGuests={excludeGuests}
           affinityGuests={affinityGuests}
           autoMigrateOkGuests={autoMigrateOkGuests}
-        />
-
-        <ClusterMap
-          data={data}
-          collapsedSections={collapsedSections}
-          toggleSection={toggleSection}
-          showPoweredOffGuests={showPoweredOffGuests}
-          setShowPoweredOffGuests={setShowPoweredOffGuests}
-          clusterMapViewMode={clusterMapViewMode}
-          setClusterMapViewMode={setClusterMapViewMode}
-          maintenanceNodes={maintenanceNodes}
-          setSelectedNode={setSelectedNode}
-          setSelectedGuestDetails={setSelectedGuestDetails}
-          guestsMigrating={guestsMigrating}
-          migrationProgress={migrationProgress}
-          completedMigrations={completedMigrations}
         />
 
         <NodeDetailsModal
@@ -253,23 +415,6 @@ export default function DashboardPage({
           fetchGuestLocations={fetchGuestLocations}
           setError={setError}
           API_BASE={API_BASE}
-        />
-
-        <NodeStatusSection
-          data={data}
-          collapsedSections={collapsedSections}
-          toggleSection={toggleSection}
-          showPredicted={showPredicted}
-          setShowPredicted={setShowPredicted}
-          recommendationData={recommendationData}
-          recommendations={recommendations}
-          nodeGridColumns={nodeGridColumns}
-          setNodeGridColumns={setNodeGridColumns}
-          chartPeriod={chartPeriod}
-          setChartPeriod={setChartPeriod}
-          nodeScores={nodeScores}
-          generateSparkline={generateSparkline}
-          darkMode={darkMode}
         />
 
         <MigrationRecommendationsSection
