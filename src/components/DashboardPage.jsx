@@ -106,6 +106,8 @@ export default function DashboardPage({
   guestSortDirection, setGuestSortDirection,
   // Guest modal collapsed state
   guestModalCollapsed, setGuestModalCollapsed,
+  // Chart.js lazy loader
+  loadChartJs, chartJsLoaded,
   // Helper functions
   checkAffinityViolations, generateSparkline, fetchGuestLocations,
   // Guest migration options
@@ -235,6 +237,8 @@ export default function DashboardPage({
             setShowPredicted={setShowPredicted}
             nodeGridColumns={nodeGridColumns}
             setNodeGridColumns={setNodeGridColumns}
+            loadChartJs={loadChartJs}
+            chartJsLoaded={chartJsLoaded}
           />
         )}
 
