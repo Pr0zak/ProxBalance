@@ -482,6 +482,7 @@ const ProxmoxBalanceManager = () => {
     nodeGridColumns={ui.nodeGridColumns} setNodeGridColumns={ui.setNodeGridColumns}
     chartPeriod={cluster.chartPeriod} setChartPeriod={cluster.setChartPeriod}
     nodeScores={cluster.nodeScores}
+    loadChartJs={cluster.loadChartJs} chartJsLoaded={cluster.chartJsLoaded}
     guestProfiles={cluster.guestProfiles}
     scoreHistory={cluster.scoreHistory}
     maintenanceNodes={evacuation.maintenanceNodes} setMaintenanceNodes={evacuation.setMaintenanceNodes}

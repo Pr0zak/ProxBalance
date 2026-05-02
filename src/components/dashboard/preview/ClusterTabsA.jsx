@@ -3,7 +3,7 @@ import NodeSummaryTable from '../NodeSummaryTable.jsx';
 import ClusterMap from '../ClusterMap.jsx';
 import NodeStatusSection from '../NodeStatusSection.jsx';
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
 const TABS = [
   { id: 'table', label: 'Table' },
@@ -23,6 +23,13 @@ export default function ClusterTabsA(props) {
     setActiveTab(id);
     localStorage.setItem('previewClusterTabsA', id);
   };
+
+  // Lazy-load Chart.js when Charts tab becomes active (mirrors index.jsx behavior).
+  useEffect(() => {
+    if (activeTab === 'charts' && props.loadChartJs && !props.chartJsLoaded) {
+      props.loadChartJs();
+    }
+  }, [activeTab, props.chartJsLoaded]);
 
   return (
     <div className={GLASS_CARD}>
