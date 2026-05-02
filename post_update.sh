@@ -32,7 +32,7 @@ fi
 if [ -f index.html ] && grep -q 'type="text/babel"' index.html; then
   echo "  ⚠  Legacy inline JSX detected - upgrading to pre-compiled architecture"
   NEEDS_BUILD=true
-elif [ -f src/app.jsx ]; then
+elif [ -f src/index.jsx ] || [ -f src/app.jsx ]; then
   echo "  ✓ Pre-compiled architecture detected - rebuilding"
   NEEDS_BUILD=true
 else
