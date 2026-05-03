@@ -1,8 +1,24 @@
-import { GLASS_CARD, INNER_CARD, iconBadge, ICON } from '../../utils/designTokens.js';
-import { ClipboardList, CheckCircle, XCircle, MinusCircle, ChevronDown } from '../Icons.jsx';
+import { GLASS_CARD, INNER_CARD, iconBadge, ICON, MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import { ClipboardList, CheckCircle, XCircle, MinusCircle, ChevronDown, X } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
+import RunDetailBlock from './RunDetailBlock.jsx';
 
 const { useState } = React;
+
+function DetailModal({ run, onClose }) {
+  if (!run) return null;
+  return (
+    <div className={MODAL_OVERLAY} onClick={onClose}>
+      <div className={`${MODAL_CONTAINER} max-w-3xl`} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">Run details</h3>
+          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-200"><X size={18} /></button>
+        </div>
+        <RunDetailBlock run={run} />
+      </div>
+    </div>
+  );
+}
 
 const STATUS_LABEL = {
   success: 'Success',
@@ -54,7 +70,8 @@ function HeaderRow({ count }) {
 }
 
 // ── Variant 1: Timeline strip ──────────────────────────────────────────────
-function TimelineVariant({ runHistory }) {
+function TimelineVariant({ runHistory, lastRun }) {
+  const [selected, setSelected] = useState(null);
   if (!runHistory || runHistory.length === 0) return <EmptyState />;
   const visible = runHistory.slice(0, 30);
   return (
@@ -63,8 +80,9 @@ function TimelineVariant({ runHistory }) {
         {visible.slice().reverse().map((run, i) => (
           <button
             key={i}
-            title={`${formatRelativeTime(run.timestamp)} · ${STATUS_LABEL[run.status] || run.status} · ${run.migrations_successful || 0}/${run.migrations_executed || 0} migrations · ${fmtDuration(run.duration_seconds)}`}
-            className={`w-3 h-3 rounded-full ${STATUS_DOT[run.status] || 'bg-gray-500'} hover:scale-125 transition-transform shadow`}
+            onClick={() => setSelected(run)}
+            title={`${formatRelativeTime(run.timestamp)} · ${STATUS_LABEL[run.status] || run.status} · ${run.migrations_successful || 0}/${run.migrations_executed || 0} migrations · click for details`}
+            className={`w-3 h-3 rounded-full ${STATUS_DOT[run.status] || 'bg-gray-500'} hover:scale-150 transition-transform shadow cursor-pointer`}
           />
         ))}
       </div>
@@ -77,7 +95,15 @@ function TimelineVariant({ runHistory }) {
         <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 mr-1" />partial</span>
         <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 mr-1" />failed</span>
         <span><span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mr-1" />balanced</span>
+        <span className="ml-auto text-gray-500">click any dot for full detail</span>
       </div>
+      {lastRun && typeof lastRun === 'object' && (
+        <div className="mt-4 pt-4 border-t border-slate-700/50">
+          <div className="text-xs font-semibold text-gray-300 mb-2">Most recent run</div>
+          <RunDetailBlock run={lastRun} compact />
+        </div>
+      )}
+      <DetailModal run={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
@@ -105,27 +131,8 @@ function TwoPaneVariant({ runHistory }) {
           </button>
         ))}
       </div>
-      <div className="md:col-span-2 bg-slate-800/60 border border-slate-700/50 rounded-lg p-4">
-        {sel ? (
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className={`text-base font-bold ${STATUS_COLOR[sel.status]}`}>{STATUS_LABEL[sel.status] || sel.status}</div>
-                <div className="text-[11px] text-gray-500">{formatRelativeTime(sel.timestamp)}</div>
-              </div>
-              <div className="text-xs text-gray-400">
-                {sel.mode === 'dry_run' ? 'Dry Run' : 'Live'} · {fmtDuration(sel.duration_seconds)}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="bg-slate-900/40 rounded p-2"><div className="text-gray-500 text-[10px]">Successful</div><div className="font-bold text-green-400">{sel.migrations_successful || 0}</div></div>
-              <div className="bg-slate-900/40 rounded p-2"><div className="text-gray-500 text-[10px]">Executed</div><div className="font-bold text-white">{sel.migrations_executed || 0}</div></div>
-              <div className="bg-slate-900/40 rounded p-2"><div className="text-gray-500 text-[10px]">Decisions</div><div className="font-bold text-white">{sel.decisions?.length || 0}</div></div>
-            </div>
-          </>
-        ) : (
-          <div className="text-sm text-gray-500">Select a run</div>
-        )}
+      <div className="md:col-span-2 bg-slate-800/60 border border-slate-700/50 rounded-lg p-4 max-h-[480px] overflow-y-auto">
+        {sel ? <RunDetailBlock run={sel} /> : <div className="text-sm text-gray-500">Select a run</div>}
       </div>
     </div>
   );
@@ -134,6 +141,7 @@ function TwoPaneVariant({ runHistory }) {
 // ── Variant 3: Result card + collapsed list ────────────────────────────────
 function ResultCardVariant({ runHistory, lastRun }) {
   const [showAll, setShowAll] = useState(false);
+  const [selected, setSelected] = useState(null);
   const hasLast = lastRun && typeof lastRun === 'object';
   if (!hasLast && (!runHistory || runHistory.length === 0)) return <EmptyState />;
   const olderRuns = runHistory ? runHistory.slice(hasLast ? 1 : 0) : [];
@@ -142,7 +150,7 @@ function ResultCardVariant({ runHistory, lastRun }) {
     <div className="space-y-3">
       {hasLast && (
         <div className="bg-slate-800/80 border-2 border-slate-700/80 rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <div className="text-[11px] text-gray-500 uppercase tracking-wider">Last Run</div>
               <div className={`text-2xl font-bold ${STATUS_COLOR[lastRun.status] || 'text-gray-400'}`}>
@@ -157,11 +165,7 @@ function ResultCardVariant({ runHistory, lastRun }) {
               <div className="text-[11px] text-gray-500">migrations succeeded</div>
             </div>
           </div>
-          {lastRun.status === 'no_action' && (
-            <div className="flex items-center gap-2 text-xs text-green-300 bg-green-900/20 border border-green-800/40 rounded px-2 py-1.5">
-              <CheckCircle size={14} /> Cluster balanced — no action needed.
-            </div>
-          )}
+          <RunDetailBlock run={lastRun} compact />
         </div>
       )}
       {olderRuns.length > 0 && (
@@ -174,13 +178,18 @@ function ResultCardVariant({ runHistory, lastRun }) {
         </button>
       )}
       {showAll && olderRuns.map((r, i) => (
-        <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs">
+        <button
+          key={i}
+          onClick={() => setSelected(r)}
+          className="w-full text-left bg-slate-800/40 border border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-slate-700/40 transition-colors"
+        >
           <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[r.status] || 'bg-gray-500'}`} />
           <span className="text-gray-300">{formatRelativeTime(r.timestamp)}</span>
           <span className={`text-[10px] ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] || r.status}</span>
-          <span className="ml-auto text-gray-500 tabular-nums">{r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)}</span>
-        </div>
+          <span className="ml-auto text-gray-500 tabular-nums">{r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)} · click for detail</span>
+        </button>
       ))}
+      <DetailModal run={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
@@ -232,12 +241,38 @@ function StatSparklineVariant({ runHistory, lastRun }) {
           <polyline fill="none" stroke="currentColor" strokeWidth="2" points={points} />
         </svg>
       </div>
-      {lastRun && (
-        <div className="text-xs text-gray-400">
-          Last run: <span className={STATUS_COLOR[lastRun.status]}>{STATUS_LABEL[lastRun.status] || lastRun.status}</span>
-          {' · '}{formatRelativeTime(lastRun.timestamp)}
+      {lastRun && typeof lastRun === 'object' && (
+        <div className="pt-3 border-t border-slate-700/50">
+          <div className="text-xs font-semibold text-gray-300 mb-2">Last run</div>
+          <RunDetailBlock run={lastRun} compact />
         </div>
       )}
+      <RunListWithModal runs={runHistory.slice(0, 20)} />
+    </div>
+  );
+}
+
+function RunListWithModal({ runs }) {
+  const [selected, setSelected] = useState(null);
+  if (!runs || runs.length === 0) return null;
+  return (
+    <div className="pt-3 border-t border-slate-700/50">
+      <div className="text-xs font-semibold text-gray-300 mb-2">All runs (click for detail)</div>
+      <div className="space-y-1 max-h-48 overflow-y-auto">
+        {runs.map((r, i) => (
+          <button
+            key={i}
+            onClick={() => setSelected(r)}
+            className="w-full text-left bg-slate-800/40 border border-slate-700/50 rounded p-1.5 flex items-center gap-2 text-xs hover:bg-slate-700/40 transition-colors"
+          >
+            <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[r.status] || 'bg-gray-500'}`} />
+            <span className="text-gray-300">{formatRelativeTime(r.timestamp)}</span>
+            <span className={`text-[10px] ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] || r.status}</span>
+            <span className="ml-auto text-gray-500 tabular-nums">{r.migrations_successful || 0}/{r.migrations_executed || 0}</span>
+          </button>
+        ))}
+      </div>
+      <DetailModal run={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
