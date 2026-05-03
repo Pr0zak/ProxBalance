@@ -217,11 +217,13 @@ export default function GuestsTable({
           <tbody>
             {sorted.map((g, idx) => {
               const memPct = memPercent(g);
+              const hasRec = !!guestRecMap?.[String(g.vmid)];
+              const rowBg = hasRec ? 'bg-orange-900/15' : (idx % 2 === 1 ? 'bg-slate-700/30' : '');
               return (
                 <tr
                   key={g.vmid}
                   onClick={() => onGuestClick?.(g)}
-                  className={`${TABLE_ROW} ${idx % 2 === 1 ? 'bg-slate-700/30' : ''} cursor-pointer`}
+                  className={`${TABLE_ROW} ${rowBg} cursor-pointer`}
                 >
                   <td className="p-3">
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
