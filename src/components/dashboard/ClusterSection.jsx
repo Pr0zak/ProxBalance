@@ -20,11 +20,8 @@ const BASE_TABS = [
  * header — its toolbar controls remain).
  */
 export default function ClusterSection(props) {
-  const recsTab = props.recsTab; // when truthy, render Recommendations as 5th tab
   const recCount = Array.isArray(props.recommendations) ? props.recommendations.length : 0;
-  const TABS = recsTab
-    ? [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }]
-    : BASE_TABS;
+  const TABS = [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }];
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('clusterSectionTab') || 'table';
