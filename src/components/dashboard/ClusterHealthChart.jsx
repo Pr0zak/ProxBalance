@@ -23,39 +23,40 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
     localStorage.setItem('clusterHealthChartPeriod', id);
   };
 
-  if (!scoreHistory || scoreHistory.length < 2) return null;
-
-  const allPoints = scoreHistory
+  const allPoints = (scoreHistory || [])
     .map(e => ({ t: new Date(e.timestamp).getTime(), v: e.cluster_health }))
     .filter(p => typeof p.v === 'number' && !isNaN(p.t));
-  if (allPoints.length < 2) return null;
 
-  // Anchor the period to the latest sample so a stale collector doesn't blank the chart.
-  const latestT = allPoints[allPoints.length - 1].t;
+  const allMigTs = (migrationHistory || [])
+    .map(m => new Date(m.timestamp).getTime())
+    .filter(t => !isNaN(t));
+
+  if (allPoints.length === 0 && allMigTs.length === 0) return null;
+
+  // Anchor the period to the latest known event so collector gaps don't blank the chart.
+  const latestT = Math.max(
+    allPoints.length ? allPoints[allPoints.length - 1].t : 0,
+    allMigTs.length ? Math.max(...allMigTs) : 0,
+    Date.now()
+  );
+  const earliestT = Math.min(
+    allPoints.length ? allPoints[0].t : Infinity,
+    allMigTs.length ? Math.min(...allMigTs) : Infinity
+  );
   const periodCfg = PERIODS.find(p => p.id === period) || PERIODS[2];
-  const cutoff = periodCfg.ms == null ? -Infinity : latestT - periodCfg.ms;
-  const points = allPoints.filter(p => p.t >= cutoff);
 
-  if (points.length < 2) {
-    return (
-      <div className={`${GLASS_CARD} mb-3`}>
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <h3 className="text-base font-bold text-white">Cluster Health Over Time</h3>
-          <PeriodPills value={period} onChange={setPeriodPersisted} />
-        </div>
-        <div className="text-sm text-gray-500 italic py-6 text-center">
-          Not enough data in the last {periodCfg.label} — pick a wider range.
-        </div>
-      </div>
-    );
-  }
+  // Window covers the chosen period (or the full data range for 'all'). The
+  // cluster_health line draws wherever scoreHistory has data; migration markers
+  // plot anywhere in this window. Mismatched data ranges no longer hide markers.
+  const tStart = periodCfg.ms == null ? earliestT : (latestT - periodCfg.ms);
+  const tEnd = latestT;
+  const tRange = (tEnd - tStart) || 1;
+
+  const points = allPoints.filter(p => p.t >= tStart && p.t <= tEnd);
 
   const w = 600, h = 80, pad = 4;
-  const tStart = points[0].t;
-  const tEnd = points[points.length - 1].t;
-  const tRange = (tEnd - tStart) || 1;
-  const min = Math.min(...points.map(p => p.v));
-  const max = Math.max(...points.map(p => p.v));
+  const min = points.length > 0 ? Math.min(...points.map(p => p.v)) : 0;
+  const max = points.length > 0 ? Math.max(...points.map(p => p.v)) : 100;
   const range = (max - min) || 1;
 
   const xFor = (t) => pad + ((t - tStart) / tRange) * (w - 2 * pad);
@@ -63,9 +64,12 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
 
   const coords = points.map(p => `${xFor(p.t).toFixed(2)},${yFor(p.v).toFixed(2)}`);
   const linePoints = coords.join(' ');
-  const areaPoints = `${pad},${h - pad} ${linePoints} ${w - pad},${h - pad}`;
-  const latest = points[points.length - 1].v;
-  const trend = latest - points[0].v;
+  const hasLine = points.length >= 2;
+  const areaPoints = hasLine
+    ? `${xFor(points[0].t).toFixed(2)},${h - pad} ${linePoints} ${xFor(points[points.length-1].t).toFixed(2)},${h - pad}`
+    : '';
+  const latest = points.length > 0 ? points[points.length - 1].v : null;
+  const trend = points.length > 1 ? (latest - points[0].v) : null;
 
   // Per-migration markers (from migration_history) within the selected period.
   const markers = (migrationHistory || [])
@@ -98,12 +102,16 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-bold text-white tabular-nums">{latest.toFixed(1)}</span>
-            <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
-            </span>
-          </div>
+          {latest != null && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-bold text-white tabular-nums">{latest.toFixed(1)}</span>
+              {trend != null && (
+                <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
+                </span>
+              )}
+            </div>
+          )}
           <PeriodPills value={period} onChange={setPeriodPersisted} />
         </div>
       </div>
@@ -114,8 +122,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
             <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <polygon points={areaPoints} fill="url(#clusterHealthGrad)" />
-        <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+        {hasLine && <polygon points={areaPoints} fill="url(#clusterHealthGrad)" />}
+        {hasLine && <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />}
+        {!hasLine && (
+          <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No cluster_health samples in this period</text>
+        )}
         {markers.map((m, i) => (
           <g key={i}>
             <line x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-slate-600/40" strokeWidth="0.5" strokeDasharray="2,2" />
