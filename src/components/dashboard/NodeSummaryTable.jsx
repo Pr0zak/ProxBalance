@@ -431,13 +431,13 @@ export default function NodeSummaryTable({
                 </tr>
               </thead>
               <tbody>
-                {nodes.map((node, idx) => {
+                {nodes.map(node => {
                   const isExpanded = effectiveExpanded.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
                   return (
                     <React.Fragment key={node.name}>
                       <tr
-                        className={`${TABLE_ROW} ${idx % 2 === 1 ? 'bg-slate-700/30' : ''} cursor-pointer`}
+                        className={`${TABLE_ROW} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
                         <td className="p-3 w-8">
