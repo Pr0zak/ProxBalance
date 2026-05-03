@@ -387,8 +387,8 @@ const ProxmoxBalanceManager = () => {
               <div className="flex flex-col items-center gap-4">
                 <RefreshCw size={36} className="text-blue-400 animate-spin" />
                 <div>
-                  <p className="text-base font-semibold text-claude-text dark:text-white">Loading cluster data...</p>
-                  <p className="text-sm text-claude-muted dark:text-gray-400 mt-1">Please wait 30-60 seconds for initial data collection</p>
+                  <p className="text-base font-semibold text-pb-text dark:text-white">Loading cluster data...</p>
+                  <p className="text-sm text-pb-text2 dark:text-gray-400 mt-1">Please wait 30-60 seconds for initial data collection</p>
                 </div>
               </div>
             </div>

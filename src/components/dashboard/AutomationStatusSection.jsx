@@ -47,11 +47,11 @@ export default function AutomationStatusSection({
                     ? iconBadge('green', 'emerald')
                     : iconBadge('gray')
                 }>
-                  <Clock size={ICON.section} className="text-claude-text dark:text-white" />
+                  <Clock size={ICON.section} className="text-pb-text dark:text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-2xl font-bold text-claude-text dark:text-white truncate">Automated Migrations</h2>
-                  <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg sm:text-2xl font-bold text-pb-text dark:text-white truncate">Automated Migrations</h2>
+                  <p className="text-sm text-pb-text2 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
                     <span>Scheduled automatic balancing</span>
                     {automationStatus.state?.current_window && (
                       <span className="text-xs px-1.5 py-0.5 bg-gray-600 rounded">
@@ -59,7 +59,7 @@ export default function AutomationStatusSection({
                       </span>
                     )}
                     {automationStatus.state?.last_run && (
-                      <span className="text-xs text-claude-muted dark:text-gray-500">
+                      <span className="text-xs text-pb-text2 dark:text-gray-500">
                         Last: {(() => {
                           let ts = typeof automationStatus.state.last_run === 'object' ? automationStatus.state.last_run.timestamp : automationStatus.state.last_run;
                           return formatRelativeTime(ts) || 'Never';
@@ -70,16 +70,16 @@ export default function AutomationStatusSection({
                 </div>
                 <button
                   onClick={() => toggleSection('automatedMigrations')}
-                  className="ml-2 p-2 hover:bg-claude-surface2 dark:hover:bg-slate-700 rounded-lg transition-all duration-200"
+                  className="ml-2 p-2 hover:bg-pb-surface2 dark:hover:bg-slate-700 rounded-lg transition-all duration-200"
                   title={collapsedSections.automatedMigrations ? "Expand section" : "Collapse section"}
                 >
-                  <ChevronDown size={ICON.section} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.automatedMigrations ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.section} className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.automatedMigrations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </div>
             {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
               <div className="mb-3">
-                <span className="inline-block px-3 py-1.5 bg-claude-surface dark:bg-slate-800 rounded-lg border border-yellow-800 text-sm font-bold text-yellow-300">DRY RUN MODE</span>
+                <span className="inline-block px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-yellow-800 text-sm font-bold text-yellow-300">DRY RUN MODE</span>
               </div>
             )}
 
@@ -107,10 +107,10 @@ export default function AutomationStatusSection({
                   disabled={!automationStatus.enabled}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2 ${
                     !automationStatus.enabled
-                      ? 'bg-claude-surface dark:bg-slate-800 border-claude-border dark:border-slate-700 text-claude-muted dark:text-gray-500 cursor-not-allowed'
+                      ? 'bg-white dark:bg-slate-800 border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-500 cursor-not-allowed'
                       : automationStatus.timer_active
-                      ? 'bg-claude-surface dark:bg-slate-800 border-green-700 text-green-300 hover:bg-claude-surface2 dark:hover:bg-slate-700 cursor-pointer'
-                      : 'bg-claude-surface dark:bg-slate-800 border-yellow-700 text-yellow-300 hover:bg-claude-surface2 dark:hover:bg-slate-700 cursor-pointer'
+                      ? 'bg-white dark:bg-slate-800 border-green-700 text-green-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
+                      : 'bg-white dark:bg-slate-800 border-yellow-700 text-yellow-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
                   }`}
                   title={
                     !automationStatus.enabled
@@ -140,7 +140,7 @@ export default function AutomationStatusSection({
                 {/* Configure Button */}
                 <button
                   onClick={() => setCurrentPage('automation')}
-                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-claude-text dark:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
                   title="Configure Automation"
                 >
                   <Settings size={16} />
@@ -154,8 +154,8 @@ export default function AutomationStatusSection({
                   disabled={!automationStatus.enabled || runningAutomation}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 sm:gap-2 ${
                     automationStatus.enabled && !runningAutomation
-                      ? 'bg-green-600 hover:bg-green-700 text-claude-text dark:text-white'
-                      : 'bg-gray-600 text-claude-muted dark:text-gray-400 cursor-not-allowed'
+                      ? 'bg-green-600 hover:bg-green-700 text-pb-text dark:text-white'
+                      : 'bg-gray-600 text-pb-text2 dark:text-gray-400 cursor-not-allowed'
                   }`}
                   title={!automationStatus.enabled ? "Enable automation first" : runningAutomation ? "Running..." : "Run automation check now"}
                 >
@@ -185,11 +185,11 @@ export default function AutomationStatusSection({
                   if (automationStatus.next_check) {
                     const ts = automationStatus.next_check.endsWith?.('Z') ? automationStatus.next_check : automationStatus.next_check + 'Z';
                     const diffMins = Math.floor((new Date(ts) - new Date()) / 60000);
-                    if (diffMins > 0) return <span className="text-xs text-claude-muted dark:text-gray-400">Next: {diffMins}m</span>;
+                    if (diffMins > 0) return <span className="text-xs text-pb-text2 dark:text-gray-400">Next: {diffMins}m</span>;
                     return <span className="text-xs text-green-400 font-semibold">Next: Now</span>;
                   }
                   if (automationStatus.check_interval_minutes) {
-                    return <span className="text-xs text-claude-muted dark:text-gray-400">Every {automationStatus.check_interval_minutes}m</span>;
+                    return <span className="text-xs text-pb-text2 dark:text-gray-400">Every {automationStatus.check_interval_minutes}m</span>;
                   }
                   return null;
                 })()}
@@ -201,10 +201,10 @@ export default function AutomationStatusSection({
             {runNowMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${
                 runNowMessage.type === 'success'
-                  ? 'bg-claude-surface dark:bg-slate-800 border border-green-700 text-green-300'
+                  ? 'bg-white dark:bg-slate-800 border border-green-700 text-green-300'
                   : runNowMessage.type === 'info'
-                  ? 'bg-claude-surface dark:bg-slate-800 border border-blue-700 text-blue-300'
-                  : 'bg-claude-surface dark:bg-slate-800 border border-red-700 text-red-300'
+                  ? 'bg-white dark:bg-slate-800 border border-blue-700 text-blue-300'
+                  : 'bg-white dark:bg-slate-800 border border-red-700 text-red-300'
               }`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1">
@@ -228,7 +228,7 @@ export default function AutomationStatusSection({
               </div>
             )}
             {automationStatus.dry_run && automationStatus.enabled && (
-              <div className="mb-4 p-3 bg-claude-surface dark:bg-slate-800 border border-yellow-700 rounded-lg text-sm">
+              <div className="mb-4 p-3 bg-white dark:bg-slate-800 border border-yellow-700 rounded-lg text-sm">
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={16} className="text-yellow-400" />
                   <span className="font-semibold text-yellow-300">DRY RUN MODE</span>
@@ -248,10 +248,10 @@ export default function AutomationStatusSection({
                   <Info size={14} className="text-blue-500 shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-claude-muted dark:text-gray-400">Learning: {Math.round(lp.data_collection_hours)}h / {lp.min_required_hours}h</span>
-                      {level && <span className="px-1.5 py-0.5 bg-claude-surface dark:bg-slate-800 text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
-                      {lp.guest_profiles_count > 0 && <span className="text-claude-muted dark:text-gray-500">{lp.guest_profiles_count} profiles</span>}
-                      {lp.outcomes_count > 0 && <span className="text-claude-muted dark:text-gray-500">{lp.outcomes_count} outcomes</span>}
+                      <span className="text-pb-text2 dark:text-gray-400">Learning: {Math.round(lp.data_collection_hours)}h / {lp.min_required_hours}h</span>
+                      {level && <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
+                      {lp.guest_profiles_count > 0 && <span className="text-pb-text2 dark:text-gray-500">{lp.guest_profiles_count} profiles</span>}
+                      {lp.outcomes_count > 0 && <span className="text-pb-text2 dark:text-gray-500">{lp.outcomes_count} outcomes</span>}
                     </div>
                     <div className="w-full bg-gray-600 rounded-full h-1">
                       <div className="h-1 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
@@ -311,15 +311,15 @@ export default function AutomationStatusSection({
               const activeTab = hasHistory && hasHealth ? chartTab : (hasHistory ? 'migrations' : 'health');
 
               return (
-                <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg border border-claude-border dark:border-slate-600 mb-4">
+                <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg border border-pb-border dark:border-slate-600 mb-4">
                   {hasHistory && hasHealth && (
-                    <div className="flex border-b border-claude-border dark:border-slate-600 px-3">
+                    <div className="flex border-b border-pb-border dark:border-slate-600 px-3">
                       <button
                         onClick={() => setChartTab('migrations')}
                         className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                           activeTab === 'migrations'
                             ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-300'
+                            : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                         }`}
                       >Migration History</button>
                       <button
@@ -327,7 +327,7 @@ export default function AutomationStatusSection({
                         className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                           activeTab === 'health'
                             ? 'border-blue-500 text-blue-400'
-                            : 'border-transparent text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-300'
+                            : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                         }`}
                       >Cluster Health</button>
                     </div>
@@ -336,7 +336,7 @@ export default function AutomationStatusSection({
                     {/* Migration History Chart */}
                     {activeTab === 'migrations' && hasHistory && (
                       <>
-                        <h3 className="text-sm font-semibold text-claude-text dark:text-white mb-3">Last 7 Days</h3>
+                        <h3 className="text-sm font-semibold text-pb-text dark:text-white mb-3">Last 7 Days</h3>
                         <div className="flex items-end justify-between gap-1 h-32">
                           {dailyStats.map((day, idx) => {
                             const heightPercent = (day.total / maxMigrations) * 100;
@@ -359,16 +359,16 @@ export default function AutomationStatusSection({
                                     <div className="w-full h-1 bg-gray-600 rounded" />
                                   )}
                                 </div>
-                                <div className="text-xs font-semibold text-claude-text dark:text-white">{day.total > 0 ? day.total : ''}</div>
-                                <div className="text-[10px] text-claude-muted dark:text-gray-400 text-center">{day.label}</div>
+                                <div className="text-xs font-semibold text-pb-text dark:text-white">{day.total > 0 ? day.total : ''}</div>
+                                <div className="text-[10px] text-pb-text2 dark:text-gray-400 text-center">{day.label}</div>
                               </div>
                             );
                           })}
                         </div>
                         <div className="flex items-center justify-center gap-4 mt-3 text-xs">
-                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-600 rounded"></div><span className="text-claude-muted dark:text-gray-400">Success</span></div>
-                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-600 rounded"></div><span className="text-claude-muted dark:text-gray-400">Failed</span></div>
-                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-yellow-600 rounded"></div><span className="text-claude-muted dark:text-gray-400">Skipped</span></div>
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-600 rounded"></div><span className="text-pb-text2 dark:text-gray-400">Success</span></div>
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-600 rounded"></div><span className="text-pb-text2 dark:text-gray-400">Failed</span></div>
+                          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-yellow-600 rounded"></div><span className="text-pb-text2 dark:text-gray-400">Skipped</span></div>
                         </div>
                       </>
                     )}
@@ -387,9 +387,9 @@ export default function AutomationStatusSection({
                       return (
                         <>
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-semibold text-claude-text dark:text-white">Cluster Health</h3>
+                            <h3 className="text-sm font-semibold text-pb-text dark:text-white">Cluster Health</h3>
                             <div className="flex items-center gap-2 text-xs">
-                              <span className="font-bold text-claude-text dark:text-white">{latest.toFixed(1)}%</span>
+                              <span className="font-bold text-pb-text dark:text-white">{latest.toFixed(1)}%</span>
                               <span className={`font-semibold ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {trend >= 0 ? '+' : ''}{trend.toFixed(1)}
                               </span>
@@ -405,7 +405,7 @@ export default function AutomationStatusSection({
                             <polygon points={areaPoints} fill="url(#healthGrad)" opacity="0.3" />
                             <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
                           </svg>
-                          <div className="flex justify-between text-[10px] text-claude-muted dark:text-gray-500 mt-1">
+                          <div className="flex justify-between text-[10px] text-pb-text2 dark:text-gray-500 mt-1">
                             <span>{new Date(scoreHistory[0].timestamp).toLocaleDateString()}</span>
                             <span>{new Date(scoreHistory[scoreHistory.length - 1].timestamp).toLocaleDateString()}</span>
                           </div>
@@ -419,8 +419,8 @@ export default function AutomationStatusSection({
 
             {/* ── In-Progress Migrations ── */}
             {automationStatus.in_progress_migrations && automationStatus.in_progress_migrations.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-claude-border dark:border-slate-700">
-                <h4 className="text-sm font-semibold text-claude-text dark:text-gray-300 mb-3 flex items-center gap-2">
+              <div className="mt-4 pt-4 border-t border-pb-border dark:border-slate-700">
+                <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300 mb-3 flex items-center gap-2">
                   <RefreshCw size={14} className="animate-spin text-blue-400" />
                   Migrations In Progress
                 </h4>
@@ -443,33 +443,33 @@ export default function AutomationStatusSection({
                     return (
                       <div key={idx} className={`text-sm rounded-lg p-3 border-2 animate-pulse ${
                         isAutomated
-                          ? 'bg-claude-surface dark:bg-slate-800 border-blue-600'
-                          : 'bg-claude-surface dark:bg-slate-800 border-purple-600'
+                          ? 'bg-white dark:bg-slate-800 border-blue-600'
+                          : 'bg-white dark:bg-slate-800 border-purple-600'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 flex-1">
-                            <span className="text-claude-text dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
-                            <span className="text-claude-muted dark:text-gray-400 text-xs">{migration.source_node} → {migration.target_node || '?'}</span>
+                            <span className="text-pb-text dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
+                            <span className="text-pb-text2 dark:text-gray-400 text-xs">{migration.source_node} → {migration.target_node || '?'}</span>
                             {migration.type === 'VM' ? (
-                              <span className="px-1.5 py-0.5 bg-claude-surface dark:bg-slate-800 text-green-300 text-[10px] font-semibold rounded border border-green-600" title="Live migration (no downtime)">LIVE</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-green-300 text-[10px] font-semibold rounded border border-green-600" title="Live migration (no downtime)">LIVE</span>
                             ) : (
-                              <span className="px-1.5 py-0.5 bg-claude-surface dark:bg-slate-800 text-orange-300 text-[10px] font-semibold rounded border border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-orange-300 text-[10px] font-semibold rounded border border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
                             )}
                             {!isAutomated && (
-                              <span className="px-1.5 py-0.5 bg-claude-surface dark:bg-slate-800 text-purple-300 text-[10px] font-semibold rounded border border-purple-600">MANUAL</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-purple-300 text-[10px] font-semibold rounded border border-purple-600">MANUAL</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
                               isAutomated
-                                ? 'bg-claude-surface2 dark:bg-gray-700 text-blue-400'
-                                : 'bg-claude-surface2 dark:bg-gray-700 text-purple-400'
+                                ? 'bg-pb-surface2 dark:bg-gray-700 text-blue-400'
+                                : 'bg-pb-surface2 dark:bg-gray-700 text-purple-400'
                             }`}>
                               <RefreshCw size={12} className="animate-spin" /> Running
                             </span>
                             <button
                               onClick={() => setCancelMigrationModal(migration)}
-                              className="px-2 py-0.5 bg-claude-surface2 dark:bg-gray-700 hover:bg-gray-600 text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
+                              className="px-2 py-0.5 bg-pb-surface2 dark:bg-gray-700 hover:bg-gray-600 text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
                               title="Cancel migration"
                               aria-label={`Cancel migration for ${migration.name || migration.vmid}`}
                             >
@@ -477,7 +477,7 @@ export default function AutomationStatusSection({
                             </button>
                           </div>
                         </div>
-                        <div className={`mt-1 text-xs flex items-center gap-3 ${isAutomated ? 'text-claude-muted dark:text-gray-400' : 'text-purple-400'}`}>
+                        <div className={`mt-1 text-xs flex items-center gap-3 ${isAutomated ? 'text-pb-text2 dark:text-gray-400' : 'text-purple-400'}`}>
                           {migration.starttime && migration.starttime > 0 ? (
                             <span>Started: {new Date(migration.starttime * 1000).toLocaleTimeString()}</span>
                           ) : (
@@ -492,7 +492,7 @@ export default function AutomationStatusSection({
                                 Progress: {migration.progress.percentage}%
                                 {migration.progress.speed_mib_s && <span className="ml-2 font-normal text-[10px]">({migration.progress.speed_mib_s.toFixed(1)} MiB/s)</span>}
                               </span>
-                              <span className="text-claude-muted dark:text-gray-400 text-[10px]">{migration.progress.human_readable}</span>
+                              <span className="text-pb-text2 dark:text-gray-400 text-[10px]">{migration.progress.human_readable}</span>
                             </div>
                             <div className="w-full bg-gray-600 rounded-full h-2">
                               <div className={`h-2 rounded-full transition-all duration-300 ${isAutomated ? 'bg-blue-500' : 'bg-purple-500'}`} style={{ width: `${migration.progress.percentage}%` }} />
@@ -508,33 +508,33 @@ export default function AutomationStatusSection({
 
             {/* ── Last Run Summary ── */}
             {automationStatus.state?.last_run && typeof automationStatus.state.last_run === 'object' && (
-              <div className="mt-4 pt-4 border-t border-claude-border dark:border-slate-700">
+              <div className="mt-4 pt-4 border-t border-pb-border dark:border-slate-700">
                 <button
                   onClick={() => setCollapsedSections(prev => ({...prev, lastRunSummary: !prev.lastRunSummary}))}
-                  className="w-full flex items-center justify-between mb-3 hover:bg-claude-surface2 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between mb-3 hover:bg-pb-surface2 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <ClipboardList size={16} className="text-blue-400" />
-                    <h4 className="text-sm font-semibold text-claude-text dark:text-gray-300">Last Run Summary</h4>
-                    <span className="text-xs text-claude-muted dark:text-gray-400">
+                    <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300">Last Run Summary</h4>
+                    <span className="text-xs text-pb-text2 dark:text-gray-400">
                       {formatRelativeTime(automationStatus.state.last_run.timestamp)}
                     </span>
                   </div>
-                  <ChevronDown size={ICON.action} className={`text-claude-muted dark:text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.action} className={`text-pb-text2 dark:text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
                 </button>
 
                 {!collapsedSections.lastRunSummary && (
-                  <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-4 border border-claude-border dark:border-slate-600">
+                  <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4 border border-pb-border dark:border-slate-600">
                     {/* Run Overview */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3">
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Status</div>
+                      <div className="bg-white dark:bg-slate-800 rounded p-3">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
                         <div className={`text-sm font-bold ${
                           automationStatus.state.last_run.status === 'success' ? 'text-green-400' :
                           automationStatus.state.last_run.status === 'partial' ? 'text-yellow-400' :
                           automationStatus.state.last_run.status === 'failed' ? 'text-red-400' :
                           automationStatus.state.last_run.status === 'no_action' ? 'text-green-400' :
-                          'text-claude-muted dark:text-gray-400'
+                          'text-pb-text2 dark:text-gray-400'
                         }`}>
                           {automationStatus.state.last_run.status === 'success' ? 'Success' :
                            automationStatus.state.last_run.status === 'partial' ? 'Partial' :
@@ -543,21 +543,21 @@ export default function AutomationStatusSection({
                            automationStatus.state.last_run.status}
                         </div>
                       </div>
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3">
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Migrations</div>
-                        <div className="text-sm font-bold text-claude-text dark:text-white">
+                      <div className="bg-white dark:bg-slate-800 rounded p-3">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Migrations</div>
+                        <div className="text-sm font-bold text-pb-text dark:text-white">
                           {automationStatus.state.last_run.migrations_successful || 0} / {automationStatus.state.last_run.migrations_executed || 0}
                         </div>
                       </div>
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3">
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Duration</div>
-                        <div className="text-sm font-bold text-claude-text dark:text-white">
+                      <div className="bg-white dark:bg-slate-800 rounded p-3">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Duration</div>
+                        <div className="text-sm font-bold text-pb-text dark:text-white">
                           {automationStatus.state.last_run.duration_seconds ? `${Math.floor(automationStatus.state.last_run.duration_seconds / 60)}m ${automationStatus.state.last_run.duration_seconds % 60}s` : 'N/A'}
                         </div>
                       </div>
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3">
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Mode</div>
-                        <div className="text-sm font-bold text-claude-text dark:text-white">
+                      <div className="bg-white dark:bg-slate-800 rounded p-3">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Mode</div>
+                        <div className="text-sm font-bold text-pb-text dark:text-white">
                           {automationStatus.state.last_run.mode === 'dry_run' ? 'Dry Run' : 'Live'}
                         </div>
                       </div>
@@ -573,8 +573,8 @@ export default function AutomationStatusSection({
 
                     {/* Decision Details */}
                     {automationStatus.state.last_run.decisions && automationStatus.state.last_run.decisions.length > 0 && (
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3 mb-3 max-h-64 overflow-y-auto">
-                        <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2">Decisions Made:</div>
+                      <div className="bg-white dark:bg-slate-800 rounded p-3 mb-3 max-h-64 overflow-y-auto">
+                        <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Decisions Made:</div>
                         <div className="space-y-2">
                           {[...automationStatus.state.last_run.decisions].sort((a, b) => {
                             const getOrder = (d) => {
@@ -593,11 +593,11 @@ export default function AutomationStatusSection({
                                                decision.action === 'deferred' ? 'border-amber-500' :
                                                decision.action === 'skipped' ? 'border-yellow-500' :
                                                'border-gray-400';
-                            const bgColor = isExecuted ? 'bg-claude-surface2 dark:bg-gray-700' :
-                                           isPending ? 'bg-claude-surface2 dark:bg-gray-700' :
-                                           decision.action === 'observing' ? 'bg-claude-surface2 dark:bg-gray-700' :
-                                           decision.action === 'deferred' ? 'bg-claude-surface2 dark:bg-gray-700' :
-                                           'bg-claude-surface2 dark:bg-gray-700';
+                            const bgColor = isExecuted ? 'bg-pb-surface2 dark:bg-gray-700' :
+                                           isPending ? 'bg-pb-surface2 dark:bg-gray-700' :
+                                           decision.action === 'observing' ? 'bg-pb-surface2 dark:bg-gray-700' :
+                                           decision.action === 'deferred' ? 'bg-pb-surface2 dark:bg-gray-700' :
+                                           'bg-pb-surface2 dark:bg-gray-700';
 
                             return (
                               <div key={idx} className={`text-xs ${bgColor} rounded p-2 border-l-4 ${borderColor} ${isPending ? 'animate-pulse' : ''}`}>
@@ -608,12 +608,12 @@ export default function AutomationStatusSection({
                                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
                                           decision.priority_rank === 1
                                             ? 'bg-green-800 text-green-200'
-                                            : 'bg-gray-600 text-claude-text dark:text-gray-300'
+                                            : 'bg-gray-600 text-pb-text dark:text-gray-300'
                                         }`}>
                                           #{decision.priority_rank}
                                         </span>
                                       )}
-                                      <span className="font-semibold text-claude-text dark:text-white">
+                                      <span className="font-semibold text-pb-text dark:text-white">
                                         {decision.action === 'filtered' ? '⊗' :
                                          decision.action === 'skipped' ? '⏭' :
                                          decision.action === 'pending' ? '🔄' :
@@ -622,42 +622,42 @@ export default function AutomationStatusSection({
                                          decision.action === 'deferred' ? '🕐' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
                                       </span>
                                       {decision.type && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-claude-surface dark:bg-slate-800 text-blue-400">{decision.type}</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-400">{decision.type}</span>
                                       )}
                                       {decision.distribution_balancing && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-claude-surface dark:bg-slate-800 text-purple-400" title="Distribution Balancing">Balance</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-purple-400" title="Distribution Balancing">Balance</span>
                                       )}
                                     </div>
-                                    <span className="text-claude-muted dark:text-gray-400">
+                                    <span className="text-pb-text2 dark:text-gray-400">
                                       {decision.source_node} → {decision.target_node}
                                       {decision.target_node_score && ` (score: ${decision.target_node_score})`}
                                     </span>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                    decision.action === 'executed' ? 'bg-claude-surface dark:bg-slate-800 text-green-400' :
-                                    decision.action === 'pending' ? 'bg-claude-surface dark:bg-slate-800 text-blue-400' :
-                                    decision.action === 'observing' ? 'bg-claude-surface dark:bg-slate-800 text-cyan-400' :
-                                    decision.action === 'deferred' ? 'bg-claude-surface dark:bg-slate-800 text-amber-400' :
-                                    decision.action === 'skipped' ? 'bg-claude-surface dark:bg-slate-800 text-yellow-400' :
-                                    decision.action === 'filtered' ? 'bg-claude-surface dark:bg-slate-800 text-claude-text dark:text-gray-300' :
-                                    'bg-claude-surface dark:bg-slate-800 text-red-400'
+                                    decision.action === 'executed' ? 'bg-white dark:bg-slate-800 text-green-400' :
+                                    decision.action === 'pending' ? 'bg-white dark:bg-slate-800 text-blue-400' :
+                                    decision.action === 'observing' ? 'bg-white dark:bg-slate-800 text-cyan-400' :
+                                    decision.action === 'deferred' ? 'bg-white dark:bg-slate-800 text-amber-400' :
+                                    decision.action === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-400' :
+                                    decision.action === 'filtered' ? 'bg-white dark:bg-slate-800 text-pb-text dark:text-gray-300' :
+                                    'bg-white dark:bg-slate-800 text-red-400'
                                   }`}>
                                     {decision.action}
                                   </span>
                                 </div>
-                                <div className="mt-1 text-claude-muted dark:text-gray-400">
+                                <div className="mt-1 text-pb-text2 dark:text-gray-400">
                                   {decision.selected_reason || decision.reason}
                                 </div>
                                 {decision.confidence_score && (
                                   <div className="mt-1 text-blue-400 font-semibold text-[10px]">Confidence: {decision.confidence_score}%</div>
                                 )}
                                 {decision.reasoning && (
-                                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-claude-muted dark:text-gray-400">
+                                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-pb-text2 dark:text-gray-400">
                                     {decision.reasoning.score_improvement != null && <span>Score: +{Number(decision.reasoning.score_improvement).toFixed(1)}</span>}
-                                    {decision.reasoning.cost_benefit != null && <><span className="text-claude-muted dark:text-gray-600">|</span><span>Cost-benefit: {Number(decision.reasoning.cost_benefit).toFixed(1)}x</span></>}
-                                    {decision.reasoning.observation_count != null && <><span className="text-claude-muted dark:text-gray-600">|</span><span>Observed {decision.reasoning.observation_count}/{decision.reasoning.required_observations}</span></>}
-                                    {decision.reasoning.hours_tracked != null && <><span className="text-claude-muted dark:text-gray-600">|</span><span>{Number(decision.reasoning.hours_tracked).toFixed(1)}h tracked</span></>}
-                                    {decision.reasoning.guest_behavior && decision.reasoning.guest_behavior !== 'unknown' && <><span className="text-claude-muted dark:text-gray-600">|</span><span>{decision.reasoning.guest_behavior}</span></>}
+                                    {decision.reasoning.cost_benefit != null && <><span className="text-pb-text2 dark:text-gray-600">|</span><span>Cost-benefit: {Number(decision.reasoning.cost_benefit).toFixed(1)}x</span></>}
+                                    {decision.reasoning.observation_count != null && <><span className="text-pb-text2 dark:text-gray-600">|</span><span>Observed {decision.reasoning.observation_count}/{decision.reasoning.required_observations}</span></>}
+                                    {decision.reasoning.hours_tracked != null && <><span className="text-pb-text2 dark:text-gray-600">|</span><span>{Number(decision.reasoning.hours_tracked).toFixed(1)}h tracked</span></>}
+                                    {decision.reasoning.guest_behavior && decision.reasoning.guest_behavior !== 'unknown' && <><span className="text-pb-text2 dark:text-gray-600">|</span><span>{decision.reasoning.guest_behavior}</span></>}
                                   </div>
                                 )}
                                 {decision.error && (
@@ -672,25 +672,25 @@ export default function AutomationStatusSection({
 
                     {/* Safety Checks */}
                     {automationStatus.state.last_run.safety_checks && (
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3">
-                        <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2">Safety Checks:</div>
+                      <div className="bg-white dark:bg-slate-800 rounded p-3">
+                        <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Safety Checks:</div>
                         <div className="grid grid-cols-1 gap-2 text-xs">
                           <div className="flex items-start gap-2">
                             <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
                             <div className="flex-1">
-                              <div className="font-semibold text-claude-text dark:text-white">Migration Window</div>
-                              <div className="text-claude-muted dark:text-gray-400">{automationStatus.state.last_run.safety_checks.migration_window}</div>
+                              <div className="font-semibold text-pb-text dark:text-white">Migration Window</div>
+                              <div className="text-pb-text2 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.migration_window}</div>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
                             <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
                             <div className="flex-1">
-                              <div className="font-semibold text-claude-text dark:text-white">Cluster Health</div>
-                              <div className="text-claude-muted dark:text-gray-400">{automationStatus.state.last_run.safety_checks.cluster_health}</div>
+                              <div className="font-semibold text-pb-text dark:text-white">Cluster Health</div>
+                              <div className="text-pb-text2 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.cluster_health}</div>
                             </div>
                           </div>
-                          <div className="text-claude-muted dark:text-gray-400">
-                            <span className="font-semibold text-claude-text dark:text-white">Running migrations:</span> {automationStatus.state.last_run.safety_checks.running_migrations || 0}
+                          <div className="text-pb-text2 dark:text-gray-400">
+                            <span className="font-semibold text-pb-text dark:text-white">Running migrations:</span> {automationStatus.state.last_run.safety_checks.running_migrations || 0}
                           </div>
                         </div>
                       </div>
@@ -698,18 +698,18 @@ export default function AutomationStatusSection({
 
                     {/* Activity Log — VMs considered but not migrated */}
                     {automationStatus.state?.activity_log && automationStatus.state.activity_log.length > 0 && (
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
-                        <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2">
+                      <div className="bg-white dark:bg-slate-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                        <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">
                           Activity Log — Skipped ({automationStatus.state.activity_log.length}):
                         </div>
                         <div className="space-y-1.5">
                           {automationStatus.state.activity_log.map((activity, aidx) => (
-                            <div key={aidx} className="text-xs bg-claude-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
+                            <div key={aidx} className="text-xs bg-pb-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
                               <MinusCircle size={12} className="text-yellow-400 shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <span className="font-semibold text-claude-text dark:text-white">{activity.name}</span>
-                                {activity.vmid && <span className="text-claude-muted dark:text-gray-400 ml-1">({activity.vmid})</span>}
-                                <div className="text-claude-muted dark:text-gray-400 mt-0.5">{activity.reason}</div>
+                                <span className="font-semibold text-pb-text dark:text-white">{activity.name}</span>
+                                {activity.vmid && <span className="text-pb-text2 dark:text-gray-400 ml-1">({activity.vmid})</span>}
+                                <div className="text-pb-text2 dark:text-gray-400 mt-0.5">{activity.reason}</div>
                               </div>
                             </div>
                           ))}
@@ -721,15 +721,15 @@ export default function AutomationStatusSection({
                     {(!automationStatus.state.last_run.decisions || automationStatus.state.last_run.decisions.length === 0) &&
                      (!automationStatus.state?.activity_log || automationStatus.state.activity_log.length === 0) &&
                      automationStatus.filter_reasons && automationStatus.filter_reasons.length > 0 && (
-                      <div className="bg-claude-surface dark:bg-slate-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
-                        <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2">
+                      <div className="bg-white dark:bg-slate-800 rounded p-3 mt-3 max-h-64 overflow-y-auto">
+                        <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">
                           Filtered ({automationStatus.filter_reasons.length}):
                         </div>
                         <div className="space-y-1.5">
                           {automationStatus.filter_reasons.map((reason, idx) => (
-                            <div key={idx} className="text-xs bg-claude-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
+                            <div key={idx} className="text-xs bg-pb-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
                               <MinusCircle size={12} className="text-yellow-400 shrink-0 mt-0.5" />
-                              <span className="text-claude-text dark:text-gray-300">{reason}</span>
+                              <span className="text-pb-text dark:text-gray-300">{reason}</span>
                             </div>
                           ))}
                         </div>
@@ -742,9 +742,9 @@ export default function AutomationStatusSection({
 
             {/* ── Recent Auto-Migrations ── */}
             {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-claude-border dark:border-slate-700 recent-auto-migrations">
+              <div className="mt-4 pt-4 border-t border-pb-border dark:border-slate-700 recent-auto-migrations">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-claude-text dark:text-gray-300">Recent Auto-Migrations</h4>
+                  <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300">Recent Auto-Migrations</h4>
                   <button
                     onClick={() => {
                       const migrations = automationStatus.recent_migrations || [];
@@ -787,11 +787,11 @@ export default function AutomationStatusSection({
                   })().map((migration) => {
                     const timeDisplay = formatRelativeTime(migration.timestamp);
                     return (
-                    <div key={migration.id} className="text-sm bg-claude-surface2 dark:bg-slate-700 rounded-lg p-3 border border-claude-border dark:border-slate-600">
+                    <div key={migration.id} className="text-sm bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3 border border-pb-border dark:border-slate-600">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 flex-wrap">
-                          <span className="text-claude-text dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
-                          <span className="text-claude-muted dark:text-gray-400 text-xs">
+                          <span className="text-pb-text dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
+                          <span className="text-pb-text2 dark:text-gray-400 text-xs">
                             {migration.source_node} → {migration.target_node}
                             {(migration.suitability_rating !== undefined || migration.target_node_score !== undefined) && (() => {
                               const suitabilityPercent = migration.suitability_rating !== undefined
@@ -808,7 +808,7 @@ export default function AutomationStatusSection({
                                   }`}>
                                     {suitabilityPercent}%
                                   </span>
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1.5 bg-claude-surface dark:bg-gray-800 text-claude-text dark:text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1.5 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
                                     <div>Target: {migration.target_node}</div>
                                     <div>Penalty: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
                                     <div>Suitability: {suitabilityPercent}%</div>
@@ -819,17 +819,17 @@ export default function AutomationStatusSection({
                             })()}
                           </span>
                           {migration.dry_run && (
-                            <span className="px-1.5 py-0.5 bg-claude-surface dark:bg-slate-800 text-yellow-400 text-xs rounded">DRY RUN</span>
+                            <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-yellow-400 text-xs rounded">DRY RUN</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {timeDisplay && <span className="text-xs text-claude-muted dark:text-gray-400">{timeDisplay}</span>}
+                          {timeDisplay && <span className="text-xs text-pb-text2 dark:text-gray-400">{timeDisplay}</span>}
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
-                            migration.status === 'completed' ? 'bg-claude-surface dark:bg-slate-800 text-green-400' :
-                            migration.status === 'failed' ? 'bg-claude-surface dark:bg-slate-800 text-red-400' :
-                            migration.status === 'skipped' ? 'bg-claude-surface dark:bg-slate-800 text-yellow-400' :
-                            migration.status === 'timeout' ? 'bg-claude-surface dark:bg-slate-800 text-orange-400' :
-                            'bg-claude-surface dark:bg-slate-800 text-claude-muted dark:text-gray-400'
+                            migration.status === 'completed' ? 'bg-white dark:bg-slate-800 text-green-400' :
+                            migration.status === 'failed' ? 'bg-white dark:bg-slate-800 text-red-400' :
+                            migration.status === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-400' :
+                            migration.status === 'timeout' ? 'bg-white dark:bg-slate-800 text-orange-400' :
+                            'bg-white dark:bg-slate-800 text-pb-text2 dark:text-gray-400'
                           }`}>
                             {migration.status === 'completed' && <CheckCircle size={12} />}
                             {migration.status === 'failed' && <XCircle size={12} />}
@@ -841,14 +841,14 @@ export default function AutomationStatusSection({
                       </div>
                       {migration.reason && (
                         <div className="mt-1 flex items-center gap-3">
-                          <span className="text-xs text-claude-muted dark:text-gray-400">{migration.reason}</span>
+                          <span className="text-xs text-pb-text2 dark:text-gray-400">{migration.reason}</span>
                           {migration.duration_seconds !== undefined && migration.duration_seconds > 0 && (
-                            <span className="text-xs text-claude-muted dark:text-gray-500">{migration.duration_seconds}s</span>
+                            <span className="text-xs text-pb-text2 dark:text-gray-500">{migration.duration_seconds}s</span>
                           )}
                         </div>
                       )}
                       {migration.status === 'failed' && (
-                        <div className="mt-2 p-2 bg-claude-surface dark:bg-slate-800 border border-red-700 rounded flex items-start gap-2">
+                        <div className="mt-2 p-2 bg-white dark:bg-slate-800 border border-red-700 rounded flex items-start gap-2">
                           <XCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
                           <div className="text-xs text-red-300 flex-1">
                             <span className="font-semibold">Error:</span> {migration.error || 'Migration failed (check logs for details)'}
@@ -864,8 +864,8 @@ export default function AutomationStatusSection({
 
             {/* ── Run History (Past Runs + Activity Log) ── */}
             {(runHistory.length > 0 || (automationStatus.state?.activity_log?.length > 0)) && (
-              <div className="mt-4 pt-4 border-t border-claude-border dark:border-slate-700">
-                <h4 className="text-sm font-semibold text-claude-text dark:text-gray-300 mb-3 flex items-center gap-2">
+              <div className="mt-4 pt-4 border-t border-pb-border dark:border-slate-700">
+                <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300 mb-3 flex items-center gap-2">
                   <Clock size={14} />
                   Run History
                 </h4>
@@ -876,24 +876,24 @@ export default function AutomationStatusSection({
                     // Activity log now shown in Last Run Summary section above
 
                     return (
-                      <div key={idx} className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-3 border border-claude-border dark:border-slate-600">
+                      <div key={idx} className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3 border border-pb-border dark:border-slate-600">
                         <div
                           className="flex items-center justify-between cursor-pointer hover:bg-slate-600 rounded p-1 transition-colors"
                           onClick={() => setExpandedRun(isExpanded ? null : run.timestamp)}
                         >
                           <div className="flex items-center gap-2">
-                            {isExpanded ? <ChevronDown size={14} className="text-claude-muted dark:text-gray-400" /> : <ChevronRight size={14} className="text-claude-muted dark:text-gray-400" />}
-                            <span className="text-xs font-semibold text-claude-text dark:text-gray-200">{timeDisplay}</span>
+                            {isExpanded ? <ChevronDown size={14} className="text-pb-text2 dark:text-gray-400" /> : <ChevronRight size={14} className="text-pb-text2 dark:text-gray-400" />}
+                            <span className="text-xs font-semibold text-pb-text dark:text-gray-200">{timeDisplay}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              run.status === 'success' ? 'bg-claude-surface dark:bg-slate-800 text-green-300' :
-                              run.status === 'partial' ? 'bg-claude-surface dark:bg-slate-800 text-yellow-300' :
-                              run.status === 'no_action' ? 'bg-claude-surface dark:bg-slate-800 text-green-400' :
-                              'bg-claude-surface dark:bg-slate-800 text-red-300'
+                              run.status === 'success' ? 'bg-white dark:bg-slate-800 text-green-300' :
+                              run.status === 'partial' ? 'bg-white dark:bg-slate-800 text-yellow-300' :
+                              run.status === 'no_action' ? 'bg-white dark:bg-slate-800 text-green-400' :
+                              'bg-white dark:bg-slate-800 text-red-300'
                             }`}>
                               {run.status === 'no_action' ? 'balanced' : run.status}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-claude-text dark:text-gray-300">
+                          <div className="flex items-center gap-3 text-xs text-pb-text dark:text-gray-300">
                             <span>{run.migrations_executed || 0} migration{run.migrations_executed !== 1 ? 's' : ''}</span>
                             <span>{run.duration_seconds || 0}s</span>
                           </div>
@@ -903,12 +903,12 @@ export default function AutomationStatusSection({
                           <>
                             {run.decisions && run.decisions.length > 0 && (
                               <div className="mt-2 pl-3">
-                                <div className="bg-claude-surface dark:bg-slate-800 rounded-lg p-2.5 space-y-1.5">
-                                  <div className="text-[10px] font-semibold text-claude-muted dark:text-gray-400 uppercase">
+                                <div className="bg-white dark:bg-slate-800 rounded-lg p-2.5 space-y-1.5">
+                                  <div className="text-[10px] font-semibold text-pb-text2 dark:text-gray-400 uppercase">
                                     Decisions ({run.decisions.length})
                                   </div>
                                 {run.decisions.map((decision, didx) => (
-                                  <div key={didx} className={`text-xs p-2 rounded bg-claude-surface2 dark:bg-slate-700 border-l-2 ${
+                                  <div key={didx} className={`text-xs p-2 rounded bg-pb-surface2 dark:bg-slate-700 border-l-2 ${
                                     decision.action === 'executed' ? 'border-green-500' :
                                     decision.action === 'pending' ? 'border-blue-500' :
                                     decision.action === 'observing' ? 'border-cyan-500' :
@@ -923,20 +923,20 @@ export default function AutomationStatusSection({
                                         {decision.action === 'observing' && <Eye size={10} className="text-cyan-400" />}
                                         {decision.action === 'deferred' && <Clock size={10} className="text-amber-400" />}
                                         {decision.action === 'skipped' && <Minus size={10} className="text-yellow-400" />}
-                                        {decision.action === 'filtered' && <XCircle size={10} className="text-claude-muted dark:text-gray-400" />}
-                                        <span className="font-medium text-claude-text dark:text-gray-100">{decision.name}</span>
-                                        <span className="text-claude-muted dark:text-gray-400">({decision.vmid})</span>
+                                        {decision.action === 'filtered' && <XCircle size={10} className="text-pb-text2 dark:text-gray-400" />}
+                                        <span className="font-medium text-pb-text dark:text-gray-100">{decision.name}</span>
+                                        <span className="text-pb-text2 dark:text-gray-400">({decision.vmid})</span>
                                         {decision.distribution_balancing && <span className="ml-1" title="Distribution Balancing">⚖️</span>}
                                       </div>
                                       {decision.priority_rank && (
-                                        <span className="text-[10px] font-semibold text-claude-muted dark:text-gray-400">#{decision.priority_rank}</span>
+                                        <span className="text-[10px] font-semibold text-pb-text2 dark:text-gray-400">#{decision.priority_rank}</span>
                                       )}
                                     </div>
                                     {decision.reason && (
-                                      <div className="text-[10px] text-claude-text dark:text-gray-300 mt-0.5">{decision.reason}</div>
+                                      <div className="text-[10px] text-pb-text dark:text-gray-300 mt-0.5">{decision.reason}</div>
                                     )}
                                     {decision.reasoning && (
-                                      <div className="mt-0.5 flex flex-wrap gap-1.5 text-[9px] text-claude-muted dark:text-gray-400">
+                                      <div className="mt-0.5 flex flex-wrap gap-1.5 text-[9px] text-pb-text2 dark:text-gray-400">
                                         {decision.reasoning.score_improvement != null && <span>+{Number(decision.reasoning.score_improvement).toFixed(1)}pts</span>}
                                         {decision.reasoning.cost_benefit != null && <span>CB:{Number(decision.reasoning.cost_benefit).toFixed(1)}x</span>}
                                         {decision.reasoning.observation_count != null && <span>{decision.reasoning.observation_count}/{decision.reasoning.required_observations} obs</span>}

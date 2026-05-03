@@ -12,17 +12,17 @@ export default function DataCollectionSection({
 
   return (
                     <div>
-                      <h3 className="text-lg font-semibold text-claude-text dark:text-white mb-6">Data Collection & Performance</h3>
+                      <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-6">Data Collection & Performance</h3>
 
                       {/* Last Collection Status */}
                       <div className="mb-6">
-                        <h4 className="text-md font-semibold text-claude-text dark:text-gray-200 mb-3">Status</h4>
-                        <div className="space-y-4 p-4 bg-claude-surface2 dark:bg-slate-700/50 rounded">
+                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Status</h4>
+                        <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
                           {backendCollected && (
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Server size={16} className="text-green-400" />
-                                <span className="text-sm text-claude-text dark:text-gray-300">
+                                <span className="text-sm text-pb-text dark:text-gray-300">
                                   Last collected: <span className="font-semibold text-green-400">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>
                                 </span>
                               </div>
@@ -32,7 +32,7 @@ export default function DataCollectionSection({
                                 className="p-1.5 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Refresh data collection now"
                               >
-                                <RefreshCw size={14} className={`${loading ? 'animate-spin' : ''} text-claude-muted dark:text-gray-400`} />
+                                <RefreshCw size={14} className={`${loading ? 'animate-spin' : ''} text-pb-text2 dark:text-gray-400`} />
                               </button>
                             </div>
                           )}
@@ -42,26 +42,26 @@ export default function DataCollectionSection({
                     {/* Collection Performance Stats */}
                     {data?.performance && (
                       <div className="mb-6">
-                        <h4 className="text-md font-semibold text-claude-text dark:text-gray-200 mb-3">Performance Metrics</h4>
+                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Performance Metrics</h4>
                         <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-800 rounded">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Total Time</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Total Time</div>
                               <div className="text-2xl font-bold text-green-400">{data.performance.total_time}s</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Node Processing</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Node Processing</div>
                               <div className="text-2xl font-bold text-blue-400">{data.performance.node_processing_time}s</div>
-                              <div className="text-xs text-claude-muted dark:text-gray-500 mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Guest Processing</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Guest Processing</div>
                               <div className="text-2xl font-bold text-purple-400">{data.performance.guest_processing_time}s</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Workers Used</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Workers Used</div>
                               <div className="text-2xl font-bold text-orange-400">{data.performance.max_workers}</div>
-                              <div className="text-xs text-claude-muted dark:text-gray-500 mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
+                              <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
                             </div>
                           </div>
                         </div>
@@ -70,8 +70,8 @@ export default function DataCollectionSection({
 
                       {/* Collection Optimization Settings */}
                       <div>
-                        <h4 className="text-md font-semibold text-claude-text dark:text-gray-200 mb-3">Optimization Settings</h4>
-                        <div className="space-y-4 p-4 bg-claude-surface2 dark:bg-slate-700/50 rounded">
+                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Optimization Settings</h4>
+                        <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
                           <div className="bg-blue-900/30 border border-blue-800 rounded p-3 mb-4">
                             <p className="text-sm text-blue-200">
                               <strong>Collection Performance:</strong> Optimize data collection speed based on cluster size. Parallel collection can reduce collection time by 3-5x.
@@ -79,7 +79,7 @@ export default function DataCollectionSection({
                           </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
+                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
                             Cluster Size Preset
                           </label>
                           <select
@@ -116,7 +116,7 @@ export default function DataCollectionSection({
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                             Collection Interval (minutes)
                           </label>
                           <input
@@ -127,7 +127,7 @@ export default function DataCollectionSection({
                             max="240"
                             className={INPUT_FIELD}
                           />
-                          <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                             How often to collect full cluster metrics
                           </p>
                         </div>
@@ -138,17 +138,17 @@ export default function DataCollectionSection({
                               type="checkbox"
                               id="parallelEnabled"
                               defaultChecked={config?.collection_optimization?.parallel_collection_enabled !== false}
-                              className="rounded border-claude-border dark:border-slate-600"
+                              className="rounded border-pb-border dark:border-slate-600"
                             />
-                            <span className="text-sm text-claude-text dark:text-gray-300">Enable Parallel Collection</span>
+                            <span className="text-sm text-pb-text dark:text-gray-300">Enable Parallel Collection</span>
                           </label>
-                          <p className="text-xs text-claude-muted dark:text-gray-400 mt-1 ml-6">
+                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1 ml-6">
                             Process multiple nodes simultaneously (3-5x faster)
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                             Max Parallel Workers
                           </label>
                           <input
@@ -159,7 +159,7 @@ export default function DataCollectionSection({
                             max="10"
                             className={INPUT_FIELD}
                           />
-                          <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                             Number of nodes to process concurrently
                           </p>
                         </div>
@@ -170,18 +170,18 @@ export default function DataCollectionSection({
                               type="checkbox"
                               id="skipStoppedRRD"
                               defaultChecked={config?.collection_optimization?.skip_stopped_guest_rrd !== false}
-                              className="rounded border-claude-border dark:border-slate-600"
+                              className="rounded border-pb-border dark:border-slate-600"
                             />
-                            <span className="text-sm text-claude-text dark:text-gray-300">Skip RRD for Stopped Guests</span>
+                            <span className="text-sm text-pb-text dark:text-gray-300">Skip RRD for Stopped Guests</span>
                           </label>
-                          <p className="text-xs text-claude-muted dark:text-gray-400 mt-1 ml-6">
+                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1 ml-6">
                             Don't collect performance metrics for stopped VMs/CTs (faster collection)
                           </p>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                               Node RRD Timeframe
                             </label>
                             <select
@@ -194,7 +194,7 @@ export default function DataCollectionSection({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                               Guest RRD Timeframe
                             </label>
                             <select
@@ -208,7 +208,7 @@ export default function DataCollectionSection({
                           </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-claude-surface2 dark:bg-slate-700/50 -mx-4 -mb-4 px-4 py-4 mt-4 border-t border-claude-border dark:border-slate-600">
+                        <div className="sticky bottom-0 bg-pb-surface2 dark:bg-slate-700/50 -mx-4 -mb-4 px-4 py-4 mt-4 border-t border-pb-border dark:border-slate-600">
                           <button
                             onClick={() => {
                               setSavingCollectionSettings(true);
@@ -248,7 +248,7 @@ export default function DataCollectionSection({
                               });
                             }}
                             disabled={savingCollectionSettings}
-                            className={`w-full px-4 py-2 text-claude-text dark:text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
+                            className={`w-full px-4 py-2 text-pb-text dark:text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
                               collectionSettingsSaved
                                 ? 'bg-emerald-600'
                                 : savingCollectionSettings

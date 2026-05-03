@@ -75,6 +75,19 @@ export const BarChart2 = ({ size, className }) => (<svg width={size} height={siz
 export const TrendingUp = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>);
 export const TrendingDown = ({ size, className }) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>);
 
+/**
+ * ProxBalance brand mark — three-node triangle on an accent ring.
+ * Top dot uses pb-accent; the two bottom dots use pb-accent2 to suggest balance.
+ * Colors come from the Tailwind pb.* palette so the logo adapts to the theme.
+ */
 export const ProxBalanceLogo = ({ size = 32 }) => (
-  <img src="/assets/logo_icon_v3.svg?v=1" alt="ProxBalance Logo" width={size} height={size} />
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-label="ProxBalance">
+    <circle cx="16" cy="16" r="14" className="stroke-pb-accent dark:stroke-pb-accent-dark" strokeWidth="2" opacity="0.45" />
+    <circle cx="16" cy="6"  r="2.6" className="fill-pb-accent dark:fill-pb-accent-dark" />
+    <circle cx="6"  cy="22" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
+    <circle cx="26" cy="22" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
+    <path d="M16 8.5l-9 12.5M16 8.5l9 12.5M7.2 21h17.6"
+          className="stroke-pb-accent dark:stroke-pb-accent-dark"
+          strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+  </svg>
 );

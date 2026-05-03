@@ -24,11 +24,11 @@ function PenaltyBar({ cats }) {
   const segs = PENALTY_SEGMENTS.filter(p => (cats[p.key] || 0) > 0);
   return (
     <div>
-      <div className="flex items-center justify-between text-[10px] text-claude-muted dark:text-gray-500 mb-1">
+      <div className="flex items-center justify-between text-[10px] text-pb-text2 dark:text-gray-500 mb-1">
         <span>Penalty sources</span>
         <span className="tabular-nums">{total} pts</span>
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-claude-surface2 dark:bg-slate-700/60 mb-1.5">
+      <div className="flex h-2 rounded-full overflow-hidden bg-pb-surface2 dark:bg-slate-700/60 mb-1.5">
         {segs.map(s => (
           <div key={s.key} className={s.color} style={{ width: `${(cats[s.key] / total * 100)}%` }} title={`${s.label}: ${cats[s.key]}`} />
         ))}
@@ -37,7 +37,7 @@ function PenaltyBar({ cats }) {
         {segs.map(s => (
           <span key={s.key} className={`${s.text} flex items-center gap-1`}>
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.color}`} />
-            {s.label}<span className="text-claude-muted dark:text-gray-500 tabular-nums">{cats[s.key]}</span>
+            {s.label}<span className="text-pb-text2 dark:text-gray-500 tabular-nums">{cats[s.key]}</span>
           </span>
         ))}
       </div>
@@ -48,15 +48,15 @@ function PenaltyBar({ cats }) {
 function NodeCard({ name, rating, score, isWorst }) {
   const stab = StabilityLabel(score?.trend_analysis?.stability_score);
   const oc = score?.overcommit_ratio;
-  const ocColor = oc > 1.2 ? 'text-red-400' : oc > 1.0 ? 'text-orange-400' : oc > 0.85 ? 'text-yellow-400' : 'text-claude-muted dark:text-gray-400';
+  const ocColor = oc > 1.2 ? 'text-red-400' : oc > 1.0 ? 'text-orange-400' : oc > 0.85 ? 'text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
   return (
-    <div className={`p-3 rounded-lg border ${isWorst ? 'border-red-700/50 bg-red-900/10' : 'border-claude-border dark:border-slate-700/50 bg-claude-surface2 dark:bg-slate-800/40'}`}>
+    <div className={`p-3 rounded-lg border ${isWorst ? 'border-red-700/50 bg-red-900/10' : 'border-pb-border dark:border-slate-700/50 bg-pb-surface2 dark:bg-slate-800/40'}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-claude-text dark:text-white text-sm">{name}</span>
+          <span className="font-semibold text-pb-text dark:text-white text-sm">{name}</span>
           {isWorst && <span className="text-[9px] uppercase tracking-wider text-red-300 bg-red-900/50 px-1.5 py-0.5 rounded">drag</span>}
         </div>
-        <span className={`text-lg font-bold tabular-nums ${scoreColor(rating)}`}>{rating.toFixed(0)}<span className="text-xs text-claude-muted dark:text-gray-500">/100</span></span>
+        <span className={`text-lg font-bold tabular-nums ${scoreColor(rating)}`}>{rating.toFixed(0)}<span className="text-xs text-pb-text2 dark:text-gray-500">/100</span></span>
       </div>
       <PenaltyBar cats={score?.penalty_categories} />
       <div className="flex items-center gap-3 mt-2 text-[11px]">
@@ -96,16 +96,16 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
           <div className="flex items-center gap-3 min-w-0">
             <div className="text-3xl font-bold tabular-nums shrink-0" style={{ lineHeight: 1 }}>
               <span className={scoreColor(avgScore ?? 0)}>{avgScore ?? '—'}</span>
-              <span className="text-base text-claude-muted dark:text-gray-500">/100</span>
+              <span className="text-base text-pb-text2 dark:text-gray-500">/100</span>
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-bold text-claude-text dark:text-white">Cluster Health</h3>
-              <p className="text-[11px] text-claude-muted dark:text-gray-500 mt-0.5">
+              <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
+              <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5">
                 {healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node ratings'} · lower = more pressure
               </p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 shrink-0 p-1">
+          <button onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 shrink-0 p-1">
             <X size={18} />
           </button>
         </div>
@@ -114,26 +114,26 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
         <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-3">
           {/* Why */}
           {entries.length > 0 && (
-            <div className="p-3 rounded-lg bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 text-xs text-claude-text dark:text-gray-300 space-y-1">
-              <div className="font-semibold text-claude-text dark:text-gray-200">Why {avgScore ?? '—'}?</div>
+            <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-xs text-pb-text dark:text-gray-300 space-y-1">
+              <div className="font-semibold text-pb-text dark:text-gray-200">Why {avgScore ?? '—'}?</div>
               {worst && (
                 <div>
                   Lowest: <span className={`font-semibold ${scoreColor(worst.rating)}`}>{worst.name}</span> at {worst.rating.toFixed(0)} — drags the average down most.
                 </div>
               )}
               {drag.length > 0 && drag.length !== entries.length && (
-                <div className="text-claude-muted dark:text-gray-400">
+                <div className="text-pb-text2 dark:text-gray-400">
                   {drag.length} of {entries.length} nodes below the average ({drag.map(d => d.name).join(', ')}).
                 </div>
               )}
               {drag.length === 0 && (
-                <div className="text-claude-muted dark:text-gray-400">All nodes at or above the average — cluster is well-balanced.</div>
+                <div className="text-pb-text2 dark:text-gray-400">All nodes at or above the average — cluster is well-balanced.</div>
               )}
             </div>
           )}
 
           {entries.length === 0 && (
-            <div className="text-sm text-claude-muted dark:text-gray-500 italic p-4 text-center">No node ratings available yet.</div>
+            <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4 text-center">No node ratings available yet.</div>
           )}
 
           {/* Per-node cards */}
@@ -147,7 +147,7 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
             />
           ))}
 
-          <div className="text-[11px] text-claude-muted dark:text-gray-500 px-1 pt-1">
+          <div className="text-[11px] text-pb-text2 dark:text-gray-500 px-1 pt-1">
             Click a node row in the Cluster section's Nodes tab for full metric detail.
           </div>
         </div>

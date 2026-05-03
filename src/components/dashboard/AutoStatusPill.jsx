@@ -54,12 +54,12 @@ async function togglePause(automationStatus, fetchAutomationStatus) {
   } catch (e) { /* no-op */ }
 }
 
-const COLOR_TO_TEXT = { green: 'text-green-400', yellow: 'text-yellow-400', orange: 'text-orange-400', gray: 'text-claude-muted dark:text-gray-400' };
+const COLOR_TO_TEXT = { green: 'text-green-400', yellow: 'text-yellow-400', orange: 'text-orange-400', gray: 'text-pb-text2 dark:text-gray-400' };
 const COLOR_TO_BG = {
   green: 'bg-green-900/15 border-green-800/40',
   yellow: 'bg-yellow-900/15 border-yellow-800/40',
   orange: 'bg-orange-900/15 border-orange-800/40',
-  gray: 'bg-claude-surface dark:bg-slate-800/60 border-claude-border dark:border-slate-700/50',
+  gray: 'bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50',
 };
 
 export default function AutoStatusPill({
@@ -92,23 +92,23 @@ export default function AutoStatusPill({
 
   if (size === 'pill') {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-claude-surface dark:bg-slate-800/80 border border-claude-border dark:border-slate-700/50 text-xs">
+      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white dark:bg-slate-800/80 border border-pb-border dark:border-slate-700/50 text-xs">
         <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor}`} />
         <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto: {status.label}</span>
-        {nextCheck && <span className="text-claude-muted dark:text-gray-500">· next {nextCheck}</span>}
+        {nextCheck && <span className="text-pb-text2 dark:text-gray-500">· next {nextCheck}</span>}
       </div>
     );
   }
 
   if (size === 'card') {
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-claude-surface dark:bg-slate-800/80 border border-claude-border dark:border-slate-700/50">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-slate-800/80 border border-pb-border dark:border-slate-700/50">
         <Clock size={18} className={COLOR_TO_TEXT[status.color]} />
         <div className="min-w-0">
           <div className={`text-xl font-bold ${COLOR_TO_TEXT[status.color]} tabular-nums`}>{status.label}</div>
-          <div className="text-xs text-claude-muted dark:text-gray-500 truncate">Auto-migration</div>
+          <div className="text-xs text-pb-text2 dark:text-gray-500 truncate">Auto-migration</div>
           {nextCheck && (
-            <div className="text-[10px] text-claude-muted dark:text-gray-600 truncate">next {nextCheck}</div>
+            <div className="text-[10px] text-pb-text2 dark:text-gray-600 truncate">next {nextCheck}</div>
           )}
         </div>
       </div>
@@ -123,25 +123,25 @@ export default function AutoStatusPill({
           {canExpand && (
             <button
               onClick={() => setExpanded(e => !e)}
-              className="p-0.5 rounded hover:bg-claude-surface2 dark:hover:bg-slate-700/50 transition-colors"
+              className="p-0.5 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
               title={expanded ? 'Hide last-run detail' : 'Show last-run detail'}
               aria-label={expanded ? 'Collapse' : 'Expand'}
             >
-              <ChevronDown size={14} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
+              <ChevronDown size={14} className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
             </button>
           )}
           <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
           <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto-migration: {status.label}</span>
-          {nextCheck && <span className="text-claude-muted dark:text-gray-400 text-xs">next check {nextCheck}</span>}
+          {nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>}
           {lastRun && (
-            <span className="text-claude-muted dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
+            <span className="text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
           )}
         </div>
         {showActions && (
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => togglePause(automationStatus, fetchAutomationStatus)}
-              className="px-2.5 py-1 text-xs rounded border bg-claude-surface dark:bg-slate-800/60 border-claude-border dark:border-slate-700/50 text-claude-text dark:text-gray-200 hover:bg-claude-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+              className="px-2.5 py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
               title={automationStatus.timer_active ? 'Pause auto-migration timer' : 'Resume auto-migration timer'}
             >
               {automationStatus.timer_active ? <Pause size={12} /> : <Play size={12} />}
@@ -151,7 +151,7 @@ export default function AutoStatusPill({
               <button
                 onClick={() => runAutomationNow()}
                 disabled={runningAutomation}
-                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-claude-text dark:text-white hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
+                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-pb-text dark:text-white hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
                 title="Trigger an automation run now"
               >
                 {runningAutomation ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
@@ -161,7 +161,7 @@ export default function AutoStatusPill({
             {setCurrentPage && (
               <button
                 onClick={() => setCurrentPage('automation')}
-                className="px-2.5 py-1 text-xs rounded border bg-claude-surface dark:bg-slate-800/60 border-claude-border dark:border-slate-700/50 text-claude-text dark:text-gray-300 hover:bg-claude-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+                className="px-2.5 py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
                 title="Open automation settings"
               >
                 <Settings size={12} />
@@ -171,11 +171,11 @@ export default function AutoStatusPill({
         )}
       </div>
       {canExpand && expanded && (
-        <div className="px-4 pb-4 pt-3 border-t border-claude-border dark:border-slate-700/40 space-y-4">
+        <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 space-y-4">
           <RunSummaryRow run={lastRunObj} label="Last run" />
           {runHistory && runHistory.length > 0 && (
             <div>
-              <div className="text-xs text-claude-muted dark:text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
+              <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
               <RunHistoryDisplay
                 embedded
                 runHistory={runHistory}
@@ -185,7 +185,7 @@ export default function AutoStatusPill({
           )}
           {API_BASE && (
             <div>
-              <div className="text-xs text-claude-muted dark:text-gray-500 mb-2 uppercase tracking-wider">Migration outcomes — predicted vs actual</div>
+              <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Migration outcomes — predicted vs actual</div>
               <MigrationOutcomes API_BASE={API_BASE} active={expanded} />
             </div>
           )}

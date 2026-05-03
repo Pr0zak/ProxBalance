@@ -6,39 +6,39 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">Generation Time</div>
-          <div className="font-mono font-semibold text-claude-text dark:text-white">
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Generation Time</div>
+          <div className="font-mono font-semibold text-pb-text dark:text-white">
             {recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : 'N/A'}
           </div>
         </div>
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">Recommendations</div>
-          <div className="font-mono font-semibold text-claude-text dark:text-white">
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Recommendations</div>
+          <div className="font-mono font-semibold text-pb-text dark:text-white">
             {recommendationData.count || recommendations.length}
           </div>
         </div>
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">Guests Evaluated</div>
-          <div className="font-mono font-semibold text-claude-text dark:text-white">
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Guests Evaluated</div>
+          <div className="font-mono font-semibold text-pb-text dark:text-white">
             {(recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0)}
           </div>
         </div>
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">Skipped</div>
-          <div className="font-mono font-semibold text-claude-text dark:text-white">
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Skipped</div>
+          <div className="font-mono font-semibold text-pb-text dark:text-white">
             {recommendationData.skipped_guests?.length || 0}
           </div>
         </div>
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">AI Enhanced</div>
-          <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-400' : 'text-claude-muted dark:text-gray-400'}`}>
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">AI Enhanced</div>
+          <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-400' : 'text-pb-text2 dark:text-gray-400'}`}>
             {recommendationData.ai_enhanced ? 'Yes' : 'No'}
           </div>
         </div>
-        <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded p-2 border border-claude-border dark:border-slate-700">
-          <div className="text-claude-muted dark:text-gray-400 mb-0.5">Conflicts / Advisories</div>
-          <div className="font-mono font-semibold text-claude-text dark:text-white">
+        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Conflicts / Advisories</div>
+          <div className="font-mono font-semibold text-pb-text dark:text-white">
             {recommendationData.conflicts?.length || 0} / {recommendationData.capacity_advisories?.length || 0}
           </div>
         </div>
@@ -50,9 +50,9 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
         </div>
       )}
       {recommendationData.parameters && (
-        <div className="p-2 bg-claude-surface2 dark:bg-gray-900/50 rounded border border-claude-border dark:border-slate-700 text-xs">
-          <span className="text-claude-muted dark:text-gray-400">Thresholds: </span>
-          <span className="font-mono text-claude-text dark:text-gray-300">
+        <div className="p-2 bg-pb-surface2 dark:bg-gray-900/50 rounded border border-pb-border dark:border-slate-700 text-xs">
+          <span className="text-pb-text2 dark:text-gray-400">Thresholds: </span>
+          <span className="font-mono text-pb-text dark:text-gray-300">
             CPU {recommendationData.parameters.cpu_threshold}% | Mem {recommendationData.parameters.mem_threshold}% | IOWait {recommendationData.parameters.iowait_threshold}%
           </span>
           {recommendationData.parameters.maintenance_nodes?.length > 0 && (
@@ -63,11 +63,11 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
         </div>
       )}
       {recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && (
-        <div className="p-2 bg-claude-surface2 dark:bg-gray-900/50 rounded border border-claude-border dark:border-slate-700 text-xs">
-          <span className="text-claude-muted dark:text-gray-400 block mb-1">Skip Reasons:</span>
+        <div className="p-2 bg-pb-surface2 dark:bg-gray-900/50 rounded border border-pb-border dark:border-slate-700 text-xs">
+          <span className="text-pb-text2 dark:text-gray-400 block mb-1">Skip Reasons:</span>
           <div className="flex flex-wrap gap-2">
             {Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => (
-              <span key={reason} className="px-1.5 py-0.5 bg-claude-surface dark:bg-gray-800 rounded text-claude-text dark:text-gray-300 font-mono">
+              <span key={reason} className="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded text-pb-text dark:text-gray-300 font-mono">
                 {reason}: {count}
               </span>
             ))}

@@ -64,7 +64,7 @@ export default function AutomationPage(props) {
   if (!automationConfig) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-claude-muted dark:text-gray-400">Loading automation settings...</div>
+        <div className="text-pb-text2 dark:text-gray-400">Loading automation settings...</div>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function AutomationPage(props) {
         />
 
         {/* Horizontal sub-tabs */}
-        <div className="flex items-center gap-0 border-b border-claude-border dark:border-slate-700/50 mb-4 overflow-x-auto">
+        <div className="flex items-center gap-0 border-b border-pb-border dark:border-slate-700/50 mb-4 overflow-x-auto">
           {TABS.map(tab => (
             <button
               key={tab.id}

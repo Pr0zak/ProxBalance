@@ -16,11 +16,11 @@ export default function Toggle({ checked, onChange, color = 'green' }) {
 
 export function ToggleRow({ label, description, checked, onChange, color, children }) {
   return (
-    <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg">
+    <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg">
       <div className="flex items-center justify-between p-4">
         <div>
-          <div className="font-semibold text-claude-text dark:text-white">{label}</div>
-          <div className="text-sm text-claude-muted dark:text-gray-400">{description}</div>
+          <div className="font-semibold text-pb-text dark:text-white">{label}</div>
+          <div className="text-sm text-pb-text2 dark:text-gray-400">{description}</div>
         </div>
         <Toggle checked={checked} onChange={onChange} color={color} />
       </div>

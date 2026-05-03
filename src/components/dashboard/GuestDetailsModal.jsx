@@ -19,23 +19,23 @@ export default function GuestDetailsModal({
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedGuestDetails(null)}>
       <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-3xl')} !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b border-claude-border dark:border-slate-700 shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-pb-border dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className={`p-1.5 rounded-lg shrink-0 ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
-              {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-claude-text dark:text-white" /> : <Package size={20} className="text-claude-text dark:text-white" />}
+              {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-pb-text dark:text-white" /> : <Package size={20} className="text-pb-text dark:text-white" />}
             </div>
             <div className="min-w-0">
-              <h3 className="text-base sm:text-lg font-bold text-claude-text dark:text-white truncate">
+              <h3 className="text-base sm:text-lg font-bold text-pb-text dark:text-white truncate">
                 {selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`}
               </h3>
-              <p className="text-xs text-claude-muted dark:text-gray-400">
+              <p className="text-xs text-pb-text2 dark:text-gray-400">
                 {selectedGuestDetails.type === 'qemu' ? 'VM' : 'CT'} #{selectedGuestDetails.vmid}
               </p>
             </div>
           </div>
           <button
             onClick={() => setSelectedGuestDetails(null)}
-            className="ml-2 shrink-0 p-1.5 rounded-lg text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 hover:bg-claude-surface2 dark:hover:bg-gray-700"
+            className="ml-2 shrink-0 p-1.5 rounded-lg text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-gray-700"
             aria-label="Close"
           >
             <X size={20} />
@@ -45,17 +45,17 @@ export default function GuestDetailsModal({
         {/* Modal Body */}
         <div className="p-4 overflow-y-auto">
           {/* Status Bar */}
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-claude-border dark:border-slate-700">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-pb-border dark:border-slate-700">
             <div className="flex items-center gap-2">
               <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
                 selectedGuestDetails.status === 'running' ? 'bg-green-900/30 text-green-300' :
-                'bg-claude-surface2 dark:bg-gray-700 text-claude-text dark:text-gray-300'
+                'bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-300'
               }`}>
                 {selectedGuestDetails.status === 'running' ? <Activity size={12} /> : <AlertCircle size={12} />}
                 {selectedGuestDetails.status}
               </div>
-              <span className="text-xs text-claude-muted dark:text-gray-400">on</span>
-              <span className="text-xs font-medium text-claude-text dark:text-white">{selectedGuestDetails.currentNode}</span>
+              <span className="text-xs text-pb-text2 dark:text-gray-400">on</span>
+              <span className="text-xs font-medium text-pb-text dark:text-white">{selectedGuestDetails.currentNode}</span>
             </div>
           </div>
 
@@ -75,8 +75,8 @@ export default function GuestDetailsModal({
               </svg>
               <div className="relative z-10">
                 <div className="text-[10px] uppercase tracking-wide text-blue-400 font-medium mb-0.5">CPU</div>
-                <div className="text-xl font-bold text-claude-text dark:text-white">{(selectedGuestDetails.cpu_current || 0).toFixed(1)}%</div>
-                <div className="text-[10px] text-claude-muted dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores</div>
+                <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedGuestDetails.cpu_current || 0).toFixed(1)}%</div>
+                <div className="text-[10px] text-pb-text2 dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores</div>
               </div>
             </div>
 
@@ -94,10 +94,10 @@ export default function GuestDetailsModal({
               </svg>
               <div className="relative z-10">
                 <div className="text-[10px] uppercase tracking-wide text-purple-400 font-medium mb-0.5">Memory</div>
-                <div className="text-xl font-bold text-claude-text dark:text-white">
+                <div className="text-xl font-bold text-pb-text dark:text-white">
                   {selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100).toFixed(1) : 0}%
                 </div>
-                <div className="text-[10px] text-claude-muted dark:text-gray-400">
+                <div className="text-[10px] text-pb-text2 dark:text-gray-400">
                   {(selectedGuestDetails.mem_used_gb || 0).toFixed(1)} / {(selectedGuestDetails.mem_max_gb || 0).toFixed(1)} GB
                 </div>
               </div>
@@ -111,14 +111,14 @@ export default function GuestDetailsModal({
               <div className="text-[10px] uppercase tracking-wide text-green-400 font-medium mb-1">Disk I/O</div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-claude-muted dark:text-gray-400">Read</span>
-                  <span className="text-sm font-bold text-claude-text dark:text-white">
+                  <span className="text-[10px] text-pb-text2 dark:text-gray-400">Read</span>
+                  <span className="text-sm font-bold text-pb-text dark:text-white">
                     {((selectedGuestDetails.disk_read_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-claude-muted dark:text-gray-400">Write</span>
-                  <span className="text-sm font-bold text-claude-text dark:text-white">
+                  <span className="text-[10px] text-pb-text2 dark:text-gray-400">Write</span>
+                  <span className="text-sm font-bold text-pb-text dark:text-white">
                     {((selectedGuestDetails.disk_write_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
                   </span>
                 </div>
@@ -130,14 +130,14 @@ export default function GuestDetailsModal({
               <div className="text-[10px] uppercase tracking-wide text-cyan-400 font-medium mb-1">Network I/O</div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-claude-muted dark:text-gray-400">In</span>
-                  <span className="text-sm font-bold text-claude-text dark:text-white">
+                  <span className="text-[10px] text-pb-text2 dark:text-gray-400">In</span>
+                  <span className="text-sm font-bold text-pb-text dark:text-white">
                     {((selectedGuestDetails.net_in_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-claude-muted dark:text-gray-400">Out</span>
-                  <span className="text-sm font-bold text-claude-text dark:text-white">
+                  <span className="text-[10px] text-pb-text2 dark:text-gray-400">Out</span>
+                  <span className="text-sm font-bold text-pb-text dark:text-white">
                     {((selectedGuestDetails.net_out_bps || 0) / (1024 * 1024)).toFixed(1)} MB/s
                   </span>
                 </div>
@@ -147,8 +147,8 @@ export default function GuestDetailsModal({
 
           {/* Tags */}
           {selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags && selectedGuestDetails.tags.all_tags.length > 0 && (
-            <div className="border-t border-claude-border dark:border-slate-700 pt-2 mt-2">
-              <div className="text-[10px] uppercase tracking-wide text-claude-muted dark:text-gray-400 font-medium mb-1.5">Tags</div>
+            <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1.5">Tags</div>
               <div className="flex flex-wrap gap-1.5">
                 {selectedGuestDetails.tags.all_tags.map((tag, idx) => (
                   <span key={idx} className="px-2 py-1 bg-blue-900/30 text-blue-300 rounded text-xs">
@@ -161,7 +161,7 @@ export default function GuestDetailsModal({
 
           {/* Mount Points (Containers only) */}
           {selectedGuestDetails.type === 'CT' && selectedGuestDetails.mount_points && selectedGuestDetails.mount_points.has_mount_points && (
-            <div className="border-t border-claude-border dark:border-slate-700 pt-3">
+            <div className="border-t border-pb-border dark:border-slate-700 pt-3">
               <button
                 onClick={() => setGuestModalCollapsed(prev => ({
                   ...prev,
@@ -175,11 +175,11 @@ export default function GuestDetailsModal({
                       ? 'text-orange-400'
                       : 'text-green-400'
                   }`} />
-                  <h4 className="text-sm font-semibold text-claude-text dark:text-white">
+                  <h4 className="text-sm font-semibold text-pb-text dark:text-white">
                     Mount Points ({selectedGuestDetails.mount_points.mount_count})
                   </h4>
                 </div>
-                <ChevronDown size={16} className={`text-claude-muted dark:text-gray-500 transition-transform ${guestModalCollapsed.mountPoints ? '' : 'rotate-180'}`} />
+                <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.mountPoints ? '' : 'rotate-180'}`} />
               </button>
 
               {!guestModalCollapsed.mountPoints && (
@@ -197,24 +197,24 @@ export default function GuestDetailsModal({
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-semibold text-claude-text dark:text-white">
+                          <span className="font-mono text-sm font-semibold text-pb-text dark:text-white">
                             {mp.mount_path}
                           </span>
                           {mp.is_bind_mount && mp.is_shared && (
-                            <span className="px-2 py-0.5 bg-green-500 text-claude-text dark:text-white text-[10px] font-bold rounded">
+                            <span className="px-2 py-0.5 bg-green-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
                               SHARED
                             </span>
                           )}
                           {mp.is_bind_mount && !mp.is_shared && (
-                            <span className="px-2 py-0.5 bg-orange-500 text-claude-text dark:text-white text-[10px] font-bold rounded">
+                            <span className="px-2 py-0.5 bg-orange-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
                               UNSHARED
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-claude-muted dark:text-gray-400">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400">
                           <span className="font-medium">Source:</span> <span className="font-mono">{mp.source}</span>
                         </div>
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                           <span className="font-medium">Type:</span> {mp.is_bind_mount ? 'Bind Mount' : 'Storage Mount'}
                         </div>
                       </div>
@@ -266,7 +266,7 @@ export default function GuestDetailsModal({
 
           {/* Local/Pinned Disks (VMs and CTs) */}
           {selectedGuestDetails.local_disks && selectedGuestDetails.local_disks.is_pinned && (
-            <div className="border-t border-claude-border dark:border-slate-700 pt-3">
+            <div className="border-t border-pb-border dark:border-slate-700 pt-3">
               <button
                 onClick={() => setGuestModalCollapsed(prev => ({
                   ...prev,
@@ -276,11 +276,11 @@ export default function GuestDetailsModal({
               >
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={16} className="text-red-400" />
-                  <h4 className="text-sm font-semibold text-claude-text dark:text-white">
+                  <h4 className="text-sm font-semibold text-pb-text dark:text-white">
                     Cannot Migrate - {selectedGuestDetails.local_disks.pinned_reason}
                   </h4>
                 </div>
-                <ChevronDown size={16} className={`text-claude-muted dark:text-gray-500 transition-transform ${guestModalCollapsed.passthroughDisks ? '' : 'rotate-180'}`} />
+                <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.passthroughDisks ? '' : 'rotate-180'}`} />
               </button>
 
               {!guestModalCollapsed.passthroughDisks && (
@@ -288,7 +288,7 @@ export default function GuestDetailsModal({
               {/* Passthrough Disks */}
               {selectedGuestDetails.local_disks.passthrough_disks && selectedGuestDetails.local_disks.passthrough_disks.length > 0 && (
                 <div className="mb-3">
-                  <h5 className="text-sm font-semibold text-claude-text dark:text-gray-300 mb-2">
+                  <h5 className="text-sm font-semibold text-pb-text dark:text-gray-300 mb-2">
                     Passthrough Disks ({selectedGuestDetails.local_disks.passthrough_count})
                   </h5>
                   <div className="space-y-2">
@@ -297,14 +297,14 @@ export default function GuestDetailsModal({
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-mono text-sm font-semibold text-claude-text dark:text-white">
+                              <span className="font-mono text-sm font-semibold text-pb-text dark:text-white">
                                 {disk.key}
                               </span>
-                              <span className="px-2 py-0.5 bg-red-500 text-claude-text dark:text-white text-[10px] font-bold rounded">
+                              <span className="px-2 py-0.5 bg-red-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
                                 HARDWARE PASSTHROUGH
                               </span>
                             </div>
-                            <div className="text-xs text-claude-muted dark:text-gray-400">
+                            <div className="text-xs text-pb-text2 dark:text-gray-400">
                               <span className="font-medium">Device:</span> <span className="font-mono text-[11px]">{disk.device}</span>
                             </div>
                           </div>
@@ -336,7 +336,7 @@ export default function GuestDetailsModal({
           )}
 
           {/* Migration Options - Node Score Comparison */}
-          <div className="border-t border-claude-border dark:border-slate-700 pt-3 mt-2">
+          <div className="border-t border-pb-border dark:border-slate-700 pt-3 mt-2">
             <button
               onClick={() => {
                 setGuestModalCollapsed(prev => ({ ...prev, migrationOptions: !prev.migrationOptions }));
@@ -348,18 +348,18 @@ export default function GuestDetailsModal({
             >
               <div className="flex items-center gap-2">
                 <BarChart2 size={16} className="text-blue-400" />
-                <h4 className="text-sm font-semibold text-claude-text dark:text-white">
+                <h4 className="text-sm font-semibold text-pb-text dark:text-white">
                   Migration Options
                 </h4>
-                <span className="text-xs text-claude-muted dark:text-gray-400">Score comparison across all nodes</span>
+                <span className="text-xs text-pb-text2 dark:text-gray-400">Score comparison across all nodes</span>
               </div>
-              <ChevronDown size={16} className={`text-claude-muted dark:text-gray-500 transition-transform ${guestModalCollapsed.migrationOptions ? 'rotate-180' : ''}`} />
+              <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.migrationOptions ? 'rotate-180' : ''}`} />
             </button>
 
             {guestModalCollapsed.migrationOptions && (
               <div className="space-y-2">
                 {loadingGuestOptions ? (
-                  <div className="flex items-center justify-center p-4 text-claude-muted dark:text-gray-400">
+                  <div className="flex items-center justify-center p-4 text-pb-text2 dark:text-gray-400">
                     <RefreshCw size={16} className="animate-spin mr-2" /> Loading migration options...
                   </div>
                 ) : guestMigrationOptions?.options ? (
@@ -372,14 +372,14 @@ export default function GuestDetailsModal({
                           opt.is_current
                             ? 'border-blue-600 bg-blue-900/20'
                             : opt.disqualified
-                            ? 'border-claude-border dark:border-slate-700 bg-gray-800/50 opacity-60'
+                            ? 'border-pb-border dark:border-slate-700 bg-gray-800/50 opacity-60'
                             : opt.suitable
                             ? 'border-green-700 bg-green-900/10'
-                            : 'border-claude-border dark:border-slate-700'
+                            : 'border-pb-border dark:border-slate-700'
                         }`}>
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-claude-text dark:text-white flex items-center gap-1">
+                              <span className="font-semibold text-pb-text dark:text-white flex items-center gap-1">
                                 {opt.node}
                                 {/* CPU trend arrow */}
                                 {!opt.disqualified && opt.trend_analysis && (() => {
@@ -387,16 +387,16 @@ export default function GuestDetailsModal({
                                   if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={`CPU ${opt.trend_analysis.cpu_rate_per_day > 0 ? '+' : ''}${opt.trend_analysis.cpu_rate_per_day?.toFixed(1)}%/day`} />;
                                   if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title="CPU rising" />;
                                   if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="CPU falling" />;
-                                  return <Minus size={10} className="text-claude-muted dark:text-gray-400" title="CPU stable" />;
+                                  return <Minus size={10} className="text-pb-text2 dark:text-gray-400" title="CPU stable" />;
                                 })()}
                               </span>
-                              {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-claude-text dark:text-white text-[9px] font-bold rounded">CURRENT</span>}
-                              {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-claude-text dark:text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
+                              {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-pb-text dark:text-white text-[9px] font-bold rounded">CURRENT</span>}
+                              {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-pb-text dark:text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
                               {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
                                 <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                                  opt.improvement >= 30 ? 'bg-green-500 text-claude-text dark:text-white' :
-                                  opt.improvement >= 15 ? 'bg-yellow-500 text-claude-text dark:text-white' :
-                                  'bg-gray-600 text-claude-text dark:text-gray-300'
+                                  opt.improvement >= 30 ? 'bg-green-500 text-pb-text dark:text-white' :
+                                  opt.improvement >= 15 ? 'bg-yellow-500 text-pb-text dark:text-white' :
+                                  'bg-gray-600 text-pb-text dark:text-gray-300'
                                 }`}>+{opt.improvement.toFixed(0)} pts</span>
                               )}
                               {/* Stability badge */}
@@ -420,7 +420,7 @@ export default function GuestDetailsModal({
                             </div>
                             <div className="text-right">
                               {opt.disqualified ? (
-                                <span className="text-claude-muted dark:text-gray-400">{opt.reason}</span>
+                                <span className="text-pb-text2 dark:text-gray-400">{opt.reason}</span>
                               ) : (
                                 <span className={`font-semibold ${
                                   opt.suitability_rating >= 70 ? 'text-green-400' :
@@ -446,7 +446,7 @@ export default function GuestDetailsModal({
                     })}
                   </>
                 ) : (
-                  <div className="text-xs text-claude-muted dark:text-gray-400 p-2">No migration data available</div>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400 p-2">No migration data available</div>
                 )}
               </div>
             )}
@@ -454,10 +454,10 @@ export default function GuestDetailsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-claude-border dark:border-slate-700">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-pb-border dark:border-slate-700">
           <button
             onClick={() => setSelectedGuestDetails(null)}
-            className="px-4 py-2 text-claude-text dark:text-gray-300 bg-claude-surface2 dark:bg-gray-700 hover:bg-gray-600 rounded font-medium flex items-center justify-center gap-1.5"
+            className="px-4 py-2 text-pb-text dark:text-gray-300 bg-pb-surface2 dark:bg-gray-700 hover:bg-gray-600 rounded font-medium flex items-center justify-center gap-1.5"
           >
             <X size={14} /> Close
           </button>
@@ -469,7 +469,7 @@ export default function GuestDetailsModal({
                 setShowMigrationDialog(true);
                 setSelectedGuestDetails(null);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-claude-text dark:text-white rounded font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded font-medium flex items-center gap-2"
             >
               <MoveRight size={16} />
               Migrate
