@@ -3,10 +3,12 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState, useMemo } = React;
+const { useState, useEffect, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
+import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
+import AutoLayoutPicker from './dashboard/AutoLayoutPicker.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
@@ -97,6 +99,17 @@ export default function DashboardPage({
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
 
+  // Automation integration preview state (feat/cluster-overview-merge)
+  const [autoLayoutPreview, setAutoLayoutPreview] = useState(() => localStorage.getItem('autoLayoutPreview') || 'current');
+  useEffect(() => { localStorage.setItem('autoLayoutPreview', autoLayoutPreview); }, [autoLayoutPreview]);
+  const autoShowKpiCard = autoLayoutPreview === 'A';
+  const autoShowBanner = autoLayoutPreview === 'B';
+  const autoShowRecsStrip = autoLayoutPreview === 'C';
+  const autoShowTab = autoLayoutPreview === 'D';
+  const autoShowTopPill = autoLayoutPreview === 'E';
+  const autoSlimSection = autoLayoutPreview === 'B' || autoLayoutPreview === 'C';
+  const autoHideSection = autoLayoutPreview === 'D';
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -129,6 +142,21 @@ export default function DashboardPage({
           </div>
         )}
 
+        {/* PREVIEW: Automated Migrations integration picker */}
+        <AutoLayoutPicker value={autoLayoutPreview} onChange={setAutoLayoutPreview} />
+
+        {/* Variant E — simulated TopNav-style status pill at the top of dashboard */}
+        {autoShowTopPill && (
+          <div className="mb-3 flex items-center gap-2 text-[11px] text-gray-500">
+            <span className="opacity-70">Imagine this in the global top nav →</span>
+            <AutoStatusPill
+              size="pill"
+              automationStatus={automationStatus}
+              fetchAutomationStatus={fetchAutomationStatus}
+            />
+          </div>
+        )}
+
         {/* KPI Summary Row */}
         <KpiRow
           data={data}
@@ -141,7 +169,35 @@ export default function DashboardPage({
           excludeGuests={excludeGuests}
         />
 
-        {/* Unified Cluster section — Nodes / Guests / Map / Charts / Recs tabs */}
+        {/* Variant A — Auto status as a single KPI-style card under the row */}
+        {autoShowKpiCard && (
+          <div className="mb-4 max-w-xs">
+            <AutoStatusPill
+              size="card"
+              automationStatus={automationStatus}
+              fetchAutomationStatus={fetchAutomationStatus}
+              runAutomationNow={runAutomationNow}
+              runningAutomation={runningAutomation}
+              setCurrentPage={setCurrentPage}
+            />
+          </div>
+        )}
+
+        {/* Variant B — Auto status banner above Cluster section */}
+        {autoShowBanner && (
+          <div className="mb-3">
+            <AutoStatusPill
+              size="banner"
+              automationStatus={automationStatus}
+              fetchAutomationStatus={fetchAutomationStatus}
+              runAutomationNow={runAutomationNow}
+              runningAutomation={runningAutomation}
+              setCurrentPage={setCurrentPage}
+            />
+          </div>
+        )}
+
+        {/* Unified Cluster section — Nodes / Guests / Map / Charts / Recs / Auto tabs */}
         <ClusterSection
           data={data}
           nodeScores={nodeScores}
@@ -188,10 +244,24 @@ export default function DashboardPage({
           API_BASE={API_BASE}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
+          recsTabAutoStrip={autoShowRecsStrip}
+          autoTab={autoShowTab}
+          automationStatus={automationStatus}
+          automationConfig={automationConfig}
+          scoreHistory={scoreHistory}
+          fetchAutomationStatus={fetchAutomationStatus}
+          runAutomationNow={runAutomationNow}
+          runningAutomation={runningAutomation}
+          runNowMessage={runNowMessage}
+          setRunNowMessage={setRunNowMessage}
+          setCancelMigrationModal={setCancelMigrationModal}
+          runHistory={runHistory}
+          expandedRun={expandedRun}
+          setExpandedRun={setExpandedRun}
         />
 
-        {/* Automated Migrations Status */}
-        <AutomationStatusSection
+        {/* Automated Migrations Status (hidden when variant D moves it into a tab) */}
+        {!autoHideSection && <AutomationStatusSection
           automationStatus={automationStatus}
           automationConfig={automationConfig}
           scoreHistory={scoreHistory}
@@ -208,7 +278,8 @@ export default function DashboardPage({
           runHistory={runHistory}
           expandedRun={expandedRun}
           setExpandedRun={setExpandedRun}
-        />
+          slim={autoSlimSection}
+        />}
 
         <NodeDetailsModal
           selectedNode={selectedNode}

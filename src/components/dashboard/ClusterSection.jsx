@@ -1,9 +1,12 @@
-import { GLASS_CARD } from '../../utils/designTokens.js';
+import { GLASS_CARD, iconBadge, ICON } from '../../utils/designTokens.js';
+import { Server } from '../Icons.jsx';
 import NodeSummaryTable from './NodeSummaryTable.jsx';
 import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './MigrationRecommendationsSection.jsx';
+import AutomationStatusSection from './AutomationStatusSection.jsx';
+import AutoStatusPill from './AutoStatusPill.jsx';
 
 const { useState, useEffect } = React;
 
@@ -21,7 +24,10 @@ const BASE_TABS = [
  */
 export default function ClusterSection(props) {
   const recCount = Array.isArray(props.recommendations) ? props.recommendations.length : 0;
-  const TABS = [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }];
+  let TABS = [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }];
+  if (props.autoTab) {
+    TABS = [...TABS, { id: 'auto', label: 'Auto' }];
+  }
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('clusterSectionTab') || 'table';
@@ -43,7 +49,12 @@ export default function ClusterSection(props) {
   return (
     <div className={GLASS_CARD}>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-        <h2 className="text-xl font-bold text-white">Cluster</h2>
+        <div className="flex items-center gap-3">
+          <div className={iconBadge('teal', 'cyan')}>
+            <Server size={ICON.section} className="text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Cluster</h2>
+        </div>
         <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-1 flex-wrap">
           {TABS.map(t => (
             <button
@@ -127,30 +138,65 @@ export default function ClusterSection(props) {
         />
       )}
       {effectiveTab === 'recommendations' && (
-        <MigrationRecommendationsSection
+        <>
+          {props.recsTabAutoStrip && (
+            <div className="mb-3">
+              <AutoStatusPill
+                size="strip"
+                automationStatus={props.automationStatus}
+                fetchAutomationStatus={props.fetchAutomationStatus}
+                runAutomationNow={props.runAutomationNow}
+                runningAutomation={props.runningAutomation}
+                setCurrentPage={props.setCurrentPage}
+              />
+            </div>
+          )}
+          <MigrationRecommendationsSection
+            embedded
+            data={props.data}
+            recommendations={props.recommendations}
+            loadingRecommendations={props.loadingRecommendations}
+            generateRecommendations={props.generateRecommendations}
+            recommendationData={props.recommendationData}
+            penaltyConfig={props.penaltyConfig}
+            collapsedSections={props.collapsedSections}
+            setCollapsedSections={props.setCollapsedSections}
+            toggleSection={props.toggleSection}
+            canMigrate={props.canMigrate}
+            migrationStatus={props.migrationStatus}
+            setMigrationStatus={props.setMigrationStatus}
+            completedMigrations={props.completedMigrations}
+            guestsMigrating={props.guestsMigrating}
+            migrationProgress={props.migrationProgress}
+            cancelMigration={props.cancelMigration}
+            trackMigration={props.trackMigration}
+            setConfirmMigration={props.setConfirmMigration}
+            setCurrentPage={props.setCurrentPage}
+            setOpenPenaltyConfigOnAutomation={props.setOpenPenaltyConfigOnAutomation}
+            nodeScores={props.nodeScores}
+            API_BASE={props.API_BASE}
+          />
+        </>
+      )}
+      {effectiveTab === 'auto' && (
+        <AutomationStatusSection
           embedded
-          data={props.data}
-          recommendations={props.recommendations}
-          loadingRecommendations={props.loadingRecommendations}
-          generateRecommendations={props.generateRecommendations}
-          recommendationData={props.recommendationData}
-          penaltyConfig={props.penaltyConfig}
-          collapsedSections={props.collapsedSections}
+          automationStatus={props.automationStatus}
+          automationConfig={props.automationConfig}
+          scoreHistory={props.scoreHistory}
+          collapsedSections={{ ...props.collapsedSections, automatedMigrations: false }}
           setCollapsedSections={props.setCollapsedSections}
-          toggleSection={props.toggleSection}
-          canMigrate={props.canMigrate}
-          migrationStatus={props.migrationStatus}
-          setMigrationStatus={props.setMigrationStatus}
-          completedMigrations={props.completedMigrations}
-          guestsMigrating={props.guestsMigrating}
-          migrationProgress={props.migrationProgress}
-          cancelMigration={props.cancelMigration}
-          trackMigration={props.trackMigration}
-          setConfirmMigration={props.setConfirmMigration}
+          toggleSection={() => {}}
           setCurrentPage={props.setCurrentPage}
-          setOpenPenaltyConfigOnAutomation={props.setOpenPenaltyConfigOnAutomation}
-          nodeScores={props.nodeScores}
-          API_BASE={props.API_BASE}
+          fetchAutomationStatus={props.fetchAutomationStatus}
+          runAutomationNow={props.runAutomationNow}
+          runningAutomation={props.runningAutomation}
+          runNowMessage={props.runNowMessage}
+          setRunNowMessage={props.setRunNowMessage}
+          setCancelMigrationModal={props.setCancelMigrationModal}
+          runHistory={props.runHistory}
+          expandedRun={props.expandedRun}
+          setExpandedRun={props.setExpandedRun}
         />
       )}
     </div>
