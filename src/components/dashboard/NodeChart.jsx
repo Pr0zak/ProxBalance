@@ -1,12 +1,23 @@
-const { useRef, useEffect } = React;
+const { useRef, useEffect, useState } = React;
 
 /**
  * Renders a Chart.js line chart for a single node's trend data.
  * Creates/destroys the chart instance internally — no parent chart management needed.
+ * Re-renders when the `dark` class on document.documentElement flips so the chart
+ * theme follows the app's light/dark toggle.
  */
 export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!canvasRef.current || !trendData || typeof trendData !== 'object') return;
@@ -39,8 +50,6 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore 
     const sampleRate = { '1h': 2, '6h': 5, '12h': 10, '24h': 20, '7d': 20, '30d': 25, '1y': 25 }[chartPeriod] || 1;
     const sampled = filtered.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i % sampleRate === 0);
 
-    // App is dark-only; hardcode chart theme.
-    const isDark = true;
     const ctx = canvasRef.current.getContext('2d');
 
     // Build annotation for suitability score line
@@ -102,7 +111,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore 
         chartRef.current = null;
       }
     };
-  }, [trendData, chartPeriod, nodeScore?.suitability_rating]);
+  }, [trendData, chartPeriod, nodeScore?.suitability_rating, isDark]);
 
   return <canvas ref={canvasRef}></canvas>;
 }
