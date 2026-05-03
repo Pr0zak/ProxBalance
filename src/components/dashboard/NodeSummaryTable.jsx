@@ -64,7 +64,7 @@ function formatMem(gb) {
   return `${(gb * 1024).toFixed(0)} MB`;
 }
 
-export function GuestList({ guests, onGuestClick }) {
+function GuestList({ guests, onGuestClick }) {
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
@@ -109,10 +109,11 @@ export function GuestList({ guests, onGuestClick }) {
 export default function NodeSummaryTable({
   data, nodeScores, onNodeClick, onGuestClick,
   collapsedSections, setCollapsedSections,
-  renderDrawer,
-  headerOverride,
+  embedded = false,
 }) {
-  const collapsed = collapsedSections?.nodeOverview;
+  // When embedded, the parent owns the section header (and thus the
+  // collapse state and the collapsed-chip summary). Always render the body.
+  const collapsed = embedded ? false : collapsedSections?.nodeOverview;
   const [sortField, setSortField] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
   const [search, setSearch] = useState('');
@@ -229,9 +230,12 @@ export default function NodeSummaryTable({
     </th>
   );
 
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: GLASS_CARD };
+
   return (
-    <div className={GLASS_CARD}>
-      {headerOverride ?? (
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
         <button
           onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: !prev.nodeOverview }))}
           className="w-full flex items-center justify-between text-left mb-3 hover:opacity-80 transition-opacity"
@@ -371,10 +375,7 @@ export default function NodeSummaryTable({
                       {isExpanded && (
                         <tr className="bg-slate-900/40">
                           <td colSpan={TOTAL_COLS} className="px-3 pb-3 pt-1">
-                            {renderDrawer
-                              ? renderDrawer({ node: node.raw, nodeName: node.name, guests: nodeGuests })
-                              : <GuestList guests={nodeGuests} onGuestClick={onGuestClick} />
-                            }
+                            <GuestList guests={nodeGuests} onGuestClick={onGuestClick} />
                           </td>
                         </tr>
                       )}
@@ -392,6 +393,6 @@ export default function NodeSummaryTable({
           )}
         </>
       )}
-    </div>
+    </Wrapper>
   );
 }
