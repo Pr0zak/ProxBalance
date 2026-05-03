@@ -13,6 +13,9 @@ import RecommendationFilters from './recommendations/RecommendationFilters.jsx';
 import RecommendationCard from './recommendations/RecommendationCard.jsx';
 import SkippedGuests from './recommendations/SkippedGuests.jsx';
 import InsightsDrawer from './recommendations/InsightsDrawer.jsx';
+import BatchImpact from './recommendations/insights/BatchImpact.jsx';
+import ExecutionPlan from './recommendations/insights/ExecutionPlan.jsx';
+import { Info } from '../Icons.jsx';
 
 const { useState } = React;
 
@@ -165,11 +168,21 @@ export default function MigrationRecommendationsSection({
               Generated: {formatLocalTime(new Date(recommendationData.generated_at))}
             </span>
           )}
+          <a
+            href="https://github.com/Pr0zak/ProxBalance/blob/main/docs/SCORING_ALGORITHM.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-200 rounded-lg hover:bg-slate-700/40 transition-colors"
+            title="How is the score calculated? — opens the scoring algorithm docs"
+          >
+            <Info size={14} />
+            <span className="hidden sm:inline">How scoring works</span>
+          </a>
           {recommendationData?.generated_at && (
             <button
               onClick={() => setShowInsights(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
-              title="View detailed analytics"
+              title="Engine diagnostics, history, and outcomes"
             >
               <Eye size={14} />
               Insights
@@ -205,6 +218,26 @@ export default function MigrationRecommendationsSection({
               collapsedSections={collapsedSections}
               setCollapsedSections={setCollapsedSections}
             />
+          )}
+
+          {/* Decision context: predicted impact + execution ordering */}
+          {!loadingRecommendations && recommendations.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
+                <div className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+                  <span>Predicted Impact</span>
+                  <span className="text-gray-500 font-normal">— if all recs accepted</span>
+                </div>
+                <BatchImpact recommendationData={recommendationData} />
+              </div>
+              <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
+                <div className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+                  <span>Execution Plan</span>
+                  <span className="text-gray-500 font-normal">— optimal order</span>
+                </div>
+                <ExecutionPlan recommendationData={recommendationData} />
+              </div>
+            </div>
           )}
 
           {/* Filter & Sort Controls */}
@@ -278,15 +311,12 @@ export default function MigrationRecommendationsSection({
         </div>
       )}
 
-      {/* Insights Drawer */}
+      {/* Slim Insights Drawer (diagnostics + outcomes + history) */}
       <InsightsDrawer
         open={showInsights}
         onClose={() => setShowInsights(false)}
         recommendationData={recommendationData}
         recommendations={recommendations}
-        penaltyConfig={penaltyConfig}
-        setCurrentPage={setCurrentPage}
-        setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
         API_BASE={API_BASE}
         isMobile={isMobile}
       />
