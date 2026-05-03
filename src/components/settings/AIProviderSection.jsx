@@ -159,7 +159,7 @@ export default function AIProviderSection({
                                     }
                                   }}
                                   disabled={localLoadingModels}
-                                  className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
                                 >
                                   <RefreshCw size={12} className={localLoadingModels ? 'animate-spin' : ''} />
                                   {localLoadingModels ? 'Loading...' : 'Refresh Models'}

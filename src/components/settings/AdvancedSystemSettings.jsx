@@ -55,7 +55,7 @@ export default function AdvancedSystemSettings({
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
-                          className="w-full px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
                         >
                           <Download size={16} />
                           Export Cluster Data (JSON)
@@ -80,7 +80,7 @@ export default function AdvancedSystemSettings({
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
-                          className="w-full px-4 py-2 bg-green-500 text-pb-text dark:text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
                         >
                           <Download size={16} />
                           Export Guest List (CSV)
@@ -181,7 +181,7 @@ export default function AdvancedSystemSettings({
                         <button
                           onClick={validateToken}
                           disabled={validatingToken || !proxmoxTokenId || !proxmoxTokenSecret}
-                          className="w-full px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                           {validatingToken ? (
                             <>
@@ -326,7 +326,7 @@ export default function AdvancedSystemSettings({
                             onClick={() => {
                               window.location.href = `${API_BASE}/config/export`;
                             }}
-                            className="w-full px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Download size={16} />
                             Export Configuration
@@ -394,7 +394,7 @@ export default function AdvancedSystemSettings({
 
                           <button
                             onClick={() => window.configFileInput?.click()}
-                            className="w-full px-4 py-2 bg-green-500 text-pb-text dark:text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Upload size={16} />
                             Import Configuration
@@ -425,7 +425,7 @@ export default function AdvancedSystemSettings({
                                 alert('Error creating backup: ' + error.message);
                               });
                             }}
-                            className="w-full px-4 py-2 bg-purple-500 text-pb-text dark:text-white rounded hover:bg-purple-600 font-medium flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 font-medium flex items-center justify-center gap-2"
                           >
                             <Save size={16} />
                             Create Backup Now
@@ -462,7 +462,7 @@ export default function AdvancedSystemSettings({
                               .catch(error => setError('Error: ' + error.message));
                             }
                           }}
-                          className="w-full px-4 py-2 bg-orange-500 text-pb-text dark:text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
                         >
                           <RefreshCw size={16} />
                           Restart API Service
@@ -486,7 +486,7 @@ export default function AdvancedSystemSettings({
                               .catch(error => setError('Error: ' + error.message));
                             }
                           }}
-                          className="w-full px-4 py-2 bg-orange-500 text-pb-text dark:text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
+                          className="w-full px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-medium flex items-center justify-center gap-2"
                         >
                           <RefreshCw size={16} />
                           Restart Collector Service

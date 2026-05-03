@@ -97,7 +97,7 @@ export default function MigrationModals({
                 }
               }}
               disabled={!migrationTarget}
-              className="px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
               <MoveRight size={14} /> Migrate
             </button>
@@ -303,7 +303,7 @@ export default function MigrationModals({
             <button
               onClick={handleAddTag}
               disabled={!newTag.trim()}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <Plus size={14} /> Add Tag
             </button>
@@ -338,7 +338,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndRemoveTag}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-pb-text dark:text-white rounded hover:bg-red-100 dark:hover:bg-red-700"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-100 dark:hover:bg-red-700"
             >
               <Trash size={14} /> Remove Tag
             </button>
@@ -400,7 +400,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndMigrate}
-              className="px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 flex items-center gap-2"
             >
               <Play size={16} />
               Start Migration
@@ -575,7 +575,7 @@ export default function MigrationModals({
                 </button>
                 <button
                   onClick={confirmBatchMigration}
-                  className="px-6 py-2 bg-green-600 text-pb-text dark:text-white rounded hover:bg-green-100 dark:hover:bg-green-700 flex items-center gap-2 font-semibold"
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-100 dark:hover:bg-green-700 flex items-center gap-2 font-semibold"
                 >
                   <CheckCircle size={16} />
                   Start {pendingBatchMigrations.length} Migration{pendingBatchMigrations.length !== 1 ? 's' : ''}
@@ -658,7 +658,7 @@ export default function MigrationModals({
                 }
               }}
               disabled={cancellingMigration}
-              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-100 dark:bg-red-700 hover:bg-red-100 dark:hover:bg-red-800'} text-pb-text dark:text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
+              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-100 dark:bg-red-700 hover:bg-red-100 dark:hover:bg-red-800'} text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
             >
               {cancellingMigration ? (
                 <>

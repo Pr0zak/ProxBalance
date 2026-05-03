@@ -105,7 +105,7 @@ export default function AlertsBanner({
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold text-sm text-pb-text dark:text-white">{fc.node}</span>
                       <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${
-                        fc.severity === 'critical' ? 'bg-red-600 text-pb-text dark:text-white' : fc.severity === 'warning' ? 'bg-amber-500 text-pb-text dark:text-white' : 'bg-blue-500 text-pb-text dark:text-white'
+                        fc.severity === 'critical' ? 'bg-red-600 text-white' : fc.severity === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
                       }`}>{fc.severity}</span>
                       <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 uppercase">{fc.metric}</span>
                     </div>

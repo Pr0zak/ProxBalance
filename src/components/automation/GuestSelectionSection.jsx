@@ -147,7 +147,7 @@ export default function GuestSelectionSection({
                                 saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: true } });
                                 setConfirmAllowContainerRestarts(false);
                               }}
-                              className="px-2 py-1 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+                              className="px-2 py-1 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
                             >
                               <AlertTriangle size={14} />
                               Yes, Allow Restarts

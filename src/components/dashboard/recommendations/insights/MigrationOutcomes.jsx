@@ -48,7 +48,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
               <span className="font-medium text-pb-text dark:text-gray-300">
                 [{outcome.guest_type} {outcome.vmid}] {outcome.source_node} → {outcome.target_node}
               </span>
-              <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? 'bg-amber-500 text-pb-text dark:text-white' : outcome.accuracy_pct >= 70 ? 'bg-green-500 text-pb-text dark:text-white' : 'bg-gray-500 text-pb-text dark:text-white'}`}>
+              <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? 'bg-amber-500 text-white' : outcome.accuracy_pct >= 70 ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
                 {isPending ? 'PENDING' : outcome.accuracy_pct != null ? `${outcome.accuracy_pct}% accurate` : 'COMPLETED'}
               </span>
             </div>

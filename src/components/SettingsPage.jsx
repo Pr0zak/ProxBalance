@@ -85,7 +85,7 @@ export default function SettingsPage(props) {
           {/* Authentication - Coming Soon */}
           <div className="relative border-2 border-pb-border dark:border-slate-600 rounded-lg p-6 bg-pb-surface2/60 dark:bg-slate-700/30 opacity-60 cursor-not-allowed">
             <div className="absolute top-4 right-4">
-              <span className="px-3 py-1 bg-blue-500 text-pb-text dark:text-white text-xs font-bold rounded-full shadow">
+              <span className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow">
                 COMING SOON
               </span>
             </div>
@@ -145,7 +145,7 @@ export default function SettingsPage(props) {
             <button
               onClick={saveSettings}
               disabled={savingSettings}
-              className="w-full px-6 py-3 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+              className="w-full px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
             >
               <Save size={18} />
               {savingSettings ? 'Saving...' : 'Save Settings'}

@@ -166,7 +166,7 @@ export default function EvacuationModals({
               </button>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded font-medium"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-white rounded font-medium"
               >
                 <Check size={16} className="sm:hidden" /><span className="hidden sm:inline">Review & Confirm</span>
               </button>
@@ -283,7 +283,7 @@ export default function EvacuationModals({
                     });
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-pb-text dark:text-white rounded"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-white rounded"
               >
                 <AlertTriangle size={14} /> Confirm Evacuation
               </button>

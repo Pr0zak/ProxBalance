@@ -508,7 +508,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
                             <Bell size={14} />
                             Send Test Notification

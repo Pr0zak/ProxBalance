@@ -51,7 +51,7 @@ export default function AIRecommendationsSection({
                 <button
                   onClick={fetchAiRecommendations}
                   disabled={loadingAi}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-pb-text dark:text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
                 >
                   {loadingAi ? (
                     <>
@@ -154,9 +154,9 @@ export default function AIRecommendationsSection({
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="font-bold text-lg">[{rec.type} {rec.vmid}] {rec.name}</span>
                                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                                  rec.priority === 'high' ? 'bg-red-600 text-pb-text dark:text-white' :
-                                  rec.priority === 'medium' ? 'bg-yellow-600 text-pb-text dark:text-white' :
-                                  'bg-green-600 text-pb-text dark:text-white'
+                                  rec.priority === 'high' ? 'bg-red-600 text-white' :
+                                  rec.priority === 'medium' ? 'bg-yellow-600 text-white' :
+                                  'bg-green-600 text-white'
                                 }`}>
                                   {rec.priority} Priority
                                 </span>
@@ -196,7 +196,7 @@ export default function AIRecommendationsSection({
                                 // If migration is completed, show "Migrated" badge
                                 if (isCompleted) {
                                   return (
-                                    <div className="px-4 py-2 bg-green-500 text-pb-text dark:text-white rounded flex items-center gap-2">
+                                    <div className="px-4 py-2 bg-green-500 text-white rounded flex items-center gap-2">
                                       <CheckCircle size={16} />
                                       Migrated
                                     </div>
@@ -226,7 +226,7 @@ export default function AIRecommendationsSection({
                                   return (
                                     <button
                                       onClick={() => cancelMigration(rec.vmid, rec.target_node)}
-                                      className="px-4 py-2 bg-red-500 text-pb-text dark:text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
+                                      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
                                       title={tooltipText}
                                     >
                                       <RefreshCw size={16} className="animate-spin" />
@@ -272,7 +272,7 @@ export default function AIRecommendationsSection({
                                       });
                                     }}
                                     disabled={!canMigrate || status === 'running' || isMigrating}
-                                    className="px-4 py-2 bg-purple-500 text-pb-text dark:text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                                     title={!canMigrate ? 'Read-only API token (PVEAuditor) - Cannot perform migrations' : isMigrating ? 'Migration in progress' : ''}
                                   >
                                     {!canMigrate ? (

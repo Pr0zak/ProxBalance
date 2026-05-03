@@ -101,7 +101,7 @@ export default function MigrationLogsSection({
                 </div>
                 <button
                   onClick={fetchAutomationStatus}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
                 >
                   <RefreshCw size={14} />
                   Refresh
@@ -323,7 +323,7 @@ export default function MigrationLogsSection({
                         console.error('Error fetching logs:', error);
                       }
                     }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
                     title="Refresh Logs"
                   >
                     <RefreshCw size={14} />
@@ -343,7 +343,7 @@ export default function MigrationLogsSection({
                       window.URL.revokeObjectURL(url);
                     }}
                     disabled={!automigrateLogs}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-2"
                   >
                     <Download size={14} />
                     Download

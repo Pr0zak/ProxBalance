@@ -90,7 +90,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                       {suggestedLevel === 'full' && ' This adds trend analysis, pattern recognition, and risk gating.'}
                       <button
                         onClick={() => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: suggestedLevel } } })}
-                        className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white text-xs rounded font-semibold"
+                        className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white text-xs rounded font-semibold"
                       >
                         Upgrade
                       </button>

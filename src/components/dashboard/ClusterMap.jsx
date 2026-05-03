@@ -72,7 +72,7 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('cpu')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'cpu'
-                    ? 'bg-blue-600 text-pb-text dark:text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="CPU"
@@ -83,7 +83,7 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('memory')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'memory'
-                    ? 'bg-blue-600 text-pb-text dark:text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="Memory"
@@ -94,7 +94,7 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('allocated')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'allocated'
-                    ? 'bg-blue-600 text-pb-text dark:text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="Allocated"
@@ -105,7 +105,7 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('disk_io')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'disk_io'
-                    ? 'bg-blue-600 text-pb-text dark:text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="Disk I/O"
@@ -116,7 +116,7 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('network')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'network'
-                    ? 'bg-blue-600 text-pb-text dark:text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="Network"
@@ -185,7 +185,7 @@ export default function ClusterMap({
                         <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-500'}`} />
                         <div className="text-sm font-bold text-pb-text dark:text-white mt-1">{node.name}</div>
                         {maintenanceNodes.has(node.name) && (
-                          <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-pb-text dark:text-white rounded mt-0.5">
+                          <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
                             MAINTENANCE
                           </div>
                         )}
@@ -338,13 +338,13 @@ export default function ClusterMap({
 
                           {/* Migration status badge */}
                           {isMigrating && (
-                            <div className="absolute -top-1 -right-1 bg-yellow-500 text-pb-text dark:text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
                               <RefreshCw size={12} className="animate-spin" />
                             </div>
                           )}
 
                           {isCompleted && !isMigrating && (
-                            <div className="absolute -top-1 -right-1 bg-green-500 text-pb-text dark:text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
                               <CheckCircle size={12} />
                             </div>
                           )}

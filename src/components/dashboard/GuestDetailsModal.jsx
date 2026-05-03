@@ -201,12 +201,12 @@ export default function GuestDetailsModal({
                             {mp.mount_path}
                           </span>
                           {mp.is_bind_mount && mp.is_shared && (
-                            <span className="px-2 py-0.5 bg-green-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
+                            <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded">
                               SHARED
                             </span>
                           )}
                           {mp.is_bind_mount && !mp.is_shared && (
-                            <span className="px-2 py-0.5 bg-orange-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
+                            <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded">
                               UNSHARED
                             </span>
                           )}
@@ -300,7 +300,7 @@ export default function GuestDetailsModal({
                               <span className="font-mono text-sm font-semibold text-pb-text dark:text-white">
                                 {disk.key}
                               </span>
-                              <span className="px-2 py-0.5 bg-red-500 text-pb-text dark:text-white text-[10px] font-bold rounded">
+                              <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded">
                                 HARDWARE PASSTHROUGH
                               </span>
                             </div>
@@ -390,12 +390,12 @@ export default function GuestDetailsModal({
                                   return <Minus size={10} className="text-pb-text2 dark:text-gray-400" title="CPU stable" />;
                                 })()}
                               </span>
-                              {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-pb-text dark:text-white text-[9px] font-bold rounded">CURRENT</span>}
+                              {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">CURRENT</span>}
                               {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-pb-text dark:text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
                               {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
                                 <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                                  opt.improvement >= 30 ? 'bg-green-500 text-pb-text dark:text-white' :
-                                  opt.improvement >= 15 ? 'bg-yellow-500 text-pb-text dark:text-white' :
+                                  opt.improvement >= 30 ? 'bg-green-500 text-white' :
+                                  opt.improvement >= 15 ? 'bg-yellow-500 text-white' :
                                   'bg-gray-600 text-pb-text dark:text-gray-300'
                                 }`}>+{opt.improvement.toFixed(0)} pts</span>
                               )}
@@ -469,7 +469,7 @@ export default function GuestDetailsModal({
                 setShowMigrationDialog(true);
                 setSelectedGuestDetails(null);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded font-medium flex items-center gap-2"
             >
               <MoveRight size={16} />
               Migrate

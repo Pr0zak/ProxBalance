@@ -135,9 +135,9 @@ export default function PenaltyScoringSection({
               {[1, 2, 3].map((level) => {
                 const isActive = settings.sensitivity === level;
                 const colors = {
-                  1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
-                  2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
-                  3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
+                  1: isActive ? 'bg-green-600 text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
+                  2: isActive ? 'bg-blue-600 text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
+                  3: isActive ? 'bg-orange-600 text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
                 };
                 return (
                   <button
@@ -199,7 +199,7 @@ export default function PenaltyScoringSection({
                     disabled={isSaving}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                       isActive
-                        ? 'bg-blue-600 text-pb-text dark:text-white shadow-md ring-2 ring-blue-700'
+                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-700'
                         : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-gray-600 border border-gray-600'
                     }`}
                   >
@@ -269,7 +269,7 @@ export default function PenaltyScoringSection({
                   <button
                     onClick={runSimulation}
                     disabled={simulatingConfig}
-                    className="px-3 py-1.5 bg-indigo-500 text-pb-text dark:text-white text-sm font-medium rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5 shrink-0 ml-4"
+                    className="px-3 py-1.5 bg-indigo-500 text-white text-sm font-medium rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors flex items-center gap-1.5 shrink-0 ml-4"
                   >
                     {simulatingConfig ? (
                       <><RefreshCw size={14} className="animate-spin" /> Simulating...</>
@@ -519,7 +519,7 @@ export default function PenaltyScoringSection({
                     <button
                       onClick={savePenaltyConfig}
                       disabled={savingPenaltyConfig}
-                      className="flex-1 px-4 py-2 bg-purple-500 text-pb-text dark:text-white rounded-lg hover:bg-purple-600 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 text-sm"
+                      className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 text-sm"
                     >
                       {savingPenaltyConfig ? 'Saving...' : <><Save size={14} /> Save Expert Overrides</>}
                     </button>
