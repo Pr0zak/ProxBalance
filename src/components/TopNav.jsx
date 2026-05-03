@@ -1,7 +1,7 @@
 import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
-  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE
+  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, BTN_ICON
 } from '../utils/designTokens.js';
 
 const { useMemo } = React;
