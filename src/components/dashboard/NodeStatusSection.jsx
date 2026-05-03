@@ -12,26 +12,33 @@ export default function NodeStatusSection({
   nodeScores,
   generateSparkline,
   darkMode,
+  embedded = false,
 }) {
+  // When embedded, the parent owns the section card and header; always render expanded.
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
+  const isCollapsed = embedded ? false : collapsedSections.nodeStatus;
   return (
-        <div className={`${GLASS_CARD} overflow-hidden`}>
-          <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={iconBadge('cyan', 'blue')}>
-                <HardDrive size={ICON.section} className="text-white" />
+        <Wrapper {...wrapperProps}>
+          <div className={`flex flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
+            {!embedded && (
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={iconBadge('cyan', 'blue')}>
+                  <HardDrive size={ICON.section} className="text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">Node Status</h2>
+                  <p className="text-sm text-gray-400 mt-0.5">Detailed node metrics</p>
+                </div>
+                <button
+                  onClick={() => toggleSection('nodeStatus')}
+                  className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
+                  title={collapsedSections.nodeStatus ? "Expand section" : "Collapse section"}
+                >
+                  <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.nodeStatus ? 'rotate-180' : ''}`} />
+                </button>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-lg sm:text-2xl font-bold text-white">Node Status</h2>
-                <p className="text-sm text-gray-400 mt-0.5">Detailed node metrics</p>
-              </div>
-              <button
-                onClick={() => toggleSection('nodeStatus')}
-                className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
-                title={collapsedSections.nodeStatus ? "Expand section" : "Collapse section"}
-              >
-                <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.nodeStatus ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
+            )}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               {/* B4: Predicted Impact Toggle */}
               {recommendationData?.summary?.batch_impact && recommendations.length > 0 && (
@@ -86,7 +93,7 @@ export default function NodeStatusSection({
             </div>
           </div>
 
-          {collapsedSections.nodeStatus ? (
+          {isCollapsed ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
               {Object.values(data.nodes).map(node => {
                 const predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name];
@@ -350,6 +357,6 @@ export default function NodeStatusSection({
             ))}
           </div>
           )}
-        </div>
+        </Wrapper>
   );
 }

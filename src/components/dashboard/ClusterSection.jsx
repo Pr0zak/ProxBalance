@@ -1,7 +1,7 @@
-import { GLASS_CARD } from '../../../utils/designTokens.js';
-import NodeSummaryTable from '../NodeSummaryTable.jsx';
-import ClusterMap from '../ClusterMap.jsx';
-import NodeStatusSection from '../NodeStatusSection.jsx';
+import { GLASS_CARD } from '../../utils/designTokens.js';
+import NodeSummaryTable from './NodeSummaryTable.jsx';
+import ClusterMap from './ClusterMap.jsx';
+import NodeStatusSection from './NodeStatusSection.jsx';
 
 const { useState, useEffect } = React;
 
@@ -12,19 +12,20 @@ const TABS = [
 ];
 
 /**
- * Variant A — single "Cluster" section with 3 tabs.
- * Each tab renders the existing component as-is.
+ * Unified Cluster section — one card with three tabs (Table / Map / Charts).
+ * Each tab renders the existing per-view component in embedded mode (no inner
+ * header — its toolbar controls remain).
  */
-export default function ClusterTabsA(props) {
+export default function ClusterSection(props) {
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('previewClusterTabsA') || 'table';
+    return localStorage.getItem('clusterSectionTab') || 'table';
   });
   const setTab = (id) => {
     setActiveTab(id);
-    localStorage.setItem('previewClusterTabsA', id);
+    localStorage.setItem('clusterSectionTab', id);
   };
 
-  // Lazy-load Chart.js when Charts tab becomes active (mirrors index.jsx behavior).
+  // Lazy-load Chart.js when Charts tab becomes active (mirrors index.jsx).
   useEffect(() => {
     if (activeTab === 'charts' && props.loadChartJs && !props.chartJsLoaded) {
       props.loadChartJs();
@@ -54,19 +55,17 @@ export default function ClusterTabsA(props) {
 
       {activeTab === 'table' && (
         <NodeSummaryTable
+          embedded
           data={props.data}
           nodeScores={props.nodeScores}
           onNodeClick={props.setSelectedNode}
           onGuestClick={props.setSelectedGuestDetails}
-          collapsedSections={{ ...props.collapsedSections, nodeOverview: false }}
-          setCollapsedSections={() => {}}
         />
       )}
       {activeTab === 'map' && (
         <ClusterMap
+          embedded
           data={props.data}
-          collapsedSections={{ ...props.collapsedSections, clusterMap: false }}
-          toggleSection={() => {}}
           showPoweredOffGuests={props.showPoweredOffGuests}
           setShowPoweredOffGuests={props.setShowPoweredOffGuests}
           clusterMapViewMode={props.clusterMapViewMode}
@@ -81,9 +80,8 @@ export default function ClusterTabsA(props) {
       )}
       {activeTab === 'charts' && (
         <NodeStatusSection
+          embedded
           data={props.data}
-          collapsedSections={{ ...props.collapsedSections, nodeStatus: false }}
-          toggleSection={() => {}}
           showPredicted={props.showPredicted}
           setShowPredicted={props.setShowPredicted}
           recommendationData={props.recommendationData}

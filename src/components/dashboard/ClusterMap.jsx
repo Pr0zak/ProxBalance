@@ -17,30 +17,38 @@ export default function ClusterMap({
   setSelectedGuestDetails,
   guestsMigrating,
   migrationProgress,
-  completedMigrations
+  completedMigrations,
+  embedded = false,
 }) {
   if (!data) return null;
 
+  // When embedded, the parent owns the section card and header.
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
+  const isCollapsed = embedded ? false : collapsedSections.clusterMap;
+
   return (
-    <div className={`${GLASS_CARD} overflow-hidden`}>
-      <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={iconBadge('teal', 'cyan')}>
-            <Server size={ICON.section} className="text-white" />
+    <Wrapper {...wrapperProps}>
+      <div className={`flex flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
+        {!embedded && (
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={iconBadge('teal', 'cyan')}>
+              <Server size={ICON.section} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-2xl font-bold text-white">Cluster Map</h2>
+              <p className="text-sm text-gray-400 mt-0.5">Visual cluster overview</p>
+            </div>
+            <button
+              onClick={() => toggleSection('clusterMap')}
+              className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
+              title={collapsedSections.clusterMap ? "Expand section" : "Collapse section"}
+            >
+              <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
+            </button>
           </div>
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-bold text-white">Cluster Map</h2>
-            <p className="text-sm text-gray-400 mt-0.5">Visual cluster overview</p>
-          </div>
-          <button
-            onClick={() => toggleSection('clusterMap')}
-            className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
-            title={collapsedSections.clusterMap ? "Expand section" : "Collapse section"}
-          >
-            <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
-        {!collapsedSections.clusterMap && (
+        )}
+        {!isCollapsed && (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400">Show Powered Off:</span>
@@ -120,7 +128,7 @@ export default function ClusterMap({
         )}
       </div>
 
-      {!collapsedSections.clusterMap && (
+      {!isCollapsed && (
         <div className="relative" style={{minHeight: '400px'}}>
           <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
             {Object.values(data.nodes).map(node => {
@@ -489,6 +497,6 @@ export default function ClusterMap({
           </div>
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }
