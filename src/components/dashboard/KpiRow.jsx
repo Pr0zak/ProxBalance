@@ -2,7 +2,7 @@ import { KPI_CARD, scoreColor, metricTextColor } from '../../utils/designTokens.
 import { Server, Activity, CheckCircle, MoveRight, Tag, ChevronDown, Cpu, MemoryStick } from '../Icons.jsx';
 
 /**
- * KPI summary row — 6 stat cards. The "Cluster Score" card has 7 visual
+ * KPI summary row — 6 stat cards. The "Cluster Health" card has 7 visual
  * variants (current + 6 alternatives) selectable via the clusterHealthVariant prop
  * for the in-progress design preview.
  */
@@ -100,7 +100,7 @@ export default function KpiRow({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-      {/* Cluster Score card — variant-driven */}
+      {/* Cluster Health card — variant-driven */}
       <div className={`${KPI_CARD} ${wideClass}`}>
         {/* Variant Current — original single-number card */}
         {clusterHealthVariant === 'current' && (
@@ -111,7 +111,7 @@ export default function KpiRow({
                 {avgScore !== null ? avgScore : '—'}
                 {avgScore !== null && <span className="text-sm text-gray-500 font-normal">/100</span>}
               </div>
-              <div className="text-xs text-gray-500 truncate">Cluster Score</div>
+              <div className="text-xs text-gray-500 truncate">Cluster Health</div>
             </div>
           </>
         )}
@@ -131,7 +131,7 @@ export default function KpiRow({
                   </svg>
                 )}
               </div>
-              <div className="text-xs text-gray-500 truncate">Cluster Score</div>
+              <div className="text-xs text-gray-500 truncate">Cluster Health</div>
             </div>
           </>
         )}
@@ -152,7 +152,7 @@ export default function KpiRow({
                 )}
               </div>
               <div className="text-xs text-gray-500 truncate">
-                Cluster Score
+                Cluster Health
                 {scoreDelta != null && <span className="text-gray-600"> · vs 24h</span>}
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function KpiRow({
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="text-xs text-gray-500 truncate">Cluster Score</div>
+                <div className="text-xs text-gray-500 truncate">Cluster Health</div>
                 <div className="text-[10px] text-gray-600">/100</div>
               </div>
             </>
@@ -237,7 +237,7 @@ export default function KpiRow({
                 {avgScore !== null ? avgScore : '—'}
                 {avgScore !== null && <span className="text-sm text-gray-500 font-normal">/100</span>}
               </div>
-              <div className="text-xs text-gray-500 truncate">Cluster Score · drill in</div>
+              <div className="text-xs text-gray-500 truncate">Cluster Health · drill in</div>
             </div>
             <ChevronDown size={14} className="text-gray-500 -rotate-90 shrink-0" />
           </button>
