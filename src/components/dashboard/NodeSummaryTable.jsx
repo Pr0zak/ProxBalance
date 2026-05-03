@@ -128,7 +128,8 @@ function TagChips({ guest, canMigrate, handleRemoveTag }) {
   );
 }
 
-function WorkloadBadge({ profile }) {
+function WorkloadBadge({ profile, running }) {
+  if (!running) return null;
   if (!profile || profile.confidence === 'low') return null;
   const cls = WORKLOAD_BADGE_COLORS[profile.behavior];
   if (!cls) return null;
@@ -158,7 +159,7 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
           <span className="text-sm text-gray-200 min-w-[160px] flex items-center gap-1.5">
             {guest.name || `guest-${guest.vmid}`}
             <span className="text-[10px] text-gray-600">{guest.vmid}</span>
-            <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} />
+            <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} running={guest.status === 'running'} />
           </span>
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
             guest.type === 'VM'
@@ -430,13 +431,13 @@ export default function NodeSummaryTable({
                 </tr>
               </thead>
               <tbody>
-                {nodes.map(node => {
+                {nodes.map((node, idx) => {
                   const isExpanded = effectiveExpanded.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
                   return (
                     <React.Fragment key={node.name}>
                       <tr
-                        className={`${TABLE_ROW} cursor-pointer`}
+                        className={`${TABLE_ROW} ${idx % 2 === 1 ? 'bg-slate-800/30' : ''} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
                         <td className="p-3 w-8">
