@@ -4,6 +4,7 @@ import {
   INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE
 } from '../../utils/designTokens.js';
 import { ChevronDown, Tag, X } from '../Icons.jsx';
+import { recBadgeTooltip } from './recsHelpers.js';
 
 const { useState, useMemo } = React;
 
@@ -143,7 +144,7 @@ function WorkloadBadge({ profile, running }) {
   );
 }
 
-function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal, guestRecMap }) {
+function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal, guestRecMap, setConfirmMigration }) {
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
@@ -160,11 +161,22 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
             {guest.name || `guest-${guest.vmid}`}
             <span className="text-[10px] text-gray-600">{guest.vmid}</span>
             <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} running={guest.status === 'running'} />
-            {guestRecMap?.[String(guest.vmid)] && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40" title={`Recommended: move to ${guestRecMap[String(guest.vmid)].target_node}`}>
-                ↗ {guestRecMap[String(guest.vmid)].target_node}
-              </span>
-            )}
+            {(() => {
+              const rec = guestRecMap?.[String(guest.vmid)];
+              if (!rec) return null;
+              const clickable = canMigrate && setConfirmMigration;
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
+                  disabled={!clickable}
+                  title={recBadgeTooltip(rec)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 ${clickable ? 'hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
+                >
+                  ↗ {rec.target_node}
+                </button>
+              );
+            })()}
           </span>
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
             guest.type === 'VM'
@@ -209,7 +221,7 @@ export default function NodeSummaryTable({
   // Tag management
   canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
   // Optional cross-reference badges from recommendations
-  nodeRecCounts, guestRecMap,
+  nodeRecCounts, guestRecMap, setConfirmMigration,
 }) {
   const openTagModal = setTagModalGuest && setShowTagModal
     ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
@@ -499,6 +511,7 @@ export default function NodeSummaryTable({
                               handleRemoveTag={handleRemoveTag}
                               openTagModal={openTagModal}
                               guestRecMap={guestRecMap}
+                              setConfirmMigration={setConfirmMigration}
                             />
                           </td>
                         </tr>

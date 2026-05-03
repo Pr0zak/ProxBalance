@@ -4,6 +4,7 @@ import {
   metricTextColor,
 } from '../../utils/designTokens.js';
 import { ChevronDown, Tag, X, Play, Power, Loader } from '../Icons.jsx';
+import { recBadgeTooltip } from './recsHelpers.js';
 
 const { useState, useMemo } = React;
 
@@ -101,7 +102,7 @@ function TagChips({ guest, canMigrate, handleRemoveTag }) {
 export default function GuestsTable({
   data, onGuestClick,
   canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
-  guestRecMap,
+  guestRecMap, setConfirmMigration,
 }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -234,11 +235,22 @@ export default function GuestsTable({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm text-gray-200">{g.name || `guest-${g.vmid}`}</span>
                       <WorkloadBadge profile={guestProfiles?.[String(g.vmid)]} running={g.status === 'running'} />
-                      {guestRecMap?.[String(g.vmid)] && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40" title={`Recommended: move to ${guestRecMap[String(g.vmid)].target_node}`}>
-                          ↗ {guestRecMap[String(g.vmid)].target_node}
-                        </span>
-                      )}
+                      {(() => {
+                        const rec = guestRecMap?.[String(g.vmid)];
+                        if (!rec) return null;
+                        const clickable = canMigrate && setConfirmMigration;
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
+                            disabled={!clickable}
+                            title={recBadgeTooltip(rec)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 ${clickable ? 'hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
+                          >
+                            ↗ {rec.target_node}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="p-3 text-xs text-gray-400">{g.node}</td>
