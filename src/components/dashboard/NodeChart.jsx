@@ -25,11 +25,15 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, darkMode, 
     else if (chartPeriod === '30d') sourceTimeframe = 'month';
     else if (chartPeriod === '1y') sourceTimeframe = 'year';
 
-    const raw = trendData?.[sourceTimeframe] || trendData?.day || [];
-    if (!raw || raw.length === 0) return;
+    let raw = trendData?.[sourceTimeframe] || [];
+    if (raw.length === 0) raw = trendData?.day || [];
+    if (raw.length === 0) return;
 
-    const now = Math.floor(Date.now() / 1000);
-    const filtered = raw.filter(p => (now - p.time) <= periodSeconds);
+    // Anchor the period window to the latest sample, not "now". Collectors
+    // run on a timer (default 120 min), so the freshest hour-bucket data may
+    // be older than 60 min — filtering against now would empty out the chart.
+    const latestTime = raw.reduce((m, p) => Math.max(m, p.time), 0);
+    const filtered = raw.filter(p => (latestTime - p.time) <= periodSeconds);
     if (filtered.length === 0) return;
 
     const sampleRate = { '1h': 2, '6h': 5, '12h': 10, '24h': 20, '7d': 20, '30d': 25, '1y': 25 }[chartPeriod] || 1;

@@ -95,7 +95,7 @@ export default function NodeStatusSection({
 
           {isCollapsed ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {Object.values(data.nodes).map(node => {
+              {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
                 const predicted = showPredicted && recommendationData?.summary?.batch_impact?.after?.node_scores?.[node.name];
                 const before = showPredicted && recommendationData?.summary?.batch_impact?.before?.node_scores?.[node.name];
                 return (
@@ -327,7 +327,7 @@ export default function NodeStatusSection({
             nodeGridColumns === 3 ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' :
             'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
           }`}>
-            {Object.values(data.nodes).map(node => (
+            {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => (
               <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-white">{node.name}</h3>

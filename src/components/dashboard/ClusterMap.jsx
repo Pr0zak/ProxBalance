@@ -131,7 +131,7 @@ export default function ClusterMap({
       {!isCollapsed && (
         <div className="relative" style={{minHeight: '400px'}}>
           <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
-            {Object.values(data.nodes).map(node => {
+            {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
               const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
               const poweredOffCount = allNodeGuests.filter(g => g.status !== 'running').length;
               const nodeGuests = showPoweredOffGuests
