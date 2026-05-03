@@ -3,13 +3,11 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
-import ClusterHealthPicker from './dashboard/ClusterHealthPicker.jsx';
-import RunHistoryPicker from './dashboard/RunHistoryPicker.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
@@ -99,12 +97,6 @@ export default function DashboardPage({
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
 
-  // Preview state for two design pickers
-  const [healthVariant, setHealthVariant] = useState(() => localStorage.getItem('healthVariant') || 'current');
-  useEffect(() => { localStorage.setItem('healthVariant', healthVariant); }, [healthVariant]);
-  const [runHistoryVariant, setRunHistoryVariant] = useState(() => localStorage.getItem('runHistoryVariant') || 'current');
-  useEffect(() => { localStorage.setItem('runHistoryVariant', runHistoryVariant); }, [runHistoryVariant]);
-
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -137,10 +129,6 @@ export default function DashboardPage({
           </div>
         )}
 
-        {/* PREVIEW: design pickers */}
-        <ClusterHealthPicker value={healthVariant} onChange={setHealthVariant} />
-        <RunHistoryPicker value={runHistoryVariant} onChange={setRunHistoryVariant} />
-
         {/* KPI Summary Row */}
         <KpiRow
           data={data}
@@ -151,8 +139,6 @@ export default function DashboardPage({
           autoMigrateOkGuests={autoMigrateOkGuests}
           affinityGuests={affinityGuests}
           excludeGuests={excludeGuests}
-          scoreHistory={scoreHistory}
-          clusterHealthVariant={healthVariant}
         />
 
         {/* Auto-migration status banner — expandable to show last-run + run history */}
@@ -164,9 +150,7 @@ export default function DashboardPage({
             runAutomationNow={runAutomationNow}
             runningAutomation={runningAutomation}
             setCurrentPage={setCurrentPage}
-            showLastRunSummary={runHistoryVariant === '5'}
             runHistory={runHistory}
-            runHistoryVariant={runHistoryVariant}
           />
         </div>
 
