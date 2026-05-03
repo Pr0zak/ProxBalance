@@ -5,8 +5,6 @@ import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './MigrationRecommendationsSection.jsx';
-import AutomationStatusSection from './AutomationStatusSection.jsx';
-import AutoStatusPill from './AutoStatusPill.jsx';
 
 const { useState, useEffect } = React;
 
@@ -24,10 +22,7 @@ const BASE_TABS = [
  */
 export default function ClusterSection(props) {
   const recCount = Array.isArray(props.recommendations) ? props.recommendations.length : 0;
-  let TABS = [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }];
-  if (props.autoTab) {
-    TABS = [...TABS, { id: 'auto', label: 'Auto' }];
-  }
+  const TABS = [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }];
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('clusterSectionTab') || 'table';
@@ -138,19 +133,6 @@ export default function ClusterSection(props) {
         />
       )}
       {effectiveTab === 'recommendations' && (
-        <>
-          {props.recsTabAutoStrip && (
-            <div className="mb-3">
-              <AutoStatusPill
-                size="strip"
-                automationStatus={props.automationStatus}
-                fetchAutomationStatus={props.fetchAutomationStatus}
-                runAutomationNow={props.runAutomationNow}
-                runningAutomation={props.runningAutomation}
-                setCurrentPage={props.setCurrentPage}
-              />
-            </div>
-          )}
           <MigrationRecommendationsSection
             embedded
             data={props.data}
@@ -176,28 +158,6 @@ export default function ClusterSection(props) {
             nodeScores={props.nodeScores}
             API_BASE={props.API_BASE}
           />
-        </>
-      )}
-      {effectiveTab === 'auto' && (
-        <AutomationStatusSection
-          embedded
-          automationStatus={props.automationStatus}
-          automationConfig={props.automationConfig}
-          scoreHistory={props.scoreHistory}
-          collapsedSections={{ ...props.collapsedSections, automatedMigrations: false }}
-          setCollapsedSections={props.setCollapsedSections}
-          toggleSection={() => {}}
-          setCurrentPage={props.setCurrentPage}
-          fetchAutomationStatus={props.fetchAutomationStatus}
-          runAutomationNow={props.runAutomationNow}
-          runningAutomation={props.runningAutomation}
-          runNowMessage={props.runNowMessage}
-          setRunNowMessage={props.setRunNowMessage}
-          setCancelMigrationModal={props.setCancelMigrationModal}
-          runHistory={props.runHistory}
-          expandedRun={props.expandedRun}
-          setExpandedRun={props.setExpandedRun}
-        />
       )}
     </div>
   );
