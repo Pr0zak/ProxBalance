@@ -53,7 +53,7 @@ export default function BatchImpact({ recommendationData }) {
       </div>
       {batchImpact.improvement && (
         <div className="flex flex-wrap gap-3 text-xs text-gray-400 pt-2 border-t border-slate-700">
-          <span>Health: {recommendationData.summary.cluster_health} → {recommendationData.summary.predicted_health}
+          <span>Health: {Math.round(recommendationData.summary.cluster_health)} → {Math.round(recommendationData.summary.predicted_health)}
             <span className="text-green-400 font-medium ml-1">
               (+{batchImpact.improvement.health_delta.toFixed(1)})
             </span>

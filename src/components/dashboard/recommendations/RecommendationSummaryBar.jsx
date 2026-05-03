@@ -25,7 +25,7 @@ export default function RecommendationSummaryBar({ recommendationData }) {
             'text-blue-400'
           } />
           <span className="font-semibold text-sm text-white">
-            Cluster Health: {summary.cluster_health}/100
+            Cluster Health: {Math.round(summary.cluster_health)}/100
           </span>
         </div>
         {summary.urgency !== 'none' && (
