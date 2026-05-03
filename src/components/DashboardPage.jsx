@@ -12,7 +12,6 @@ import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
 import MigrationModals from './dashboard/MigrationModals.jsx';
 import AutomationStatusSection from './dashboard/AutomationStatusSection.jsx';
-import GuestTagManagement from './dashboard/GuestTagManagement.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
 import SystemModals from './dashboard/SystemModals.jsx';
@@ -126,12 +125,16 @@ export default function DashboardPage({
           </div>
         )}
 
-        {/* NEW: KPI Summary Row */}
+        {/* KPI Summary Row */}
         <KpiRow
           data={data}
           nodeScores={nodeScores}
           automationStatus={automationStatus}
           recommendations={recommendations}
+          ignoredGuests={ignoredGuests}
+          autoMigrateOkGuests={autoMigrateOkGuests}
+          affinityGuests={affinityGuests}
+          excludeGuests={excludeGuests}
         />
 
         {/* Unified Cluster section — Table / Map / Charts tabs */}
@@ -160,6 +163,11 @@ export default function DashboardPage({
           setNodeGridColumns={setNodeGridColumns}
           loadChartJs={loadChartJs}
           chartJsLoaded={chartJsLoaded}
+          canMigrate={canMigrate}
+          guestProfiles={guestProfiles}
+          handleRemoveTag={handleRemoveTag}
+          setTagModalGuest={setTagModalGuest}
+          setShowTagModal={setShowTagModal}
         />
 
         {/* Automated Migrations Status */}
@@ -180,31 +188,6 @@ export default function DashboardPage({
           runHistory={runHistory}
           expandedRun={expandedRun}
           setExpandedRun={setExpandedRun}
-        />
-
-        <GuestTagManagement
-          data={data}
-          guestProfiles={guestProfiles}
-          collapsedSections={collapsedSections}
-          toggleSection={toggleSection}
-          guestSearchFilter={guestSearchFilter}
-          setGuestSearchFilter={setGuestSearchFilter}
-          guestCurrentPage={guestCurrentPage}
-          setGuestCurrentPage={setGuestCurrentPage}
-          guestPageSize={guestPageSize}
-          setGuestPageSize={setGuestPageSize}
-          guestSortField={guestSortField}
-          setGuestSortField={setGuestSortField}
-          guestSortDirection={guestSortDirection}
-          setGuestSortDirection={setGuestSortDirection}
-          canMigrate={canMigrate}
-          setTagModalGuest={setTagModalGuest}
-          setShowTagModal={setShowTagModal}
-          handleRemoveTag={handleRemoveTag}
-          ignoredGuests={ignoredGuests}
-          excludeGuests={excludeGuests}
-          affinityGuests={affinityGuests}
-          autoMigrateOkGuests={autoMigrateOkGuests}
         />
 
         <NodeDetailsModal

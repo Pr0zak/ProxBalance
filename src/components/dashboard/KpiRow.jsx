@@ -1,11 +1,14 @@
 import { KPI_CARD, scoreColor } from '../../utils/designTokens.js';
-import { Server, Activity, CheckCircle, MoveRight } from '../Icons.jsx';
+import { Server, Activity, CheckCircle, MoveRight, Tag } from '../Icons.jsx';
 
 /**
- * KPI summary row — 5 stat cards showing cluster-level metrics at a glance.
- * Adapts to 2x2 grid on mobile, horizontal row on desktop.
+ * KPI summary row — 6 stat cards showing cluster-level metrics at a glance.
+ * Adapts to 2x grid on mobile, horizontal row on desktop.
  */
-export default function KpiRow({ data, nodeScores, automationStatus, recommendations }) {
+export default function KpiRow({
+  data, nodeScores, automationStatus, recommendations,
+  ignoredGuests = [], autoMigrateOkGuests = [], affinityGuests = [], excludeGuests = [],
+}) {
   if (!data) return null;
 
   const nodesObj = data.nodes || {};
@@ -23,6 +26,20 @@ export default function KpiRow({ data, nodeScores, automationStatus, recommendat
 
   const activeMigrations = automationStatus?.active_migrations || 0;
   const pendingRecs = recommendations?.length || 0;
+
+  // Tagged guests: union of any tag categories (a guest with multiple tags counts once).
+  const taggedSet = new Set();
+  ignoredGuests.forEach(g => taggedSet.add(g.vmid));
+  autoMigrateOkGuests.forEach(g => taggedSet.add(g.vmid));
+  affinityGuests.forEach(g => taggedSet.add(g.vmid));
+  excludeGuests.forEach(g => taggedSet.add(g.vmid));
+  const taggedCount = taggedSet.size;
+  const tagBreakdown = [
+    ignoredGuests.length > 0 && `ign ${ignoredGuests.length}`,
+    autoMigrateOkGuests.length > 0 && `auto ${autoMigrateOkGuests.length}`,
+    affinityGuests.length > 0 && `aff ${affinityGuests.length}`,
+    excludeGuests.length > 0 && `anti ${excludeGuests.length}`,
+  ].filter(Boolean).join(' · ');
 
   const cards = [
     {
@@ -55,11 +72,18 @@ export default function KpiRow({ data, nodeScores, automationStatus, recommendat
       value: pendingRecs,
       icon: <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>,
       color: pendingRecs > 0 ? 'text-purple-400' : 'text-gray-400'
+    },
+    {
+      label: 'Tagged',
+      value: taggedCount,
+      icon: <Tag size={18} className={taggedCount > 0 ? 'text-pink-400' : 'text-gray-500'} />,
+      color: taggedCount > 0 ? 'text-pink-400' : 'text-gray-400',
+      sublabel: tagBreakdown,
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
       {cards.map((card, i) => (
         <div key={i} className={KPI_CARD}>
           <div className="shrink-0">{card.icon}</div>
@@ -68,6 +92,9 @@ export default function KpiRow({ data, nodeScores, automationStatus, recommendat
               {card.value}{card.suffix && <span className="text-sm text-gray-500 font-normal">{card.suffix}</span>}
             </div>
             <div className="text-xs text-gray-500 truncate">{card.label}</div>
+            {card.sublabel && (
+              <div className="text-[10px] text-gray-600 truncate" title={card.sublabel}>{card.sublabel}</div>
+            )}
           </div>
         </div>
       ))}
