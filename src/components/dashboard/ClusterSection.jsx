@@ -3,10 +3,11 @@ import NodeSummaryTable from './NodeSummaryTable.jsx';
 import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
+import MigrationRecommendationsSection from './MigrationRecommendationsSection.jsx';
 
 const { useState, useEffect } = React;
 
-const TABS = [
+const BASE_TABS = [
   { id: 'table', label: 'Nodes' },
   { id: 'guests', label: 'Guests' },
   { id: 'map', label: 'Map' },
@@ -19,9 +20,17 @@ const TABS = [
  * header — its toolbar controls remain).
  */
 export default function ClusterSection(props) {
+  const recsTab = props.recsTab; // when truthy, render Recommendations as 5th tab
+  const recCount = Array.isArray(props.recommendations) ? props.recommendations.length : 0;
+  const TABS = recsTab
+    ? [...BASE_TABS, { id: 'recommendations', label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }]
+    : BASE_TABS;
+
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('clusterSectionTab') || 'table';
   });
+  // If user had 'recommendations' selected but the tab is no longer available, fall back.
+  const effectiveTab = TABS.find(t => t.id === activeTab) ? activeTab : 'table';
   const setTab = (id) => {
     setActiveTab(id);
     localStorage.setItem('clusterSectionTab', id);
@@ -29,24 +38,26 @@ export default function ClusterSection(props) {
 
   // Lazy-load Chart.js when Charts tab becomes active (mirrors index.jsx).
   useEffect(() => {
-    if (activeTab === 'charts' && props.loadChartJs && !props.chartJsLoaded) {
+    if (effectiveTab === 'charts' && props.loadChartJs && !props.chartJsLoaded) {
       props.loadChartJs();
     }
-  }, [activeTab, props.chartJsLoaded]);
+  }, [effectiveTab, props.chartJsLoaded]);
 
   return (
     <div className={GLASS_CARD}>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <h2 className="text-xl font-bold text-white">Cluster</h2>
-        <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-1">
+        <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-1 flex-wrap">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                activeTab === t.id
+                effectiveTab === t.id
                   ? 'bg-blue-600 text-white shadow'
-                  : 'text-gray-400 hover:text-gray-200'
+                  : t.accent
+                    ? 'text-orange-300 hover:text-orange-200'
+                    : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               {t.label}
@@ -55,7 +66,7 @@ export default function ClusterSection(props) {
         </div>
       </div>
 
-      {activeTab === 'table' && (
+      {effectiveTab === 'table' && (
         <NodeSummaryTable
           embedded
           data={props.data}
@@ -67,9 +78,11 @@ export default function ClusterSection(props) {
           handleRemoveTag={props.handleRemoveTag}
           setTagModalGuest={props.setTagModalGuest}
           setShowTagModal={props.setShowTagModal}
+          nodeRecCounts={props.nodeRecCounts}
+          guestRecMap={props.guestRecMap}
         />
       )}
-      {activeTab === 'guests' && (
+      {effectiveTab === 'guests' && (
         <GuestsTable
           data={props.data}
           onGuestClick={props.setSelectedGuestDetails}
@@ -78,9 +91,10 @@ export default function ClusterSection(props) {
           handleRemoveTag={props.handleRemoveTag}
           setTagModalGuest={props.setTagModalGuest}
           setShowTagModal={props.setShowTagModal}
+          guestRecMap={props.guestRecMap}
         />
       )}
-      {activeTab === 'map' && (
+      {effectiveTab === 'map' && (
         <ClusterMap
           embedded
           data={props.data}
@@ -96,7 +110,7 @@ export default function ClusterSection(props) {
           completedMigrations={props.completedMigrations}
         />
       )}
-      {activeTab === 'charts' && (
+      {effectiveTab === 'charts' && (
         <NodeStatusSection
           embedded
           data={props.data}
@@ -111,6 +125,33 @@ export default function ClusterSection(props) {
           nodeScores={props.nodeScores}
           generateSparkline={props.generateSparkline}
           darkMode={props.darkMode}
+        />
+      )}
+      {effectiveTab === 'recommendations' && (
+        <MigrationRecommendationsSection
+          embedded
+          data={props.data}
+          recommendations={props.recommendations}
+          loadingRecommendations={props.loadingRecommendations}
+          generateRecommendations={props.generateRecommendations}
+          recommendationData={props.recommendationData}
+          penaltyConfig={props.penaltyConfig}
+          collapsedSections={props.collapsedSections}
+          setCollapsedSections={props.setCollapsedSections}
+          toggleSection={props.toggleSection}
+          canMigrate={props.canMigrate}
+          migrationStatus={props.migrationStatus}
+          setMigrationStatus={props.setMigrationStatus}
+          completedMigrations={props.completedMigrations}
+          guestsMigrating={props.guestsMigrating}
+          migrationProgress={props.migrationProgress}
+          cancelMigration={props.cancelMigration}
+          trackMigration={props.trackMigration}
+          setConfirmMigration={props.setConfirmMigration}
+          setCurrentPage={props.setCurrentPage}
+          setOpenPenaltyConfigOnAutomation={props.setOpenPenaltyConfigOnAutomation}
+          nodeScores={props.nodeScores}
+          API_BASE={props.API_BASE}
         />
       )}
     </div>

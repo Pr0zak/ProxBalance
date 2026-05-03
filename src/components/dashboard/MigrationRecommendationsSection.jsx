@@ -30,8 +30,11 @@ export default function MigrationRecommendationsSection({
   // Node scores (for predicted view)
   nodeScores,
   // API
-  API_BASE
+  API_BASE,
+  // When embedded (e.g. inside a tab), suppress the section title block.
+  embedded = false,
 }) {
+  const expanded = embedded ? true : !collapsedSections.recommendations;
   // Local state for filters
   const [recFilterConfidence, setRecFilterConfidence] = useState('');
   const [recFilterTargetNode, setRecFilterTargetNode] = useState('');
@@ -72,79 +75,120 @@ export default function MigrationRecommendationsSection({
     return filtered;
   };
 
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: GLASS_CARD.replace('mb-6', 'mb-24') + ' overflow-hidden' };
+
   return (
-    <div className={GLASS_CARD.replace('mb-6', 'mb-24') + ' overflow-hidden'}>
-      {/* Section Header */}
-      <div className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={iconBadge('orange', 'red')}>
-              <Activity size={ICON.section} className="text-white" />
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
+        <div className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={iconBadge('orange', 'red')}>
+                <Activity size={ICON.section} className="text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg sm:text-2xl font-bold text-white">Migration Recommendations</h2>
+                  <button
+                    onClick={() => toggleSection('recommendations')}
+                    className="p-1 hover:bg-slate-700 rounded transition-all duration-200"
+                    title={collapsedSections.recommendations ? "Expand section" : "Collapse section"}
+                  >
+                    <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.recommendations ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm text-gray-400">Suggested optimizations</p>
+                  {recommendationData?.ai_enhanced && (
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300">
+                      AI Enhanced
+                    </span>
+                  )}
+                  {recommendationData?.generated_at && (
+                    <span className="text-xs text-gray-500">
+                      • Generated: {(() => {
+                        const genTime = new Date(recommendationData.generated_at);
+                        return formatLocalTime(genTime);
+                      })()} (backend auto-generates every 10-60min based on cluster size)
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-2xl font-bold text-white">Migration Recommendations</h2>
+            <div className="flex items-center gap-2">
+              {!collapsedSections.recommendations && recommendationData?.generated_at && (
                 <button
-                  onClick={() => toggleSection('recommendations')}
-                  className="p-1 hover:bg-slate-700 rounded transition-all duration-200"
-                  title={collapsedSections.recommendations ? "Expand section" : "Collapse section"}
+                  onClick={() => setShowInsights(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
+                  title="View detailed analytics and insights"
                 >
-                  <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.recommendations ? 'rotate-180' : ''}`} />
+                  <Eye size={16} />
+                  Insights
                 </button>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-sm text-gray-400">Suggested optimizations</p>
-                {recommendationData?.ai_enhanced && (
-                  <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300">
-                    AI Enhanced
-                  </span>
-                )}
-                {recommendationData?.generated_at && (
-                  <span className="text-xs text-gray-500">
-                    • Generated: {(() => {
-                      const genTime = new Date(recommendationData.generated_at);
-                      return formatLocalTime(genTime);
-                    })()} (backend auto-generates every 10-60min based on cluster size)
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Insights Drawer Button */}
-            {!collapsedSections.recommendations && recommendationData?.generated_at && (
-              <button
-                onClick={() => setShowInsights(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
-                title="View detailed analytics and insights"
-              >
-                <Eye size={16} />
-                Insights
-              </button>
-            )}
-            <button
-              onClick={generateRecommendations}
-              disabled={loadingRecommendations || !data}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
-              title="Manually generate new recommendations now"
-            >
-              {loadingRecommendations ? (
-                <>
-                  <RefreshCw size={18} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={18} />
-                  Generate Now
-                </>
               )}
-            </button>
+              <button
+                onClick={generateRecommendations}
+                disabled={loadingRecommendations || !data}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                title="Manually generate new recommendations now"
+              >
+                {loadingRecommendations ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={18} />
+                    Generate Now
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {!collapsedSections.recommendations && (
+      {/* When embedded, render a slim toolbar with just the action buttons */}
+      {embedded && (
+        <div className="flex items-center justify-end gap-2 mb-3 flex-wrap">
+          {recommendationData?.ai_enhanced && (
+            <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300 mr-auto">
+              AI Enhanced
+            </span>
+          )}
+          {recommendationData?.generated_at && (
+            <span className="text-xs text-gray-500 mr-auto">
+              Generated: {formatLocalTime(new Date(recommendationData.generated_at))}
+            </span>
+          )}
+          {recommendationData?.generated_at && (
+            <button
+              onClick={() => setShowInsights(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
+              title="View detailed analytics"
+            >
+              <Eye size={14} />
+              Insights
+            </button>
+          )}
+          <button
+            onClick={generateRecommendations}
+            disabled={loadingRecommendations || !data}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+            title="Generate now"
+          >
+            {loadingRecommendations ? (
+              <><RefreshCw size={14} className="animate-spin" />Generating...</>
+            ) : (
+              <><RefreshCw size={14} />Generate Now</>
+            )}
+          </button>
+        </div>
+      )}
+
+      {expanded && (
         <div className="transition-all duration-300 ease-in-out">
 
           {/* Summary Digest */}
@@ -243,6 +287,6 @@ export default function MigrationRecommendationsSection({
         API_BASE={API_BASE}
         isMobile={isMobile}
       />
-    </div>
+    </Wrapper>
   );
 }
