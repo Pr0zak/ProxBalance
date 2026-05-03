@@ -12,26 +12,26 @@ export default function DecisionTreeFlowchart({
             onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
             className="w-full flex items-center justify-between text-left hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
-            <h2 className="text-xl font-bold text-claude-text dark:text-white">Migration Decision Flowchart</h2>
+            <h2 className="text-xl font-bold text-pb-text dark:text-white">Migration Decision Flowchart</h2>
             <ChevronDown
               size={ICON.section}
-              className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.decisionTree ? 'rotate-180' : ''}`}
+              className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.decisionTree ? 'rotate-180' : ''}`}
             />
           </button>
 
           {!collapsedSections.decisionTree && (
             <div className="mt-4">
-              <p className="text-sm text-claude-muted dark:text-gray-400 mb-4">
+              <p className="text-sm text-pb-text2 dark:text-gray-400 mb-4">
                 This decision tree shows all possible paths through the automated migration process:
               </p>
 
               {/* Decision Tree Diagram */}
-              <div className="bg-claude-surface2 dark:bg-gray-900/50 rounded-lg p-4 sm:p-6 border border-claude-border dark:border-slate-700">
+              <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded-lg p-4 sm:p-6 border border-pb-border dark:border-slate-700">
                 <div className="space-y-4">
 
                   {/* Start Box */}
                   <div className="flex justify-center">
-                    <div className="bg-blue-500 text-claude-text dark:text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
+                    <div className="bg-blue-500 text-pb-text dark:text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
                       Automation Run Triggered
                     </div>
                   </div>
@@ -39,28 +39,28 @@ export default function DecisionTreeFlowchart({
                   {/* Flow connector */}
                   <div className="flex flex-col items-center">
                     <div className="w-0.5 h-4 bg-gray-600"></div>
-                    <div className="text-claude-muted dark:text-gray-500 text-xs">&#9660;</div>
+                    <div className="text-pb-text2 dark:text-gray-500 text-xs">&#9660;</div>
                   </div>
 
                   {/* Decision boxes */}
                   <div className="space-y-3">
 
                     {/* Step 1 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">1</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">1</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Is automation enabled?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is automation enabled?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
                               <span className="text-red-400 font-bold">NO</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-red-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">STOP</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">STOP</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -68,21 +68,21 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 2 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">2</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">2</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Is cooldown period elapsed?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is cooldown period elapsed?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
                               <span className="text-orange-400 font-bold">NO</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-orange-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -90,26 +90,26 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 3 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">3</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">3</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">In allowed time window?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">In allowed time window?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
                               <span className="text-red-400 font-bold">BLACKOUT</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-red-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">BLOCKED</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">BLOCKED</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
                               <span className="text-orange-400 font-bold">OUTSIDE</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-orange-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -117,23 +117,23 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 4 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">4</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">4</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">
-                            Is cluster healthy? <span className="text-xs font-normal text-claude-muted dark:text-gray-400">(if enabled)</span>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">
+                            Is cluster healthy? <span className="text-xs font-normal text-pb-text2 dark:text-gray-400">(if enabled)</span>
                           </div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
                               <span className="text-red-400 font-bold">NO</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-red-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">ABORT</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">ABORT</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -141,12 +141,12 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 5 - Process Box */}
-                    <div className="bg-gray-700/50 rounded-lg border border-claude-border dark:border-slate-600 p-4">
+                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-indigo-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">5</div>
+                        <div className="bg-indigo-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">5</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Generate Recommendations</div>
-                          <div className="text-xs text-claude-muted dark:text-gray-400 space-y-1 bg-claude-surface dark:bg-slate-800 p-2.5 rounded border border-claude-border dark:border-slate-700">
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Generate Recommendations</div>
+                          <div className="text-xs text-pb-text2 dark:text-gray-400 space-y-1 bg-white dark:bg-slate-800 p-2.5 rounded border border-pb-border dark:border-slate-700">
                             <div>&#8227; Calculate penalty scores for all nodes</div>
                             <div>&#8227; Find VMs on high-penalty nodes</div>
                             <div>&#8227; Match with low-penalty target nodes</div>
@@ -158,28 +158,28 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 6 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">6</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">6</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Persistent recommendation?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Persistent recommendation?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-cyan-900/10 rounded">
                               <span className="text-cyan-400 font-bold">OBSERVING</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-cyan-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">DEFER</span>
-                              <span className="text-claude-muted dark:text-gray-400 ml-1">Not enough observations</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-cyan-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">DEFER</span>
+                              <span className="text-pb-text2 dark:text-gray-400 ml-1">Not enough observations</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">READY</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-gray-700/50 rounded">
-                              <span className="text-claude-muted dark:text-gray-400 font-bold">BYPASSED</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
-                              <span className="text-claude-muted dark:text-gray-400 ml-1">Feature disabled</span>
+                              <span className="text-pb-text2 dark:text-gray-400 font-bold">BYPASSED</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400 ml-1">Feature disabled</span>
                             </div>
                           </div>
                         </div>
@@ -187,21 +187,21 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 7 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">7</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">7</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Any recommendations above min confidence?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Any recommendations above min confidence?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
                               <span className="text-orange-400 font-bold">NO</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-orange-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -209,28 +209,28 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 8 - Intelligent Filters */}
-                    <div className="bg-gray-700/50 rounded-lg border border-claude-border dark:border-slate-600 p-4">
+                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-indigo-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">8</div>
+                        <div className="bg-indigo-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">8</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">
-                            Intelligent Filters <span className="text-xs font-normal text-claude-muted dark:text-gray-400">(per recommendation)</span>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">
+                            Intelligent Filters <span className="text-xs font-normal text-pb-text2 dark:text-gray-400">(per recommendation)</span>
                           </div>
-                          <div className="text-xs text-claude-muted dark:text-gray-400 space-y-1 bg-claude-surface dark:bg-slate-800 p-2.5 rounded border border-claude-border dark:border-slate-700 mb-2">
-                            <div><span className="font-semibold text-claude-text dark:text-gray-300">Basic:</span> Cycle prevention, Conflict detection</div>
-                            <div><span className="font-semibold text-claude-text dark:text-gray-300">Standard:</span> + Cost-benefit, Outcome learning, Guest tracking</div>
-                            <div><span className="font-semibold text-claude-text dark:text-gray-300">Full:</span> + Trend awareness, Pattern suppression, Risk gating</div>
+                          <div className="text-xs text-pb-text2 dark:text-gray-400 space-y-1 bg-white dark:bg-slate-800 p-2.5 rounded border border-pb-border dark:border-slate-700 mb-2">
+                            <div><span className="font-semibold text-pb-text dark:text-gray-300">Basic:</span> Cycle prevention, Conflict detection</div>
+                            <div><span className="font-semibold text-pb-text dark:text-gray-300">Standard:</span> + Cost-benefit, Outcome learning, Guest tracking</div>
+                            <div><span className="font-semibold text-pb-text dark:text-gray-300">Full:</span> + Trend awareness, Pattern suppression, Risk gating</div>
                           </div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-amber-900/10 rounded">
                               <span className="text-amber-400 font-bold">FILTERED</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-amber-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-amber-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">PASSED</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Continue</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
                           </div>
                         </div>
@@ -238,21 +238,21 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 9 */}
-                    <div className="bg-claude-surface dark:bg-slate-800 rounded-lg border border-claude-border dark:border-slate-700 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg border border-pb-border dark:border-slate-700 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-blue-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">9</div>
+                        <div className="bg-blue-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">9</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Is dry run mode enabled?</div>
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is dry run mode enabled?</div>
                           <div className="space-y-1.5 text-xs">
                             <div className="flex items-center gap-2 p-1.5 bg-blue-900/10 rounded">
                               <span className="text-blue-400 font-bold">YES</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="bg-blue-600 text-claude-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">LOG ONLY</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="bg-blue-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">LOG ONLY</span>
                             </div>
                             <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
                               <span className="text-green-400 font-bold">NO</span>
-                              <span className="text-claude-muted dark:text-gray-400">&#8594;</span>
-                              <span className="text-claude-muted dark:text-gray-400">Execute</span>
+                              <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
+                              <span className="text-pb-text2 dark:text-gray-400">Execute</span>
                             </div>
                           </div>
                         </div>
@@ -260,12 +260,12 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 10 - Action Box */}
-                    <div className="bg-gray-700/50 rounded-lg border border-claude-border dark:border-slate-600 p-4">
+                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-green-500 text-claude-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">10</div>
+                        <div className="bg-green-500 text-pb-text dark:text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">10</div>
                         <div className="flex-1">
-                          <div className="font-semibold text-claude-text dark:text-white mb-2 text-sm">Execute Migrations</div>
-                          <div className="text-xs text-claude-muted dark:text-gray-400 space-y-1 bg-claude-surface dark:bg-slate-800 p-2.5 rounded border border-claude-border dark:border-slate-700">
+                          <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Execute Migrations</div>
+                          <div className="text-xs text-pb-text2 dark:text-gray-400 space-y-1 bg-white dark:bg-slate-800 p-2.5 rounded border border-pb-border dark:border-slate-700">
                             <div>&#8227; Limit to max migrations per run (default: 3)</div>
                             <div>&#8227; Execute migrations sequentially</div>
                             <div>&#8227; If failure + abort_on_failure: STOP batch</div>
@@ -281,12 +281,12 @@ export default function DecisionTreeFlowchart({
                   {/* Flow connector */}
                   <div className="flex flex-col items-center">
                     <div className="w-0.5 h-4 bg-gray-600"></div>
-                    <div className="text-claude-muted dark:text-gray-500 text-xs">&#9660;</div>
+                    <div className="text-pb-text2 dark:text-gray-500 text-xs">&#9660;</div>
                   </div>
 
                   {/* End Box */}
                   <div className="flex justify-center">
-                    <div className="bg-green-500 text-claude-text dark:text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
+                    <div className="bg-green-500 text-pb-text dark:text-white px-6 py-3 rounded-lg font-bold text-sm shadow-md">
                       Run Complete
                     </div>
                   </div>

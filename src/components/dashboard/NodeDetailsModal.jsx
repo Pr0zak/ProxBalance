@@ -21,22 +21,22 @@ export default function NodeDetailsModal({
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedNode(null)}>
       <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-2xl')} !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header - sticky so close button is always reachable */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-claude-border dark:border-slate-700 shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-pb-border dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Server size={24} className={`shrink-0 ${maintenanceNodes.has(selectedNode.name) ? 'text-yellow-400' : 'text-blue-400'}`} />
             <div className="min-w-0">
-              <h3 className="text-base sm:text-xl font-bold text-claude-text dark:text-white truncate">{selectedNode.name}</h3>
-              <p className="text-xs sm:text-sm text-claude-muted dark:text-gray-400">Node Details</p>
+              <h3 className="text-base sm:text-xl font-bold text-pb-text dark:text-white truncate">{selectedNode.name}</h3>
+              <p className="text-xs sm:text-sm text-pb-text2 dark:text-gray-400">Node Details</p>
             </div>
             {maintenanceNodes.has(selectedNode.name) && (
-              <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-claude-text dark:text-white text-xs font-bold rounded-full shrink-0">
+              <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-pb-text dark:text-white text-xs font-bold rounded-full shrink-0">
                 MAINTENANCE
               </span>
             )}
           </div>
           <button
             onClick={() => setSelectedNode(null)}
-            className="ml-2 shrink-0 p-1.5 rounded-lg text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 hover:bg-claude-surface2 dark:hover:bg-gray-700"
+            className="ml-2 shrink-0 p-1.5 rounded-lg text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-gray-700"
             aria-label="Close"
           >
             <X size={22} />
@@ -48,9 +48,9 @@ export default function NodeDetailsModal({
         <div className="p-4 sm:p-6 overflow-y-auto">
           {/* Node Stats Grid */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-            <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-4">
-              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Guests</div>
-              <div className="text-2xl font-bold text-claude-text dark:text-white">
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
+              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Guests</div>
+              <div className="text-2xl font-bold text-pb-text dark:text-white">
                 {selectedNode.guests ? Object.keys(selectedNode.guests).length : 0}
               </div>
             </div>
@@ -66,11 +66,11 @@ export default function NodeDetailsModal({
                 />
               </svg>
               <div className="relative z-10">
-                <div className="text-sm text-claude-text dark:text-gray-300 mb-1">CPU Usage</div>
-                <div className="text-2xl font-bold text-claude-text dark:text-white">
+                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">CPU Usage</div>
+                <div className="text-2xl font-bold text-pb-text dark:text-white">
                   {(selectedNode.cpu_percent || 0).toFixed(1)}%
                 </div>
-                <div className="text-xs text-claude-muted dark:text-gray-400">{selectedNode.cpu_cores || 0} cores</div>
+                <div className="text-xs text-pb-text2 dark:text-gray-400">{selectedNode.cpu_cores || 0} cores</div>
               </div>
             </div>
             <div className="relative overflow-hidden bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded-lg p-4">
@@ -85,11 +85,11 @@ export default function NodeDetailsModal({
                 />
               </svg>
               <div className="relative z-10">
-                <div className="text-sm text-claude-text dark:text-gray-300 mb-1">Memory Usage</div>
-                <div className="text-2xl font-bold text-claude-text dark:text-white">
+                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">Memory Usage</div>
+                <div className="text-2xl font-bold text-pb-text dark:text-white">
                   {(selectedNode.mem_percent || 0).toFixed(1)}%
                 </div>
-                <div className="text-xs text-claude-muted dark:text-gray-400">{((selectedNode.mem_used || 0) / 1073741824).toFixed(1)} GB / {((selectedNode.mem_total || 0) / 1073741824).toFixed(1)} GB</div>
+                <div className="text-xs text-pb-text2 dark:text-gray-400">{((selectedNode.mem_used || 0) / 1073741824).toFixed(1)} GB / {((selectedNode.mem_total || 0) / 1073741824).toFixed(1)} GB</div>
               </div>
             </div>
             <div className="relative overflow-hidden bg-gradient-to-br from-orange-900/20 to-orange-800/20 rounded-lg p-4">
@@ -104,28 +104,28 @@ export default function NodeDetailsModal({
                 />
               </svg>
               <div className="relative z-10">
-                <div className="text-sm text-claude-text dark:text-gray-300 mb-1">IOWait</div>
-                <div className="text-2xl font-bold text-claude-text dark:text-white">
+                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">IOWait</div>
+                <div className="text-2xl font-bold text-pb-text dark:text-white">
                   {(selectedNode.metrics?.current_iowait || 0).toFixed(1)}%
                 </div>
-                <div className="text-xs text-claude-muted dark:text-gray-400">I/O latency</div>
+                <div className="text-xs text-pb-text2 dark:text-gray-400">I/O latency</div>
               </div>
             </div>
           </div>
 
           {/* Additional Node Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-3">
-              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Status</div>
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3">
+              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
               <div className={`text-lg font-semibold ${
                 selectedNode.status === 'online' ? 'text-green-400' : 'text-red-400'
               }`}>
                 {selectedNode.status || 'unknown'}
               </div>
             </div>
-            <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-3">
-              <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Uptime</div>
-              <div className="text-lg font-semibold text-claude-text dark:text-white">
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3">
+              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Uptime</div>
+              <div className="text-lg font-semibold text-pb-text dark:text-white">
                 {selectedNode.uptime ? Math.floor(selectedNode.uptime / 86400) + 'd' : 'N/A'}
               </div>
             </div>
@@ -136,15 +136,15 @@ export default function NodeDetailsModal({
             <div className="mb-6 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
                 <Activity size={16} className="text-blue-400" />
-                <h4 className="text-sm font-semibold text-claude-text dark:text-white">Migration Target Suitability</h4>
+                <h4 className="text-sm font-semibold text-pb-text dark:text-white">Migration Target Suitability</h4>
               </div>
 
               {/* Overall Score Display */}
               {nodeScores && nodeScores[selectedNode.name] && (
-                <div className="mb-3 p-3 bg-claude-surface dark:bg-slate-800 rounded-lg border-2 border-blue-600">
+                <div className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border-2 border-blue-600">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Suitability Rating</div>
+                      <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Suitability Rating</div>
                       <div className={`text-2xl font-bold ${
                         nodeScores[selectedNode.name].suitability_rating >= 70 ? 'text-green-400' :
                         nodeScores[selectedNode.name].suitability_rating >= 50 ? 'text-yellow-400' :
@@ -166,7 +166,7 @@ export default function NodeDetailsModal({
                           <><XCircle size={12} /> Not Suitable</>
                         )}
                       </div>
-                      <div className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                      <div className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                         {nodeScores[selectedNode.name].reason}
                       </div>
                     </div>
@@ -177,7 +177,7 @@ export default function NodeDetailsModal({
                     const cats = nodeScores[selectedNode.name].penalty_categories;
                     const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
                     if (total === 0) return (
-                      <div className="mt-2 pt-2 border-t border-claude-border dark:border-slate-700">
+                      <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700">
                         <div className="text-xs text-green-400">No active penalties</div>
                       </div>
                     );
@@ -189,8 +189,8 @@ export default function NodeDetailsModal({
                       { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', textColor: 'text-purple-400', label: 'Spikes' },
                     ].filter(s => s.value > 0);
                     return (
-                      <div className="mt-2 pt-2 border-t border-claude-border dark:border-slate-700">
-                        <div className="text-xs text-claude-muted dark:text-gray-400 mb-1.5">Penalty Breakdown ({total} pts total)</div>
+                      <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1.5">Penalty Breakdown ({total} pts total)</div>
                         <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-600">
                           {segments.map(s => (
                             <div key={s.key} className={`${s.color} transition-all`} style={{ width: `${(s.value / total * 100)}%` }} title={`${s.label}: ${s.value} pts`} />
@@ -200,7 +200,7 @@ export default function NodeDetailsModal({
                           {segments.map(s => (
                             <div key={s.key} className="flex items-center gap-1 text-[10px]">
                               <span className={`inline-block w-2 h-2 rounded-full ${s.color}`}></span>
-                              <span className="text-claude-muted dark:text-gray-400">{s.label}</span>
+                              <span className="text-pb-text2 dark:text-gray-400">{s.label}</span>
                               <span className={`font-semibold ${s.textColor}`}>{s.value}</span>
                             </div>
                           ))}
@@ -211,12 +211,12 @@ export default function NodeDetailsModal({
                 </div>
               )}
 
-              <div className="text-xs text-claude-muted dark:text-gray-400 mb-3">
+              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-3">
                 Weighted scoring used for recommendations: {penaltyConfig ? `${(penaltyConfig.weight_current * 100).toFixed(0)}% current, ${(penaltyConfig.weight_24h * 100).toFixed(0)}% 24h avg, ${(penaltyConfig.weight_7d * 100).toFixed(0)}% 7-day avg` : '50% current, 30% 24h avg, 20% 7-day avg'}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-claude-surface dark:bg-slate-800 rounded p-2">
-                  <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">CPU Score</div>
+                <div className="bg-white dark:bg-slate-800 rounded p-2">
+                  <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">CPU Score</div>
                   <div className="text-sm font-semibold text-blue-400">
                     {(() => {
                       const current = selectedNode.cpu_percent || 0;
@@ -228,12 +228,12 @@ export default function NodeDetailsModal({
                       return ((current * wCurrent) + (short * w24h) + (long * w7d)).toFixed(1);
                     })()}%
                   </div>
-                  <div className="text-xs text-claude-muted dark:text-gray-500 mt-1">
+                  <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">
                     Now: {(selectedNode.cpu_percent || 0).toFixed(1)}% | 24h: {(selectedNode.metrics.avg_cpu || 0).toFixed(1)}% | 7d: {(selectedNode.metrics.avg_cpu_week || 0).toFixed(1)}%
                   </div>
                 </div>
-                <div className="bg-claude-surface dark:bg-slate-800 rounded p-2">
-                  <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">Memory Score</div>
+                <div className="bg-white dark:bg-slate-800 rounded p-2">
+                  <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Memory Score</div>
                   <div className="text-sm font-semibold text-purple-400">
                     {(() => {
                       const current = selectedNode.mem_percent || 0;
@@ -245,12 +245,12 @@ export default function NodeDetailsModal({
                       return ((current * wCurrent) + (short * w24h) + (long * w7d)).toFixed(1);
                     })()}%
                   </div>
-                  <div className="text-xs text-claude-muted dark:text-gray-500 mt-1">
+                  <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">
                     Now: {(selectedNode.mem_percent || 0).toFixed(1)}% | 24h: {(selectedNode.metrics.avg_mem || 0).toFixed(1)}% | 7d: {(selectedNode.metrics.avg_mem_week || 0).toFixed(1)}%
                   </div>
                 </div>
-                <div className="bg-claude-surface dark:bg-slate-800 rounded p-2">
-                  <div className="text-xs text-claude-muted dark:text-gray-400 mb-1">IOWait Score</div>
+                <div className="bg-white dark:bg-slate-800 rounded p-2">
+                  <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">IOWait Score</div>
                   <div className="text-sm font-semibold text-orange-400">
                     {(() => {
                       const current = selectedNode.metrics.current_iowait || 0;
@@ -262,12 +262,12 @@ export default function NodeDetailsModal({
                       return ((current * wCurrent) + (short * w24h) + (long * w7d)).toFixed(1);
                     })()}%
                   </div>
-                  <div className="text-xs text-claude-muted dark:text-gray-500 mt-1">
+                  <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">
                     Now: {(selectedNode.metrics.current_iowait || 0).toFixed(1)}% | 24h: {(selectedNode.metrics.avg_iowait || 0).toFixed(1)}% | 7d: {(selectedNode.metrics.avg_iowait_week || 0).toFixed(1)}%
                   </div>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-claude-muted dark:text-gray-400 italic">
+              <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
                 Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-400 font-semibold">&lt;30%</span> = Poor.
               </div>
             </div>
@@ -304,8 +304,8 @@ export default function NodeDetailsModal({
               }}
               className={`w-full px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98] ${
                 maintenanceNodes.has(selectedNode.name)
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-claude-text dark:text-white'
-                  : 'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-claude-text dark:text-white'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-pb-text dark:text-white'
+                  : 'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-pb-text dark:text-white'
               }`}
             >
               <span className="flex items-center justify-center gap-2">
@@ -390,12 +390,12 @@ export default function NodeDetailsModal({
               disabled={!canMigrate || evacuatingNodes.has(selectedNode.name) || planningNodes.has(selectedNode.name) || !selectedNode.guests || Object.keys(selectedNode.guests).length === 0}
               className={`w-full px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-sm transform ${
                 !canMigrate || !selectedNode.guests || Object.keys(selectedNode.guests).length === 0
-                  ? 'bg-claude-surface2 dark:bg-gray-700 text-claude-muted dark:text-gray-500 cursor-not-allowed opacity-60'
+                  ? 'bg-pb-surface2 dark:bg-gray-700 text-pb-text2 dark:text-gray-500 cursor-not-allowed opacity-60'
                   : planningNodes.has(selectedNode.name)
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-claude-text dark:text-white cursor-wait'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-pb-text dark:text-white cursor-wait'
                   : evacuatingNodes.has(selectedNode.name)
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-claude-text dark:text-white cursor-wait'
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-claude-text dark:text-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-pb-text dark:text-white cursor-wait'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-pb-text dark:text-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
               }`}
               title={!canMigrate ? 'Read-only API token - Cannot migrate' : (!selectedNode.guests || Object.keys(selectedNode.guests).length === 0) ? 'No guests to evacuate' : ''}
             >

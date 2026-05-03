@@ -22,7 +22,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
 
   if (loading) {
     return (
-      <div className="text-xs text-claude-muted dark:text-gray-400 py-4 flex items-center gap-2">
+      <div className="text-xs text-pb-text2 dark:text-gray-400 py-4 flex items-center gap-2">
         <RefreshCw size={12} className="animate-spin" /> Loading outcomes...
       </div>
     );
@@ -30,7 +30,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
 
   if (!outcomes || outcomes.length === 0) {
     return (
-      <div className="text-xs text-claude-muted dark:text-gray-500 py-4">
+      <div className="text-xs text-pb-text2 dark:text-gray-500 py-4">
         No migration outcomes tracked yet. Outcomes are recorded automatically when migrations are executed, comparing predicted vs. actual resource changes.
       </div>
     );
@@ -43,30 +43,30 @@ export default function MigrationOutcomes({ API_BASE, active }) {
         const post = outcome.post_migration || {};
         const isPending = outcome.status && outcome.status.startsWith('pending_');
         return (
-          <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-800 bg-amber-900/20' : 'border-claude-border dark:border-slate-700 bg-gray-800/50'}`}>
+          <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-800 bg-amber-900/20' : 'border-pb-border dark:border-slate-700 bg-gray-800/50'}`}>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="font-medium text-claude-text dark:text-gray-300">
+              <span className="font-medium text-pb-text dark:text-gray-300">
                 [{outcome.guest_type} {outcome.vmid}] {outcome.source_node} → {outcome.target_node}
               </span>
-              <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? 'bg-amber-500 text-claude-text dark:text-white' : outcome.accuracy_pct >= 70 ? 'bg-green-500 text-claude-text dark:text-white' : 'bg-gray-500 text-claude-text dark:text-white'}`}>
+              <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${isPending ? 'bg-amber-500 text-pb-text dark:text-white' : outcome.accuracy_pct >= 70 ? 'bg-green-500 text-pb-text dark:text-white' : 'bg-gray-500 text-pb-text dark:text-white'}`}>
                 {isPending ? 'PENDING' : outcome.accuracy_pct != null ? `${outcome.accuracy_pct}% accurate` : 'COMPLETED'}
               </span>
             </div>
             {!isPending && post && (
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-[10px] text-claude-muted dark:text-gray-500 mb-0.5">Source CPU</div>
+                  <div className="text-[10px] text-pb-text2 dark:text-gray-500 mb-0.5">Source CPU</div>
                   <div className="flex items-center gap-1">
-                    <span className="text-claude-muted dark:text-gray-400">{pre.source_node?.cpu}%</span>
-                    <ArrowRight size={8} className="text-claude-muted dark:text-gray-400" />
+                    <span className="text-pb-text2 dark:text-gray-400">{pre.source_node?.cpu}%</span>
+                    <ArrowRight size={8} className="text-pb-text2 dark:text-gray-400" />
                     <span className={`font-medium ${(pre.source_node?.cpu || 0) > (post.source_node?.cpu || 0) ? 'text-green-400' : 'text-red-400'}`}>{post.source_node?.cpu}%</span>
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-claude-muted dark:text-gray-500 mb-0.5">Source Memory</div>
+                  <div className="text-[10px] text-pb-text2 dark:text-gray-500 mb-0.5">Source Memory</div>
                   <div className="flex items-center gap-1">
-                    <span className="text-claude-muted dark:text-gray-400">{pre.source_node?.mem}%</span>
-                    <ArrowRight size={8} className="text-claude-muted dark:text-gray-400" />
+                    <span className="text-pb-text2 dark:text-gray-400">{pre.source_node?.mem}%</span>
+                    <ArrowRight size={8} className="text-pb-text2 dark:text-gray-400" />
                     <span className={`font-medium ${(pre.source_node?.mem || 0) > (post.source_node?.mem || 0) ? 'text-green-400' : 'text-red-400'}`}>{post.source_node?.mem}%</span>
                   </div>
                 </div>

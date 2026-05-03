@@ -18,12 +18,12 @@ export default function DistributionBalancingSection({
             className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
           >
             {embedded
-              ? <h3 className="text-base font-bold text-claude-text dark:text-white">Distribution Balancing</h3>
-              : <h2 className="text-xl font-bold text-claude-text dark:text-white">Distribution Balancing</h2>
+              ? <h3 className="text-base font-bold text-pb-text dark:text-white">Distribution Balancing</h3>
+              : <h2 className="text-xl font-bold text-pb-text dark:text-white">Distribution Balancing</h2>
             }
             <ChevronDown
               size={embedded ? 20 : ICON.section}
-              className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
+              className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
             />
           </button>
 
@@ -70,7 +70,7 @@ export default function DistributionBalancingSection({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Guest Count Threshold */}
               <div>
-                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                   Guest Count Threshold
                 </label>
                 <NumberField
@@ -86,14 +86,14 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                   Minimum difference in guest counts to trigger balancing
                 </p>
               </div>
 
               {/* Max CPU Cores */}
               <div>
-                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                   Max CPU Cores
                 </label>
                 <NumberField
@@ -109,14 +109,14 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                   Only migrate guests with this many CPU cores or less (0 = no limit)
                 </p>
               </div>
 
               {/* Max Memory GB */}
               <div>
-                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
                   Max Memory (GB)
                 </label>
                 <NumberField
@@ -132,7 +132,7 @@ export default function DistributionBalancingSection({
                   }}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
+                <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
                   Only migrate guests with this much memory or less (0 = no limit)
                 </p>
               </div>

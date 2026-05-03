@@ -44,7 +44,7 @@ function StatusBadge({ status }) {
     ? 'bg-blue-900/30 text-blue-300'
     : status === 'running'
       ? 'bg-green-900/30 text-green-300'
-      : 'bg-claude-surface2 dark:bg-slate-700 text-claude-muted dark:text-gray-400';
+      : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400';
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded font-medium ${cls}`}>
       <Icon size={11} className={status === 'migrating' ? 'animate-spin' : ''} />
@@ -161,7 +161,7 @@ export default function GuestsTable({
   const SortHeader = ({ field, children, className = '' }) => (
     <th
       onClick={() => handleSort(field)}
-      className={`${TABLE_HEADER} cursor-pointer hover:text-claude-text dark:hover:text-gray-200 ${className}`}
+      className={`${TABLE_HEADER} cursor-pointer hover:text-pb-text dark:hover:text-gray-200 ${className}`}
     >
       <span className="flex items-center gap-1">
         {children}
@@ -194,7 +194,7 @@ export default function GuestsTable({
             </button>
           ))}
         </div>
-        <span className="text-xs text-claude-muted dark:text-gray-500 sm:ml-auto tabular-nums">
+        <span className="text-xs text-pb-text2 dark:text-gray-500 sm:ml-auto tabular-nums">
           {sorted.length} guest{sorted.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -202,7 +202,7 @@ export default function GuestsTable({
       <div className="overflow-x-auto -mx-4 sm:-mx-5">
         <table className="w-full min-w-[800px]">
           <thead>
-            <tr className="border-b border-claude-border dark:border-slate-700/50">
+            <tr className="border-b border-pb-border dark:border-slate-700/50">
               <SortHeader field="type">Type</SortHeader>
               <SortHeader field="vmid">VMID</SortHeader>
               <SortHeader field="name">Name</SortHeader>
@@ -218,7 +218,7 @@ export default function GuestsTable({
             {sorted.map((g, idx) => {
               const memPct = memPercent(g);
               const hasRec = !!guestRecMap?.[String(g.vmid)];
-              const rowBg = hasRec ? 'bg-orange-900/15' : (idx % 2 === 1 ? 'bg-claude-surface2/60 dark:bg-slate-700/30' : '');
+              const rowBg = hasRec ? 'bg-orange-900/15' : (idx % 2 === 1 ? 'bg-pb-surface2/60 dark:bg-slate-700/30' : '');
               return (
                 <tr
                   key={g.vmid}
@@ -232,10 +232,10 @@ export default function GuestsTable({
                         : 'bg-orange-900/30 text-orange-400 border border-orange-800/30'
                     }`}>{g.type}</span>
                   </td>
-                  <td className="p-3 text-xs text-claude-muted dark:text-gray-400 font-mono tabular-nums">{g.vmid}</td>
+                  <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{g.vmid}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm text-claude-text dark:text-gray-200">{g.name || `guest-${g.vmid}`}</span>
+                      <span className="text-sm text-pb-text dark:text-gray-200">{g.name || `guest-${g.vmid}`}</span>
                       <WorkloadBadge profile={guestProfiles?.[String(g.vmid)]} running={g.status === 'running'} />
                       {(() => {
                         const rec = guestRecMap?.[String(g.vmid)];
@@ -255,20 +255,20 @@ export default function GuestsTable({
                       })()}
                     </div>
                   </td>
-                  <td className="p-3 text-xs text-claude-muted dark:text-gray-400">{g.node}</td>
+                  <td className="p-3 text-xs text-pb-text2 dark:text-gray-400">{g.node}</td>
                   <td className="p-3"><StatusBadge status={g.status} /></td>
                   <td className="p-3 text-xs font-mono tabular-nums">
                     {g.status === 'running' && g.cpu_current != null
                       ? <span className={metricTextColor(g.cpu_current)}>{g.cpu_current.toFixed(0)}%</span>
-                      : <span className="text-claude-muted dark:text-gray-600">—</span>}
+                      : <span className="text-pb-text2 dark:text-gray-600">—</span>}
                   </td>
                   <td className="p-3 text-xs font-mono tabular-nums">
                     {g.status === 'running' && memPct != null ? (
                       <span className={metricTextColor(memPct)}>
                         {memPct.toFixed(0)}%
-                        <span className="text-claude-muted dark:text-gray-600 ml-1 hidden xl:inline">{formatMem(g.mem_used_gb)}</span>
+                        <span className="text-pb-text2 dark:text-gray-600 ml-1 hidden xl:inline">{formatMem(g.mem_used_gb)}</span>
                       </span>
-                    ) : <span className="text-claude-muted dark:text-gray-600">—</span>}
+                    ) : <span className="text-pb-text2 dark:text-gray-600">—</span>}
                   </td>
                   <td className="p-3">
                     <TagChips guest={g} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} />
@@ -295,7 +295,7 @@ export default function GuestsTable({
       </div>
 
       {sorted.length === 0 && (
-        <div className="text-center py-6 text-claude-muted dark:text-gray-500 text-sm">
+        <div className="text-center py-6 text-pb-text2 dark:text-gray-500 text-sm">
           No guests match your filters
         </div>
       )}

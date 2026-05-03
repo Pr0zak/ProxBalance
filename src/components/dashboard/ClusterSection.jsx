@@ -72,22 +72,22 @@ export default function ClusterSection(props) {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <div className="flex items-center gap-3">
           <div className={iconBadge('teal', 'cyan')}>
-            <Server size={ICON.section} className="text-claude-text dark:text-white" />
+            <Server size={ICON.section} className="text-pb-text dark:text-white" />
           </div>
-          <h2 className="text-xl font-bold text-claude-text dark:text-white">Cluster</h2>
+          <h2 className="text-xl font-bold text-pb-text dark:text-white">Cluster</h2>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 rounded-lg bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 p-1 flex-wrap">
+          <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-1 flex-wrap">
             {TABS.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   effectiveTab === t.id
-                    ? 'bg-blue-600 text-claude-text dark:text-white shadow'
+                    ? 'bg-blue-600 text-pb-text dark:text-white shadow'
                     : t.accent
                       ? 'text-orange-300 hover:text-orange-200'
-                      : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
+                      : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
               >
                 {t.label}
@@ -97,17 +97,17 @@ export default function ClusterSection(props) {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setLayoutMenuOpen(o => !o)}
-              className="p-1.5 rounded-lg bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40"
+              className="p-1.5 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40"
               title="Layout — promote tabs to standalone sections"
               aria-label="Section layout"
             >
               <Settings size={14} />
             </button>
             {layoutMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-claude-surface dark:bg-slate-800 border border-claude-border dark:border-slate-700 rounded-lg shadow-xl z-20 p-3">
-                <div className="text-xs uppercase tracking-wider text-claude-muted dark:text-gray-500 mb-2">Show as standalone section</div>
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 rounded-lg shadow-xl z-20 p-3">
+                <div className="text-xs uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-2">Show as standalone section</div>
                 {PROMOTABLE.map(p => (
-                  <label key={p.key} className="flex items-center gap-2 py-1.5 text-sm text-claude-text dark:text-gray-200 cursor-pointer hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40 rounded px-2 -mx-2">
+                  <label key={p.key} className="flex items-center gap-2 py-1.5 text-sm text-pb-text dark:text-gray-200 cursor-pointer hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 rounded px-2 -mx-2">
                     <input
                       type="checkbox"
                       checked={!!promoted[p.key]}
@@ -117,7 +117,7 @@ export default function ClusterSection(props) {
                     {p.label}
                   </label>
                 ))}
-                <div className="text-[10px] text-claude-muted dark:text-gray-500 mt-2">When checked, the tab moves to its own collapsible section below.</div>
+                <div className="text-[10px] text-pb-text2 dark:text-gray-500 mt-2">When checked, the tab moves to its own collapsible section below.</div>
               </div>
             )}
           </div>

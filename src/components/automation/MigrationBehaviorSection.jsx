@@ -28,10 +28,10 @@ export default function MigrationBehaviorSection({
         onClick={() => setCollapsedSections(prev => ({ ...prev, migrationBehaviorSection: !prev.migrationBehaviorSection }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
-        <h2 className="text-xl font-bold text-claude-text dark:text-white">How to Migrate</h2>
+        <h2 className="text-xl font-bold text-pb-text dark:text-white">How to Migrate</h2>
         <ChevronDown
           size={ICON.section}
-          className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.migrationBehaviorSection ? 'rotate-180' : ''}`}
+          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.migrationBehaviorSection ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -49,8 +49,8 @@ export default function MigrationBehaviorSection({
           />
 
           {/* ── Safety Checks ── */}
-          <div className="border-t border-claude-border dark:border-slate-700 pt-4">
-            <h3 className="text-base font-bold text-claude-text dark:text-white mb-3">Safety Checks</h3>
+          <div className="border-t border-pb-border dark:border-slate-700 pt-4">
+            <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Safety Checks</h3>
             <div className="space-y-3">
               <ToggleRow
                 label="Check Cluster Health Before Migrating"
@@ -60,8 +60,8 @@ export default function MigrationBehaviorSection({
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
+                <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
                     Max Node CPU %
                   </label>
                   <NumberField
@@ -72,8 +72,8 @@ export default function MigrationBehaviorSection({
                     className={INPUT_FIELD}
                   />
                 </div>
-                <div className="bg-claude-surface2 dark:bg-slate-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
+                <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
                     Max Node Memory %
                   </label>
                   <NumberField
@@ -109,7 +109,7 @@ export default function MigrationBehaviorSection({
           </div>
 
           {/* ── Scoring & Tuning ── */}
-          <div className="border-t border-claude-border dark:border-slate-700 pt-4">
+          <div className="border-t border-pb-border dark:border-slate-700 pt-4">
             <PenaltyScoringSection
               embedded
               hideSensitivity

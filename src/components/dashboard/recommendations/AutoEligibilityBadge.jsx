@@ -14,7 +14,7 @@ export default function AutoEligibilityBadge({ rec, automationStatus }) {
   // Off: auto-migration disabled entirely.
   if (!automationStatus.enabled) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-claude-surface2 dark:bg-slate-700/60 text-claude-muted dark:text-gray-400" title="Automation is disabled">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-pb-surface2 dark:bg-slate-700/60 text-pb-text2 dark:text-gray-400" title="Automation is disabled">
         Auto: off
       </span>
     );
