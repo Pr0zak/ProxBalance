@@ -19,23 +19,23 @@ export default function AIRecommendationsSection({
             <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={iconBadge('violet', 'purple')}>
-                  <Activity size={ICON.section} className="text-white" />
+                  <Activity size={ICON.section} className="text-claude-text dark:text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">AI-Enhanced Recommendations</h2>
-                  <p className="text-sm text-gray-400 mt-0.5">AI-powered migration insights</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-claude-text dark:text-white">AI-Enhanced Recommendations</h2>
+                  <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5">AI-powered migration insights</p>
                 </div>
                 <button
                   onClick={() => toggleSection('aiRecommendations')}
-                  className="ml-2 p-2 hover:bg-slate-700 rounded-xl transition-all duration-200"
+                  className="ml-2 p-2 hover:bg-claude-surface2 dark:hover:bg-slate-700 rounded-xl transition-all duration-200"
                   title={collapsedSections.aiRecommendations ? "Expand section" : "Collapse section"}
                 >
-                  <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.aiRecommendations ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.section} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.aiRecommendations ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-300">Analysis Period:</label>
+                  <label className="text-sm font-medium text-claude-text dark:text-gray-300">Analysis Period:</label>
                   <select
                     value={aiAnalysisPeriod}
                     onChange={(e) => setAiAnalysisPeriod(e.target.value)}
@@ -51,7 +51,7 @@ export default function AIRecommendationsSection({
                 <button
                   onClick={fetchAiRecommendations}
                   disabled={loadingAi}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-claude-text dark:text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
                 >
                   {loadingAi ? (
                     <>
@@ -71,7 +71,7 @@ export default function AIRecommendationsSection({
             {!collapsedSections.aiRecommendations && (
             <div className="transition-all duration-300 ease-in-out">
             {!aiRecommendations && !loadingAi && (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-claude-muted dark:text-gray-400">
                 <Activity size={48} className="mx-auto mb-2" />
                 <p className="font-medium">AI Analysis Available</p>
                 <p className="text-sm">Click "Get AI Analysis" to receive AI-powered migration recommendations</p>
@@ -118,7 +118,7 @@ export default function AIRecommendationsSection({
                 )}
 
                 {aiRecommendations.recommendations && aiRecommendations.recommendations.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="text-center py-8 text-claude-muted dark:text-gray-400">
                     <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
                     <p className="font-medium">No AI Recommendations</p>
                     <p className="text-sm">AI analysis found cluster is well-balanced</p>
@@ -154,9 +154,9 @@ export default function AIRecommendationsSection({
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="font-bold text-lg">[{rec.type} {rec.vmid}] {rec.name}</span>
                                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                                  rec.priority === 'high' ? 'bg-red-600 text-white' :
-                                  rec.priority === 'medium' ? 'bg-yellow-600 text-white' :
-                                  'bg-green-600 text-white'
+                                  rec.priority === 'high' ? 'bg-red-600 text-claude-text dark:text-white' :
+                                  rec.priority === 'medium' ? 'bg-yellow-600 text-claude-text dark:text-white' :
+                                  'bg-green-600 text-claude-text dark:text-white'
                                 }`}>
                                   {rec.priority} Priority
                                 </span>
@@ -168,7 +168,7 @@ export default function AIRecommendationsSection({
                                 <span className="font-semibold text-green-300">TO:</span> {rec.target_node}
                               </div>
 
-                              <div className="bg-slate-800 rounded p-3 mb-2">
+                              <div className="bg-claude-surface dark:bg-slate-800 rounded p-3 mb-2">
                                 <div className="flex items-start gap-2 mb-1">
                                   <Shield size={16} className="text-blue-400 mt-0.5" />
                                   <div className="flex-1">
@@ -196,7 +196,7 @@ export default function AIRecommendationsSection({
                                 // If migration is completed, show "Migrated" badge
                                 if (isCompleted) {
                                   return (
-                                    <div className="px-4 py-2 bg-green-500 text-white rounded flex items-center gap-2">
+                                    <div className="px-4 py-2 bg-green-500 text-claude-text dark:text-white rounded flex items-center gap-2">
                                       <CheckCircle size={16} />
                                       Migrated
                                     </div>
@@ -226,7 +226,7 @@ export default function AIRecommendationsSection({
                                   return (
                                     <button
                                       onClick={() => cancelMigration(rec.vmid, rec.target_node)}
-                                      className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
+                                      className="px-4 py-2 bg-red-500 text-claude-text dark:text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
                                       title={tooltipText}
                                     >
                                       <RefreshCw size={16} className="animate-spin" />
@@ -272,7 +272,7 @@ export default function AIRecommendationsSection({
                                       });
                                     }}
                                     disabled={!canMigrate || status === 'running' || isMigrating}
-                                    className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-4 py-2 bg-purple-500 text-claude-text dark:text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                                     title={!canMigrate ? 'Read-only API token (PVEAuditor) - Cannot perform migrations' : isMigrating ? 'Migration in progress' : ''}
                                   >
                                     {!canMigrate ? (

@@ -10,10 +10,10 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                     <div className={GLASS_CARD}>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Bell className="text-gray-400 shrink-0" size={ICON.section} />
+                          <Bell className="text-claude-muted dark:text-gray-400 shrink-0" size={ICON.section} />
                           <div className="min-w-0">
-                            <h3 className="text-lg font-semibold text-white">Notifications</h3>
-                            <p className="text-sm text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
+                            <h3 className="text-lg font-semibold text-claude-text dark:text-white">Notifications</h3>
+                            <p className="text-sm text-claude-muted dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -21,35 +21,35 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             checked={automationConfig.notifications?.enabled || false}
                             onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, enabled: e.target.checked } })}
                             className="sr-only peer" />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                         </label>
                       </div>
 
                       {automationConfig.notifications?.enabled && (
                       <div className="space-y-4 mt-4">
                         {/* Migration Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-slate-600">
-                          <div className="font-medium text-gray-300 mb-2">Migration Events</div>
+                        <div className="p-3 bg-gray-800/50 rounded border border-claude-border dark:border-slate-600">
+                          <div className="font-medium text-claude-text dark:text-gray-300 mb-2">Migration Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_start !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_start: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Run started
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_complete !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_complete: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Run completed
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_action !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Each migration
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.on_failure !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_failure: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
@@ -59,13 +59,13 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           {/* Sub-filter: success/failure for individual migrations */}
                           {automationConfig.notifications?.on_action !== false && (
                             <div className="mt-2 ml-6 flex flex-wrap gap-x-4 gap-y-1">
-                              <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                              <label className="flex items-center gap-2 text-xs text-claude-muted dark:text-gray-400 cursor-pointer">
                                 <input type="checkbox" checked={automationConfig.notifications?.on_action_success !== false}
                                   onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action_success: e.target.checked } })}
                                   className="w-3.5 h-3.5 text-green-600 border-gray-300 rounded focus:ring-green-500" />
                                 Successful migrations
                               </label>
-                              <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                              <label className="flex items-center gap-2 text-xs text-claude-muted dark:text-gray-400 cursor-pointer">
                                 <input type="checkbox" checked={automationConfig.notifications?.on_action_failure !== false}
                                   onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_action_failure: e.target.checked } })}
                                   className="w-3.5 h-3.5 text-red-600 border-gray-300 rounded focus:ring-red-500" />
@@ -76,22 +76,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Cluster Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-slate-600">
-                          <div className="font-medium text-gray-300 mb-2">Cluster Events</div>
+                        <div className="p-3 bg-gray-800/50 rounded border border-claude-border dark:border-slate-600">
+                          <div className="font-medium text-claude-text dark:text-gray-300 mb-2">Cluster Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when a node goes offline or comes back online">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when a node goes offline or comes back online">
                               <input type="checkbox" checked={automationConfig.notifications?.on_node_status !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_node_status: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Node status changes
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when CPU or memory exceeds safety thresholds">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when CPU or memory exceeds safety thresholds">
                               <input type="checkbox" checked={automationConfig.notifications?.on_resource_threshold === true}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_resource_threshold: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Resource threshold breach
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when node evacuation starts or completes">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when node evacuation starts or completes">
                               <input type="checkbox" checked={automationConfig.notifications?.on_evacuation !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_evacuation: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
@@ -101,22 +101,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* System Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-slate-600">
-                          <div className="font-medium text-gray-300 mb-2">System Events</div>
+                        <div className="p-3 bg-gray-800/50 rounded border border-claude-border dark:border-slate-600">
+                          <div className="font-medium text-claude-text dark:text-gray-300 mb-2">System Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when new migration recommendations are generated">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when new migration recommendations are generated">
                               <input type="checkbox" checked={automationConfig.notifications?.on_recommendations === true}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_recommendations: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               New recommendations
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when data collection succeeds or fails">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when data collection succeeds or fails">
                               <input type="checkbox" checked={automationConfig.notifications?.on_collector_status === true}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_collector_status: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Collector status
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer" title="Alert when a new ProxBalance version is available">
+                            <label className="flex items-center gap-2 text-sm text-claude-text dark:text-gray-300 cursor-pointer" title="Alert when a new ProxBalance version is available">
                               <input type="checkbox" checked={automationConfig.notifications?.on_update_available !== false}
                                 onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_update_available: e.target.checked } })}
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
@@ -126,11 +126,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Pushover */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Pushover</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Pushover</span>
                               {automationConfig.notifications?.providers?.pushover?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -142,13 +142,13 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.pushover = { ...(providers.pushover || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-pushover" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">API Token</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">API Token</label>
                                 <input type="password" placeholder="Application API token"
                                   value={automationConfig.notifications?.providers?.pushover?.api_token || ''}
                                   onChange={(e) => {
@@ -159,7 +159,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">User Key</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">User Key</label>
                                 <input type="password" placeholder="Your user/group key"
                                   value={automationConfig.notifications?.providers?.pushover?.user_key || ''}
                                   onChange={(e) => {
@@ -172,7 +172,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Priority</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Priority</label>
                                 <select value={automationConfig.notifications?.providers?.pushover?.priority ?? 0}
                                   onChange={(e) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -187,7 +187,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Sound</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Sound</label>
                                 <select value={automationConfig.notifications?.providers?.pushover?.sound || 'pushover'}
                                   onChange={(e) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -221,16 +221,16 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 </select>
                               </div>
                             </div>
-                            <p className="text-xs text-gray-400">Get your API token and user key from <a href="https://pushover.net" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">pushover.net</a></p>
+                            <p className="text-xs text-claude-muted dark:text-gray-400">Get your API token and user key from <a href="https://pushover.net" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">pushover.net</a></p>
                           </div>
                         </div>
 
                         {/* Email (SMTP) */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Email (SMTP)</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Email (SMTP)</span>
                               {automationConfig.notifications?.providers?.email?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -242,13 +242,13 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.email = { ...(providers.email || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-email" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">SMTP Host</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">SMTP Host</label>
                                 <input type="text" placeholder="smtp.gmail.com"
                                   value={automationConfig.notifications?.providers?.email?.smtp_host || ''}
                                   onChange={(e) => {
@@ -259,7 +259,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">SMTP Port</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">SMTP Port</label>
                                 <NumberField min="1" max="65535"
                                   value={automationConfig.notifications?.providers?.email?.smtp_port || 587}
                                   onCommit={(val) => {
@@ -272,7 +272,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Username</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Username</label>
                                 <input type="text" placeholder="user@example.com"
                                   value={automationConfig.notifications?.providers?.email?.smtp_username || ''}
                                   onChange={(e) => {
@@ -283,7 +283,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Password</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Password</label>
                                 <input type="password" placeholder="App password"
                                   value={automationConfig.notifications?.providers?.email?.smtp_password || ''}
                                   onChange={(e) => {
@@ -296,7 +296,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">From Address</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">From Address</label>
                                 <input type="email" placeholder="proxbalance@example.com"
                                   value={automationConfig.notifications?.providers?.email?.from_address || ''}
                                   onChange={(e) => {
@@ -307,7 +307,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">To Addresses</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">To Addresses</label>
                                 <input type="text" placeholder="admin@example.com, ops@example.com"
                                   value={Array.isArray(automationConfig.notifications?.providers?.email?.to_addresses) ? automationConfig.notifications.providers.email.to_addresses.join(', ') : (automationConfig.notifications?.providers?.email?.to_addresses || '')}
                                   onChange={(e) => {
@@ -318,7 +318,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                             </div>
-                            <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                            <label className="flex items-center gap-2 text-xs text-claude-text dark:text-gray-300 cursor-pointer">
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.email?.smtp_tls !== false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -332,11 +332,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Telegram */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Telegram</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Telegram</span>
                               {automationConfig.notifications?.providers?.telegram?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -348,13 +348,13 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.telegram = { ...(providers.telegram || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-telegram" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Bot Token</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Bot Token</label>
                                 <input type="password" placeholder="123456:ABC-DEF..."
                                   value={automationConfig.notifications?.providers?.telegram?.bot_token || ''}
                                   onChange={(e) => {
@@ -365,7 +365,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-300 mb-1">Chat ID</label>
+                                <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Chat ID</label>
                                 <input type="text" placeholder="-1001234567890"
                                   value={automationConfig.notifications?.providers?.telegram?.chat_id || ''}
                                   onChange={(e) => {
@@ -376,16 +376,16 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   className={INPUT_FIELD} />
                               </div>
                             </div>
-                            <p className="text-xs text-gray-400">Create a bot via <span className="font-mono">@BotFather</span> on Telegram and add it to your group/channel</p>
+                            <p className="text-xs text-claude-muted dark:text-gray-400">Create a bot via <span className="font-mono">@BotFather</span> on Telegram and add it to your group/channel</p>
                           </div>
                         </div>
 
                         {/* Discord */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Discord</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Discord</span>
                               {automationConfig.notifications?.providers?.discord?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -397,12 +397,12 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.discord = { ...(providers.discord || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-discord" className="hidden p-3 pt-0 space-y-3">
                             <div>
-                              <label className="block text-xs font-medium text-gray-300 mb-1">Webhook URL</label>
+                              <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Webhook URL</label>
                               <input type="url" placeholder="https://discord.com/api/webhooks/..."
                                 value={automationConfig.notifications?.providers?.discord?.webhook_url || ''}
                                 onChange={(e) => {
@@ -412,16 +412,16 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }}
                                 className={INPUT_FIELD} />
                             </div>
-                            <p className="text-xs text-gray-400">Server Settings &gt; Integrations &gt; Webhooks &gt; New Webhook</p>
+                            <p className="text-xs text-claude-muted dark:text-gray-400">Server Settings &gt; Integrations &gt; Webhooks &gt; New Webhook</p>
                           </div>
                         </div>
 
                         {/* Slack */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Slack</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Slack</span>
                               {automationConfig.notifications?.providers?.slack?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -433,12 +433,12 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.slack = { ...(providers.slack || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-slack" className="hidden p-3 pt-0 space-y-3">
                             <div>
-                              <label className="block text-xs font-medium text-gray-300 mb-1">Webhook URL</label>
+                              <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Webhook URL</label>
                               <input type="url" placeholder="https://hooks.slack.com/services/T.../B.../..."
                                 value={automationConfig.notifications?.providers?.slack?.webhook_url || ''}
                                 onChange={(e) => {
@@ -448,16 +448,16 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }}
                                 className={INPUT_FIELD} />
                             </div>
-                            <p className="text-xs text-gray-400">Create an Incoming Webhook in your Slack workspace settings</p>
+                            <p className="text-xs text-claude-muted dark:text-gray-400">Create an Incoming Webhook in your Slack workspace settings</p>
                           </div>
                         </div>
 
                         {/* Generic Webhook */}
-                        <div className="bg-gray-800/50 rounded border border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-gray-800/50 rounded border border-claude-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-300">Generic Webhook</span>
+                              <span className="font-medium text-claude-text dark:text-gray-300">Generic Webhook</span>
                               {automationConfig.notifications?.providers?.webhook?.enabled && (
                                 <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
@@ -469,12 +469,12 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.webhook = { ...(providers.webhook || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-claude-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-webhook" className="hidden p-3 pt-0 space-y-3">
                             <div>
-                              <label className="block text-xs font-medium text-gray-300 mb-1">Webhook URL</label>
+                              <label className="block text-xs font-medium text-claude-text dark:text-gray-300 mb-1">Webhook URL</label>
                               <input type="url" placeholder="https://your-server.com/webhook"
                                 value={automationConfig.notifications?.providers?.webhook?.url || ''}
                                 onChange={(e) => {
@@ -484,7 +484,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }}
                                 className={INPUT_FIELD} />
                             </div>
-                            <p className="text-xs text-gray-400">Sends a JSON POST with title, message, priority, and timestamp</p>
+                            <p className="text-xs text-claude-muted dark:text-gray-400">Sends a JSON POST with title, message, priority, and timestamp</p>
                           </div>
                         </div>
 
@@ -508,12 +508,12 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-claude-text dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
                             <Bell size={14} />
                             Send Test Notification
                           </button>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-claude-muted dark:text-gray-400 mt-2">
                             Sends a test message to all enabled providers to verify your configuration
                           </p>
                         </div>

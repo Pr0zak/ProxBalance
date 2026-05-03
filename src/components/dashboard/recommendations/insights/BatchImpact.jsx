@@ -6,7 +6,7 @@ export default function BatchImpact({ recommendationData }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-300">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-claude-text dark:text-gray-300">
         {Object.entries(batchImpact.before?.node_scores || {}).map(([node, before]) => {
           const after = batchImpact.after?.node_scores?.[node];
           if (!after) return null;
@@ -15,28 +15,28 @@ export default function BatchImpact({ recommendationData }) {
           const guestDelta = after.guest_count - before.guest_count;
           return (
             <div key={node} className="p-2 bg-gray-700/30 rounded">
-              <div className="font-semibold text-gray-200 mb-1">{node}</div>
+              <div className="font-semibold text-claude-text dark:text-gray-200 mb-1">{node}</div>
               <div className="grid grid-cols-3 gap-1">
                 <div>
-                  <span className="text-gray-400">CPU</span>
+                  <span className="text-claude-muted dark:text-gray-400">CPU</span>
                   <div className="font-mono">
                     {before.cpu.toFixed(0)}%
-                    <span className={`ml-1 ${cpuDelta < -0.5 ? 'text-green-400' : cpuDelta > 0.5 ? 'text-red-400' : 'text-gray-400'}`}>
+                    <span className={`ml-1 ${cpuDelta < -0.5 ? 'text-green-400' : cpuDelta > 0.5 ? 'text-red-400' : 'text-claude-muted dark:text-gray-400'}`}>
                       {cpuDelta !== 0 ? `→${after.cpu.toFixed(0)}%` : ''}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-400">Mem</span>
+                  <span className="text-claude-muted dark:text-gray-400">Mem</span>
                   <div className="font-mono">
                     {before.mem.toFixed(0)}%
-                    <span className={`ml-1 ${memDelta < -0.5 ? 'text-green-400' : memDelta > 0.5 ? 'text-red-400' : 'text-gray-400'}`}>
+                    <span className={`ml-1 ${memDelta < -0.5 ? 'text-green-400' : memDelta > 0.5 ? 'text-red-400' : 'text-claude-muted dark:text-gray-400'}`}>
                       {memDelta !== 0 ? `→${after.mem.toFixed(0)}%` : ''}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-gray-400">Guests</span>
+                  <span className="text-claude-muted dark:text-gray-400">Guests</span>
                   <div className="font-mono">
                     {before.guest_count}
                     {guestDelta !== 0 && (
@@ -52,7 +52,7 @@ export default function BatchImpact({ recommendationData }) {
         })}
       </div>
       {batchImpact.improvement && (
-        <div className="flex flex-wrap gap-3 text-xs text-gray-400 pt-2 border-t border-slate-700">
+        <div className="flex flex-wrap gap-3 text-xs text-claude-muted dark:text-gray-400 pt-2 border-t border-claude-border dark:border-slate-700">
           <span>Health: {Math.round(recommendationData.summary.cluster_health)} → {Math.round(recommendationData.summary.predicted_health)}
             <span className="text-green-400 font-medium ml-1">
               (+{batchImpact.improvement.health_delta.toFixed(1)})

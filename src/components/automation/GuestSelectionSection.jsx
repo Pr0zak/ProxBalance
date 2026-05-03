@@ -22,10 +22,10 @@ export default function GuestSelectionSection({
         onClick={() => setCollapsedSections(prev => ({ ...prev, guestSelectionSection: !prev.guestSelectionSection }))}
         className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
       >
-        <h2 className="text-xl font-bold text-white">What to Migrate</h2>
+        <h2 className="text-xl font-bold text-claude-text dark:text-white">What to Migrate</h2>
         <ChevronDown
           size={ICON.section}
-          className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.guestSelectionSection ? 'rotate-180' : ''}`}
+          className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.guestSelectionSection ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -34,7 +34,7 @@ export default function GuestSelectionSection({
 
           {/* ── Triggers ── */}
           <div>
-            <h3 className="text-base font-bold text-white mb-3">Triggers</h3>
+            <h3 className="text-base font-bold text-claude-text dark:text-white mb-3">Triggers</h3>
             <RecommendationThresholdsSection
               embedded
               config={config}
@@ -45,11 +45,11 @@ export default function GuestSelectionSection({
           </div>
 
           {/* ── Limits ── */}
-          <div className="border-t border-slate-700 pt-4">
-            <h3 className="text-base font-bold text-white mb-3">Limits</h3>
+          <div className="border-t border-claude-border dark:border-slate-700 pt-4">
+            <h3 className="text-base font-bold text-claude-text dark:text-white mb-3">Limits</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
                   Minimum Confidence Score
                 </label>
                 <NumberField
@@ -61,7 +61,7 @@ export default function GuestSelectionSection({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
                   Max Migrations Per Run
                 </label>
                 <NumberField
@@ -73,7 +73,7 @@ export default function GuestSelectionSection({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-claude-text dark:text-gray-300 mb-2">
                   Max Concurrent Migrations
                 </label>
                 <NumberField
@@ -83,7 +83,7 @@ export default function GuestSelectionSection({
                   onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
                   className={INPUT_FIELD}
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-claude-muted dark:text-gray-400 mt-1">
                   Maximum simultaneous migrations
                 </p>
               </div>
@@ -91,8 +91,8 @@ export default function GuestSelectionSection({
           </div>
 
           {/* ── Guest Rules ── */}
-          <div className="border-t border-slate-700 pt-4">
-            <h3 className="text-base font-bold text-white mb-3">Guest Rules</h3>
+          <div className="border-t border-claude-border dark:border-slate-700 pt-4">
+            <h3 className="text-base font-bold text-claude-text dark:text-white mb-3">Guest Rules</h3>
             <div className="space-y-3">
               <ToggleRow
                 label="Skip Ignored Guests (pb-ignore tag)"
@@ -147,14 +147,14 @@ export default function GuestSelectionSection({
                                 saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: true } });
                                 setConfirmAllowContainerRestarts(false);
                               }}
-                              className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+                              className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-claude-text dark:text-white rounded text-xs font-medium flex items-center justify-center gap-1"
                             >
                               <AlertTriangle size={14} />
                               Yes, Allow Restarts
                             </button>
                             <button
                               onClick={() => setConfirmAllowContainerRestarts(false)}
-                              className="px-2 py-1 bg-gray-700 text-gray-200 rounded text-xs hover:bg-gray-600 flex items-center justify-center gap-1"
+                              className="px-2 py-1 bg-claude-surface2 dark:bg-gray-700 text-claude-text dark:text-gray-200 rounded text-xs hover:bg-gray-600 flex items-center justify-center gap-1"
                             >
                               <X size={14} />
                               Cancel
@@ -170,7 +170,7 @@ export default function GuestSelectionSection({
           </div>
 
           {/* ── Distribution Balancing ── */}
-          <div className="border-t border-slate-700 pt-4">
+          <div className="border-t border-claude-border dark:border-slate-700 pt-4">
             <DistributionBalancingSection
               embedded
               config={config}

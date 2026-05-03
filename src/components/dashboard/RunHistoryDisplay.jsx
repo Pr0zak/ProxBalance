@@ -32,7 +32,7 @@ function fmtDuration(s) {
 
 function EmptyState() {
   return (
-    <div className="text-center py-8 text-sm text-gray-500">
+    <div className="text-center py-8 text-sm text-claude-muted dark:text-gray-500">
       No run history yet. Once auto-migration executes, runs appear here.
     </div>
   );
@@ -43,11 +43,11 @@ function HeaderRow({ count }) {
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-3">
         <div className={iconBadge('green', 'emerald')}>
-          <ClipboardList size={ICON.action} className="text-white" />
+          <ClipboardList size={ICON.action} className="text-claude-text dark:text-white" />
         </div>
         <div>
-          <h3 className="text-base font-bold text-white">Run History</h3>
-          <p className="text-[11px] text-gray-500">{count} run{count !== 1 ? 's' : ''}</p>
+          <h3 className="text-base font-bold text-claude-text dark:text-white">Run History</h3>
+          <p className="text-[11px] text-claude-muted dark:text-gray-500">{count} run{count !== 1 ? 's' : ''}</p>
         </div>
       </div>
     </div>
@@ -60,8 +60,8 @@ function DetailModal({ run, onClose }) {
     <div className={MODAL_OVERLAY} onClick={onClose}>
       <div className={`${MODAL_CONTAINER} max-w-3xl`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Run details</h3>
-          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-200"><X size={18} /></button>
+          <h3 className="text-lg font-bold text-claude-text dark:text-white">Run details</h3>
+          <button onClick={onClose} aria-label="Close" className="text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200"><X size={18} /></button>
         </div>
         <RunDetailBlock run={run} />
       </div>
@@ -80,23 +80,23 @@ function ResultCardVariant({ runHistory, lastRun }) {
   return (
     <div className="space-y-3">
       {hasLast && (
-        <div className="bg-slate-800/80 border-2 border-slate-700/80 rounded-lg p-4">
+        <div className="bg-claude-surface dark:bg-slate-800/80 border-2 border-slate-700/80 rounded-lg p-4">
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
-              <div className="text-[11px] text-gray-500 uppercase tracking-wider">Last Run</div>
-              <div className={`text-2xl font-bold ${STATUS_COLOR[lastRun.status] || 'text-gray-400'}`}>
+              <div className="text-[11px] text-claude-muted dark:text-gray-500 uppercase tracking-wider">Last Run</div>
+              <div className={`text-2xl font-bold ${STATUS_COLOR[lastRun.status] || 'text-claude-muted dark:text-gray-400'}`}>
                 {STATUS_LABEL[lastRun.status] || lastRun.status}
               </div>
-              <div className="text-xs text-gray-400 mt-0.5">
+              <div className="text-xs text-claude-muted dark:text-gray-400 mt-0.5">
                 {formatRelativeTime(lastRun.timestamp)} · {fmtDuration(lastRun.duration_seconds)} · {lastRun.mode === 'dry_run' ? 'dry run' : 'live'}
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold tabular-nums text-white">
+              <div className="text-3xl font-bold tabular-nums text-claude-text dark:text-white">
                 {lastRun.migrations_successful || 0}
-                <span className="text-lg text-gray-500">/{lastRun.migrations_executed || 0}</span>
+                <span className="text-lg text-claude-muted dark:text-gray-500">/{lastRun.migrations_executed || 0}</span>
               </div>
-              <div className="text-[11px] text-gray-500">migrations succeeded</div>
+              <div className="text-[11px] text-claude-muted dark:text-gray-500">migrations succeeded</div>
             </div>
           </div>
           <RunDetailBlock run={lastRun} compact />
@@ -105,7 +105,7 @@ function ResultCardVariant({ runHistory, lastRun }) {
       {olderRuns.length > 0 && (
         <button
           onClick={() => setShowAll(s => !s)}
-          className="w-full text-xs text-gray-400 hover:text-gray-200 flex items-center justify-center gap-2 py-2 rounded border border-slate-700/50 hover:bg-slate-700/30 transition-colors"
+          className="w-full text-xs text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 flex items-center justify-center gap-2 py-2 rounded border border-claude-border dark:border-slate-700/50 hover:bg-claude-surface2/60 dark:hover:bg-slate-700/30 transition-colors"
         >
           <ChevronDown size={14} className={`transition-transform ${showAll ? 'rotate-180' : ''}`} />
           {showAll ? 'Hide' : `Show ${olderRuns.length} previous run${olderRuns.length !== 1 ? 's' : ''}`}
@@ -115,12 +115,12 @@ function ResultCardVariant({ runHistory, lastRun }) {
         <button
           key={i}
           onClick={() => setSelected(r)}
-          className="w-full text-left bg-slate-800/40 border border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-slate-700/40 transition-colors"
+          className="w-full text-left bg-claude-surface2 dark:bg-slate-800/40 border border-claude-border dark:border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
         >
           <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[r.status] || 'bg-gray-500'}`} />
-          <span className="text-gray-300">{formatRelativeTime(r.timestamp)}</span>
+          <span className="text-claude-text dark:text-gray-300">{formatRelativeTime(r.timestamp)}</span>
           <span className={`text-[10px] ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] || r.status}</span>
-          <span className="ml-auto text-gray-500 tabular-nums">
+          <span className="ml-auto text-claude-muted dark:text-gray-500 tabular-nums">
             {r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)} · click for detail
           </span>
         </button>

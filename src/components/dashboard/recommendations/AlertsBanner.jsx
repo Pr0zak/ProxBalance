@@ -79,12 +79,12 @@ export default function AlertsBanner({
         <div className="mb-4">
           <button
             onClick={() => setCollapsedSections(prev => ({ ...prev, forecastAlerts: !prev.forecastAlerts }))}
-            className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition-colors mb-2"
+            className="flex items-center gap-2 text-sm font-medium text-claude-text dark:text-gray-300 hover:text-claude-text dark:hover:text-white transition-colors mb-2"
           >
             <ChevronDown size={16} className={`transition-transform ${collapsedSections.forecastAlerts ? '' : 'rotate-180'}`} />
             <Zap size={14} className="text-amber-500" />
             Trend Forecasts ({recommendationData.forecasts.length})
-            <span className="text-xs text-gray-500">— Projected threshold crossings</span>
+            <span className="text-xs text-claude-muted dark:text-gray-500">— Projected threshold crossings</span>
           </button>
           {!collapsedSections.forecastAlerts && (
             <div className="space-y-2">
@@ -103,20 +103,20 @@ export default function AlertsBanner({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm text-white">{fc.node}</span>
+                      <span className="font-semibold text-sm text-claude-text dark:text-white">{fc.node}</span>
                       <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded uppercase ${
-                        fc.severity === 'critical' ? 'bg-red-600 text-white' : fc.severity === 'warning' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'
+                        fc.severity === 'critical' ? 'bg-red-600 text-claude-text dark:text-white' : fc.severity === 'warning' ? 'bg-amber-500 text-claude-text dark:text-white' : 'bg-blue-500 text-claude-text dark:text-white'
                       }`}>{fc.severity}</span>
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-slate-700 text-gray-400 uppercase">{fc.metric}</span>
+                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-claude-surface2 dark:bg-slate-700 text-claude-muted dark:text-gray-400 uppercase">{fc.metric}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-1">{fc.message}</p>
-                    <div className="flex flex-wrap gap-3 text-[10px] text-gray-500">
-                      <span>Current: <strong className="text-gray-300">{fc.current_value?.toFixed(1)}%</strong></span>
-                      <span>Threshold: <strong className="text-gray-300">{fc.threshold}%</strong></span>
-                      <span>Projected: <strong className="text-gray-300">{fc.projected_value?.toFixed(1)}%</strong></span>
-                      {fc.estimated_hours_to_crossing && <span>ETA: <strong className="text-gray-300">~{fc.estimated_hours_to_crossing < 24 ? `${fc.estimated_hours_to_crossing.toFixed(0)}h` : `${(fc.estimated_hours_to_crossing / 24).toFixed(1)}d`}</strong></span>}
-                      <span>Rate: <strong className="text-gray-300">{fc.trend_rate_per_day > 0 ? '+' : ''}{fc.trend_rate_per_day?.toFixed(1)}%/day</strong></span>
-                      <span>Confidence: <strong className="text-gray-300">{fc.confidence}</strong> (R²={fc.r_squared?.toFixed(2)})</span>
+                    <p className="text-xs text-claude-muted dark:text-gray-400 mb-1">{fc.message}</p>
+                    <div className="flex flex-wrap gap-3 text-[10px] text-claude-muted dark:text-gray-500">
+                      <span>Current: <strong className="text-claude-text dark:text-gray-300">{fc.current_value?.toFixed(1)}%</strong></span>
+                      <span>Threshold: <strong className="text-claude-text dark:text-gray-300">{fc.threshold}%</strong></span>
+                      <span>Projected: <strong className="text-claude-text dark:text-gray-300">{fc.projected_value?.toFixed(1)}%</strong></span>
+                      {fc.estimated_hours_to_crossing && <span>ETA: <strong className="text-claude-text dark:text-gray-300">~{fc.estimated_hours_to_crossing < 24 ? `${fc.estimated_hours_to_crossing.toFixed(0)}h` : `${(fc.estimated_hours_to_crossing / 24).toFixed(1)}d`}</strong></span>}
+                      <span>Rate: <strong className="text-claude-text dark:text-gray-300">{fc.trend_rate_per_day > 0 ? '+' : ''}{fc.trend_rate_per_day?.toFixed(1)}%/day</strong></span>
+                      <span>Confidence: <strong className="text-claude-text dark:text-gray-300">{fc.confidence}</strong> (R²={fc.r_squared?.toFixed(2)})</span>
                     </div>
                   </div>
                 </div>

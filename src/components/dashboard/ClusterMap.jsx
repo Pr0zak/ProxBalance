@@ -33,25 +33,25 @@ export default function ClusterMap({
         {!embedded && (
           <div className="flex items-center gap-3 min-w-0">
             <div className={iconBadge('teal', 'cyan')}>
-              <Server size={ICON.section} className="text-white" />
+              <Server size={ICON.section} className="text-claude-text dark:text-white" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-2xl font-bold text-white">Cluster Map</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Visual cluster overview</p>
+              <h2 className="text-lg sm:text-2xl font-bold text-claude-text dark:text-white">Cluster Map</h2>
+              <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5">Visual cluster overview</p>
             </div>
             <button
               onClick={() => toggleSection('clusterMap')}
-              className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
+              className="ml-2 p-2 hover:bg-claude-surface2 dark:hover:bg-slate-700 rounded-lg transition-all duration-200"
               title={collapsedSections.clusterMap ? "Expand section" : "Collapse section"}
             >
-              <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
+              <ChevronDown size={ICON.section} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.clusterMap ? 'rotate-180' : ''}`} />
             </button>
           </div>
         )}
         {!isCollapsed && (
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">Show Powered Off:</span>
+              <span className="text-sm text-claude-muted dark:text-gray-400">Show Powered Off:</span>
               <button
                 onClick={() => setShowPoweredOffGuests(!showPoweredOffGuests)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
@@ -66,14 +66,14 @@ export default function ClusterMap({
                 />
               </button>
             </div>
-            <span className="text-sm text-gray-400">View by:</span>
-            <div className="flex flex-wrap rounded-lg bg-slate-700 p-1">
+            <span className="text-sm text-claude-muted dark:text-gray-400">View by:</span>
+            <div className="flex flex-wrap rounded-lg bg-claude-surface2 dark:bg-slate-700 p-1">
               <button
                 onClick={() => setClusterMapViewMode('cpu')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'cpu'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-claude-text dark:text-white'
+                    : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
                 }`}
                 title="CPU"
               >
@@ -83,8 +83,8 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('memory')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'memory'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-claude-text dark:text-white'
+                    : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
                 }`}
                 title="Memory"
               >
@@ -94,8 +94,8 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('allocated')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'allocated'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-claude-text dark:text-white'
+                    : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
                 }`}
                 title="Allocated"
               >
@@ -105,8 +105,8 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('disk_io')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'disk_io'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-claude-text dark:text-white'
+                    : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
                 }`}
                 title="Disk I/O"
               >
@@ -116,8 +116,8 @@ export default function ClusterMap({
                 onClick={() => setClusterMapViewMode('network')}
                 className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                   clusterMapViewMode === 'network'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-claude-text dark:text-white'
+                    : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
                 }`}
                 title="Network"
               >
@@ -177,22 +177,22 @@ export default function ClusterMap({
                       maintenanceNodes.has(node.name)
                         ? 'bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
                         : node.status === 'online'
-                        ? 'bg-gray-900 border-blue-600 hover:border-blue-500'
-                        : 'bg-slate-800 border-gray-600'
+                        ? 'bg-claude-cream dark:bg-gray-900 border-blue-600 hover:border-blue-500'
+                        : 'bg-claude-surface dark:bg-slate-800 border-gray-600'
                     }`}>
                       {/* Node header */}
                       <div className="flex flex-col items-center z-10">
-                        <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-400' : node.status === 'online' ? 'text-blue-400' : 'text-gray-500'}`} />
-                        <div className="text-sm font-bold text-white mt-1">{node.name}</div>
+                        <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-400' : node.status === 'online' ? 'text-blue-400' : 'text-claude-muted dark:text-gray-500'}`} />
+                        <div className="text-sm font-bold text-claude-text dark:text-white mt-1">{node.name}</div>
                         {maintenanceNodes.has(node.name) && (
-                          <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
+                          <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-claude-text dark:text-white rounded mt-0.5">
                             MAINTENANCE
                           </div>
                         )}
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-claude-muted dark:text-gray-400">
                           {nodeGuests.length} guests
                           {!showPoweredOffGuests && poweredOffCount > 0 && (
-                            <span className="text-gray-500"> (+{poweredOffCount} off)</span>
+                            <span className="text-claude-muted dark:text-gray-500"> (+{poweredOffCount} off)</span>
                           )}
                         </div>
                       </div>
@@ -202,9 +202,9 @@ export default function ClusterMap({
                         {/* CPU Bar */}
                         <div>
                           <div className="text-[10px] sm:text-xs mb-0.5">
-                            <span className="text-gray-400 font-medium">CPU</span>
+                            <span className="text-claude-muted dark:text-gray-400 font-medium">CPU</span>
                           </div>
-                          <div className="w-full h-2.5 sm:h-3 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="w-full h-2.5 sm:h-3 bg-claude-surface2 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 (node.cpu_percent || 0) > 80 ? 'bg-red-500' :
@@ -219,9 +219,9 @@ export default function ClusterMap({
                         {/* Memory Bar */}
                         <div>
                           <div className="text-[10px] sm:text-xs mb-0.5">
-                            <span className="text-gray-400 font-medium">MEM</span>
+                            <span className="text-claude-muted dark:text-gray-400 font-medium">MEM</span>
                           </div>
-                          <div className="w-full h-2.5 sm:h-3 bg-slate-700 rounded-full overflow-hidden">
+                          <div className="w-full h-2.5 sm:h-3 bg-claude-surface2 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
                                 (node.mem_percent || 0) > 80 ? 'bg-red-500' :
@@ -236,26 +236,26 @@ export default function ClusterMap({
                     </div>
 
                     {/* Host tooltip */}
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-claude-text dark:text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
                       <div className="font-bold text-sm mb-2 text-blue-400 border-b border-gray-700 pb-2">{node.name}</div>
                       {maintenanceNodes.has(node.name) && (
                         <div className="text-yellow-400 font-bold bg-yellow-900/30 px-2 py-1 rounded mb-2">🔧 MAINTENANCE MODE</div>
                       )}
                       <div className="space-y-1.5">
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-300">CPU:</span>
+                          <span className="text-claude-text dark:text-gray-300">CPU:</span>
                           <span className="font-semibold text-green-400">{(node.cpu_percent || 0).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-300">Memory:</span>
+                          <span className="text-claude-text dark:text-gray-300">Memory:</span>
                           <span className="font-semibold text-blue-400">{(node.mem_percent || 0).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-gray-300">IOWait:</span>
+                          <span className="text-claude-text dark:text-gray-300">IOWait:</span>
                           <span className="font-semibold text-purple-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span>
                         </div>
                         <div className="flex justify-between gap-4 border-t border-gray-700 pt-1.5 mt-1.5">
-                          <span className="text-gray-300">Cores:</span>
+                          <span className="text-claude-text dark:text-gray-300">Cores:</span>
                           <span className="font-semibold text-orange-400">{node.cpu_cores || 0}</span>
                         </div>
                       </div>
@@ -269,7 +269,7 @@ export default function ClusterMap({
 
                   {/* No guests label */}
                   {nodeGuests.length === 0 && (
-                    <div className="text-xs text-gray-500 italic mt-2">No guests</div>
+                    <div className="text-xs text-claude-muted dark:text-gray-500 italic mt-2">No guests</div>
                   )}
 
                   {/* Guests */}
@@ -324,7 +324,7 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className="relative group">
                           <div
-                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
+                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-claude-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
                             style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`}}
                             onClick={() => {
                               if (!isMigrating) {
@@ -338,13 +338,13 @@ export default function ClusterMap({
 
                           {/* Migration status badge */}
                           {isMigrating && (
-                            <div className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 bg-yellow-500 text-claude-text dark:text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
                               <RefreshCw size={12} className="animate-spin" />
                             </div>
                           )}
 
                           {isCompleted && !isMigrating && (
-                            <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-1 -right-1 bg-green-500 text-claude-text dark:text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
                               <CheckCircle size={12} />
                             </div>
                           )}
@@ -370,10 +370,10 @@ export default function ClusterMap({
                           )}
 
                           {/* Guest tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-claude-text dark:text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10">
                             <div className="font-bold text-sm mb-2 text-blue-400 border-b border-gray-700 pb-2">
                               {guest.name || `Guest ${guest.vmid}`}
-                              <span className="ml-2 text-gray-400 font-normal text-xs">
+                              <span className="ml-2 text-claude-muted dark:text-gray-400 font-normal text-xs">
                                 ({((guest.type || '').toUpperCase() === 'VM' || (guest.type || '').toUpperCase() === 'QEMU') ? 'VM' : 'CT'})
                               </span>
                             </div>
@@ -393,52 +393,52 @@ export default function ClusterMap({
                               {clusterMapViewMode === 'allocated' ? (
                                 <>
                                   <div className="flex justify-between gap-4">
-                                    <span className="text-gray-300">CPU Cores:</span>
+                                    <span className="text-claude-text dark:text-gray-300">CPU Cores:</span>
                                     <span className="font-semibold text-orange-400">{guest.cpu_cores || 0}</span>
                                   </div>
                                   <div className="flex justify-between gap-4">
-                                    <span className="text-gray-300">Memory Allocated:</span>
+                                    <span className="text-claude-text dark:text-gray-300">Memory Allocated:</span>
                                     <span className="font-semibold text-blue-400">{(guest.mem_max_gb || 0).toFixed(1)} GB</span>
                                   </div>
                                 </>
                               ) : (
                                 <>
                                   <div className="flex justify-between gap-4">
-                                    <span className="text-gray-300">CPU Usage:</span>
+                                    <span className="text-claude-text dark:text-gray-300">CPU Usage:</span>
                                     <span className="font-semibold text-green-400">{cpuUsage.toFixed(1)}%</span>
                                   </div>
                                   <div className="flex justify-between gap-4">
-                                    <span className="text-gray-300">Memory Usage:</span>
+                                    <span className="text-claude-text dark:text-gray-300">Memory Usage:</span>
                                     <span className="font-semibold text-blue-400">{memPercent.toFixed(1)}%</span>
                                   </div>
-                                  <div className="text-gray-400 text-xs ml-auto">
+                                  <div className="text-claude-muted dark:text-gray-400 text-xs ml-auto">
                                     ({(guest.mem_used_gb || 0).toFixed(1)} / {(guest.mem_max_gb || 0).toFixed(1)} GB)
                                   </div>
                                 </>
                               )}
 
                               <div className="flex justify-between gap-4">
-                                <span className="text-gray-300">Status:</span>
-                                <span className={`font-semibold ${guest.status === 'running' ? 'text-green-400' : 'text-gray-400'}`}>
+                                <span className="text-claude-text dark:text-gray-300">Status:</span>
+                                <span className={`font-semibold ${guest.status === 'running' ? 'text-green-400' : 'text-claude-muted dark:text-gray-400'}`}>
                                   {guest.status}
                                 </span>
                               </div>
 
                               <div className="border-t border-gray-700 pt-1.5 mt-1.5 space-y-1">
                                 <div className="flex justify-between gap-4">
-                                  <span className="text-gray-300">Disk Read:</span>
+                                  <span className="text-claude-text dark:text-gray-300">Disk Read:</span>
                                   <span className="font-semibold text-cyan-400">{((guest.disk_read_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
                                 </div>
                                 <div className="flex justify-between gap-4">
-                                  <span className="text-gray-300">Disk Write:</span>
+                                  <span className="text-claude-text dark:text-gray-300">Disk Write:</span>
                                   <span className="font-semibold text-cyan-400">{((guest.disk_write_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
                                 </div>
                                 <div className="flex justify-between gap-4">
-                                  <span className="text-gray-300">Net In:</span>
+                                  <span className="text-claude-text dark:text-gray-300">Net In:</span>
                                   <span className="font-semibold text-purple-400">{((guest.net_in_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
                                 </div>
                                 <div className="flex justify-between gap-4">
-                                  <span className="text-gray-300">Net Out:</span>
+                                  <span className="text-claude-text dark:text-gray-300">Net Out:</span>
                                   <span className="font-semibold text-purple-400">{((guest.net_out_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
                                 </div>
                               </div>
@@ -470,7 +470,7 @@ export default function ClusterMap({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-gray-400">
+          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-claude-muted dark:text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-purple-600"></div>
               <span>VM</span>

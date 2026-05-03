@@ -21,18 +21,18 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-lg shadow-lg p-8 max-w-lg w-full text-center">
+        <div className="min-h-screen bg-claude-cream dark:bg-gray-900 flex items-center justify-center p-4">
+          <div className="bg-claude-surface dark:bg-slate-800 rounded-lg shadow-lg p-8 max-w-lg w-full text-center">
             <div className="text-red-500 text-4xl mb-4">!</div>
-            <h2 className="text-xl font-bold text-white mb-2">
+            <h2 className="text-xl font-bold text-claude-text dark:text-white mb-2">
               Something went wrong
             </h2>
-            <p className="text-gray-400 mb-4">
+            <p className="text-claude-muted dark:text-gray-400 mb-4">
               {this.state.error?.message || 'An unexpected error occurred.'}
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-claude-text dark:text-white rounded hover:bg-blue-700"
             >
               Reload Page
             </button>
