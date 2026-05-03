@@ -62,7 +62,7 @@ export default function SettingsPage(props) {
             localAvailableModels={localAvailableModels} setLocalAvailableModels={setLocalAvailableModels}
           />
 
-          <hr className="border-slate-600" />
+          <hr className="border-claude-border dark:border-slate-600" />
 
           <DataCollectionSection
             backendCollected={backendCollected}
@@ -73,55 +73,55 @@ export default function SettingsPage(props) {
             fetchConfig={fetchConfig}
           />
 
-          <hr className="border-slate-600" />
+          <hr className="border-claude-border dark:border-slate-600" />
 
           <NotificationsSection
             automationConfig={automationConfig}
             saveAutomationConfig={saveAutomationConfig}
           />
 
-          <hr className="border-slate-600" />
+          <hr className="border-claude-border dark:border-slate-600" />
 
           {/* Authentication - Coming Soon */}
-          <div className="relative border-2 border-slate-600 rounded-lg p-6 bg-slate-700/30 opacity-60 cursor-not-allowed">
+          <div className="relative border-2 border-claude-border dark:border-slate-600 rounded-lg p-6 bg-claude-surface2/60 dark:bg-slate-700/30 opacity-60 cursor-not-allowed">
             <div className="absolute top-4 right-4">
-              <span className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow">
+              <span className="px-3 py-1 bg-blue-500 text-claude-text dark:text-white text-xs font-bold rounded-full shadow">
                 COMING SOON
               </span>
             </div>
             <div className="flex items-center gap-3 mb-4">
-              <Lock className="text-gray-400" size={24} />
-              <h3 className="text-lg font-bold text-gray-400">Authentication</h3>
+              <Lock className="text-claude-muted dark:text-gray-400" size={24} />
+              <h3 className="text-lg font-bold text-claude-muted dark:text-gray-400">Authentication</h3>
             </div>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-claude-muted dark:text-gray-400 mb-4">
               Protect access to ProxBalance with user authentication. Configure login credentials, session management, and access control.
             </p>
             <div className="space-y-3 pointer-events-none">
-              <div className="flex items-center gap-3 p-3 bg-slate-800 rounded border border-slate-600">
+              <div className="flex items-center gap-3 p-3 bg-claude-surface dark:bg-slate-800 rounded border border-claude-border dark:border-slate-600">
                 <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
-                  <Lock size={20} className="text-gray-500" />
+                  <Lock size={20} className="text-claude-muted dark:text-gray-500" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-400">Dashboard Login</div>
-                  <div className="text-xs text-gray-500">Username and password protection</div>
+                  <div className="font-medium text-claude-muted dark:text-gray-400">Dashboard Login</div>
+                  <div className="text-xs text-claude-muted dark:text-gray-500">Username and password protection</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-slate-800 rounded border border-slate-600">
+              <div className="flex items-center gap-3 p-3 bg-claude-surface dark:bg-slate-800 rounded border border-claude-border dark:border-slate-600">
                 <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
-                  <Lock size={20} className="text-gray-500" />
+                  <Lock size={20} className="text-claude-muted dark:text-gray-500" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-400">API Token Authentication</div>
-                  <div className="text-xs text-gray-500">Secure API access with bearer tokens</div>
+                  <div className="font-medium text-claude-muted dark:text-gray-400">API Token Authentication</div>
+                  <div className="text-xs text-claude-muted dark:text-gray-500">Secure API access with bearer tokens</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-slate-800 rounded border border-slate-600">
+              <div className="flex items-center gap-3 p-3 bg-claude-surface dark:bg-slate-800 rounded border border-claude-border dark:border-slate-600">
                 <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
-                  <Lock size={20} className="text-gray-500" />
+                  <Lock size={20} className="text-claude-muted dark:text-gray-500" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-400">Session Management</div>
-                  <div className="text-xs text-gray-500">Configurable session timeout and security</div>
+                  <div className="font-medium text-claude-muted dark:text-gray-400">Session Management</div>
+                  <div className="text-xs text-claude-muted dark:text-gray-500">Configurable session timeout and security</div>
                 </div>
               </div>
             </div>
@@ -141,11 +141,11 @@ export default function SettingsPage(props) {
           />
 
           {/* Save Button - Sticky at bottom */}
-          <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 shadow-lg">
+          <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-slate-800/95 backdrop-blur-sm border-t border-claude-border dark:border-slate-700 shadow-lg">
             <button
               onClick={saveSettings}
               disabled={savingSettings}
-              className="w-full px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+              className="w-full px-6 py-3 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
             >
               <Save size={18} />
               {savingSettings ? 'Saving...' : 'Save Settings'}

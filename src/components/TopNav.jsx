@@ -38,7 +38,7 @@ export default function TopNav({
           <div className="flex items-center gap-2 shrink-0">
             <ProxBalanceLogo size={28} />
             <span className="text-lg hidden sm:inline">
-              <span className="font-light text-gray-300">Prox</span>
+              <span className="font-light text-claude-text dark:text-gray-300">Prox</span>
               <span className="font-extrabold text-blue-400">Balance</span>
             </span>
           </div>
@@ -80,7 +80,7 @@ export default function TopNav({
             {systemInfo?.branch && (
               <button
                 onClick={onShowBranches}
-                className="hidden lg:flex items-center gap-1 text-xs text-gray-500 hover:text-blue-400 transition-colors"
+                className="hidden lg:flex items-center gap-1 text-xs text-claude-muted dark:text-gray-500 hover:text-blue-400 transition-colors"
                 title="Manage branches"
               >
                 <GitBranch size={12} />
@@ -90,7 +90,7 @@ export default function TopNav({
 
             {/* Last update */}
             {timeAgo && (
-              <span className="hidden xl:inline text-xs text-gray-500">
+              <span className="hidden xl:inline text-xs text-claude-muted dark:text-gray-500">
                 {timeAgo}
               </span>
             )}

@@ -23,18 +23,18 @@ export default function NodeStatusSection({
             {!embedded && (
               <div className="flex items-center gap-3 min-w-0">
                 <div className={iconBadge('cyan', 'blue')}>
-                  <HardDrive size={ICON.section} className="text-white" />
+                  <HardDrive size={ICON.section} className="text-claude-text dark:text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-2xl font-bold text-white">Node Status</h2>
-                  <p className="text-sm text-gray-400 mt-0.5">Detailed node metrics</p>
+                  <h2 className="text-lg sm:text-2xl font-bold text-claude-text dark:text-white">Node Status</h2>
+                  <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5">Detailed node metrics</p>
                 </div>
                 <button
                   onClick={() => toggleSection('nodeStatus')}
-                  className="ml-2 p-2 hover:bg-slate-700 rounded-lg transition-all duration-200"
+                  className="ml-2 p-2 hover:bg-claude-surface2 dark:hover:bg-slate-700 rounded-lg transition-all duration-200"
                   title={collapsedSections.nodeStatus ? "Expand section" : "Collapse section"}
                 >
-                  <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.nodeStatus ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={ICON.section} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.nodeStatus ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             )}
@@ -45,8 +45,8 @@ export default function NodeStatusSection({
                   onClick={() => setShowPredicted(!showPredicted)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     showPredicted
-                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-700'
-                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600 border border-slate-600'
+                      ? 'bg-indigo-600 text-claude-text dark:text-white shadow-md ring-2 ring-indigo-700'
+                      : 'bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300 hover:bg-slate-600 border border-claude-border dark:border-slate-600'
                   }`}
                   title="Show predicted node metrics after all recommended migrations"
                 >
@@ -55,7 +55,7 @@ export default function NodeStatusSection({
                 </button>
               )}
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-400">Grid:</label>
+                <label className="text-sm text-claude-muted dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4].map(cols => (
                     <button
@@ -63,8 +63,8 @@ export default function NodeStatusSection({
                       onClick={() => setNodeGridColumns(cols)}
                       className={`px-3 py-1.5 text-sm rounded transition-colors ${
                         nodeGridColumns === cols
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                          ? 'bg-blue-600 text-claude-text dark:text-white'
+                          : 'bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300 hover:bg-slate-600'
                       }`}
                       title={`${cols} column${cols > 1 ? 's' : ''}`}
                     >
@@ -74,7 +74,7 @@ export default function NodeStatusSection({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-400">Chart Period:</label>
+                <label className="text-sm text-claude-muted dark:text-gray-400">Chart Period:</label>
                 <select
                   value={chartPeriod}
                   onChange={(e) => setChartPeriod(e.target.value)}
@@ -102,13 +102,13 @@ export default function NodeStatusSection({
                   showPredicted && predicted ? 'border-indigo-600 ring-1 ring-indigo-800' : ''
                 }`}>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-white">{node.name}</h3>
+                    <h3 className="text-sm font-semibold text-claude-text dark:text-white">{node.name}</h3>
                     <div className="flex items-center gap-1">
                       {showPredicted && predicted && before && (
                         <span className={`text-[9px] font-medium px-1 py-0.5 rounded ${
                           predicted.cpu < before.cpu - 0.5 ? 'bg-green-900/30 text-green-400' :
                           predicted.cpu > before.cpu + 0.5 ? 'bg-orange-900/30 text-orange-400' :
-                          'bg-slate-700 text-gray-500'
+                          'bg-claude-surface2 dark:bg-slate-700 text-claude-muted dark:text-gray-500'
                         }`}>
                           {predicted.guest_count !== before.guest_count
                             ? `${predicted.guest_count > before.guest_count ? '+' : ''}${predicted.guest_count - before.guest_count} guest${Math.abs(predicted.guest_count - before.guest_count) !== 1 ? 's' : ''}`
@@ -123,7 +123,7 @@ export default function NodeStatusSection({
                     {/* CPU with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-400 flex items-center gap-0.5">CPU:
+                        <span className="text-claude-muted dark:text-gray-400 flex items-center gap-0.5">CPU:
                           {(() => {
                             const trend = node.metrics?.cpu_trend;
                             const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
@@ -136,7 +136,7 @@ export default function NodeStatusSection({
                         </span>
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
-                            <span className="text-gray-400 line-through mr-1">{(node.cpu_percent || 0).toFixed(0)}%</span>
+                            <span className="text-claude-muted dark:text-gray-400 line-through mr-1">{(node.cpu_percent || 0).toFixed(0)}%</span>
                             <span className={`${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? 'text-green-400' : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? 'text-orange-400' : 'text-blue-400'}`}>
                               {predicted.cpu.toFixed(1)}%
                             </span>
@@ -161,7 +161,7 @@ export default function NodeStatusSection({
                     {/* Memory with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-400 flex items-center gap-0.5">Memory:
+                        <span className="text-claude-muted dark:text-gray-400 flex items-center gap-0.5">Memory:
                           {(() => {
                             const trend = node.metrics?.mem_trend;
                             const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
@@ -174,7 +174,7 @@ export default function NodeStatusSection({
                         </span>
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
-                            <span className="text-gray-400 line-through mr-1">{(node.mem_percent || 0).toFixed(0)}%</span>
+                            <span className="text-claude-muted dark:text-gray-400 line-through mr-1">{(node.mem_percent || 0).toFixed(0)}%</span>
                             <span className={`${predicted.mem < (node.mem_percent || 0) - 0.5 ? 'text-green-400' : predicted.mem > (node.mem_percent || 0) + 0.5 ? 'text-orange-400' : 'text-purple-400'}`}>
                               {predicted.mem.toFixed(1)}%
                             </span>
@@ -199,7 +199,7 @@ export default function NodeStatusSection({
                     {/* IOWait with sparkline and trend arrow */}
                     <div className="relative">
                       <div className="flex justify-between items-center relative z-10">
-                        <span className="text-gray-400 flex items-center gap-0.5">IOWait:
+                        <span className="text-claude-muted dark:text-gray-400 flex items-center gap-0.5">IOWait:
                           {(() => {
                             const iowait = node.metrics?.current_iowait || 0;
                             const avgIowait = node.metrics?.avg_iowait || 0;
@@ -227,15 +227,15 @@ export default function NodeStatusSection({
                       </svg>
                     </div>
 
-                    <div className="flex justify-between pt-1 border-t border-slate-600">
-                      <span className="text-gray-400">Suitability:</span>
+                    <div className="flex justify-between pt-1 border-t border-claude-border dark:border-slate-600">
+                      <span className="text-claude-muted dark:text-gray-400">Suitability:</span>
                       <span className={`font-semibold ${
                         nodeScores && nodeScores[node.name] ? (
                           nodeScores[node.name].suitability_rating >= 70 ? 'text-green-400' :
                           nodeScores[node.name].suitability_rating >= 50 ? 'text-yellow-400' :
                           nodeScores[node.name].suitability_rating >= 30 ? 'text-orange-400' :
                           'text-red-400'
-                        ) : 'text-white'
+                        ) : 'text-claude-text dark:text-white'
                       }`}>
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
                       </span>
@@ -292,7 +292,7 @@ export default function NodeStatusSection({
                       ].filter(s => s.value > 0);
                       return (
                         <div className="mt-1">
-                          <div className="text-[10px] text-gray-400 mb-0.5">Penalty Sources ({total} pts)</div>
+                          <div className="text-[10px] text-claude-muted dark:text-gray-400 mb-0.5">Penalty Sources ({total} pts)</div>
                           <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-600" title={segments.map(s => `${s.label}: ${s.value}`).join(', ')}>
                             {segments.map(s => (
                               <div key={s.key} className={`${s.color}`} style={{ width: `${(s.value / total * 100)}%` }} />
@@ -300,7 +300,7 @@ export default function NodeStatusSection({
                           </div>
                           <div className="flex flex-wrap gap-x-2 mt-0.5">
                             {segments.map(s => (
-                              <span key={s.key} className="text-[9px] text-gray-400 flex items-center gap-0.5">
+                              <span key={s.key} className="text-[9px] text-claude-muted dark:text-gray-400 flex items-center gap-0.5">
                                 <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.color}`}></span>
                                 {s.label}
                               </span>
@@ -311,8 +311,8 @@ export default function NodeStatusSection({
                     })()}
 
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Guests:</span>
-                      <span className="font-semibold text-white">{node.guests?.length || 0}</span>
+                      <span className="text-claude-muted dark:text-gray-400">Guests:</span>
+                      <span className="font-semibold text-claude-text dark:text-white">{node.guests?.length || 0}</span>
                     </div>
                   </div>
                 </div>
@@ -329,16 +329,16 @@ export default function NodeStatusSection({
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => (
               <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white">{node.name}</h3>
+                  <h3 className="text-lg font-semibold text-claude-text dark:text-white">{node.name}</h3>
                   <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-400' : 'text-red-400'}`}>{node.status}</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
-                  <div><span className="text-gray-400">CPU:</span> <span className="font-semibold text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-gray-400">Memory:</span> <span className="font-semibold text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-gray-400">IOWait:</span> <span className="font-semibold text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-gray-400">Cores:</span> <span className="font-semibold text-white">{node.cpu_cores || 0}</span></div>
-                  <div><span className="text-gray-400">Guests:</span> <span className="font-semibold text-white">{node.guests?.length || 0}</span></div>
+                  <div><span className="text-claude-muted dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-claude-muted dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-claude-muted dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-claude-muted dark:text-gray-400">Cores:</span> <span className="font-semibold text-claude-text dark:text-white">{node.cpu_cores || 0}</span></div>
+                  <div><span className="text-claude-muted dark:text-gray-400">Guests:</span> <span className="font-semibold text-claude-text dark:text-white">{node.guests?.length || 0}</span></div>
                 </div>
 
                 {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (

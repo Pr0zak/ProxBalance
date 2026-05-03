@@ -16,7 +16,7 @@ export default function RecommendationFilters({
     <div className="mb-3">
       <button
         onClick={() => setShowRecFilters(prev => !prev)}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-300 transition-colors mb-2"
+        className="flex items-center gap-1.5 text-xs text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-300 transition-colors mb-2"
       >
         <Filter size={12} />
         {showRecFilters ? 'Hide Filters' : 'Filter & Sort'}
@@ -29,7 +29,7 @@ export default function RecommendationFilters({
           <select
             value={recFilterConfidence}
             onChange={e => setRecFilterConfidence(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded border border-slate-600 bg-slate-700 text-gray-300"
+            className="text-xs px-2 py-1.5 rounded border border-claude-border dark:border-slate-600 bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300"
           >
             <option value="">Min Confidence: Any</option>
             <option value="80">&ge; 80%</option>
@@ -40,7 +40,7 @@ export default function RecommendationFilters({
           <select
             value={recFilterSourceNode}
             onChange={e => setRecFilterSourceNode(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded border border-slate-600 bg-slate-700 text-gray-300"
+            className="text-xs px-2 py-1.5 rounded border border-claude-border dark:border-slate-600 bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300"
           >
             <option value="">Source: All Nodes</option>
             {[...new Set(recommendations.map(r => r.source_node))].sort().map(n => (
@@ -50,7 +50,7 @@ export default function RecommendationFilters({
           <select
             value={recFilterTargetNode}
             onChange={e => setRecFilterTargetNode(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded border border-slate-600 bg-slate-700 text-gray-300"
+            className="text-xs px-2 py-1.5 rounded border border-claude-border dark:border-slate-600 bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300"
           >
             <option value="">Target: All Nodes</option>
             {[...new Set(recommendations.map(r => r.target_node))].sort().map(n => (
@@ -60,7 +60,7 @@ export default function RecommendationFilters({
           <select
             value={recSortBy}
             onChange={e => setRecSortBy(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded border border-slate-600 bg-slate-700 text-gray-300"
+            className="text-xs px-2 py-1.5 rounded border border-claude-border dark:border-slate-600 bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300"
           >
             <option value="">Sort: Default</option>
             <option value="score_improvement">Score Improvement</option>
@@ -70,7 +70,7 @@ export default function RecommendationFilters({
           </select>
           <button
             onClick={() => setRecSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-            className="text-xs px-2 py-1.5 rounded-xl border border-slate-600/50 bg-gray-700/60 text-gray-300 hover:hover:bg-gray-600/80 transition-all duration-150"
+            className="text-xs px-2 py-1.5 rounded-xl border border-claude-border dark:border-slate-600/50 bg-gray-700/60 text-claude-text dark:text-gray-300 hover:hover:bg-gray-600/80 transition-all duration-150"
             title={`Sort direction: ${recSortDir}`}
           >
             {recSortDir === 'desc' ? '\u2193 Desc' : '\u2191 Asc'}

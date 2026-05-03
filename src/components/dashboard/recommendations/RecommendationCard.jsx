@@ -33,26 +33,26 @@ export default function RecommendationCard({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`font-semibold ${isCompleted ? 'text-green-300' : 'text-white'}`}>
+            <span className={`font-semibold ${isCompleted ? 'text-green-300' : 'text-claude-text dark:text-white'}`}>
               [{rec.type} {rec.vmid}] {rec.name}
             </span>
             {rec.mount_point_info?.has_mount_points && (
               <span className={`flex items-center gap-1 px-2 py-0.5 ${
                 rec.mount_point_info.has_unshared_bind_mount ? 'bg-orange-500' : 'bg-green-500'
-              } text-white text-[10px] font-bold rounded`}
+              } text-claude-text dark:text-white text-[10px] font-bold rounded`}
               title={`${rec.mount_point_info.mount_count} mount point(s)${rec.mount_point_info.has_shared_mount ? ' (shared - can migrate)' : ' (requires manual migration)'}`}>
                 <Folder size={10} />
                 {rec.mount_point_info.mount_count} MP
               </span>
             )}
             {isMaintenance && !isCompleted && (
-              <span className="px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded">MAINTENANCE</span>
+              <span className="px-2 py-0.5 bg-yellow-500 text-claude-text dark:text-white text-[10px] font-bold rounded">MAINTENANCE</span>
             )}
             {isNewRec && !isCompleted && (
-              <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded">NEW</span>
+              <span className="px-2 py-0.5 bg-green-500 text-claude-text dark:text-white text-[10px] font-bold rounded">NEW</span>
             )}
             {changedTarget && !isCompleted && (
-              <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded"
+              <span className="px-2 py-0.5 bg-indigo-500 text-claude-text dark:text-white text-[10px] font-bold rounded"
                 title={`Target changed from ${changedTarget.old_target} → ${changedTarget.new_target}`}>
                 TARGET CHANGED
               </span>
@@ -84,7 +84,7 @@ export default function RecommendationCard({
                     return null;
                   })()}
                 </span>
-                <ArrowRight size={16} className="text-gray-500" />
+                <ArrowRight size={16} className="text-claude-muted dark:text-gray-500" />
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-900/30 text-green-300 rounded font-semibold">
                   <span className="text-xs">TO:</span>
                   <span>{rec.target_node}</span>
@@ -98,7 +98,7 @@ export default function RecommendationCard({
                     if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-orange-500 ml-0.5" title="CPU rising" />;
                     if (dir === 'rising') return <TrendingUp size={10} className="text-yellow-500 ml-0.5" title="CPU rising slightly" />;
                     if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500 ml-0.5" title="CPU falling" />;
-                    return <Minus size={10} className="text-gray-400 ml-0.5" title="CPU stable" />;
+                    return <Minus size={10} className="text-claude-muted dark:text-gray-400 ml-0.5" title="CPU stable" />;
                   })()}
                 </span>
                 {rec.score_improvement !== undefined && (() => {
@@ -110,7 +110,7 @@ export default function RecommendationCard({
                     'bg-red-500';
                   return (
                     <span className="inline-flex items-center gap-1.5 min-w-[120px]" title={`Score improvement: +${rec.score_improvement.toFixed(1)} penalty points`}>
-                      <span className="text-xs text-gray-400">+{rec.score_improvement.toFixed(0)}</span>
+                      <span className="text-xs text-claude-muted dark:text-gray-400">+{rec.score_improvement.toFixed(0)}</span>
                       <span className="flex-1 h-2 bg-gray-600 rounded-full overflow-hidden min-w-[60px]">
                         <span className={`block h-full rounded-full ${barColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
                       </span>
@@ -120,7 +120,7 @@ export default function RecommendationCard({
               </>
             )}
           </div>
-          <div className={`text-xs mt-1 ${isCompleted ? 'text-green-400' : 'text-gray-400'}`}>
+          <div className={`text-xs mt-1 ${isCompleted ? 'text-green-400' : 'text-claude-muted dark:text-gray-400'}`}>
             {rec.structured_reason ? (
               <div>
                 <span className={`font-medium ${isMaintenance ? 'text-yellow-400' : rec.structured_reason.primary_reason === 'iowait_relief' ? 'text-orange-400' : ''}`}>
@@ -130,14 +130,14 @@ export default function RecommendationCard({
                   <span className="ml-1 px-1.5 py-0 bg-orange-900/30 text-orange-300 text-[10px] font-bold rounded" title="Migration triggered by sustained high I/O wait on source node">I/O</span>
                 )}
                 {rec.structured_reason.contributing_factors?.length > 0 && (
-                  <span className="ml-1 text-gray-500">
+                  <span className="ml-1 text-claude-muted dark:text-gray-500">
                     — {rec.structured_reason.contributing_factors.slice(0, 3).map(f => f.label).join('; ')}
                   </span>
                 )}
                 <span className="ml-2">| <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB</span>
                 {rec.confidence_score !== undefined && (
                   <span className="ml-2 inline-flex items-center gap-1" title={`Confidence: ${rec.confidence_score}%`}>
-                    <span className="text-gray-400">|</span>
+                    <span className="text-claude-muted dark:text-gray-400">|</span>
                     <span className="inline-flex gap-0.5">
                       {[20, 40, 60, 80, 100].map((threshold) => (
                         <span key={threshold} className={`w-1.5 h-1.5 rounded-full ${
@@ -198,7 +198,7 @@ export default function RecommendationCard({
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
                   rec.cost_benefit.ratio >= 2.0 ? 'bg-green-900/30 text-green-300' :
                   rec.cost_benefit.ratio >= 1.0 ? 'bg-blue-900/30 text-blue-300' :
-                  'bg-gray-800 text-gray-400'
+                  'bg-claude-surface dark:bg-gray-800 text-claude-muted dark:text-gray-400'
                 }`} title={`Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x — Score improvement: +${rec.cost_benefit.score_improvement?.toFixed(0) || '?'} pts, Est. duration: ${rec.cost_benefit.estimated_duration_minutes?.toFixed(0) || '?'} min`}>
                   ROI: {rec.cost_benefit.ratio.toFixed(1)}x
                 </span>
@@ -210,7 +210,7 @@ export default function RecommendationCard({
             <div className="mt-2 p-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700 rounded text-xs">
               <div className="flex items-start gap-2">
                 <span className="text-purple-400 font-semibold shrink-0">AI:</span>
-                <span className="text-gray-300">{rec.ai_insight}</span>
+                <span className="text-claude-text dark:text-gray-300">{rec.ai_insight}</span>
               </div>
             </div>
           )}
@@ -226,14 +226,14 @@ export default function RecommendationCard({
                     ? 'text-orange-400'
                     : 'text-green-400'
                 }`} />
-                <span className="text-gray-300">{rec.bind_mount_warning}</span>
+                <span className="text-claude-text dark:text-gray-300">{rec.bind_mount_warning}</span>
               </div>
             </div>
           )}
 
           {/* Decision Explanation (one-liner, always visible when trend data available) */}
           {rec.decision_explanation && (
-            <div className="mt-1.5 text-xs text-gray-400 italic">
+            <div className="mt-1.5 text-xs text-claude-muted dark:text-gray-400 italic">
               {rec.decision_explanation}
             </div>
           )}
@@ -265,14 +265,14 @@ export default function RecommendationCard({
                             return <TrendingUp size={12} className="text-red-500" />;
                           if (dir === 'sustained_decrease' || dir === 'falling')
                             return <TrendingDown size={12} className="text-green-500" />;
-                          return <Minus size={12} className="text-gray-400" />;
+                          return <Minus size={12} className="text-claude-muted dark:text-gray-400" />;
                         })()}
                       </div>
-                      <div className="space-y-0.5 text-gray-400">
+                      <div className="space-y-0.5 text-claude-muted dark:text-gray-400">
                         {rec.score_details && (
                           <>
                             <div>Score: {rec.score_details.source?.total_score?.toFixed(1) || 'N/A'}</div>
-                            <div className="text-[10px] mt-1 font-medium text-gray-500">Penalties:</div>
+                            <div className="text-[10px] mt-1 font-medium text-claude-muted dark:text-gray-500">Penalties:</div>
                             {Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
                               <div key={key} className="flex justify-between">
                                 <span>{key.replace(/_/g, ' ')}</span>
@@ -286,7 +286,7 @@ export default function RecommendationCard({
                         )}
                         {rec.trend_evidence?.available && (
                           <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-700/50' : ''}>
-                            <div className="text-[10px] font-medium text-gray-500 mb-0.5">Trends:</div>
+                            <div className="text-[10px] font-medium text-claude-muted dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
                             <div>Stability: {rec.trend_evidence.source_node_trend?.stability_score || '?'}/100</div>
@@ -308,14 +308,14 @@ export default function RecommendationCard({
                             return <TrendingUp size={12} className="text-orange-500" />;
                           if (dir === 'sustained_decrease' || dir === 'falling')
                             return <TrendingDown size={12} className="text-green-500" />;
-                          return <Minus size={12} className="text-gray-400" />;
+                          return <Minus size={12} className="text-claude-muted dark:text-gray-400" />;
                         })()}
                       </div>
-                      <div className="space-y-0.5 text-gray-400">
+                      <div className="space-y-0.5 text-claude-muted dark:text-gray-400">
                         {rec.score_details && (
                           <>
                             <div>Score: {rec.score_details.target?.total_score?.toFixed(1) || 'N/A'}</div>
-                            <div className="text-[10px] mt-1 font-medium text-gray-500">Penalties:</div>
+                            <div className="text-[10px] mt-1 font-medium text-claude-muted dark:text-gray-500">Penalties:</div>
                             {Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
                               <div key={key} className="flex justify-between">
                                 <span>{key.replace(/_/g, ' ')}</span>
@@ -329,7 +329,7 @@ export default function RecommendationCard({
                         )}
                         {rec.trend_evidence?.available && (
                           <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-700/50' : ''}>
-                            <div className="text-[10px] font-medium text-gray-500 mb-0.5">Trends:</div>
+                            <div className="text-[10px] font-medium text-claude-muted dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
                             <div>Stability: {rec.trend_evidence.target_node_trend?.stability_score || '?'}/100</div>
@@ -342,8 +342,8 @@ export default function RecommendationCard({
                   {/* After Migration Predictions */}
                   {rec.score_details?.target?.metrics && (
                     <div className="pt-2 border-t border-indigo-700">
-                      <div className="text-[10px] font-medium text-gray-500 mb-1">After migration on {rec.target_node}:</div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-gray-400">
+                      <div className="text-[10px] font-medium text-claude-muted dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-claude-muted dark:text-gray-400">
                         <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
                         <span>Memory: {rec.score_details.target.metrics.predicted_mem}%</span>
                         <span>Headroom: {rec.score_details.target.metrics.cpu_headroom}% CPU, {rec.score_details.target.metrics.mem_headroom}% mem</span>
@@ -355,13 +355,13 @@ export default function RecommendationCard({
                   {rec.score_details && (rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
                     <div className="pt-2 border-t border-indigo-700 flex flex-wrap gap-2">
                       {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-gray-400"
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-claude-muted dark:text-gray-400"
                           title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
                           Source CPU factor: {rec.score_details.source.trend_analysis.cpu_stability_factor}x
                         </span>
                       )}
                       {rec.score_details.target?.trend_analysis?.cpu_stability_factor != null && rec.score_details.target.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-gray-400"
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-claude-muted dark:text-gray-400"
                           title={`Target CPU penalties scaled by ${rec.score_details.target.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.target.trend_analysis.stability_score}`}>
                           Target CPU factor: {rec.score_details.target.trend_analysis.cpu_stability_factor}x
                         </span>
@@ -372,22 +372,22 @@ export default function RecommendationCard({
                   {/* Guest Behavior */}
                   {rec.trend_evidence?.guest_trend && (
                     <div className="pt-2 border-t border-indigo-700">
-                      <div className="font-medium text-gray-300 mb-1">Guest Behavior</div>
+                      <div className="font-medium text-claude-text dark:text-gray-300 mb-1">Guest Behavior</div>
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           rec.trend_evidence.guest_trend.behavior === 'growing' ? 'bg-orange-900/30 text-orange-300' :
                           rec.trend_evidence.guest_trend.behavior === 'bursty' ? 'bg-yellow-900/30 text-yellow-300' :
                           rec.trend_evidence.guest_trend.behavior === 'steady' ? 'bg-green-900/30 text-green-300' :
-                          'bg-gray-800 text-gray-400'
+                          'bg-claude-surface dark:bg-gray-800 text-claude-muted dark:text-gray-400'
                         }`}>{rec.trend_evidence.guest_trend.behavior || 'unknown'}</span>
-                        <span className="text-gray-400">CPU: {rec.trend_evidence.guest_trend.cpu_growth_rate || 'N/A'}</span>
+                        <span className="text-claude-muted dark:text-gray-400">CPU: {rec.trend_evidence.guest_trend.cpu_growth_rate || 'N/A'}</span>
                         {rec.trend_evidence.guest_trend.previous_migrations > 0 && (
-                          <span className="text-gray-400">
+                          <span className="text-claude-muted dark:text-gray-400">
                             | Migrated {rec.trend_evidence.guest_trend.previous_migrations}x before
                           </span>
                         )}
                         {rec.trend_evidence.guest_trend.peak_hours?.length > 0 && (
-                          <span className="text-gray-400">
+                          <span className="text-claude-muted dark:text-gray-400">
                             | Peak hours: {rec.trend_evidence.guest_trend.peak_hours.map(h => `${h}:00`).join(', ')}
                           </span>
                         )}
@@ -398,7 +398,7 @@ export default function RecommendationCard({
                   {/* Decision Factors */}
                   {rec.trend_evidence?.decision_factors?.length > 0 && (
                     <div className="pt-2 border-t border-indigo-700">
-                      <div className="font-medium text-gray-300 mb-1">Decision Factors</div>
+                      <div className="font-medium text-claude-text dark:text-gray-300 mb-1">Decision Factors</div>
                       <div className="space-y-1">
                         {rec.trend_evidence.decision_factors.map((f, i) => (
                           <div key={i} className="flex items-start gap-2">
@@ -408,9 +408,9 @@ export default function RecommendationCard({
                               f.type === 'concern' ? 'bg-yellow-500' :
                               'bg-gray-400'
                             }`} />
-                            <span className="text-gray-400">
+                            <span className="text-claude-muted dark:text-gray-400">
                               {f.factor}
-                              {f.weight === 'high' && <span className="ml-1 text-[9px] font-bold text-gray-500">(HIGH)</span>}
+                              {f.weight === 'high' && <span className="ml-1 text-[9px] font-bold text-claude-muted dark:text-gray-500">(HIGH)</span>}
                             </span>
                           </div>
                         ))}
@@ -420,7 +420,7 @@ export default function RecommendationCard({
 
                   {/* Data Quality */}
                   {rec.trend_evidence?.data_quality && (
-                    <div className="text-[10px] text-gray-500 pt-1">
+                    <div className="text-[10px] text-claude-muted dark:text-gray-500 pt-1">
                       Based on {rec.trend_evidence.data_quality.node_history_days || 0} days of node history,{' '}
                       {rec.trend_evidence.data_quality.guest_history_days || 0} days of guest history.{' '}
                       {rec.trend_evidence.data_quality.confidence_note}
@@ -462,7 +462,7 @@ export default function RecommendationCard({
                 className={`text-xs font-mono p-2 rounded mt-1 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all ${
                   isCompleted
                     ? 'bg-green-900/40 text-green-300'
-                    : 'bg-gray-900 text-gray-300'
+                    : 'bg-claude-cream dark:bg-gray-900 text-claude-text dark:text-gray-300'
                 }`}
                 title="Click to copy"
               >
@@ -476,7 +476,7 @@ export default function RecommendationCard({
             if (isCompleted) {
               return (
                 <div className="flex items-center gap-2">
-                  <div className="px-4 py-2 bg-green-500 text-white rounded flex items-center gap-2">
+                  <div className="px-4 py-2 bg-green-500 text-claude-text dark:text-white rounded flex items-center gap-2">
                     <CheckCircle size={16} />
                     Migrated
                   </div>
@@ -507,7 +507,7 @@ export default function RecommendationCard({
                         } catch (err) { alert(`Rollback error: ${err.message}`); }
                       }}
                       disabled={migrationStatus[`rollback-${rec.vmid}`] === 'running'}
-                      className="px-3 py-2 text-xs bg-slate-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1 transition-colors"
+                      className="px-3 py-2 text-xs bg-claude-surface2 dark:bg-slate-700 text-claude-text dark:text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1 transition-colors"
                       title="Rollback: migrate back to original node"
                     >
                       {migrationStatus[`rollback-${rec.vmid}`] === 'running' ? (
@@ -539,7 +539,7 @@ export default function RecommendationCard({
               return (
                 <button
                   onClick={() => cancelMigration(rec.vmid, rec.target_node)}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
+                  className="px-4 py-2 bg-red-500 text-claude-text dark:text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
                   title={tooltipText}
                 >
                   <RefreshCw size={16} className="animate-spin" />
@@ -552,7 +552,7 @@ export default function RecommendationCard({
               <button
                 onClick={() => setConfirmMigration(rec)}
                 disabled={!canMigrate || status === 'running' || isMigrating}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                 title={!canMigrate ? 'Read-only API token (PVEAuditor) - Cannot perform migrations' : isMigrating ? 'Migration in progress' : ''}
               >
                 {!canMigrate ? (

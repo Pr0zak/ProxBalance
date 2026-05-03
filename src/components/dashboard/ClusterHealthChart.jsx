@@ -95,8 +95,8 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
     <div className={`${GLASS_CARD} mb-3`}>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-white">Cluster Health Over Time</h3>
-          <p className="text-[11px] text-gray-500">
+          <h3 className="text-base font-bold text-claude-text dark:text-white">Cluster Health Over Time</h3>
+          <p className="text-[11px] text-claude-muted dark:text-gray-500">
             {new Date(tStart).toLocaleDateString()} → {new Date(tEnd).toLocaleDateString()}
             {markers.length > 0 && ` · ${markers.length} migration${markers.length !== 1 ? 's' : ''} marked`}
           </p>
@@ -104,7 +104,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
         <div className="flex items-center gap-3 flex-wrap">
           {latest != null && (
             <div className="flex items-center gap-2 text-sm">
-              <span className="font-bold text-white tabular-nums">{latest.toFixed(1)}</span>
+              <span className="font-bold text-claude-text dark:text-white tabular-nums">{latest.toFixed(1)}</span>
               {trend != null && (
                 <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
@@ -139,14 +139,14 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
           </g>
         ))}
       </svg>
-      <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+      <div className="flex justify-between text-[10px] text-claude-muted dark:text-gray-500 mt-1">
         <span>{new Date(tStart).toLocaleDateString()}</span>
         <span>min {min.toFixed(1)}</span>
         <span>max {max.toFixed(1)}</span>
         <span>{new Date(tEnd).toLocaleDateString()}</span>
       </div>
       {markers.length > 0 && (
-        <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
+        <div className="flex items-center gap-3 mt-2 text-[10px] text-claude-muted dark:text-gray-400">
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-green-500" />completed</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-yellow-500" />other</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-red-500" />failed</span>
@@ -159,15 +159,15 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
 
 function PeriodPills({ value, onChange }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-0.5">
+    <div className="flex items-center gap-1 rounded-lg bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 p-0.5">
       {PERIODS.map(p => (
         <button
           key={p.id}
           onClick={() => onChange(p.id)}
           className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
             value === p.id
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:text-gray-200'
+              ? 'bg-blue-600 text-claude-text dark:text-white'
+              : 'text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200'
           }`}
         >
           {p.label}

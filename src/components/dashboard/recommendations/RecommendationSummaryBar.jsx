@@ -24,7 +24,7 @@ export default function RecommendationSummaryBar({ recommendationData }) {
             summary.urgency === 'none' ? 'text-green-400' :
             'text-blue-400'
           } />
-          <span className="font-semibold text-sm text-white">
+          <span className="font-semibold text-sm text-claude-text dark:text-white">
             Cluster Health: {Math.round(summary.cluster_health)}/100
           </span>
         </div>
@@ -40,7 +40,7 @@ export default function RecommendationSummaryBar({ recommendationData }) {
           </span>
         )}
       </div>
-      <div className="w-full bg-slate-700 rounded-full h-2 mb-2">
+      <div className="w-full bg-claude-surface2 dark:bg-slate-700 rounded-full h-2 mb-2">
         <div
           className={`h-2 rounded-full transition-all duration-500 ${
             summary.cluster_health >= 70 ? 'bg-green-500' :
@@ -51,7 +51,7 @@ export default function RecommendationSummaryBar({ recommendationData }) {
           style={{ width: `${summary.cluster_health}%` }}
         />
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-claude-muted dark:text-gray-400">
         <span>{summary.total_recommendations} migration{summary.total_recommendations !== 1 ? 's' : ''} recommended</span>
         {summary.reasons_breakdown?.length > 0 && (
           <span>({summary.reasons_breakdown.join(', ')})</span>

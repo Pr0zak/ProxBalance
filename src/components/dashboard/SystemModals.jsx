@@ -14,20 +14,20 @@ const SystemModals = ({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg shadow-md ${updating ? 'animate-pulse' : ''}`}>
-                <RefreshCw size={24} className={updating ? "text-white animate-spin" : "text-white"} />
+                <RefreshCw size={24} className={updating ? "text-claude-text dark:text-white animate-spin" : "text-claude-text dark:text-white"} />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">Update ProxBalance</h2>
-                <p className="text-sm text-gray-400 mt-0.5">System update management</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-claude-text dark:text-white">Update ProxBalance</h2>
+                <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5">System update management</p>
               </div>
             </div>
             {!updating && updateResult !== 'success' && (
               <button
                 onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                className="p-2 rounded-lg hover:bg-gray-700 transition-all duration-200"
+                className="p-2 rounded-lg hover:bg-claude-surface2 dark:hover:bg-gray-700 transition-all duration-200"
                 aria-label="Close"
               >
-                <X size={20} className="text-gray-400" />
+                <X size={20} className="text-claude-muted dark:text-gray-400" />
               </button>
             )}
           </div>
@@ -93,14 +93,14 @@ const SystemModals = ({
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowUpdateModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-600 text-gray-300 rounded hover:bg-slate-700 flex items-center justify-center gap-1.5"
+                  className="flex-1 px-4 py-2 border border-claude-border dark:border-slate-600 text-claude-text dark:text-gray-300 rounded hover:bg-claude-surface2 dark:hover:bg-slate-700 flex items-center justify-center gap-1.5"
                 >
                   <X size={14} /> Cancel
                 </button>
                 <button
                   onClick={handleUpdate}
                   disabled={systemInfo && systemInfo.update_in_progress}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw size={18} />
                   {systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : 'Update Now'}
@@ -113,8 +113,8 @@ const SystemModals = ({
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <RefreshCw size={40} className="text-blue-400 animate-spin" />
               <div className="text-center">
-                <p className="text-lg font-semibold text-white">Updating ProxBalance...</p>
-                <p className="text-sm text-gray-400 mt-1">This may take a minute.</p>
+                <p className="text-lg font-semibold text-claude-text dark:text-white">Updating ProxBalance...</p>
+                <p className="text-sm text-claude-muted dark:text-gray-400 mt-1">This may take a minute.</p>
               </div>
             </div>
           )}
@@ -123,13 +123,13 @@ const SystemModals = ({
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <CheckCircle size={24} className="text-green-400" />
-                <p className="text-lg font-semibold text-white">Update complete!</p>
+                <p className="text-lg font-semibold text-claude-text dark:text-white">Update complete!</p>
               </div>
               {updateLog.length > 0 && (
-                <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                <div className="bg-claude-cream dark:bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
                   <div className="font-mono text-sm space-y-1">
                     {updateLog.map((line, idx) => (
-                      <div key={idx} className="text-gray-200">
+                      <div key={idx} className="text-claude-text dark:text-gray-200">
                         {line.includes('✓') ? (
                           <span className="text-green-400">{line}</span>
                         ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
@@ -147,7 +147,7 @@ const SystemModals = ({
               <div className="flex justify-end">
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600"
                 >
                   <RefreshCw size={16} />
                   Close & Reload
@@ -160,12 +160,12 @@ const SystemModals = ({
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <CheckCircle size={40} className="text-blue-400" />
               <div className="text-center">
-                <p className="text-lg font-semibold text-white">Already up to date</p>
-                <p className="text-sm text-gray-400 mt-1">No new updates available.</p>
+                <p className="text-lg font-semibold text-claude-text dark:text-white">Already up to date</p>
+                <p className="text-sm text-claude-muted dark:text-gray-400 mt-1">No new updates available.</p>
               </div>
               <button
                 onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600"
               >
                 Close
               </button>
@@ -186,13 +186,13 @@ const SystemModals = ({
 
               {updateLog.length > 0 && (
                 <details>
-                  <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-200">
+                  <summary className="text-sm text-claude-muted dark:text-gray-400 cursor-pointer hover:text-claude-text dark:hover:text-gray-200">
                     Show update log
                   </summary>
-                  <div className="mt-2 bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <div className="mt-2 bg-claude-cream dark:bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
                     <div className="font-mono text-sm space-y-1">
                       {updateLog.map((line, idx) => (
-                        <div key={idx} className="text-gray-200">
+                        <div key={idx} className="text-claude-text dark:text-gray-200">
                           {line.includes('✓') ? (
                             <span className="text-green-400">{line}</span>
                           ) : line.includes('Error') || line.includes('⚠') || line.includes('Failed') ? (
@@ -212,7 +212,7 @@ const SystemModals = ({
               <div className="flex justify-end">
                 <button
                   onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center gap-1.5"
+                  className="px-4 py-2 bg-blue-500 text-claude-text dark:text-white rounded hover:bg-blue-600 flex items-center justify-center gap-1.5"
                 >
                   <X size={14} /> Close
                 </button>
@@ -230,26 +230,26 @@ const SystemModals = ({
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg shadow-md">
-                  <GitBranch size={24} className="text-white" />
+                  <GitBranch size={24} className="text-claude-text dark:text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white">Branch Manager</h2>
-                  <p className="text-sm text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-claude-text dark:text-white">Branch Manager</h2>
+                  <p className="text-sm text-claude-muted dark:text-gray-400 mt-0.5">Test feature branches before pushing to main</p>
                 </div>
               </div>
               <button
                 onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
-                className="p-2 rounded-lg hover:bg-gray-700 transition-all duration-200"
+                className="p-2 rounded-lg hover:bg-claude-surface2 dark:hover:bg-gray-700 transition-all duration-200"
                 aria-label="Close"
               >
-                <X size={20} className="text-gray-400" />
+                <X size={20} className="text-claude-muted dark:text-gray-400" />
               </button>
             </div>
 
             {loadingBranches ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw size={24} className="animate-spin text-blue-400" />
-                <span className="ml-2 text-gray-400">Loading branches...</span>
+                <span className="ml-2 text-claude-muted dark:text-gray-400">Loading branches...</span>
               </div>
             ) : (
               <div className="space-y-4">
@@ -287,7 +287,7 @@ const SystemModals = ({
                         <button
                           onClick={rollbackBranch}
                           disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 bg-amber-600 text-claude-text dark:text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
                         </button>
@@ -342,7 +342,7 @@ const SystemModals = ({
                       <button
                         onClick={() => switchBranch(branchPreview.branch)}
                         disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                        className="px-4 py-2 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-purple-500 text-claude-text dark:text-white text-sm rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : `Switch to ${branchPreview.branch}`)}
                       </button>
@@ -353,14 +353,14 @@ const SystemModals = ({
                 {loadingPreview && (
                   <div className="flex items-center justify-center py-4">
                     <RefreshCw size={18} className="animate-spin text-indigo-400" />
-                    <span className="ml-2 text-sm text-gray-400">Loading branch preview...</span>
+                    <span className="ml-2 text-sm text-claude-muted dark:text-gray-400">Loading branch preview...</span>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-white mb-3">Available Branches</h3>
+                  <h3 className="font-semibold text-claude-text dark:text-white mb-3">Available Branches</h3>
                   {availableBranches.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No branches found</p>
+                    <p className="text-claude-muted dark:text-gray-400 text-sm">No branches found</p>
                   ) : (
                     availableBranches.map((branch) => (
                       <div
@@ -376,21 +376,21 @@ const SystemModals = ({
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <GitBranch size={16} className={branch.current ? 'text-purple-400' : 'text-gray-400'} />
+                              <GitBranch size={16} className={branch.current ? 'text-purple-400' : 'text-claude-muted dark:text-gray-400'} />
                               <span className={`font-mono font-semibold ${
                                 branch.current
                                   ? 'text-purple-300'
-                                  : 'text-white'
+                                  : 'text-claude-text dark:text-white'
                               }`}>
                                 {branch.name}
                               </span>
                               {branch.current && (
-                                <span className="px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
+                                <span className="px-2 py-0.5 bg-purple-500 text-claude-text dark:text-white text-xs rounded-full">
                                   Current
                                 </span>
                               )}
                               {branch.previous && !branch.current && (
-                                <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">
+                                <span className="px-2 py-0.5 bg-amber-500 text-claude-text dark:text-white text-xs rounded-full">
                                   Previous
                                 </span>
                               )}
@@ -402,12 +402,12 @@ const SystemModals = ({
                             </div>
                             <div className="flex items-center gap-3 mt-1 ml-6">
                               {branch.last_commit && (
-                                <p className="text-xs text-gray-400 truncate">
+                                <p className="text-xs text-claude-muted dark:text-gray-400 truncate">
                                   {branch.last_commit.substring(0, 60)}{branch.last_commit.length > 60 ? '...' : ''}
                                 </p>
                               )}
                               {branch.last_commit_date && (
-                                <span className="text-xs text-gray-500 flex-shrink-0">
+                                <span className="text-xs text-claude-muted dark:text-gray-500 flex-shrink-0">
                                   {branch.last_commit_date}
                                 </span>
                               )}
@@ -418,7 +418,7 @@ const SystemModals = ({
                               <button
                                 onClick={() => fetchBranchPreview(branch.name)}
                                 disabled={loadingPreview || (systemInfo && systemInfo.update_in_progress)}
-                                className="px-3 py-2 text-sm border border-slate-600 text-gray-300 rounded hover:bg-slate-700 disabled:opacity-50"
+                                className="px-3 py-2 text-sm border border-claude-border dark:border-slate-600 text-claude-text dark:text-gray-300 rounded hover:bg-claude-surface2 dark:hover:bg-slate-700 disabled:opacity-50"
                                 title="Preview branch changes"
                               >
                                 Preview
@@ -426,7 +426,7 @@ const SystemModals = ({
                               <button
                                 onClick={() => switchBranch(branch.name)}
                                 disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                                className="px-3 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-2 text-sm bg-purple-500 text-claude-text dark:text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Switch')}
                               </button>
@@ -441,7 +441,7 @@ const SystemModals = ({
                 <div className="flex justify-end pt-4">
                   <button
                     onClick={() => { setShowBranchModal(false); setBranchPreview(null); }}
-                    className="px-4 py-2 border border-slate-600 text-gray-300 rounded hover:bg-slate-700 flex items-center justify-center gap-1.5"
+                    className="px-4 py-2 border border-claude-border dark:border-slate-600 text-claude-text dark:text-gray-300 rounded hover:bg-claude-surface2 dark:hover:bg-slate-700 flex items-center justify-center gap-1.5"
                   >
                     <X size={14} /> Close
                   </button>

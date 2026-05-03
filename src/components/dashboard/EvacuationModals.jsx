@@ -23,8 +23,8 @@ export default function EvacuationModals({
           setGuestTargets({});
         }}>
           <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-4xl').replace('overflow-y-auto', 'overflow-hidden')} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
-              <h3 className="text-lg sm:text-xl font-bold text-white">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-claude-border dark:border-slate-700">
+              <h3 className="text-lg sm:text-xl font-bold text-claude-text dark:text-white">
                 Evacuation Plan for {evacuationPlan.source_node}
               </h3>
               <button
@@ -33,7 +33,7 @@ export default function EvacuationModals({
                   setPlanNode(null);
                   setGuestTargets({});
                 }}
-                className="text-gray-400 hover:text-gray-200"
+                className="text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200"
                 aria-label="Close"
               >
                 <X size={24} />
@@ -51,45 +51,45 @@ export default function EvacuationModals({
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-700">
+                  <thead className="bg-claude-surface2 dark:bg-slate-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">VM/CT</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Storage</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Target</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Will Restart?</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Action</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">VM/CT</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Storage</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Target</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Will Restart?</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-claude-text dark:text-gray-300 uppercase">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {evacuationPlan.plan.map((item) => (
                       <tr key={item.vmid} className={item.skipped ? 'bg-yellow-900/10' : ''}>
-                        <td className="px-4 py-3 font-medium text-white">{item.vmid}</td>
-                        <td className="px-4 py-3 text-gray-300">{item.name}</td>
+                        <td className="px-4 py-3 font-medium text-claude-text dark:text-white">{item.vmid}</td>
+                        <td className="px-4 py-3 text-claude-text dark:text-gray-300">{item.name}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded ${
                             item.type === 'qemu' ? 'bg-blue-900/30 text-blue-300' :
                             item.type === 'lxc' ? 'bg-purple-900/30 text-purple-300' :
-                            'bg-gray-700 text-gray-300'
+                            'bg-claude-surface2 dark:bg-gray-700 text-claude-text dark:text-gray-300'
                           }`}>
                             {item.type === 'qemu' ? 'VM' : item.type === 'lxc' ? 'CT' : 'Unknown'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {item.storage_volumes && item.storage_volumes.length > 0 ? (
-                            <span className={`text-xs ${!item.storage_compatible ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                            <span className={`text-xs ${!item.storage_compatible ? 'text-red-400 font-semibold' : 'text-claude-muted dark:text-gray-400'}`}>
                               {item.storage_volumes.join(', ')}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-500 italic">none</span>
+                            <span className="text-xs text-claude-muted dark:text-gray-500 italic">none</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded ${
                             item.status === 'running' ? 'bg-green-900/30 text-green-300' :
-                            item.status === 'stopped' ? 'bg-gray-700 text-gray-300' :
+                            item.status === 'stopped' ? 'bg-claude-surface2 dark:bg-gray-700 text-claude-text dark:text-gray-300' :
                             'bg-orange-900/30 text-orange-300'
                           }`}>
                             {item.status}
@@ -102,7 +102,7 @@ export default function EvacuationModals({
                             <select
                               value={guestTargets[item.vmid] || item.target}
                               onChange={(e) => setGuestTargets({...guestTargets, [item.vmid]: e.target.value})}
-                              className="text-sm px-2 py-1 border rounded bg-gray-700 border-gray-600 text-white font-medium"
+                              className="text-sm px-2 py-1 border rounded bg-claude-surface2 dark:bg-gray-700 border-gray-600 text-claude-text dark:text-white font-medium"
                             >
                               {evacuationPlan.available_targets.map(target => (
                                 <option key={target} value={target}>{target}</option>
@@ -121,12 +121,12 @@ export default function EvacuationModals({
                         </td>
                         <td className="px-4 py-3">
                           {item.skipped ? (
-                            <span className="text-xs text-gray-500 italic">N/A</span>
+                            <span className="text-xs text-claude-muted dark:text-gray-500 italic">N/A</span>
                           ) : (
                             <select
                               value={guestActions[item.vmid] || 'migrate'}
                               onChange={(e) => setGuestActions({...guestActions, [item.vmid]: e.target.value})}
-                              className="text-sm px-2 py-1 border rounded bg-gray-700 border-gray-600 text-white"
+                              className="text-sm px-2 py-1 border rounded bg-claude-surface2 dark:bg-gray-700 border-gray-600 text-claude-text dark:text-white"
                             >
                               <option value="migrate">Migrate</option>
                               <option value="ignore">Ignore</option>
@@ -152,7 +152,7 @@ export default function EvacuationModals({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-700">
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-claude-border dark:border-slate-700">
               <button
                 onClick={() => {
                   setEvacuationPlan(null);
@@ -160,13 +160,13 @@ export default function EvacuationModals({
                   setGuestActions({});
                   setGuestTargets({});
                 }}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded font-medium"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 text-claude-text dark:text-gray-300 bg-claude-surface2 dark:bg-gray-700 hover:bg-gray-600 rounded font-medium"
               >
                 <X size={16} className="sm:hidden" /><span className="hidden sm:inline">Cancel</span>
               </button>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-claude-text dark:text-white rounded font-medium"
               >
                 <Check size={16} className="sm:hidden" /><span className="hidden sm:inline">Review & Confirm</span>
               </button>
@@ -179,8 +179,8 @@ export default function EvacuationModals({
       {showConfirmModal && evacuationPlan && planNode && (
         <div className={MODAL_OVERLAY} onClick={() => setShowConfirmModal(false)}>
           <div className={MODAL_CONTAINER.replace('max-w-md', 'max-w-2xl')} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700">
-              <h3 className="text-lg sm:text-xl font-semibold text-white">Confirm Evacuation</h3>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-claude-border dark:border-slate-700">
+              <h3 className="text-lg sm:text-xl font-semibold text-claude-text dark:text-white">Confirm Evacuation</h3>
               <button onClick={() => setShowConfirmModal(false)} aria-label="Close">
                 <XCircle size={24} />
               </button>
@@ -217,8 +217,8 @@ export default function EvacuationModals({
                     )}
                     {toIgnore.length > 0 && (
                       <div>
-                        <h4 className="text-lg font-semibold text-gray-600 mb-2">Ignore ({toIgnore.length})</h4>
-                        <div className="text-sm text-gray-600">
+                        <h4 className="text-lg font-semibold text-claude-muted dark:text-gray-600 mb-2">Ignore ({toIgnore.length})</h4>
+                        <div className="text-sm text-claude-muted dark:text-gray-600">
                           {toIgnore.map(item => item.vmid).join(', ')}
                         </div>
                       </div>
@@ -226,7 +226,7 @@ export default function EvacuationModals({
                     {toPowerOff.length > 0 && (
                       <div>
                         <h4 className="text-lg font-semibold text-red-600 mb-2">Power Off ({toPowerOff.length})</h4>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-claude-muted dark:text-gray-600">
                           {toPowerOff.map(item => item.vmid).join(', ')}
                         </div>
                       </div>
@@ -236,10 +236,10 @@ export default function EvacuationModals({
               })()}
             </div>
 
-            <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-slate-700">
+            <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-claude-border dark:border-slate-700">
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-700 rounded"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-claude-surface2 dark:bg-gray-700 rounded"
               >
                 <X size={16} className="sm:hidden" /><span className="hidden sm:inline">Cancel</span>
               </button>
@@ -283,7 +283,7 @@ export default function EvacuationModals({
                     });
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-claude-text dark:text-white rounded"
               >
                 <AlertTriangle size={14} /> Confirm Evacuation
               </button>

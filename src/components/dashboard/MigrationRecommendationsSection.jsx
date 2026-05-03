@@ -84,28 +84,28 @@ export default function MigrationRecommendationsSection({
           <div className="flex flex-wrap items-center justify-between gap-y-3 mb-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className={iconBadge('orange', 'red')}>
-                <Activity size={ICON.section} className="text-white" />
+                <Activity size={ICON.section} className="text-claude-text dark:text-white" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg sm:text-2xl font-bold text-white">Migration Recommendations</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-claude-text dark:text-white">Migration Recommendations</h2>
                   <button
                     onClick={() => toggleSection('recommendations')}
-                    className="p-1 hover:bg-slate-700 rounded transition-all duration-200"
+                    className="p-1 hover:bg-claude-surface2 dark:hover:bg-slate-700 rounded transition-all duration-200"
                     title={collapsedSections.recommendations ? "Expand section" : "Collapse section"}
                   >
-                    <ChevronDown size={ICON.section} className={`text-gray-400 transition-transform duration-200 ${!collapsedSections.recommendations ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={ICON.section} className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.recommendations ? 'rotate-180' : ''}`} />
                   </button>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-sm text-gray-400">Suggested optimizations</p>
+                  <p className="text-sm text-claude-muted dark:text-gray-400">Suggested optimizations</p>
                   {recommendationData?.ai_enhanced && (
                     <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300">
                       AI Enhanced
                     </span>
                   )}
                   {recommendationData?.generated_at && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-claude-muted dark:text-gray-500">
                       • Generated: {(() => {
                         const genTime = new Date(recommendationData.generated_at);
                         return formatLocalTime(genTime);
@@ -120,7 +120,7 @@ export default function MigrationRecommendationsSection({
                 href="https://github.com/Pr0zak/ProxBalance/blob/main/docs/SCORING_ALGORITHM.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2 py-2 text-sm text-gray-400 hover:text-gray-200 rounded-lg hover:bg-slate-700/40 transition-colors"
+                className="flex items-center gap-1 px-2 py-2 text-sm text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 rounded-lg hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
                 title="How is the score calculated? — opens the scoring algorithm docs"
               >
                 <Info size={16} />
@@ -129,7 +129,7 @@ export default function MigrationRecommendationsSection({
               <button
                 onClick={generateRecommendations}
                 disabled={loadingRecommendations || !data}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-claude-text dark:text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                 title="Manually generate new recommendations now"
               >
                 {loadingRecommendations ? (
@@ -158,7 +158,7 @@ export default function MigrationRecommendationsSection({
             </span>
           )}
           {recommendationData?.generated_at && (
-            <span className="text-xs text-gray-500 mr-auto">
+            <span className="text-xs text-claude-muted dark:text-gray-500 mr-auto">
               Generated: {formatLocalTime(new Date(recommendationData.generated_at))}
             </span>
           )}
@@ -166,7 +166,7 @@ export default function MigrationRecommendationsSection({
             href="https://github.com/Pr0zak/ProxBalance/blob/main/docs/SCORING_ALGORITHM.md"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2 py-1.5 text-xs text-gray-400 hover:text-gray-200 rounded-lg hover:bg-slate-700/40 transition-colors"
+            className="flex items-center gap-1 px-2 py-1.5 text-xs text-claude-muted dark:text-gray-400 hover:text-claude-text dark:hover:text-gray-200 rounded-lg hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
             title="How is the score calculated? — opens the scoring algorithm docs"
           >
             <Info size={14} />
@@ -175,7 +175,7 @@ export default function MigrationRecommendationsSection({
           <button
             onClick={generateRecommendations}
             disabled={loadingRecommendations || !data}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-claude-text dark:text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
             title="Generate now"
           >
             {loadingRecommendations ? (
@@ -207,17 +207,17 @@ export default function MigrationRecommendationsSection({
           {/* Decision context: predicted impact + execution ordering */}
           {!loadingRecommendations && recommendations.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
-                <div className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+              <div className="bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 rounded-lg p-3">
+                <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2 flex items-center gap-1.5">
                   <span>Predicted Impact</span>
-                  <span className="text-gray-500 font-normal">— if all recs accepted</span>
+                  <span className="text-claude-muted dark:text-gray-500 font-normal">— if all recs accepted</span>
                 </div>
                 <BatchImpact recommendationData={recommendationData} />
               </div>
-              <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3">
-                <div className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+              <div className="bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 rounded-lg p-3">
+                <div className="text-xs font-semibold text-claude-text dark:text-gray-300 mb-2 flex items-center gap-1.5">
                   <span>Execution Plan</span>
-                  <span className="text-gray-500 font-normal">— optimal order</span>
+                  <span className="text-claude-muted dark:text-gray-500 font-normal">— optimal order</span>
                 </div>
                 <ExecutionPlan recommendationData={recommendationData} />
               </div>
@@ -247,22 +247,22 @@ export default function MigrationRecommendationsSection({
           {loadingRecommendations ? (
             <div className="text-center py-8">
               <RefreshCw size={48} className="mx-auto mb-3 text-blue-400 animate-spin" />
-              <p className="font-medium text-gray-300">Generating recommendations...</p>
+              <p className="font-medium text-claude-text dark:text-gray-300">Generating recommendations...</p>
               {recommendationData?.ai_enhanced && (
                 <p className="text-sm text-purple-400 mt-1">AI enhancement in progress</p>
               )}
             </div>
           ) : recommendations.length === 0 ? (
             <div className="space-y-4">
-              <div className="text-center py-6 text-gray-400">
+              <div className="text-center py-6 text-claude-muted dark:text-gray-400">
                 <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
                 <p className="font-medium">Cluster is balanced</p>
                 <p className="text-sm">No migrations recommended right now</p>
               </div>
               {recommendationData?.generated_at && (
-                <div className="border-t border-slate-700/50 pt-4">
-                  <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-2">
-                    <Terminal size={12} className="text-gray-500" />
+                <div className="border-t border-claude-border dark:border-slate-700/50 pt-4">
+                  <h4 className="text-xs uppercase tracking-wider text-claude-muted dark:text-gray-500 mb-2 flex items-center gap-2">
+                    <Terminal size={12} className="text-claude-muted dark:text-gray-500" />
                     Why nothing recommended?
                   </h4>
                   <EngineDiagnostics recommendationData={recommendationData} recommendations={recommendations} />

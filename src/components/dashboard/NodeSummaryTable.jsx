@@ -45,7 +45,7 @@ function MetricBar({ pct, detail }) {
         <span className={`text-xs font-mono tabular-nums ${metricTextColor(clampedPct)}`}>
           {Math.round(clampedPct)}%
         </span>
-        {detail && <span className="text-[10px] text-gray-500 ml-1 hidden xl:inline">{detail}</span>}
+        {detail && <span className="text-[10px] text-claude-muted dark:text-gray-500 ml-1 hidden xl:inline">{detail}</span>}
       </div>
       <div className={PROGRESS_BAR_BG}>
         <div
@@ -146,22 +146,22 @@ function WorkloadBadge({ profile, running }) {
 
 function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal, guestRecMap, setConfirmMigration }) {
   if (!guests || guests.length === 0) {
-    return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
+    return <div className="text-xs text-claude-muted dark:text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
   return (
-    <div className="border-l border-slate-700/40 ml-2">
+    <div className="border-l border-claude-border dark:border-slate-700/40 ml-2">
       {guests.map(guest => {
         const hasRec = !!guestRecMap?.[String(guest.vmid)];
         return (
         <div
           key={guest.vmid}
           onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest); }}
-          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-900/15 hover:bg-orange-900/25' : 'hover:bg-slate-700/30'}`}
+          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-900/15 hover:bg-orange-900/25' : 'hover:bg-claude-surface2/60 dark:hover:bg-slate-700/30'}`}
         >
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${guest.status === 'running' ? 'bg-green-400' : 'bg-gray-600'}`} />
-          <span className="text-sm text-gray-200 min-w-[160px] flex items-center gap-1.5">
+          <span className="text-sm text-claude-text dark:text-gray-200 min-w-[160px] flex items-center gap-1.5">
             {guest.name || `guest-${guest.vmid}`}
-            <span className="text-[10px] text-gray-600">{guest.vmid}</span>
+            <span className="text-[10px] text-claude-muted dark:text-gray-600">{guest.vmid}</span>
             <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} running={guest.status === 'running'} />
             {(() => {
               const rec = guestRecMap?.[String(guest.vmid)];
@@ -199,16 +199,16 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
             </button>
           )}
           {guest.status === 'running' ? (
-            <div className="flex items-center gap-4 ml-auto text-xs text-gray-500 tabular-nums">
+            <div className="flex items-center gap-4 ml-auto text-xs text-claude-muted dark:text-gray-500 tabular-nums">
               {guest.cpu_current != null && (
-                <span>CPU <span className="text-gray-300">{guest.cpu_current.toFixed(0)}%</span></span>
+                <span>CPU <span className="text-claude-text dark:text-gray-300">{guest.cpu_current.toFixed(0)}%</span></span>
               )}
               {guest.mem_used_gb != null && (
-                <span>Mem <span className="text-gray-300">{formatMem(guest.mem_used_gb)}</span></span>
+                <span>Mem <span className="text-claude-text dark:text-gray-300">{formatMem(guest.mem_used_gb)}</span></span>
               )}
             </div>
           ) : (
-            <span className="ml-auto text-xs text-gray-600">stopped</span>
+            <span className="ml-auto text-xs text-claude-muted dark:text-gray-600">stopped</span>
           )}
         </div>
         );
@@ -340,7 +340,7 @@ export default function NodeSummaryTable({
 
   const SortHeader = ({ field, children }) => (
     <th
-      className={`${TABLE_HEADER} cursor-pointer hover:text-gray-200`}
+      className={`${TABLE_HEADER} cursor-pointer hover:text-claude-text dark:hover:text-gray-200`}
       onClick={() => handleSort(field)}
     >
       <span className="flex items-center gap-1">
@@ -365,7 +365,7 @@ export default function NodeSummaryTable({
           <h2 className={TEXT_HEADING}>Nodes</h2>
           <ChevronDown
             size={ICON.section}
-            className={`text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
+            className={`text-claude-muted dark:text-gray-400 transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`}
           />
         </button>
       )}
@@ -382,16 +382,16 @@ export default function NodeSummaryTable({
               <button
                 key={node.name}
                 onClick={() => setCollapsedSections?.(prev => ({ ...prev, nodeOverview: false }))}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs hover:bg-slate-700/40 transition-colors focus:outline-none ${ringClass}`}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-claude-surface dark:bg-slate-800/60 border border-claude-border dark:border-slate-700/50 text-xs hover:bg-claude-surface2/60 dark:hover:bg-slate-700/40 transition-colors focus:outline-none ${ringClass}`}
                 title={`${node.name} — click to expand`}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${node.online ? 'bg-green-400' : 'bg-red-400'}`} />
-                <span className="font-medium text-gray-200">{node.name}</span>
+                <span className="font-medium text-claude-text dark:text-gray-200">{node.name}</span>
                 {node.online ? (
                   <>
-                    <span className="text-gray-500">CPU</span>
+                    <span className="text-claude-muted dark:text-gray-500">CPU</span>
                     <span className={`tabular-nums ${metricTextColor(node.cpuPct)}`}>{Math.round(node.cpuPct)}%</span>
-                    <span className="text-gray-500">Mem</span>
+                    <span className="text-claude-muted dark:text-gray-500">Mem</span>
                     <span className={`tabular-nums ${metricTextColor(node.memPct)}`}>{Math.round(node.memPct)}%</span>
                     {node.score != null && (
                       <span className={`font-bold tabular-nums ${scoreColor(node.score)}`} title="Suitability score">
@@ -430,7 +430,7 @@ export default function NodeSummaryTable({
               ))}
             </div>
             {filterActive && (
-              <span className="text-xs text-gray-500 sm:ml-auto tabular-nums">
+              <span className="text-xs text-claude-muted dark:text-gray-500 sm:ml-auto tabular-nums">
                 {totalFiltered} guest{totalFiltered !== 1 ? 's' : ''} match
               </span>
             )}
@@ -439,7 +439,7 @@ export default function NodeSummaryTable({
           <div className="overflow-x-auto -mx-4 sm:-mx-5">
             <table className="w-full min-w-[700px]">
               <thead>
-                <tr className="border-b border-slate-700/50">
+                <tr className="border-b border-claude-border dark:border-slate-700/50">
                   <th className={`${TABLE_HEADER} w-8`}></th>
                   <SortHeader field="name">Node</SortHeader>
                   <th className={TABLE_HEADER}>Status</th>
@@ -466,18 +466,18 @@ export default function NodeSummaryTable({
                         <td className="p-3 w-8">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleNode(node.name); }}
-                            className="flex items-center justify-center w-5 h-5 rounded hover:bg-slate-700/50 transition-colors"
+                            className="flex items-center justify-center w-5 h-5 rounded hover:bg-claude-surface2 dark:hover:bg-slate-700/50 transition-colors"
                             aria-label={isExpanded ? 'Collapse guests' : 'Expand guests'}
                           >
                             <ChevronDown
                               size={14}
-                              className={`text-gray-500 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`}
+                              className={`text-claude-muted dark:text-gray-500 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`}
                             />
                           </button>
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white">{node.name}</span>
+                            <span className="text-sm font-medium text-claude-text dark:text-white">{node.name}</span>
                             {recs?.outbound > 0 && (
                               <span
                                 className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 tabular-nums"
@@ -497,7 +497,7 @@ export default function NodeSummaryTable({
                           </div>
                         </td>
                         <td className="p-3"><StatusDot online={node.online} /></td>
-                        <td className="p-3 text-xs text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
+                        <td className="p-3 text-xs text-claude-muted dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
                         <td className="p-3"><MetricBar pct={node.cpuPct} detail={node.cpuDetail} /></td>
                         <td className="p-3"><MetricBar pct={node.memPct} detail={node.memDetail} /></td>
                         <td className="p-3"><MetricBar pct={node.diskPct} /></td>
@@ -507,11 +507,11 @@ export default function NodeSummaryTable({
                               {Math.round(node.score)}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-600">—</span>
+                            <span className="text-xs text-claude-muted dark:text-gray-600">—</span>
                           )}
                         </td>
-                        <td className="p-3 text-xs text-gray-400 tabular-nums text-center">{node.vms}</td>
-                        <td className="p-3 text-xs text-gray-400 tabular-nums text-center">{node.cts}</td>
+                        <td className="p-3 text-xs text-claude-muted dark:text-gray-400 tabular-nums text-center">{node.vms}</td>
+                        <td className="p-3 text-xs text-claude-muted dark:text-gray-400 tabular-nums text-center">{node.cts}</td>
                       </tr>
                       {isExpanded && (
                         <tr className="bg-slate-900/40">
@@ -537,7 +537,7 @@ export default function NodeSummaryTable({
           </div>
 
           {filterActive && totalFiltered === 0 && (
-            <div className="text-center py-6 text-gray-500 text-sm">
+            <div className="text-center py-6 text-claude-muted dark:text-gray-500 text-sm">
               No guests match your filters
             </div>
           )}
