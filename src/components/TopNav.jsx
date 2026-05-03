@@ -1,4 +1,4 @@
-import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub } from './Icons.jsx';
+import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub, Sun, Moon } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, BTN_ICON
@@ -15,6 +15,7 @@ const TABS = [
 
 export default function TopNav({
   currentPage, setCurrentPage,
+  darkMode, toggleDarkMode,
   connected, lastUpdate,
   onRefresh, refreshing,
   systemInfo, onShowUpdate, onShowBranches
@@ -110,6 +111,17 @@ export default function TopNav({
               <GitHub size={16} />
             </a>
 
+            {/* Dark/Light mode toggle */}
+            {toggleDarkMode && (
+              <button
+                onClick={toggleDarkMode}
+                className={BTN_ICON}
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {darkMode ? <Sun size={16} className="text-yellow-400" /> : <Moon size={16} />}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import IconLegend from './components/IconLegend.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr } from './utils/formatters.js';
 import { useUIState } from './hooks/useUIState.js';
+import { useDarkMode } from './hooks/useDarkMode.js';
 import { useAuth } from './hooks/useAuth.js';
 import { useConfig } from './hooks/useConfig.js';
 import { useClusterData } from './hooks/useClusterData.js';
@@ -30,6 +31,7 @@ const ProxmoxBalanceManager = () => {
   const isMobile = useIsMobile(640);
 
   // Initialize hooks
+  const { darkMode, toggleDarkMode } = useDarkMode();
   const ui = useUIState();
   const auth = useAuth(API_BASE);
   const automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) });
@@ -236,6 +238,8 @@ const ProxmoxBalanceManager = () => {
     <TopNav
       currentPage={ui.currentPage}
       setCurrentPage={ui.setCurrentPage}
+      darkMode={darkMode}
+      toggleDarkMode={toggleDarkMode}
       connected={!!cluster.data && !cluster.error}
       lastUpdate={cluster.lastUpdate}
       onRefresh={handleRefresh}
