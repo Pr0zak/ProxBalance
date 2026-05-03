@@ -1,20 +1,18 @@
 import {
-  Activity, RefreshCw, CheckCircle, ChevronDown,
-  Eye
+  Activity, RefreshCw, CheckCircle, ChevronDown, Terminal
 } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 import { formatLocalTime } from '../../utils/formatters.js';
-import useIsMobile from '../../utils/useIsMobile.js';
 
 import RecommendationSummaryBar from './recommendations/RecommendationSummaryBar.jsx';
 import AlertsBanner from './recommendations/AlertsBanner.jsx';
 import RecommendationFilters from './recommendations/RecommendationFilters.jsx';
 import RecommendationCard from './recommendations/RecommendationCard.jsx';
 import SkippedGuests from './recommendations/SkippedGuests.jsx';
-import InsightsDrawer from './recommendations/InsightsDrawer.jsx';
 import BatchImpact from './recommendations/insights/BatchImpact.jsx';
 import ExecutionPlan from './recommendations/insights/ExecutionPlan.jsx';
+import EngineDiagnostics from './recommendations/insights/EngineDiagnostics.jsx';
 import { Info } from '../Icons.jsx';
 
 const { useState } = React;
@@ -48,10 +46,6 @@ export default function MigrationRecommendationsSection({
   const [recSortDir, setRecSortDir] = useState('desc');
   const [showRecFilters, setShowRecFilters] = useState(false);
 
-  // Insights drawer state
-  const [showInsights, setShowInsights] = useState(false);
-
-  const isMobile = useIsMobile();
 
   // Apply client-side filters and sorting
   const getFilteredRecs = () => {
@@ -122,16 +116,16 @@ export default function MigrationRecommendationsSection({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!collapsedSections.recommendations && recommendationData?.generated_at && (
-                <button
-                  onClick={() => setShowInsights(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
-                  title="View detailed analytics and insights"
-                >
-                  <Eye size={16} />
-                  Insights
-                </button>
-              )}
+              <a
+                href="https://github.com/Pr0zak/ProxBalance/blob/main/docs/SCORING_ALGORITHM.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2 py-2 text-sm text-gray-400 hover:text-gray-200 rounded-lg hover:bg-slate-700/40 transition-colors"
+                title="How is the score calculated? — opens the scoring algorithm docs"
+              >
+                <Info size={16} />
+                <span className="hidden sm:inline">How scoring works</span>
+              </a>
               <button
                 onClick={generateRecommendations}
                 disabled={loadingRecommendations || !data}
@@ -178,16 +172,6 @@ export default function MigrationRecommendationsSection({
             <Info size={14} />
             <span className="hidden sm:inline">How scoring works</span>
           </a>
-          {recommendationData?.generated_at && (
-            <button
-              onClick={() => setShowInsights(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 border border-slate-600 transition-all duration-200"
-              title="Engine diagnostics, history, and outcomes"
-            >
-              <Eye size={14} />
-              Insights
-            </button>
-          )}
           <button
             onClick={generateRecommendations}
             disabled={loadingRecommendations || !data}
@@ -269,10 +253,21 @@ export default function MigrationRecommendationsSection({
               )}
             </div>
           ) : recommendations.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
-              <p className="font-medium">Cluster is balanced!</p>
-              <p className="text-sm">No migrations needed</p>
+            <div className="space-y-4">
+              <div className="text-center py-6 text-gray-400">
+                <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
+                <p className="font-medium">Cluster is balanced</p>
+                <p className="text-sm">No migrations recommended right now</p>
+              </div>
+              {recommendationData?.generated_at && (
+                <div className="border-t border-slate-700/50 pt-4">
+                  <h4 className="text-xs uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-2">
+                    <Terminal size={12} className="text-gray-500" />
+                    Why nothing recommended?
+                  </h4>
+                  <EngineDiagnostics recommendationData={recommendationData} recommendations={recommendations} />
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -311,15 +306,6 @@ export default function MigrationRecommendationsSection({
         </div>
       )}
 
-      {/* Slim Insights Drawer (diagnostics + outcomes + history) */}
-      <InsightsDrawer
-        open={showInsights}
-        onClose={() => setShowInsights(false)}
-        recommendationData={recommendationData}
-        recommendations={recommendations}
-        API_BASE={API_BASE}
-        isMobile={isMobile}
-      />
     </Wrapper>
   );
 }
