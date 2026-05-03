@@ -457,11 +457,10 @@ export default function NodeSummaryTable({
                   const isExpanded = effectiveExpanded.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
                   const recs = nodeRecCounts?.[node.name];
-                  const hasRecs = recs && (recs.outbound > 0 || recs.inbound > 0);
                   return (
                     <React.Fragment key={node.name}>
                       <tr
-                        className={`${TABLE_ROW} ${hasRecs ? 'bg-orange-900/15' : ''} cursor-pointer`}
+                        className={`${TABLE_ROW} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
                         <td className="p-3 w-8">
