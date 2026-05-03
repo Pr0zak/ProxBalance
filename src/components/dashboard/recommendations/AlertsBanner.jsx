@@ -59,7 +59,7 @@ export default function AlertsBanner({
           </div>
           <div className="space-y-2 text-xs text-orange-700 dark:text-orange-300">
             {recommendationData.conflicts.map((c, i) => (
-              <div key={i} className="p-2 bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800">
+              <div key={i} className="p-2 bg-white dark:bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800">
                 <div className="font-medium mb-1">
                   Target: {c.target_node} — {c.incoming_guests.length} incoming migrations
                 </div>

@@ -141,7 +141,7 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 5 - Process Box */}
-                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
+                    <div className="bg-pb-surface2 dark:bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">5</div>
                         <div className="flex-1">
@@ -175,7 +175,7 @@ export default function DecisionTreeFlowchart({
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-gray-700/50 rounded">
+                            <div className="flex items-center gap-2 p-1.5 bg-pb-surface2 dark:bg-gray-700/50 rounded">
                               <span className="text-pb-text2 dark:text-gray-400 font-bold">BYPASSED</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
@@ -209,7 +209,7 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 8 - Intelligent Filters */}
-                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
+                    <div className="bg-pb-surface2 dark:bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">8</div>
                         <div className="flex-1">
@@ -260,7 +260,7 @@ export default function DecisionTreeFlowchart({
                     </div>
 
                     {/* Step 10 - Action Box */}
-                    <div className="bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
+                    <div className="bg-pb-surface2 dark:bg-gray-700/50 rounded-lg border border-pb-border dark:border-slate-600 p-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-green-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-xs shrink-0">10</div>
                         <div className="flex-1">

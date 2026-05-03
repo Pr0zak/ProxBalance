@@ -70,7 +70,7 @@ export default function RecommendationFilters({
           </select>
           <button
             onClick={() => setRecSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-            className="text-xs px-2 py-1.5 rounded-xl border border-pb-border dark:border-slate-600/50 bg-gray-700/60 text-pb-text dark:text-gray-300 hover:hover:bg-gray-600/80 transition-all duration-150"
+            className="text-xs px-2 py-1.5 rounded-xl border border-pb-border dark:border-slate-600/50 bg-white dark:bg-gray-700/60 text-pb-text dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-600/80 transition-all duration-150"
             title={`Sort direction: ${recSortDir}`}
           >
             {recSortDir === 'desc' ? '\u2193 Desc' : '\u2191 Asc'}

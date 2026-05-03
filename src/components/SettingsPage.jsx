@@ -98,7 +98,7 @@ export default function SettingsPage(props) {
             </p>
             <div className="space-y-3 pointer-events-none">
               <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded border border-pb-border dark:border-slate-600">
-                <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
                   <Lock size={20} className="text-pb-text2 dark:text-gray-500" />
                 </div>
                 <div>
@@ -107,7 +107,7 @@ export default function SettingsPage(props) {
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded border border-pb-border dark:border-slate-600">
-                <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
                   <Lock size={20} className="text-pb-text2 dark:text-gray-500" />
                 </div>
                 <div>
@@ -116,7 +116,7 @@ export default function SettingsPage(props) {
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded border border-pb-border dark:border-slate-600">
-                <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
                   <Lock size={20} className="text-pb-text2 dark:text-gray-500" />
                 </div>
                 <div>

@@ -20,7 +20,7 @@ export default function ExecutionPlan({ recommendationData }) {
       </div>
       <div className="space-y-1.5">
         {plan.ordered_recommendations.map((step, idx) => (
-          <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-gray-800/50 rounded border border-pb-border dark:border-slate-700">
+          <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-white dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-700">
             <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold text-[11px]">
               {step.step}
             </div>

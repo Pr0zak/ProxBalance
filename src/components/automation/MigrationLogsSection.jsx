@@ -146,7 +146,7 @@ export default function MigrationLogsSection({
                           : '-';
 
                         return (
-                          <tr key={migration.id} className="hover:bg-gray-700/50">
+                          <tr key={migration.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
                             <td className="px-4 py-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">
                               {timeDisplay}
                             </td>
