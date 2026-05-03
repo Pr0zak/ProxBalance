@@ -3,11 +3,14 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState, useMemo } = React;
+const { useState, useEffect, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
+import ClusterMap from './dashboard/ClusterMap.jsx';
+import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
+import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
@@ -96,6 +99,13 @@ export default function DashboardPage({
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
+
+  // Section layout — user can promote tabs out of ClusterSection into standalone sections
+  const [promotedSections, setPromotedSections] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('promotedSections') || '{}'); }
+    catch { return {}; }
+  });
+  useEffect(() => { localStorage.setItem('promotedSections', JSON.stringify(promotedSections)); }, [promotedSections]);
 
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
@@ -201,6 +211,8 @@ export default function DashboardPage({
           API_BASE={API_BASE}
           collapsedSections={collapsedSections}
           setCollapsedSections={setCollapsedSections}
+          promotedSections={promotedSections}
+          setPromotedSections={setPromotedSections}
           automationStatus={automationStatus}
           automationConfig={automationConfig}
           scoreHistory={scoreHistory}
@@ -215,9 +227,68 @@ export default function DashboardPage({
           setExpandedRun={setExpandedRun}
         />
 
-        {/* AutomationStatusSection removed — its content (last-run detail + run history)
-            now lives inside the expandable auto-migration banner above. The score-history
-            chart that lived here was dropped per direction. */}
+        {/* Promoted standalone sections (user-toggled via ClusterSection cog) */}
+        {promotedSections.recs && (
+          <MigrationRecommendationsSection
+            data={data}
+            recommendations={recommendations}
+            loadingRecommendations={loadingRecommendations}
+            generateRecommendations={generateRecommendations}
+            recommendationData={recommendationData}
+            penaltyConfig={penaltyConfig}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+            toggleSection={toggleSection}
+            canMigrate={canMigrate}
+            migrationStatus={migrationStatus}
+            setMigrationStatus={setMigrationStatus}
+            completedMigrations={completedMigrations}
+            guestsMigrating={guestsMigrating}
+            migrationProgress={migrationProgress}
+            cancelMigration={cancelMigration}
+            trackMigration={trackMigration}
+            setConfirmMigration={setConfirmMigration}
+            setCurrentPage={setCurrentPage}
+            setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
+            nodeScores={nodeScores}
+            API_BASE={API_BASE}
+          />
+        )}
+        {promotedSections.map && (
+          <ClusterMap
+            data={data}
+            collapsedSections={collapsedSections}
+            toggleSection={toggleSection}
+            showPoweredOffGuests={showPoweredOffGuests}
+            setShowPoweredOffGuests={setShowPoweredOffGuests}
+            clusterMapViewMode={clusterMapViewMode}
+            setClusterMapViewMode={setClusterMapViewMode}
+            maintenanceNodes={maintenanceNodes}
+            setSelectedNode={setSelectedNode}
+            setSelectedGuestDetails={setSelectedGuestDetails}
+            guestsMigrating={guestsMigrating}
+            migrationProgress={migrationProgress}
+            completedMigrations={completedMigrations}
+          />
+        )}
+        {promotedSections.charts && (
+          <NodeStatusSection
+            data={data}
+            collapsedSections={collapsedSections}
+            toggleSection={toggleSection}
+            showPredicted={showPredicted}
+            setShowPredicted={setShowPredicted}
+            recommendationData={recommendationData}
+            recommendations={recommendations}
+            nodeGridColumns={nodeGridColumns}
+            setNodeGridColumns={setNodeGridColumns}
+            chartPeriod={chartPeriod}
+            setChartPeriod={setChartPeriod}
+            nodeScores={nodeScores}
+            generateSparkline={generateSparkline}
+            darkMode={darkMode}
+          />
+        )}
 
         <NodeDetailsModal
           selectedNode={selectedNode}
