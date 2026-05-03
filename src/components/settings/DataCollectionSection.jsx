@@ -43,25 +43,25 @@ export default function DataCollectionSection({
                     {data?.performance && (
                       <div className="mb-6">
                         <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Performance Metrics</h4>
-                        <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-200 dark:border-green-800 rounded">
+                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200 dark:border-emerald-800/40 rounded-lg">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Total Time</div>
-                              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.performance.total_time}s</div>
+                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
+                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Total Time</div>
+                              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.performance.total_time}s</div>
                             </div>
-                            <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Node Processing</div>
-                              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.performance.node_processing_time}s</div>
-                              <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
+                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
+                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Node Processing</div>
+                              <div className="text-2xl font-bold text-pb-accent dark:text-pb-accent-dark">{data.performance.node_processing_time}s</div>
+                              <div className="text-xs text-pb-text3 dark:text-pb-text3-dark mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
                             </div>
-                            <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Guest Processing</div>
-                              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.performance.guest_processing_time}s</div>
+                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
+                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Guest Processing</div>
+                              <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{data.performance.guest_processing_time}s</div>
                             </div>
-                            <div className="bg-gray-800/50 rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Workers Used</div>
+                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
+                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Workers Used</div>
                               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.performance.max_workers}</div>
-                              <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
+                              <div className="text-xs text-pb-text3 dark:text-pb-text3-dark mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
                             </div>
                           </div>
                         </div>

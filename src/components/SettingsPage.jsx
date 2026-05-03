@@ -141,11 +141,11 @@ export default function SettingsPage(props) {
           />
 
           {/* Save Button - Sticky at bottom */}
-          <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-slate-800/95 backdrop-blur-sm border-t border-pb-border dark:border-slate-700 shadow-lg">
+          <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/95 dark:bg-pb-surface-dark/95 backdrop-blur-sm border-t border-pb-border dark:border-pb-border-dark shadow-lg">
             <button
               onClick={saveSettings}
               disabled={savingSettings}
-              className="w-full px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+              className="w-full px-6 py-3 bg-pb-accent hover:bg-pb-accent-hover text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
             >
               <Save size={18} />
               {savingSettings ? 'Saving...' : 'Save Settings'}
