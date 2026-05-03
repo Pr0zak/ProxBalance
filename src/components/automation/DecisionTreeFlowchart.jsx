@@ -52,13 +52,13 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is automation enabled?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
-                              <span className="text-red-400 font-bold">NO</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-red-50 dark:bg-red-900/10 rounded">
+                              <span className="text-red-600 dark:text-red-400 font-bold">NO</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">STOP</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -74,13 +74,13 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is cooldown period elapsed?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
-                              <span className="text-orange-400 font-bold">NO</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-orange-50 dark:bg-orange-900/10 rounded">
+                              <span className="text-orange-600 dark:text-orange-400 font-bold">NO</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -96,18 +96,18 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">In allowed time window?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
-                              <span className="text-red-400 font-bold">BLACKOUT</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-red-50 dark:bg-red-900/10 rounded">
+                              <span className="text-red-600 dark:text-red-400 font-bold">BLACKOUT</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">BLOCKED</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
-                              <span className="text-orange-400 font-bold">OUTSIDE</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-orange-50 dark:bg-orange-900/10 rounded">
+                              <span className="text-orange-600 dark:text-orange-400 font-bold">OUTSIDE</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -125,13 +125,13 @@ export default function DecisionTreeFlowchart({
                             Is cluster healthy? <span className="text-xs font-normal text-pb-text2 dark:text-gray-400">(if enabled)</span>
                           </div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-red-900/10 rounded">
-                              <span className="text-red-400 font-bold">NO</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-red-50 dark:bg-red-900/10 rounded">
+                              <span className="text-red-600 dark:text-red-400 font-bold">NO</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-red-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">ABORT</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -164,14 +164,14 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Persistent recommendation?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-cyan-900/10 rounded">
-                              <span className="text-cyan-400 font-bold">OBSERVING</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-cyan-50 dark:bg-cyan-900/10 rounded">
+                              <span className="text-cyan-600 dark:text-cyan-400 font-bold">OBSERVING</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-cyan-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">DEFER</span>
                               <span className="text-pb-text2 dark:text-gray-400 ml-1">Not enough observations</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">READY</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">READY</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -193,13 +193,13 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Any recommendations above min confidence?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-orange-900/10 rounded">
-                              <span className="text-orange-400 font-bold">NO</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-orange-50 dark:bg-orange-900/10 rounded">
+                              <span className="text-orange-600 dark:text-orange-400 font-bold">NO</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-orange-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -222,13 +222,13 @@ export default function DecisionTreeFlowchart({
                             <div><span className="font-semibold text-pb-text dark:text-gray-300">Full:</span> + Trend awareness, Pattern suppression, Risk gating</div>
                           </div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-amber-900/10 rounded">
-                              <span className="text-amber-400 font-bold">FILTERED</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-amber-50 dark:bg-amber-900/10 rounded">
+                              <span className="text-amber-600 dark:text-amber-400 font-bold">FILTERED</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-amber-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">SKIP</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">PASSED</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">PASSED</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Continue</span>
                             </div>
@@ -244,13 +244,13 @@ export default function DecisionTreeFlowchart({
                         <div className="flex-1">
                           <div className="font-semibold text-pb-text dark:text-white mb-2 text-sm">Is dry run mode enabled?</div>
                           <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center gap-2 p-1.5 bg-blue-900/10 rounded">
-                              <span className="text-blue-400 font-bold">YES</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/10 rounded">
+                              <span className="text-blue-600 dark:text-blue-400 font-bold">YES</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="bg-blue-600 text-pb-text dark:text-white px-2 py-0.5 rounded text-xs font-semibold">LOG ONLY</span>
                             </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-green-900/10 rounded">
-                              <span className="text-green-400 font-bold">NO</span>
+                            <div className="flex items-center gap-2 p-1.5 bg-green-50 dark:bg-green-900/10 rounded">
+                              <span className="text-green-600 dark:text-green-400 font-bold">NO</span>
                               <span className="text-pb-text2 dark:text-gray-400">&#8594;</span>
                               <span className="text-pb-text2 dark:text-gray-400">Execute</span>
                             </div>

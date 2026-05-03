@@ -79,7 +79,7 @@ export default function AutomationStatusSection({
             </div>
             {collapsedSections.automatedMigrations && automationStatus.dry_run && automationStatus.enabled && (
               <div className="mb-3">
-                <span className="inline-block px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-yellow-800 text-sm font-bold text-yellow-300">DRY RUN MODE</span>
+                <span className="inline-block px-3 py-1.5 bg-white dark:bg-slate-800 rounded-lg border border-yellow-200 dark:border-yellow-800 text-sm font-bold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
               </div>
             )}
 
@@ -109,8 +109,8 @@ export default function AutomationStatusSection({
                     !automationStatus.enabled
                       ? 'bg-white dark:bg-slate-800 border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-500 cursor-not-allowed'
                       : automationStatus.timer_active
-                      ? 'bg-white dark:bg-slate-800 border-green-700 text-green-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
-                      : 'bg-white dark:bg-slate-800 border-yellow-700 text-yellow-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
+                      ? 'bg-white dark:bg-slate-800 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
+                      : 'bg-white dark:bg-slate-800 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300 hover:bg-pb-surface2 dark:hover:bg-slate-700 cursor-pointer'
                   }`}
                   title={
                     !automationStatus.enabled
@@ -140,7 +140,7 @@ export default function AutomationStatusSection({
                 {/* Configure Button */}
                 <button
                   onClick={() => setCurrentPage('automation')}
-                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
                   title="Configure Automation"
                 >
                   <Settings size={16} />
@@ -154,7 +154,7 @@ export default function AutomationStatusSection({
                   disabled={!automationStatus.enabled || runningAutomation}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 sm:gap-2 ${
                     automationStatus.enabled && !runningAutomation
-                      ? 'bg-green-600 hover:bg-green-700 text-pb-text dark:text-white'
+                      ? 'bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 text-pb-text dark:text-white'
                       : 'bg-gray-600 text-pb-text2 dark:text-gray-400 cursor-not-allowed'
                   }`}
                   title={!automationStatus.enabled ? "Enable automation first" : runningAutomation ? "Running..." : "Run automation check now"}
@@ -177,7 +177,7 @@ export default function AutomationStatusSection({
                   const hasRunning = automationStatus.in_progress_migrations?.some(m => m.initiated_by === 'automated');
                   if (hasRunning) {
                     return (
-                      <span className="text-xs font-semibold text-blue-400 flex items-center gap-1">
+                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                         <Loader size={12} className="animate-spin" /> Running
                       </span>
                     );
@@ -186,7 +186,7 @@ export default function AutomationStatusSection({
                     const ts = automationStatus.next_check.endsWith?.('Z') ? automationStatus.next_check : automationStatus.next_check + 'Z';
                     const diffMins = Math.floor((new Date(ts) - new Date()) / 60000);
                     if (diffMins > 0) return <span className="text-xs text-pb-text2 dark:text-gray-400">Next: {diffMins}m</span>;
-                    return <span className="text-xs text-green-400 font-semibold">Next: Now</span>;
+                    return <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Next: Now</span>;
                   }
                   if (automationStatus.check_interval_minutes) {
                     return <span className="text-xs text-pb-text2 dark:text-gray-400">Every {automationStatus.check_interval_minutes}m</span>;
@@ -201,10 +201,10 @@ export default function AutomationStatusSection({
             {runNowMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${
                 runNowMessage.type === 'success'
-                  ? 'bg-white dark:bg-slate-800 border border-green-700 text-green-300'
+                  ? 'bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
                   : runNowMessage.type === 'info'
-                  ? 'bg-white dark:bg-slate-800 border border-blue-700 text-blue-300'
-                  : 'bg-white dark:bg-slate-800 border border-red-700 text-red-300'
+                  ? 'bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                  : 'bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300'
               }`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1">
@@ -228,11 +228,11 @@ export default function AutomationStatusSection({
               </div>
             )}
             {automationStatus.dry_run && automationStatus.enabled && (
-              <div className="mb-4 p-3 bg-white dark:bg-slate-800 border border-yellow-700 rounded-lg text-sm">
+              <div className="mb-4 p-3 bg-white dark:bg-slate-800 border border-yellow-300 dark:border-yellow-700 rounded-lg text-sm">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="text-yellow-400" />
-                  <span className="font-semibold text-yellow-300">DRY RUN MODE</span>
-                  <span className="text-yellow-400">- No actual migrations will be performed</span>
+                  <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400" />
+                  <span className="font-semibold text-yellow-700 dark:text-yellow-300">DRY RUN MODE</span>
+                  <span className="text-yellow-600 dark:text-yellow-400">- No actual migrations will be performed</span>
                 </div>
               </div>
             )}
@@ -249,7 +249,7 @@ export default function AutomationStatusSection({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-pb-text2 dark:text-gray-400">Learning: {Math.round(lp.data_collection_hours)}h / {lp.min_required_hours}h</span>
-                      {level && <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
+                      {level && <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 text-[10px] font-semibold rounded capitalize">{level}</span>}
                       {lp.guest_profiles_count > 0 && <span className="text-pb-text2 dark:text-gray-500">{lp.guest_profiles_count} profiles</span>}
                       {lp.outcomes_count > 0 && <span className="text-pb-text2 dark:text-gray-500">{lp.outcomes_count} outcomes</span>}
                     </div>
@@ -257,7 +257,7 @@ export default function AutomationStatusSection({
                       <div className="h-1 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <span className="text-blue-400 font-semibold shrink-0">{pct}%</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-semibold shrink-0">{pct}%</span>
                 </div>
               );
             })()}
@@ -318,7 +318,7 @@ export default function AutomationStatusSection({
                         onClick={() => setChartTab('migrations')}
                         className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                           activeTab === 'migrations'
-                            ? 'border-blue-500 text-blue-400'
+                            ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                             : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                         }`}
                       >Migration History</button>
@@ -326,7 +326,7 @@ export default function AutomationStatusSection({
                         onClick={() => setChartTab('health')}
                         className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                           activeTab === 'health'
-                            ? 'border-blue-500 text-blue-400'
+                            ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                             : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                         }`}
                       >Cluster Health</button>
@@ -390,7 +390,7 @@ export default function AutomationStatusSection({
                             <h3 className="text-sm font-semibold text-pb-text dark:text-white">Cluster Health</h3>
                             <div className="flex items-center gap-2 text-xs">
                               <span className="font-bold text-pb-text dark:text-white">{latest.toFixed(1)}%</span>
-                              <span className={`font-semibold ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              <span className={`font-semibold ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {trend >= 0 ? '+' : ''}{trend.toFixed(1)}
                               </span>
                             </div>
@@ -421,7 +421,7 @@ export default function AutomationStatusSection({
             {automationStatus.in_progress_migrations && automationStatus.in_progress_migrations.length > 0 && (
               <div className="mt-4 pt-4 border-t border-pb-border dark:border-slate-700">
                 <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300 mb-3 flex items-center gap-2">
-                  <RefreshCw size={14} className="animate-spin text-blue-400" />
+                  <RefreshCw size={14} className="animate-spin text-blue-600 dark:text-blue-400" />
                   Migrations In Progress
                 </h4>
                 <div className="space-y-2">
@@ -451,25 +451,25 @@ export default function AutomationStatusSection({
                             <span className="text-pb-text dark:text-white font-medium">{migration.name} ({migration.vmid})</span>
                             <span className="text-pb-text2 dark:text-gray-400 text-xs">{migration.source_node} → {migration.target_node || '?'}</span>
                             {migration.type === 'VM' ? (
-                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-green-300 text-[10px] font-semibold rounded border border-green-600" title="Live migration (no downtime)">LIVE</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-green-700 dark:text-green-300 text-[10px] font-semibold rounded border border-green-600" title="Live migration (no downtime)">LIVE</span>
                             ) : (
-                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-orange-300 text-[10px] font-semibold rounded border border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-orange-700 dark:text-orange-300 text-[10px] font-semibold rounded border border-orange-600" title="Migration with restart (brief downtime)">RESTART</span>
                             )}
                             {!isAutomated && (
-                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-purple-300 text-[10px] font-semibold rounded border border-purple-600">MANUAL</span>
+                              <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 text-[10px] font-semibold rounded border border-purple-600">MANUAL</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
                               isAutomated
-                                ? 'bg-pb-surface2 dark:bg-gray-700 text-blue-400'
-                                : 'bg-pb-surface2 dark:bg-gray-700 text-purple-400'
+                                ? 'bg-pb-surface2 dark:bg-gray-700 text-blue-600 dark:text-blue-400'
+                                : 'bg-pb-surface2 dark:bg-gray-700 text-purple-600 dark:text-purple-400'
                             }`}>
                               <RefreshCw size={12} className="animate-spin" /> Running
                             </span>
                             <button
                               onClick={() => setCancelMigrationModal(migration)}
-                              className="px-2 py-0.5 bg-pb-surface2 dark:bg-gray-700 hover:bg-gray-600 text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
+                              className="px-2 py-0.5 bg-pb-surface2 dark:bg-gray-700 hover:bg-gray-600 text-red-700 dark:text-red-300 rounded text-xs font-semibold transition-colors flex items-center gap-1"
                               title="Cancel migration"
                               aria-label={`Cancel migration for ${migration.name || migration.vmid}`}
                             >
@@ -477,18 +477,18 @@ export default function AutomationStatusSection({
                             </button>
                           </div>
                         </div>
-                        <div className={`mt-1 text-xs flex items-center gap-3 ${isAutomated ? 'text-pb-text2 dark:text-gray-400' : 'text-purple-400'}`}>
+                        <div className={`mt-1 text-xs flex items-center gap-3 ${isAutomated ? 'text-pb-text2 dark:text-gray-400' : 'text-purple-600 dark:text-purple-400'}`}>
                           {migration.starttime && migration.starttime > 0 ? (
                             <span>Started: {new Date(migration.starttime * 1000).toLocaleTimeString()}</span>
                           ) : (
                             <span>Started: Unknown</span>
                           )}
-                          <span className={`font-semibold ${isAutomated ? 'text-blue-400' : 'text-purple-400'}`}>Elapsed: {elapsedTime}</span>
+                          <span className={`font-semibold ${isAutomated ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'}`}>Elapsed: {elapsedTime}</span>
                         </div>
                         {migration.progress && (
                           <div className="mt-2">
                             <div className="flex items-center justify-between text-xs mb-1">
-                              <span className={`${isAutomated ? 'text-blue-400' : 'text-purple-400'} font-semibold`}>
+                              <span className={`${isAutomated ? 'text-blue-600 dark:text-blue-400' : 'text-purple-600 dark:text-purple-400'} font-semibold`}>
                                 Progress: {migration.progress.percentage}%
                                 {migration.progress.speed_mib_s && <span className="ml-2 font-normal text-[10px]">({migration.progress.speed_mib_s.toFixed(1)} MiB/s)</span>}
                               </span>
@@ -514,7 +514,7 @@ export default function AutomationStatusSection({
                   className="w-full flex items-center justify-between mb-3 hover:bg-pb-surface2 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <ClipboardList size={16} className="text-blue-400" />
+                    <ClipboardList size={16} className="text-blue-600 dark:text-blue-400" />
                     <h4 className="text-sm font-semibold text-pb-text dark:text-gray-300">Last Run Summary</h4>
                     <span className="text-xs text-pb-text2 dark:text-gray-400">
                       {formatRelativeTime(automationStatus.state.last_run.timestamp)}
@@ -530,10 +530,10 @@ export default function AutomationStatusSection({
                       <div className="bg-white dark:bg-slate-800 rounded p-3">
                         <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
                         <div className={`text-sm font-bold ${
-                          automationStatus.state.last_run.status === 'success' ? 'text-green-400' :
-                          automationStatus.state.last_run.status === 'partial' ? 'text-yellow-400' :
-                          automationStatus.state.last_run.status === 'failed' ? 'text-red-400' :
-                          automationStatus.state.last_run.status === 'no_action' ? 'text-green-400' :
+                          automationStatus.state.last_run.status === 'success' ? 'text-green-600 dark:text-green-400' :
+                          automationStatus.state.last_run.status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
+                          automationStatus.state.last_run.status === 'failed' ? 'text-red-600 dark:text-red-400' :
+                          automationStatus.state.last_run.status === 'no_action' ? 'text-green-600 dark:text-green-400' :
                           'text-pb-text2 dark:text-gray-400'
                         }`}>
                           {automationStatus.state.last_run.status === 'success' ? 'Success' :
@@ -565,9 +565,9 @@ export default function AutomationStatusSection({
 
                     {/* Cluster Balanced Banner */}
                     {automationStatus.state.last_run.status === 'no_action' && (
-                      <div className="p-3 bg-green-900/20 border border-green-700 rounded-lg mb-4 flex items-center gap-2">
-                        <CheckCircle size={16} className="text-green-400 shrink-0" />
-                        <span className="text-sm text-green-300">No action needed — cluster is balanced and no migrations were required.</span>
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg mb-4 flex items-center gap-2">
+                        <CheckCircle size={16} className="text-green-600 dark:text-green-400 shrink-0" />
+                        <span className="text-sm text-green-700 dark:text-green-300">No action needed — cluster is balanced and no migrations were required.</span>
                       </div>
                     )}
 
@@ -607,7 +607,7 @@ export default function AutomationStatusSection({
                                       {decision.priority_rank && (
                                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
                                           decision.priority_rank === 1
-                                            ? 'bg-green-800 text-green-200'
+                                            ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200'
                                             : 'bg-gray-600 text-pb-text dark:text-gray-300'
                                         }`}>
                                           #{decision.priority_rank}
@@ -618,14 +618,14 @@ export default function AutomationStatusSection({
                                          decision.action === 'skipped' ? '⏭' :
                                          decision.action === 'pending' ? '🔄' :
                                          decision.action === 'executed' ? '✅' :
-                                         decision.action === 'observing' ? <Eye size={14} className="inline text-cyan-400" /> :
+                                         decision.action === 'observing' ? <Eye size={14} className="inline text-cyan-600 dark:text-cyan-400" /> :
                                          decision.action === 'deferred' ? '🕐' : '✗'} {decision.name || `VM/CT ${decision.vmid}`}
                                       </span>
                                       {decision.type && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-400">{decision.type}</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400">{decision.type}</span>
                                       )}
                                       {decision.distribution_balancing && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-purple-400" title="Distribution Balancing">Balance</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400" title="Distribution Balancing">Balance</span>
                                       )}
                                     </div>
                                     <span className="text-pb-text2 dark:text-gray-400">
@@ -634,13 +634,13 @@ export default function AutomationStatusSection({
                                     </span>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                    decision.action === 'executed' ? 'bg-white dark:bg-slate-800 text-green-400' :
-                                    decision.action === 'pending' ? 'bg-white dark:bg-slate-800 text-blue-400' :
-                                    decision.action === 'observing' ? 'bg-white dark:bg-slate-800 text-cyan-400' :
-                                    decision.action === 'deferred' ? 'bg-white dark:bg-slate-800 text-amber-400' :
-                                    decision.action === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-400' :
+                                    decision.action === 'executed' ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400' :
+                                    decision.action === 'pending' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400' :
+                                    decision.action === 'observing' ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400' :
+                                    decision.action === 'deferred' ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400' :
+                                    decision.action === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-600 dark:text-yellow-400' :
                                     decision.action === 'filtered' ? 'bg-white dark:bg-slate-800 text-pb-text dark:text-gray-300' :
-                                    'bg-white dark:bg-slate-800 text-red-400'
+                                    'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400'
                                   }`}>
                                     {decision.action}
                                   </span>
@@ -649,7 +649,7 @@ export default function AutomationStatusSection({
                                   {decision.selected_reason || decision.reason}
                                 </div>
                                 {decision.confidence_score && (
-                                  <div className="mt-1 text-blue-400 font-semibold text-[10px]">Confidence: {decision.confidence_score}%</div>
+                                  <div className="mt-1 text-blue-600 dark:text-blue-400 font-semibold text-[10px]">Confidence: {decision.confidence_score}%</div>
                                 )}
                                 {decision.reasoning && (
                                   <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-pb-text2 dark:text-gray-400">
@@ -661,7 +661,7 @@ export default function AutomationStatusSection({
                                   </div>
                                 )}
                                 {decision.error && (
-                                  <div className="mt-1 text-red-400 text-[10px]">Error: {decision.error}</div>
+                                  <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">Error: {decision.error}</div>
                                 )}
                               </div>
                             );
@@ -676,14 +676,14 @@ export default function AutomationStatusSection({
                         <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Safety Checks:</div>
                         <div className="grid grid-cols-1 gap-2 text-xs">
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
+                            <CheckCircle size={14} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                             <div className="flex-1">
                               <div className="font-semibold text-pb-text dark:text-white">Migration Window</div>
                               <div className="text-pb-text2 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.migration_window}</div>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
+                            <CheckCircle size={14} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                             <div className="flex-1">
                               <div className="font-semibold text-pb-text dark:text-white">Cluster Health</div>
                               <div className="text-pb-text2 dark:text-gray-400">{automationStatus.state.last_run.safety_checks.cluster_health}</div>
@@ -705,7 +705,7 @@ export default function AutomationStatusSection({
                         <div className="space-y-1.5">
                           {automationStatus.state.activity_log.map((activity, aidx) => (
                             <div key={aidx} className="text-xs bg-pb-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
-                              <MinusCircle size={12} className="text-yellow-400 shrink-0 mt-0.5" />
+                              <MinusCircle size={12} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 <span className="font-semibold text-pb-text dark:text-white">{activity.name}</span>
                                 {activity.vmid && <span className="text-pb-text2 dark:text-gray-400 ml-1">({activity.vmid})</span>}
@@ -728,7 +728,7 @@ export default function AutomationStatusSection({
                         <div className="space-y-1.5">
                           {automationStatus.filter_reasons.map((reason, idx) => (
                             <div key={idx} className="text-xs bg-pb-surface2 dark:bg-slate-700 rounded p-2 border-l-4 border-yellow-600 flex items-start gap-2">
-                              <MinusCircle size={12} className="text-yellow-400 shrink-0 mt-0.5" />
+                              <MinusCircle size={12} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
                               <span className="text-pb-text dark:text-gray-300">{reason}</span>
                             </div>
                           ))}
@@ -768,7 +768,7 @@ export default function AutomationStatusSection({
                       document.body.removeChild(a);
                       window.URL.revokeObjectURL(url);
                     }}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-900/20 rounded transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                     title="Export migration history to CSV"
                   >
                     <Download size={12} /> Export CSV
@@ -801,10 +801,10 @@ export default function AutomationStatusSection({
                               <span className="ml-1 text-[10px] inline-flex items-center gap-1">
                                 <span className="relative group inline-block">
                                   <span className={`font-semibold ${
-                                    suitabilityPercent >= 70 ? 'text-green-400' :
-                                    suitabilityPercent >= 50 ? 'text-yellow-400' :
-                                    suitabilityPercent >= 30 ? 'text-orange-400' :
-                                    'text-red-400'
+                                    suitabilityPercent >= 70 ? 'text-green-600 dark:text-green-400' :
+                                    suitabilityPercent >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                    suitabilityPercent >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                                    'text-red-600 dark:text-red-400'
                                   }`}>
                                     {suitabilityPercent}%
                                   </span>
@@ -819,16 +819,16 @@ export default function AutomationStatusSection({
                             })()}
                           </span>
                           {migration.dry_run && (
-                            <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-yellow-400 text-xs rounded">DRY RUN</span>
+                            <span className="px-1.5 py-0.5 bg-white dark:bg-slate-800 text-yellow-600 dark:text-yellow-400 text-xs rounded">DRY RUN</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {timeDisplay && <span className="text-xs text-pb-text2 dark:text-gray-400">{timeDisplay}</span>}
                           <span className={`px-2 py-0.5 rounded text-xs font-semibold flex items-center gap-1 ${
-                            migration.status === 'completed' ? 'bg-white dark:bg-slate-800 text-green-400' :
-                            migration.status === 'failed' ? 'bg-white dark:bg-slate-800 text-red-400' :
-                            migration.status === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-400' :
-                            migration.status === 'timeout' ? 'bg-white dark:bg-slate-800 text-orange-400' :
+                            migration.status === 'completed' ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400' :
+                            migration.status === 'failed' ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400' :
+                            migration.status === 'skipped' ? 'bg-white dark:bg-slate-800 text-yellow-600 dark:text-yellow-400' :
+                            migration.status === 'timeout' ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400' :
                             'bg-white dark:bg-slate-800 text-pb-text2 dark:text-gray-400'
                           }`}>
                             {migration.status === 'completed' && <CheckCircle size={12} />}
@@ -848,9 +848,9 @@ export default function AutomationStatusSection({
                         </div>
                       )}
                       {migration.status === 'failed' && (
-                        <div className="mt-2 p-2 bg-white dark:bg-slate-800 border border-red-700 rounded flex items-start gap-2">
-                          <XCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
-                          <div className="text-xs text-red-300 flex-1">
+                        <div className="mt-2 p-2 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 rounded flex items-start gap-2">
+                          <XCircle size={14} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                          <div className="text-xs text-red-700 dark:text-red-300 flex-1">
                             <span className="font-semibold">Error:</span> {migration.error || 'Migration failed (check logs for details)'}
                           </div>
                         </div>
@@ -885,10 +885,10 @@ export default function AutomationStatusSection({
                             {isExpanded ? <ChevronDown size={14} className="text-pb-text2 dark:text-gray-400" /> : <ChevronRight size={14} className="text-pb-text2 dark:text-gray-400" />}
                             <span className="text-xs font-semibold text-pb-text dark:text-gray-200">{timeDisplay}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              run.status === 'success' ? 'bg-white dark:bg-slate-800 text-green-300' :
-                              run.status === 'partial' ? 'bg-white dark:bg-slate-800 text-yellow-300' :
-                              run.status === 'no_action' ? 'bg-white dark:bg-slate-800 text-green-400' :
-                              'bg-white dark:bg-slate-800 text-red-300'
+                              run.status === 'success' ? 'bg-white dark:bg-slate-800 text-green-700 dark:text-green-300' :
+                              run.status === 'partial' ? 'bg-white dark:bg-slate-800 text-yellow-700 dark:text-yellow-300' :
+                              run.status === 'no_action' ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400' :
+                              'bg-white dark:bg-slate-800 text-red-700 dark:text-red-300'
                             }`}>
                               {run.status === 'no_action' ? 'balanced' : run.status}
                             </span>
@@ -918,11 +918,11 @@ export default function AutomationStatusSection({
                                   }`}>
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-1">
-                                        {decision.action === 'executed' && <CheckCircle size={10} className="text-green-400" />}
-                                        {decision.action === 'pending' && <RefreshCw size={10} className="text-blue-400" />}
-                                        {decision.action === 'observing' && <Eye size={10} className="text-cyan-400" />}
-                                        {decision.action === 'deferred' && <Clock size={10} className="text-amber-400" />}
-                                        {decision.action === 'skipped' && <Minus size={10} className="text-yellow-400" />}
+                                        {decision.action === 'executed' && <CheckCircle size={10} className="text-green-600 dark:text-green-400" />}
+                                        {decision.action === 'pending' && <RefreshCw size={10} className="text-blue-600 dark:text-blue-400" />}
+                                        {decision.action === 'observing' && <Eye size={10} className="text-cyan-600 dark:text-cyan-400" />}
+                                        {decision.action === 'deferred' && <Clock size={10} className="text-amber-600 dark:text-amber-400" />}
+                                        {decision.action === 'skipped' && <Minus size={10} className="text-yellow-600 dark:text-yellow-400" />}
                                         {decision.action === 'filtered' && <XCircle size={10} className="text-pb-text2 dark:text-gray-400" />}
                                         <span className="font-medium text-pb-text dark:text-gray-100">{decision.name}</span>
                                         <span className="text-pb-text2 dark:text-gray-400">({decision.vmid})</span>

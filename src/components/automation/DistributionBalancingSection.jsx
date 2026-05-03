@@ -46,18 +46,18 @@ export default function DistributionBalancingSection({
 
             {/* Help section */}
             <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-200 flex items-center gap-1 list-none">
+              <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
                 <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
                 How does this work?
               </summary>
-              <div className="mt-3 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
-                <p className="text-sm text-blue-200 mb-2">
+              <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
                   Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>.
                 </p>
-                <p className="text-xs text-blue-300 mb-2">
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
                   A node with many small VMs (DNS, monitoring, utilities) may show low resource usage but still suffer from management overhead and uneven workload distribution.
                 </p>
-                <ol className="text-xs text-blue-300 list-decimal list-inside space-y-1">
+                <ol className="text-xs text-blue-700 dark:text-blue-300 list-decimal list-inside space-y-1">
                   <li>Counts running guests on each node</li>
                   <li>If difference exceeds the threshold, finds small eligible guests on the overloaded node</li>
                   <li>Recommends migrating them to underloaded nodes</li>

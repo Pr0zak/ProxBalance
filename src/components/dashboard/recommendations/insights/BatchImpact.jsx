@@ -21,7 +21,7 @@ export default function BatchImpact({ recommendationData }) {
                   <span className="text-pb-text2 dark:text-gray-400">CPU</span>
                   <div className="font-mono">
                     {before.cpu.toFixed(0)}%
-                    <span className={`ml-1 ${cpuDelta < -0.5 ? 'text-green-400' : cpuDelta > 0.5 ? 'text-red-400' : 'text-pb-text2 dark:text-gray-400'}`}>
+                    <span className={`ml-1 ${cpuDelta < -0.5 ? 'text-green-600 dark:text-green-400' : cpuDelta > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-pb-text2 dark:text-gray-400'}`}>
                       {cpuDelta !== 0 ? `→${after.cpu.toFixed(0)}%` : ''}
                     </span>
                   </div>
@@ -30,7 +30,7 @@ export default function BatchImpact({ recommendationData }) {
                   <span className="text-pb-text2 dark:text-gray-400">Mem</span>
                   <div className="font-mono">
                     {before.mem.toFixed(0)}%
-                    <span className={`ml-1 ${memDelta < -0.5 ? 'text-green-400' : memDelta > 0.5 ? 'text-red-400' : 'text-pb-text2 dark:text-gray-400'}`}>
+                    <span className={`ml-1 ${memDelta < -0.5 ? 'text-green-600 dark:text-green-400' : memDelta > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-pb-text2 dark:text-gray-400'}`}>
                       {memDelta !== 0 ? `→${after.mem.toFixed(0)}%` : ''}
                     </span>
                   </div>
@@ -40,7 +40,7 @@ export default function BatchImpact({ recommendationData }) {
                   <div className="font-mono">
                     {before.guest_count}
                     {guestDelta !== 0 && (
-                      <span className={`ml-1 ${guestDelta < 0 ? 'text-blue-400' : 'text-orange-400'}`}>
+                      <span className={`ml-1 ${guestDelta < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
                         →{after.guest_count}
                       </span>
                     )}
@@ -54,13 +54,13 @@ export default function BatchImpact({ recommendationData }) {
       {batchImpact.improvement && (
         <div className="flex flex-wrap gap-3 text-xs text-pb-text2 dark:text-gray-400 pt-2 border-t border-pb-border dark:border-slate-700">
           <span>Health: {Math.round(recommendationData.summary.cluster_health)} → {Math.round(recommendationData.summary.predicted_health)}
-            <span className="text-green-400 font-medium ml-1">
+            <span className="text-green-600 dark:text-green-400 font-medium ml-1">
               (+{batchImpact.improvement.health_delta.toFixed(1)})
             </span>
           </span>
           <span>Variance: {batchImpact.before.score_variance.toFixed(1)} → {batchImpact.after.score_variance.toFixed(1)}</span>
           {batchImpact.improvement.all_nodes_improved && (
-            <span className="text-green-400 font-medium">All nodes improved or stable</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">All nodes improved or stable</span>
           )}
         </div>
       )}

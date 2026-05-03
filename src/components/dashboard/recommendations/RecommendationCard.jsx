@@ -25,15 +25,15 @@ export default function RecommendationCard({
   return (
     <div className={`rounded-xl p-3 sm:p-4 transition-all duration-300 ${
       isCompleted
-        ? 'border border-green-700 bg-green-900/20 opacity-75'
+        ? 'border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 opacity-75'
         : isMaintenance
-        ? 'border border-yellow-600 bg-yellow-900/10'
+        ? 'border border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
         : INNER_CARD
     }`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className={`font-semibold ${isCompleted ? 'text-green-300' : 'text-pb-text dark:text-white'}`}>
+            <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-pb-text dark:text-white'}`}>
               [{rec.type} {rec.vmid}] {rec.name}
             </span>
             {rec.mount_point_info?.has_mount_points && (
@@ -58,17 +58,17 @@ export default function RecommendationCard({
               </span>
             )}
             {!isCompleted && <AutoEligibilityBadge rec={rec} automationStatus={automationStatus} />}
-            {isCompleted && <CheckCircle size={18} className="text-green-400" />}
-            {status === 'failed' && <XCircle size={18} className="text-red-400" />}
+            {isCompleted && <CheckCircle size={18} className="text-green-600 dark:text-green-400" />}
+            {status === 'failed' && <XCircle size={18} className="text-red-600 dark:text-red-400" />}
           </div>
-          <div className={`text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? 'text-green-400' : ''}`}>
+          <div className={`text-sm mt-1 flex items-center gap-2 flex-wrap ${isCompleted ? 'text-green-600 dark:text-green-400' : ''}`}>
             {isCompleted ? (
               <>
                 <span className="font-medium">MIGRATED:</span> {rec.source_node} → {completed.newNode} ✓
               </>
             ) : (
               <>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-900/30 text-red-300 rounded font-semibold">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded font-semibold">
                   <span className="text-xs">FROM:</span>
                   <span>{rec.source_node}</span>
                   {rec.score_details?.source?.metrics && (
@@ -85,7 +85,7 @@ export default function RecommendationCard({
                   })()}
                 </span>
                 <ArrowRight size={16} className="text-pb-text2 dark:text-gray-500" />
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-900/30 text-green-300 rounded font-semibold">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded font-semibold">
                   <span className="text-xs">TO:</span>
                   <span>{rec.target_node}</span>
                   {rec.score_details?.target?.metrics && (
@@ -120,14 +120,14 @@ export default function RecommendationCard({
               </>
             )}
           </div>
-          <div className={`text-xs mt-1 ${isCompleted ? 'text-green-400' : 'text-pb-text2 dark:text-gray-400'}`}>
+          <div className={`text-xs mt-1 ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-pb-text2 dark:text-gray-400'}`}>
             {rec.structured_reason ? (
               <div>
-                <span className={`font-medium ${isMaintenance ? 'text-yellow-400' : rec.structured_reason.primary_reason === 'iowait_relief' ? 'text-orange-400' : ''}`}>
+                <span className={`font-medium ${isMaintenance ? 'text-yellow-600 dark:text-yellow-400' : rec.structured_reason.primary_reason === 'iowait_relief' ? 'text-orange-600 dark:text-orange-400' : ''}`}>
                   {rec.structured_reason.primary_label}
                 </span>
                 {rec.structured_reason.primary_reason === 'iowait_relief' && (
-                  <span className="ml-1 px-1.5 py-0 bg-orange-900/30 text-orange-300 text-[10px] font-bold rounded" title="Migration triggered by sustained high I/O wait on source node">I/O</span>
+                  <span className="ml-1 px-1.5 py-0 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 text-[10px] font-bold rounded" title="Migration triggered by sustained high I/O wait on source node">I/O</span>
                 )}
                 {rec.structured_reason.contributing_factors?.length > 0 && (
                   <span className="ml-1 text-pb-text2 dark:text-gray-500">
@@ -148,23 +148,23 @@ export default function RecommendationCard({
                       ))}
                     </span>
                     <span className={`font-semibold text-[10px] ${
-                      rec.confidence_score >= 70 ? 'text-green-400' :
-                      rec.confidence_score >= 40 ? 'text-yellow-400' :
-                      'text-orange-400'
+                      rec.confidence_score >= 70 ? 'text-green-600 dark:text-green-400' :
+                      rec.confidence_score >= 40 ? 'text-yellow-600 dark:text-yellow-400' :
+                      'text-orange-600 dark:text-orange-400'
                     }`}>{rec.confidence_score}%</span>
                   </span>
                 )}
               </div>
             ) : (
               <div>
-                <span className="font-medium">Reason:</span> <span className={isMaintenance ? 'font-bold text-yellow-400' : ''}>{rec.reason}</span> | <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB
+                <span className="font-medium">Reason:</span> <span className={isMaintenance ? 'font-bold text-yellow-600 dark:text-yellow-400' : ''}>{rec.reason}</span> | <span className="font-medium">Memory:</span> {(rec.mem_gb || 0).toFixed(1)} GB
               </div>
             )}
             {rec.ai_confidence_adjustment && rec.ai_confidence_adjustment !== 0 && (
               <span className="ml-2" title="AI-adjusted confidence modification">
                 | <span className="font-medium">AI Adjustment:</span>{' '}
                 <span className={`font-semibold ${
-                  rec.ai_confidence_adjustment > 0 ? 'text-green-400' : 'text-orange-400'
+                  rec.ai_confidence_adjustment > 0 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'
                 }`}>
                   {rec.ai_confidence_adjustment > 0 ? '+' : ''}{rec.ai_confidence_adjustment}
                 </span>
@@ -177,10 +177,10 @@ export default function RecommendationCard({
             <div className="flex flex-wrap items-center gap-2 mt-1">
               {rec.risk_level && (
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                  rec.risk_level === 'very_high' ? 'bg-red-900/30 text-red-300' :
-                  rec.risk_level === 'high' ? 'bg-orange-900/30 text-orange-300' :
-                  rec.risk_level === 'moderate' ? 'bg-yellow-900/30 text-yellow-300' :
-                  'bg-green-900/30 text-green-300'
+                  rec.risk_level === 'very_high' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                  rec.risk_level === 'high' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                  rec.risk_level === 'moderate' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                  'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                 }`} title={rec.risk_factors?.map(f => f.detail).join('\n') || ''}>
                   <AlertTriangle size={10} />
                   Risk: {rec.risk_level === 'very_high' ? 'Very High' : rec.risk_level.charAt(0).toUpperCase() + rec.risk_level.slice(1)}
@@ -188,7 +188,7 @@ export default function RecommendationCard({
                 </span>
               )}
               {rec.has_conflict && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/30 text-red-300"
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                   title={`Multiple migrations targeting ${rec.conflict_target} — combined load may exceed thresholds`}>
                   <XCircle size={10} />
                   Target Conflict
@@ -196,8 +196,8 @@ export default function RecommendationCard({
               )}
               {rec.cost_benefit && rec.cost_benefit.ratio != null && (
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                  rec.cost_benefit.ratio >= 2.0 ? 'bg-green-900/30 text-green-300' :
-                  rec.cost_benefit.ratio >= 1.0 ? 'bg-blue-900/30 text-blue-300' :
+                  rec.cost_benefit.ratio >= 2.0 ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                  rec.cost_benefit.ratio >= 1.0 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
                   'bg-white dark:bg-gray-800 text-pb-text2 dark:text-gray-400'
                 }`} title={`Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x — Score improvement: +${rec.cost_benefit.score_improvement?.toFixed(0) || '?'} pts, Est. duration: ${rec.cost_benefit.estimated_duration_minutes?.toFixed(0) || '?'} min`}>
                   ROI: {rec.cost_benefit.ratio.toFixed(1)}x
@@ -207,9 +207,9 @@ export default function RecommendationCard({
           )}
 
           {rec.ai_insight && (
-            <div className="mt-2 p-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700 rounded text-xs">
+            <div className="mt-2 p-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-300 dark:border-purple-700 rounded text-xs">
               <div className="flex items-start gap-2">
-                <span className="text-purple-400 font-semibold shrink-0">AI:</span>
+                <span className="text-purple-600 dark:text-purple-400 font-semibold shrink-0">AI:</span>
                 <span className="text-pb-text dark:text-gray-300">{rec.ai_insight}</span>
               </div>
             </div>
@@ -217,14 +217,14 @@ export default function RecommendationCard({
           {rec.bind_mount_warning && (
             <div className={`mt-2 p-2 ${
               rec.mount_point_info?.has_unshared_bind_mount
-                ? 'bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-700'
-                : 'bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-700'
+                ? 'bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-300 dark:border-orange-700'
+                : 'bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-300 dark:border-green-700'
             } rounded text-xs`}>
               <div className="flex items-start gap-2">
                 <Folder size={14} className={`shrink-0 ${
                   rec.mount_point_info?.has_unshared_bind_mount
-                    ? 'text-orange-400'
-                    : 'text-green-400'
+                    ? 'text-orange-600 dark:text-orange-400'
+                    : 'text-green-600 dark:text-green-400'
                 }`} />
                 <span className="text-pb-text dark:text-gray-300">{rec.bind_mount_warning}</span>
               </div>
@@ -247,17 +247,17 @@ export default function RecommendationCard({
                   const detailsKey = `details-${idx}`;
                   setCollapsedSections(prev => ({ ...prev, [detailsKey]: !prev[detailsKey] }));
                 }}
-                className="text-xs text-indigo-400 hover:underline flex items-center gap-1"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
               >
                 <Activity size={12} />
                 {collapsedSections[`details-${idx}`] ? 'Hide details' : 'Why this migration?'}
               </button>
               {collapsedSections[`details-${idx}`] && (
-                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-900/20 to-blue-900/20 border border-indigo-700 rounded text-xs space-y-3">
+                <div className="mt-2 p-3 bg-gradient-to-r from-indigo-900/20 to-blue-900/20 border border-indigo-300 dark:border-indigo-700 rounded text-xs space-y-3">
                   {/* Source vs Target — Scores, Penalties & Trends */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="font-semibold text-red-400 mb-1 flex items-center gap-1">
+                      <div className="font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1">
                         Source: {rec.source_node}
                         {rec.trend_evidence?.available && (() => {
                           const dir = rec.trend_evidence.source_node_trend?.cpu_direction;
@@ -276,22 +276,22 @@ export default function RecommendationCard({
                             {Object.entries(rec.score_details.source?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
                               <div key={key} className="flex justify-between">
                                 <span>{key.replace(/_/g, ' ')}</span>
-                                <span className="text-red-400 font-mono">+{val}</span>
+                                <span className="text-red-600 dark:text-red-400 font-mono">+{val}</span>
                               </div>
                             ))}
                             {Object.values(rec.score_details.source?.penalties || {}).every(v => v === 0) && (
-                              <div className="text-green-400">No penalties</div>
+                              <div className="text-green-600 dark:text-green-400">No penalties</div>
                             )}
                           </>
                         )}
                         {rec.trend_evidence?.available && (
-                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-700/50' : ''}>
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-300 dark:border-indigo-700/50' : ''}>
                             <div className="text-[10px] font-medium text-pb-text2 dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.source_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.source_node_trend?.mem_trend || 'N/A'}</div>
                             <div>Stability: {rec.trend_evidence.source_node_trend?.stability_score || '?'}/100</div>
                             {rec.trend_evidence.source_node_trend?.above_baseline && (
-                              <div className="text-orange-400 font-medium">
+                              <div className="text-orange-600 dark:text-orange-400 font-medium">
                                 Above baseline ({rec.trend_evidence.source_node_trend.baseline_deviation_sigma?.toFixed(1) || '?'}σ)
                               </div>
                             )}
@@ -300,7 +300,7 @@ export default function RecommendationCard({
                       </div>
                     </div>
                     <div>
-                      <div className="font-semibold text-green-400 mb-1 flex items-center gap-1">
+                      <div className="font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1">
                         Target: {rec.target_node}
                         {rec.trend_evidence?.available && (() => {
                           const dir = rec.trend_evidence.target_node_trend?.cpu_direction;
@@ -319,16 +319,16 @@ export default function RecommendationCard({
                             {Object.entries(rec.score_details.target?.penalties || {}).filter(([, v]) => v > 0).map(([key, val]) => (
                               <div key={key} className="flex justify-between">
                                 <span>{key.replace(/_/g, ' ')}</span>
-                                <span className="text-red-400 font-mono">+{val}</span>
+                                <span className="text-red-600 dark:text-red-400 font-mono">+{val}</span>
                               </div>
                             ))}
                             {Object.values(rec.score_details.target?.penalties || {}).every(v => v === 0) && (
-                              <div className="text-green-400">No penalties</div>
+                              <div className="text-green-600 dark:text-green-400">No penalties</div>
                             )}
                           </>
                         )}
                         {rec.trend_evidence?.available && (
-                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-700/50' : ''}>
+                          <div className={rec.score_details ? 'mt-2 pt-2 border-t border-indigo-300 dark:border-indigo-700/50' : ''}>
                             <div className="text-[10px] font-medium text-pb-text2 dark:text-gray-500 mb-0.5">Trends:</div>
                             <div>CPU: {rec.trend_evidence.target_node_trend?.cpu_trend || 'N/A'}</div>
                             <div>Memory: {rec.trend_evidence.target_node_trend?.mem_trend || 'N/A'}</div>
@@ -341,7 +341,7 @@ export default function RecommendationCard({
 
                   {/* After Migration Predictions */}
                   {rec.score_details?.target?.metrics && (
-                    <div className="pt-2 border-t border-indigo-700">
+                    <div className="pt-2 border-t border-indigo-300 dark:border-indigo-700">
                       <div className="text-[10px] font-medium text-pb-text2 dark:text-gray-500 mb-1">After migration on {rec.target_node}:</div>
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-pb-text2 dark:text-gray-400">
                         <span>CPU: {rec.score_details.target.metrics.predicted_cpu}%</span>
@@ -353,15 +353,15 @@ export default function RecommendationCard({
 
                   {/* Stability Factors */}
                   {rec.score_details && (rec.score_details.target?.trend_analysis || rec.score_details.source?.trend_analysis) && (
-                    <div className="pt-2 border-t border-indigo-700 flex flex-wrap gap-2">
+                    <div className="pt-2 border-t border-indigo-300 dark:border-indigo-700 flex flex-wrap gap-2">
                       {rec.score_details.source?.trend_analysis?.cpu_stability_factor != null && rec.score_details.source.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-pb-text2 dark:text-gray-400"
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded text-pb-text2 dark:text-gray-400"
                           title={`Source CPU penalties scaled by ${rec.score_details.source.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.source.trend_analysis.stability_score}`}>
                           Source CPU factor: {rec.score_details.source.trend_analysis.cpu_stability_factor}x
                         </span>
                       )}
                       {rec.score_details.target?.trend_analysis?.cpu_stability_factor != null && rec.score_details.target.trend_analysis.cpu_stability_factor !== 1.0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-900/30 rounded text-pb-text2 dark:text-gray-400"
+                        <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded text-pb-text2 dark:text-gray-400"
                           title={`Target CPU penalties scaled by ${rec.score_details.target.trend_analysis.cpu_stability_factor}x based on stability score ${rec.score_details.target.trend_analysis.stability_score}`}>
                           Target CPU factor: {rec.score_details.target.trend_analysis.cpu_stability_factor}x
                         </span>
@@ -371,13 +371,13 @@ export default function RecommendationCard({
 
                   {/* Guest Behavior */}
                   {rec.trend_evidence?.guest_trend && (
-                    <div className="pt-2 border-t border-indigo-700">
+                    <div className="pt-2 border-t border-indigo-300 dark:border-indigo-700">
                       <div className="font-medium text-pb-text dark:text-gray-300 mb-1">Guest Behavior</div>
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          rec.trend_evidence.guest_trend.behavior === 'growing' ? 'bg-orange-900/30 text-orange-300' :
-                          rec.trend_evidence.guest_trend.behavior === 'bursty' ? 'bg-yellow-900/30 text-yellow-300' :
-                          rec.trend_evidence.guest_trend.behavior === 'steady' ? 'bg-green-900/30 text-green-300' :
+                          rec.trend_evidence.guest_trend.behavior === 'growing' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
+                          rec.trend_evidence.guest_trend.behavior === 'bursty' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                          rec.trend_evidence.guest_trend.behavior === 'steady' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                           'bg-white dark:bg-gray-800 text-pb-text2 dark:text-gray-400'
                         }`}>{rec.trend_evidence.guest_trend.behavior || 'unknown'}</span>
                         <span className="text-pb-text2 dark:text-gray-400">CPU: {rec.trend_evidence.guest_trend.cpu_growth_rate || 'N/A'}</span>
@@ -397,7 +397,7 @@ export default function RecommendationCard({
 
                   {/* Decision Factors */}
                   {rec.trend_evidence?.decision_factors?.length > 0 && (
-                    <div className="pt-2 border-t border-indigo-700">
+                    <div className="pt-2 border-t border-indigo-300 dark:border-indigo-700">
                       <div className="font-medium text-pb-text dark:text-gray-300 mb-1">Decision Factors</div>
                       <div className="space-y-1">
                         {rec.trend_evidence.decision_factors.map((f, i) => (
@@ -439,7 +439,7 @@ export default function RecommendationCard({
                   const commandKey = `command-${idx}`;
                   setCollapsedSections(prev => ({ ...prev, [commandKey]: !prev[commandKey] }));
                 }}
-                className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 <Terminal size={12} />
                 {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
@@ -453,15 +453,15 @@ export default function RecommendationCard({
                   const btn = e.currentTarget;
                   const originalText = btn.textContent;
                   btn.textContent = 'Copied!';
-                  btn.classList.add('bg-green-900');
+                  btn.classList.add('bg-green-50 dark:bg-green-900');
                   setTimeout(() => {
                     btn.textContent = originalText;
-                    btn.classList.remove('bg-green-900');
+                    btn.classList.remove('bg-green-50 dark:bg-green-900');
                   }, 1000);
                 }}
                 className={`text-xs font-mono p-2 rounded mt-1 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all ${
                   isCompleted
-                    ? 'bg-green-900/40 text-green-300'
+                    ? 'bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                     : 'bg-pb-bg dark:bg-gray-900 text-pb-text dark:text-gray-300'
                 }`}
                 title="Click to copy"

@@ -24,7 +24,7 @@ export default function MobileTabBar({ activePage, onNavigate, lastUpdate }) {
               onClick={() => onNavigate(id)}
               className={`flex flex-col items-center gap-0.5 py-2.5 px-4 transition-colors ${
                 activePage === id
-                  ? 'text-blue-400'
+                  ? 'text-blue-600 dark:text-blue-400'
                   : 'text-pb-text2 dark:text-gray-500'
               }`}
             >

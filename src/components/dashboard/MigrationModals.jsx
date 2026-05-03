@@ -184,7 +184,7 @@ export default function MigrationModals({
                         setError(`Error adding tag: ${error.message}`);
                       }
                     }}
-                    className="px-3 py-1.5 text-sm bg-yellow-900/30 text-yellow-200 border border-yellow-700 rounded hover:bg-yellow-900/50"
+                    className="px-3 py-1.5 text-sm bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 rounded hover:bg-yellow-50 dark:hover:bg-yellow-900/50"
                   >
                     + ignore
                   </button>
@@ -234,20 +234,20 @@ export default function MigrationModals({
                         setError(`Error adding tag: ${error.message}`);
                       }
                     }}
-                    className="px-3 py-1.5 text-sm bg-green-900/30 text-green-200 border border-green-700 rounded hover:bg-green-900/50"
+                    className="px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/50"
                   >
                     + auto_migrate_ok
                   </button>
                 )}
                 <button
                   onClick={() => setNewTag('exclude_')}
-                  className="px-3 py-1.5 text-sm bg-blue-900/30 text-blue-200 border border-blue-700 rounded hover:bg-blue-900/50"
+                  className="px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/50"
                 >
                   + exclude_...
                 </button>
                 <button
                   onClick={() => setNewTag('affinity_')}
-                  className="px-3 py-1.5 text-sm bg-purple-900/30 text-purple-200 border border-purple-700 rounded hover:bg-purple-900/50"
+                  className="px-3 py-1.5 text-sm bg-purple-50 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 rounded hover:bg-purple-50 dark:hover:bg-purple-900/50"
                 >
                   + affinity_...
                 </button>
@@ -303,7 +303,7 @@ export default function MigrationModals({
             <button
               onClick={handleAddTag}
               disabled={!newTag.trim()}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <Plus size={14} /> Add Tag
             </button>
@@ -325,7 +325,7 @@ export default function MigrationModals({
 
           <div className="p-4 sm:p-6">
             <p className="text-pb-text dark:text-gray-300">
-              Remove tag <span className="font-mono font-semibold text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
+              Remove tag <span className="font-mono font-semibold text-red-600 dark:text-red-400">"{confirmRemoveTag.tag}"</span> from {confirmRemoveTag.guest.type} <span className="font-semibold">{confirmRemoveTag.guest.vmid}</span> ({confirmRemoveTag.guest.name})?
             </p>
           </div>
 
@@ -338,7 +338,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndRemoveTag}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-pb-text dark:text-white rounded hover:bg-red-700"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-pb-text dark:text-white rounded hover:bg-red-100 dark:hover:bg-red-700"
             >
               <Trash size={14} /> Remove Tag
             </button>
@@ -360,17 +360,17 @@ export default function MigrationModals({
 
           <div className="p-4 sm:p-6">
             <p className="text-pb-text dark:text-gray-300 mb-4">
-              Start migration for <span className="font-semibold text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
+              Start migration for <span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
             </p>
 
             <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded-lg p-4 space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-pb-text2 dark:text-gray-400">From:</span>
-                <span className="font-semibold text-red-400">{confirmMigration.source_node}</span>
+                <span className="font-semibold text-red-600 dark:text-red-400">{confirmMigration.source_node}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-pb-text2 dark:text-gray-400">To:</span>
-                <span className="font-semibold text-green-400">{confirmMigration.target_node}</span>
+                <span className="font-semibold text-green-600 dark:text-green-400">{confirmMigration.target_node}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-pb-text2 dark:text-gray-400">Memory:</span>
@@ -379,7 +379,7 @@ export default function MigrationModals({
               {confirmMigration.score_improvement !== undefined && (
                 <div className="flex items-center justify-between">
                   <span className="text-pb-text2 dark:text-gray-400">Improvement:</span>
-                  <span className="font-semibold text-green-400">+{confirmMigration.score_improvement.toFixed(1)}</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">+{confirmMigration.score_improvement.toFixed(1)}</span>
                 </div>
               )}
             </div>
@@ -400,7 +400,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndMigrate}
-              className="px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-pb-text dark:text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 flex items-center gap-2"
             >
               <Play size={16} />
               Start Migration
@@ -436,12 +436,12 @@ export default function MigrationModals({
 
           {/* Modal Body - Scrollable Task List */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-            <div className="mb-4 p-4 bg-blue-900/20 border border-blue-700 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-200">
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                 <Info size={20} />
                 <div>
                   <p className="font-semibold">Total Migrations: {pendingBatchMigrations.length}</p>
-                  <p className="text-sm text-blue-300 mt-1">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                     Each migration will be tracked with real-time progress. You can monitor the status panel for updates.
                   </p>
                 </div>
@@ -471,9 +471,9 @@ export default function MigrationModals({
                           </span>
                           {rec.priority && (
                             <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                              rec.priority === 'high' ? 'bg-red-900/30 text-red-300' :
-                              rec.priority === 'medium' ? 'bg-yellow-900/30 text-yellow-300' :
-                              'bg-blue-900/30 text-blue-300'
+                              rec.priority === 'high' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                              rec.priority === 'medium' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                              'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                             }`}>
                               {rec.priority}
                             </span>
@@ -483,7 +483,7 @@ export default function MigrationModals({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2 text-sm">
                           <div>
                             <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Source Node</div>
-                            <div className="font-semibold text-red-400 flex items-center gap-2">
+                            <div className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
                               <ArrowRight size={14} />
                               {rec.source_node}
                             </div>
@@ -496,7 +496,7 @@ export default function MigrationModals({
 
                           <div>
                             <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Target Node</div>
-                            <div className="font-semibold text-green-400 flex items-center gap-2">
+                            <div className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-2">
                               <ArrowRight size={14} />
                               {rec.target_node}
                             </div>
@@ -524,7 +524,7 @@ export default function MigrationModals({
                                 [commandKey]: !prev[commandKey]
                               }));
                             }}
-                            className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                           >
                             <Terminal size={12} />
                             {collapsedSections[`ai-command-${idx}`] ? 'Show' : 'Hide'} command
@@ -537,10 +537,10 @@ export default function MigrationModals({
                                 const btn = e.currentTarget;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copied!';
-                                btn.classList.add('bg-green-900');
+                                btn.classList.add('bg-green-50 dark:bg-green-900');
                                 setTimeout(() => {
                                   btn.textContent = originalText;
-                                  btn.classList.remove('bg-green-900');
+                                  btn.classList.remove('bg-green-50 dark:bg-green-900');
                                 }, 1000);
                               }}
                               className="text-xs font-mono bg-pb-surface2 dark:bg-gray-700 p-2 rounded mt-1 text-pb-text dark:text-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
@@ -575,7 +575,7 @@ export default function MigrationModals({
                 </button>
                 <button
                   onClick={confirmBatchMigration}
-                  className="px-6 py-2 bg-green-600 text-pb-text dark:text-white rounded hover:bg-green-700 flex items-center gap-2 font-semibold"
+                  className="px-6 py-2 bg-green-600 text-pb-text dark:text-white rounded hover:bg-green-100 dark:hover:bg-green-700 flex items-center gap-2 font-semibold"
                 >
                   <CheckCircle size={16} />
                   Start {pendingBatchMigrations.length} Migration{pendingBatchMigrations.length !== 1 ? 's' : ''}
@@ -592,8 +592,8 @@ export default function MigrationModals({
       <div className={MODAL_OVERLAY} onClick={() => setCancelMigrationModal(null)}>
         <div className={MODAL_CONTAINER} onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-3 mb-4">
-            <div className="p-2 bg-red-900/30 rounded-lg">
-              <AlertTriangle className="text-red-400" size={24} />
+            <div className="p-2 bg-red-50 dark:bg-red-900/30 rounded-lg">
+              <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
             </div>
             <div>
               <h3 className="text-lg font-bold text-pb-text dark:text-gray-100">Cancel Migration?</h3>
@@ -608,7 +608,7 @@ export default function MigrationModals({
               <span className="text-sm font-semibold text-pb-text dark:text-gray-300">
                 {cancelMigrationModal.name}
               </span>
-              <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded text-xs font-semibold">
+              <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-semibold">
                 {cancelMigrationModal.type === 'qemu' ? 'VM' : 'CT'} {cancelMigrationModal.vmid}
               </span>
             </div>
@@ -658,7 +658,7 @@ export default function MigrationModals({
                 }
               }}
               disabled={cancellingMigration}
-              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-800'} text-pb-text dark:text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
+              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-100 dark:bg-red-700 hover:bg-red-100 dark:hover:bg-red-800'} text-pb-text dark:text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
             >
               {cancellingMigration ? (
                 <>

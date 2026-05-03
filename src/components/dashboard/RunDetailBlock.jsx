@@ -10,10 +10,10 @@ const STATUS_LABEL = {
   no_action: 'Cluster Balanced',
 };
 const STATUS_COLOR = {
-  success: 'text-green-400',
-  partial: 'text-yellow-400',
-  failed: 'text-red-400',
-  no_action: 'text-green-400',
+  success: 'text-green-600 dark:text-green-400',
+  partial: 'text-yellow-600 dark:text-yellow-400',
+  failed: 'text-red-600 dark:text-red-400',
+  no_action: 'text-green-600 dark:text-green-400',
 };
 
 function fmtDuration(s) {
@@ -31,12 +31,12 @@ const ACTION_BORDER = {
   filtered: 'border-gray-400',
 };
 const ACTION_BADGE = {
-  executed: 'bg-white dark:bg-slate-800 text-green-400',
-  failed: 'bg-white dark:bg-slate-800 text-red-400',
-  pending: 'bg-white dark:bg-slate-800 text-blue-400',
-  observing: 'bg-white dark:bg-slate-800 text-cyan-400',
-  deferred: 'bg-white dark:bg-slate-800 text-amber-400',
-  skipped: 'bg-white dark:bg-slate-800 text-yellow-400',
+  executed: 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400',
+  failed: 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400',
+  pending: 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400',
+  observing: 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400',
+  deferred: 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400',
+  skipped: 'bg-white dark:bg-slate-800 text-yellow-600 dark:text-yellow-400',
   filtered: 'bg-white dark:bg-slate-800 text-pb-text dark:text-gray-300',
 };
 const ACTION_ICON = {
@@ -64,15 +64,15 @@ function DecisionsList({ decisions }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   {d.priority_rank && (
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.priority_rank === 1 ? 'bg-green-800 text-green-200' : 'bg-gray-600 text-pb-text dark:text-gray-300'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.priority_rank === 1 ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 'bg-gray-600 text-pb-text dark:text-gray-300'}`}>
                       #{d.priority_rank}
                     </span>
                   )}
                   <span className="font-semibold text-pb-text dark:text-white">
-                    {d.action === 'observing' ? <Eye size={12} className="inline text-cyan-400 mr-1" /> : (ACTION_ICON[d.action] || '·')}{' '}
+                    {d.action === 'observing' ? <Eye size={12} className="inline text-cyan-600 dark:text-cyan-400 mr-1" /> : (ACTION_ICON[d.action] || '·')}{' '}
                     {d.name || `VM/CT ${d.vmid}`}
                   </span>
-                  {d.type && <span className="px-1 py-0 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-400">{d.type}</span>}
+                  {d.type && <span className="px-1 py-0 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400">{d.type}</span>}
                 </div>
                 {(d.source_node || d.target_node) && (
                   <div className="text-pb-text2 dark:text-gray-400 text-[11px]">
@@ -89,7 +89,7 @@ function DecisionsList({ decisions }) {
               <div className="mt-1 text-pb-text2 dark:text-gray-400 text-[11px]">{d.selected_reason || d.reason}</div>
             )}
             {d.confidence_score != null && (
-              <div className="mt-1 text-blue-400 text-[10px] font-semibold">Confidence: {d.confidence_score}%</div>
+              <div className="mt-1 text-blue-600 dark:text-blue-400 text-[10px] font-semibold">Confidence: {d.confidence_score}%</div>
             )}
             {d.reasoning && (
               <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-pb-text2 dark:text-gray-400">
@@ -98,7 +98,7 @@ function DecisionsList({ decisions }) {
                 {d.reasoning.observation_count != null && <span>{d.reasoning.observation_count}/{d.reasoning.required_observations} obs</span>}
               </div>
             )}
-            {d.error && <div className="mt-1 text-red-400 text-[10px]">Error: {d.error}</div>}
+            {d.error && <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">Error: {d.error}</div>}
           </div>
         ))}
       </div>
@@ -108,7 +108,7 @@ function DecisionsList({ decisions }) {
 
 function ActivityLogList({ log }) {
   if (!log || log.length === 0) return null;
-  const colorFor = (lv) => lv === 'error' ? 'text-red-400' : lv === 'warn' ? 'text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
+  const colorFor = (lv) => lv === 'error' ? 'text-red-600 dark:text-red-400' : lv === 'warn' ? 'text-yellow-600 dark:text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
   return (
     <div className="bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 rounded p-3">
       <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Logs ({log.length})</div>
@@ -141,7 +141,7 @@ function SafetyChecksList({ safety }) {
       <div className="space-y-1.5">
         {rows.map((r, i) => (
           <div key={i} className="flex items-start gap-2 text-xs">
-            <CheckCircle size={12} className="text-green-400 mt-0.5 shrink-0" />
+            <CheckCircle size={12} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-pb-text dark:text-gray-300">{r.k}</div>
               <div className="text-pb-text2 dark:text-gray-400 text-[11px] break-words">{String(r.v)}</div>
@@ -187,7 +187,7 @@ export default function RunDetailBlock({ run, compact = false }) {
         <div className="text-[11px] text-pb-text2 dark:text-gray-500">{formatRelativeTime(run.timestamp)}</div>
       )}
       {status === 'no_action' && (
-        <div className="flex items-center gap-2 text-xs text-green-300 bg-green-900/20 border border-green-800/40 rounded px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded px-3 py-2">
           <CheckCircle size={14} className="shrink-0" /> Cluster balanced — no action needed.
         </div>
       )}

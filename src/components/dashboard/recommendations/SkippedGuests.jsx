@@ -25,11 +25,11 @@ export default function SkippedGuests({
             <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-gray-700/30 rounded-xl border border-pb-border dark:border-slate-600/30">
               <span className={`shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${
                 skipped.reason === 'insufficient_improvement'
-                  ? 'bg-yellow-900/40 text-yellow-400'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400'
                   : skipped.reason === 'ha_managed'
-                  ? 'bg-blue-900/40 text-blue-400'
+                  ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
                   : skipped.reason === 'no_suitable_target'
-                  ? 'bg-red-900/40 text-red-400'
+                  ? 'bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400'
                   : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400'
               }`}>
                 {skipped.reason === 'insufficient_improvement' ? '~' :
@@ -47,7 +47,7 @@ export default function SkippedGuests({
                 <span className="text-pb-text2 dark:text-gray-500 ml-1">on {skipped.node}</span>
                 <span className="text-pb-text2 dark:text-gray-400 ml-2">— {skipped.detail}</span>
                 {skipped.score_improvement !== undefined && (
-                  <span className="ml-1 text-yellow-400 font-mono">
+                  <span className="ml-1 text-yellow-600 dark:text-yellow-400 font-mono">
                     (+{skipped.score_improvement} pts, need {penaltyConfig?.min_score_improvement || 15})
                   </span>
                 )}

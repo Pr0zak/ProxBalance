@@ -15,13 +15,13 @@ export default function ExecutionPlan({ recommendationData }) {
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs text-pb-text2 dark:text-gray-400">{plan.total_steps} steps</span>
         {plan.can_parallelize && (
-          <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-900/40 text-indigo-400">Parallel groups available</span>
+          <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">Parallel groups available</span>
         )}
       </div>
       <div className="space-y-1.5">
         {plan.ordered_recommendations.map((step, idx) => (
           <div key={idx} className="flex items-center gap-2 text-xs p-2 bg-gray-800/50 rounded border border-pb-border dark:border-slate-700">
-            <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-900/40 text-indigo-400 font-bold text-[11px]">
+            <div className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold text-[11px]">
               {step.step}
             </div>
             <div className="flex-1 min-w-0">

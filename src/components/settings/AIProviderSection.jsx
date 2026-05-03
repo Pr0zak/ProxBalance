@@ -74,7 +74,7 @@ export default function AIProviderSection({
                                 className={INPUT_FIELD}
                               />
                               <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                                See available models at <a href="https://platform.openai.com/docs/models" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OpenAI Models</a>
+                                See available models at <a href="https://platform.openai.com/docs/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">OpenAI Models</a>
                               </p>
                             </div>
                           </div>
@@ -107,7 +107,7 @@ export default function AIProviderSection({
                                 className={INPUT_FIELD}
                               />
                               <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                                See available models at <a href="https://docs.anthropic.com/en/docs/about-claude/models" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Anthropic Models</a>
+                                See available models at <a href="https://docs.anthropic.com/en/docs/about-claude/models" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Anthropic Models</a>
                               </p>
                             </div>
                           </div>
@@ -186,8 +186,8 @@ export default function AIProviderSection({
                               )}
                               <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">Ollama model to use for recommendations</p>
                             </div>
-                            <div className="bg-blue-900/30 border border-blue-800 rounded p-3">
-                              <p className="text-sm text-blue-200">
+                            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                              <p className="text-sm text-blue-800 dark:text-blue-200">
                                 <strong>Note:</strong> Ensure Ollama is installed and running. Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="underline">ollama.ai</a> for installation instructions.
                               </p>
                             </div>

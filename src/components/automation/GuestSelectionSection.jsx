@@ -132,12 +132,12 @@ export default function GuestSelectionSection({
               >
                 {confirmAllowContainerRestarts && (
                   <div className="px-4 pb-4">
-                    <div className="bg-orange-900/20 border border-orange-700 rounded-lg p-3">
+                    <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-lg p-3">
                       <div className="flex items-start gap-2">
-                        <AlertTriangle size={18} className="text-orange-400 shrink-0 mt-0.5" />
+                        <AlertTriangle size={18} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <div className="font-semibold text-orange-200 text-sm mb-1">ALLOW CONTAINER RESTARTS?</div>
-                          <div className="text-xs text-orange-300 space-y-1 mb-2">
+                          <div className="font-semibold text-orange-800 dark:text-orange-200 text-sm mb-1">ALLOW CONTAINER RESTARTS?</div>
+                          <div className="text-xs text-orange-700 dark:text-orange-300 space-y-1 mb-2">
                             <p>This will allow automated migrations to restart containers that cannot be live-migrated.</p>
                             <p className="font-semibold">Containers will experience brief downtime during migration.</p>
                           </div>
@@ -147,7 +147,7 @@ export default function GuestSelectionSection({
                                 saveAutomationConfig({ rules: { ...automationConfig.rules, allow_container_restarts: true } });
                                 setConfirmAllowContainerRestarts(false);
                               }}
-                              className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-pb-text dark:text-white rounded text-xs font-medium flex items-center justify-center gap-1"
+                              className="px-2 py-1 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded text-xs font-medium flex items-center justify-center gap-1"
                             >
                               <AlertTriangle size={14} />
                               Yes, Allow Restarts

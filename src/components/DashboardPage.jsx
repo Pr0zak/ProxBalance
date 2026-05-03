@@ -115,12 +115,12 @@ export default function DashboardPage({
       <div className="max-w-screen-2xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
-          <div className="mb-4 bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-lg">
+          <div className="mb-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
+              <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="text-base font-bold text-red-200 mb-1">API Token Authentication Failed</h3>
-                <p className="text-sm text-red-300/80 mb-3">
+                <h3 className="text-base font-bold text-red-800 dark:text-red-200 mb-1">API Token Authentication Failed</h3>
+                <p className="text-sm text-red-700 dark:text-red-300/80 mb-3">
                   ProxBalance cannot connect to the Proxmox API due to invalid or misconfigured token credentials.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">

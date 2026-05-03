@@ -21,10 +21,10 @@ const FILTERS = [
 ];
 
 const WORKLOAD_BADGE_COLORS = {
-  steady: 'bg-green-900/30 text-green-300',
-  bursty: 'bg-orange-900/30 text-orange-300',
-  growing: 'bg-blue-900/30 text-blue-300',
-  cyclical: 'bg-purple-900/30 text-purple-300',
+  steady: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  bursty: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  growing: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+  cyclical: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
 };
 
 function formatMem(gb) {
@@ -41,9 +41,9 @@ function memPercent(g) {
 function StatusBadge({ status }) {
   const Icon = status === 'migrating' ? Loader : status === 'running' ? Play : Power;
   const cls = status === 'migrating'
-    ? 'bg-blue-900/30 text-blue-300'
+    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
     : status === 'running'
-      ? 'bg-green-900/30 text-green-300'
+      ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
       : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400';
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded font-medium ${cls}`}>
@@ -91,10 +91,10 @@ function TagChips({ guest, canMigrate, handleRemoveTag }) {
   );
   return (
     <div className="flex flex-wrap gap-1">
-      {hasIgnore && <Chip label="ignore" color="bg-yellow-900/40 text-yellow-300" onRemove={() => handleRemoveTag?.(guest, 'ignore')} />}
-      {hasAuto && <Chip label="auto" color="bg-green-900/40 text-green-300" onRemove={() => handleRemoveTag?.(guest, 'auto_migrate_ok')} />}
-      {affinity.map(tag => <Chip key={`a-${tag}`} label={tag} color="bg-purple-900/40 text-purple-300" onRemove={() => handleRemoveTag?.(guest, tag)} />)}
-      {exclude.map(tag => <Chip key={`e-${tag}`} label={tag} color="bg-blue-900/40 text-blue-300" onRemove={() => handleRemoveTag?.(guest, tag)} />)}
+      {hasIgnore && <Chip label="ignore" color="bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300" onRemove={() => handleRemoveTag?.(guest, 'ignore')} />}
+      {hasAuto && <Chip label="auto" color="bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300" onRemove={() => handleRemoveTag?.(guest, 'auto_migrate_ok')} />}
+      {affinity.map(tag => <Chip key={`a-${tag}`} label={tag} color="bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300" onRemove={() => handleRemoveTag?.(guest, tag)} />)}
+      {exclude.map(tag => <Chip key={`e-${tag}`} label={tag} color="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300" onRemove={() => handleRemoveTag?.(guest, tag)} />)}
     </div>
   );
 }
@@ -218,7 +218,7 @@ export default function GuestsTable({
             {sorted.map((g, idx) => {
               const memPct = memPercent(g);
               const hasRec = !!guestRecMap?.[String(g.vmid)];
-              const rowBg = hasRec ? 'bg-orange-900/15' : (idx % 2 === 1 ? 'bg-pb-surface2/60 dark:bg-slate-700/30' : '');
+              const rowBg = hasRec ? 'bg-orange-50 dark:bg-orange-900/15' : (idx % 2 === 1 ? 'bg-pb-surface2/60 dark:bg-slate-700/30' : '');
               return (
                 <tr
                   key={g.vmid}
@@ -228,8 +228,8 @@ export default function GuestsTable({
                   <td className="p-3">
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                       g.type === 'VM'
-                        ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30'
-                        : 'bg-orange-900/30 text-orange-400 border border-orange-800/30'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30'
+                        : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30'
                     }`}>{g.type}</span>
                   </td>
                   <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{g.vmid}</td>
@@ -247,7 +247,7 @@ export default function GuestsTable({
                             onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
                             disabled={!clickable}
                             title={recBadgeTooltip(rec)}
-                            className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 ${clickable ? 'hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
+                            className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 ${clickable ? 'hover:bg-orange-100 dark:hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
                           >
                             ↗ {rec.target_node}
                           </button>
@@ -278,7 +278,7 @@ export default function GuestsTable({
                       {openTagModal && (
                         <button
                           onClick={(e) => { e.stopPropagation(); openTagModal(g); }}
-                          className="p-1 text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 rounded transition-colors"
+                          className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
                           title="Manage tags"
                           aria-label="Manage tags"
                         >

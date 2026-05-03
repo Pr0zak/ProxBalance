@@ -23,7 +23,7 @@ export default function NodeDetailsModal({
         {/* Modal Header - sticky so close button is always reachable */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-pb-border dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Server size={24} className={`shrink-0 ${maintenanceNodes.has(selectedNode.name) ? 'text-yellow-400' : 'text-blue-400'}`} />
+            <Server size={24} className={`shrink-0 ${maintenanceNodes.has(selectedNode.name) ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`} />
             <div className="min-w-0">
               <h3 className="text-base sm:text-xl font-bold text-pb-text dark:text-white truncate">{selectedNode.name}</h3>
               <p className="text-xs sm:text-sm text-pb-text2 dark:text-gray-400">Node Details</p>
@@ -61,7 +61,7 @@ export default function NodeDetailsModal({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="text-blue-400"
+                  className="text-blue-600 dark:text-blue-400"
                   points={generateSparkline(selectedNode.cpu_percent || 0, 100, 40, 0.3)}
                 />
               </svg>
@@ -80,7 +80,7 @@ export default function NodeDetailsModal({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="text-purple-400"
+                  className="text-purple-600 dark:text-purple-400"
                   points={generateSparkline(selectedNode.mem_percent || 0, 100, 40, 0.25)}
                 />
               </svg>
@@ -99,7 +99,7 @@ export default function NodeDetailsModal({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="text-orange-400"
+                  className="text-orange-600 dark:text-orange-400"
                   points={generateSparkline(selectedNode.metrics?.current_iowait || 0, 100, 40, 0.35)}
                 />
               </svg>
@@ -118,7 +118,7 @@ export default function NodeDetailsModal({
             <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3">
               <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
               <div className={`text-lg font-semibold ${
-                selectedNode.status === 'online' ? 'text-green-400' : 'text-red-400'
+                selectedNode.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
               }`}>
                 {selectedNode.status || 'unknown'}
               </div>
@@ -133,9 +133,9 @@ export default function NodeDetailsModal({
 
           {/* Migration Suitability Metrics */}
           {selectedNode.metrics && (
-            <div className="mb-6 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
-                <Activity size={16} className="text-blue-400" />
+                <Activity size={16} className="text-blue-600 dark:text-blue-400" />
                 <h4 className="text-sm font-semibold text-pb-text dark:text-white">Migration Target Suitability</h4>
               </div>
 
@@ -146,10 +146,10 @@ export default function NodeDetailsModal({
                     <div>
                       <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Suitability Rating</div>
                       <div className={`text-2xl font-bold ${
-                        nodeScores[selectedNode.name].suitability_rating >= 70 ? 'text-green-400' :
-                        nodeScores[selectedNode.name].suitability_rating >= 50 ? 'text-yellow-400' :
-                        nodeScores[selectedNode.name].suitability_rating >= 30 ? 'text-orange-400' :
-                        'text-red-400'
+                        nodeScores[selectedNode.name].suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
+                        nodeScores[selectedNode.name].suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                        nodeScores[selectedNode.name].suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                        'text-red-600 dark:text-red-400'
                       }`}>
                         {nodeScores[selectedNode.name].suitability_rating}%
                       </div>
@@ -157,8 +157,8 @@ export default function NodeDetailsModal({
                     <div className="text-right">
                       <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
                         nodeScores[selectedNode.name].suitable
-                          ? 'bg-green-900/30 text-green-400'
-                          : 'bg-red-900/30 text-red-400'
+                          ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                       }`}>
                         {nodeScores[selectedNode.name].suitable ? (
                           <><CheckCircle size={12} /> Suitable</>
@@ -178,15 +178,15 @@ export default function NodeDetailsModal({
                     const total = cats.cpu + cats.memory + cats.iowait + cats.trends + cats.spikes;
                     if (total === 0) return (
                       <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700">
-                        <div className="text-xs text-green-400">No active penalties</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">No active penalties</div>
                       </div>
                     );
                     const segments = [
-                      { key: 'cpu', value: cats.cpu, color: 'bg-red-500', textColor: 'text-red-400', label: 'CPU' },
-                      { key: 'memory', value: cats.memory, color: 'bg-blue-500', textColor: 'text-blue-400', label: 'Memory' },
-                      { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', textColor: 'text-orange-400', label: 'IOWait' },
-                      { key: 'trends', value: cats.trends, color: 'bg-yellow-500', textColor: 'text-yellow-400', label: 'Trends' },
-                      { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', textColor: 'text-purple-400', label: 'Spikes' },
+                      { key: 'cpu', value: cats.cpu, color: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400', label: 'CPU' },
+                      { key: 'memory', value: cats.memory, color: 'bg-blue-500', textColor: 'text-blue-600 dark:text-blue-400', label: 'Memory' },
+                      { key: 'iowait', value: cats.iowait, color: 'bg-orange-500', textColor: 'text-orange-600 dark:text-orange-400', label: 'IOWait' },
+                      { key: 'trends', value: cats.trends, color: 'bg-yellow-500', textColor: 'text-yellow-600 dark:text-yellow-400', label: 'Trends' },
+                      { key: 'spikes', value: cats.spikes, color: 'bg-purple-500', textColor: 'text-purple-600 dark:text-purple-400', label: 'Spikes' },
                     ].filter(s => s.value > 0);
                     return (
                       <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700">
@@ -217,7 +217,7 @@ export default function NodeDetailsModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-white dark:bg-slate-800 rounded p-2">
                   <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">CPU Score</div>
-                  <div className="text-sm font-semibold text-blue-400">
+                  <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                     {(() => {
                       const current = selectedNode.cpu_percent || 0;
                       const short = selectedNode.metrics.avg_cpu || current;
@@ -234,7 +234,7 @@ export default function NodeDetailsModal({
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded p-2">
                   <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Memory Score</div>
-                  <div className="text-sm font-semibold text-purple-400">
+                  <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">
                     {(() => {
                       const current = selectedNode.mem_percent || 0;
                       const short = selectedNode.metrics.avg_mem || current;
@@ -251,7 +251,7 @@ export default function NodeDetailsModal({
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded p-2">
                   <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">IOWait Score</div>
-                  <div className="text-sm font-semibold text-orange-400">
+                  <div className="text-sm font-semibold text-orange-600 dark:text-orange-400">
                     {(() => {
                       const current = selectedNode.metrics.current_iowait || 0;
                       const short = selectedNode.metrics.avg_iowait || current;
@@ -268,17 +268,17 @@ export default function NodeDetailsModal({
                 </div>
               </div>
               <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
-                Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-400 font-semibold">&lt;30%</span> = Poor.
+                Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor.
               </div>
             </div>
           )}
 
           {/* Maintenance Mode Info */}
           {maintenanceNodes.has(selectedNode.name) && (
-            <div className="mb-6 p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+            <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <div className="flex items-start gap-3">
-                <AlertTriangle size={20} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-yellow-200">
+                <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-yellow-800 dark:text-yellow-200">
                   <p className="font-semibold mb-1">Maintenance Mode Active</p>
                   <p>This node is excluded from load balancing and migration recommendations. Use "Plan Evacuation" to migrate all VMs/CTs before performing maintenance tasks.</p>
                 </div>

@@ -367,12 +367,12 @@ const ProxmoxBalanceManager = () => {
         {iconLegendModal}
         <div className="max-w-screen-2xl mx-auto p-4">
           {cluster.error && (
-            <div className="mb-4 bg-red-900/20 border border-red-800/50 rounded-lg p-4">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
+                <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-red-200">Connection Error</h3>
-                  <p className="text-sm text-red-300/80 mt-1">{cluster.error}</p>
+                  <h3 className="text-base font-semibold text-red-800 dark:text-red-200">Connection Error</h3>
+                  <p className="text-sm text-red-700 dark:text-red-300/80 mt-1">{cluster.error}</p>
                   <button onClick={handleRefresh} disabled={cluster.loading} className={`${BTN_DANGER} mt-3 flex items-center gap-2`}>
                     <RefreshCw size={14} className={cluster.loading ? 'animate-spin' : ''} />
                     {cluster.loading ? 'Retrying...' : 'Retry'}
@@ -385,7 +385,7 @@ const ProxmoxBalanceManager = () => {
           {cluster.loading && !cluster.error && (
             <div className={`${GLASS_CARD} p-8 text-center`}>
               <div className="flex flex-col items-center gap-4">
-                <RefreshCw size={36} className="text-blue-400 animate-spin" />
+                <RefreshCw size={36} className="text-blue-600 dark:text-blue-400 animate-spin" />
                 <div>
                   <p className="text-base font-semibold text-pb-text dark:text-white">Loading cluster data...</p>
                   <p className="text-sm text-pb-text2 dark:text-gray-400 mt-1">Please wait 30-60 seconds for initial data collection</p>
@@ -395,12 +395,12 @@ const ProxmoxBalanceManager = () => {
           )}
 
           {!cluster.loading && !cluster.error && (
-            <div className="bg-blue-900/20 border border-blue-800/50 rounded-lg p-8 text-center">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-8 text-center">
               <div className="flex flex-col items-center gap-4">
-                <Info size={36} className="text-blue-400" />
+                <Info size={36} className="text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="text-base font-semibold text-blue-200">No Data Available</p>
-                  <p className="text-sm text-blue-300/70 mt-1">Waiting for cluster data collection. Please wait 30-60 seconds and refresh.</p>
+                  <p className="text-base font-semibold text-blue-800 dark:text-blue-200">No Data Available</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300/70 mt-1">Waiting for cluster data collection. Please wait 30-60 seconds and refresh.</p>
                   <button onClick={handleRefresh} className={`${BTN_PRIMARY} mt-4 flex items-center gap-2 mx-auto`}>
                     <RefreshCw size={14} /> Refresh
                   </button>

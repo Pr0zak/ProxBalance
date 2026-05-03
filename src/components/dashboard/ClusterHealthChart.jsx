@@ -106,7 +106,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
             <div className="flex items-center gap-2 text-sm">
               <span className="font-bold text-pb-text dark:text-white tabular-nums">{latest.toFixed(1)}</span>
               {trend != null && (
-                <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
                 </span>
               )}

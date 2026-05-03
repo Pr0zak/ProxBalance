@@ -57,12 +57,12 @@ export default function QuickSetupSection({
         >
           {confirmEnableAutomation && (
             <div className="px-4 pb-4">
-              <div className="bg-orange-900/20 border border-orange-700 rounded-lg p-4">
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle size={20} className="text-orange-400 shrink-0 mt-0.5" />
+                  <AlertTriangle size={20} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <div className="font-semibold text-orange-200 mb-2">Enable Automated Migrations?</div>
-                    <p className="text-sm text-orange-300 mb-3">
+                    <div className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Enable Automated Migrations?</div>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
                       The system will automatically migrate VMs based on your configured rules.
                     </p>
                     <div className="flex gap-2">
@@ -71,7 +71,7 @@ export default function QuickSetupSection({
                           saveAutomationConfig({ enabled: true });
                           setConfirmEnableAutomation(false);
                         }}
-                        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
+                        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
                       >
                         <Power size={14} />
                         Enable Automation
@@ -107,12 +107,12 @@ export default function QuickSetupSection({
         >
           {confirmDisableDryRun && (
             <div className="px-4 pb-4">
-              <div className="bg-red-900/20 border-2 border-red-600 rounded-lg p-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-600 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle size={24} className="text-red-400 shrink-0 mt-0.5" />
+                  <AlertTriangle size={24} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <div className="font-bold text-red-200 mb-2 text-lg">DISABLE DRY RUN MODE?</div>
-                    <div className="text-sm text-red-300 space-y-2 mb-4">
+                    <div className="font-bold text-red-800 dark:text-red-200 mb-2 text-lg">DISABLE DRY RUN MODE?</div>
+                    <div className="text-sm text-red-700 dark:text-red-300 space-y-2 mb-4">
                       <p className="font-semibold">This will enable REAL automated migrations!</p>
                       <p>VMs will actually be migrated automatically based on your configured rules.</p>
                       <p className="font-semibold">Are you absolutely sure?</p>
@@ -123,7 +123,7 @@ export default function QuickSetupSection({
                           saveAutomationConfig({ dry_run: false });
                           setConfirmDisableDryRun(false);
                         }}
-                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-pb-text dark:text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-pb-text dark:text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
                       >
                         <AlertTriangle size={14} />
                         Yes, Disable Dry Run
@@ -153,9 +153,9 @@ export default function QuickSetupSection({
             {[1, 2, 3].map((level) => {
               const isActive = settings.sensitivity === level;
               const colors = {
-                1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-900/20 border border-gray-600',
-                2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-900/20 border border-gray-600',
-                3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-900/20 border border-gray-600',
+                1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
+                2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
+                3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
               };
               return (
                 <button

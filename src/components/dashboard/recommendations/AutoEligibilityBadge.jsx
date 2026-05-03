@@ -29,7 +29,7 @@ export default function AutoEligibilityBadge({ rec, automationStatus }) {
   if (blockReasons.length > 0) {
     return (
       <span
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-900/40 text-red-300 border border-red-800/40"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/40"
         title={`Auto would skip: ${blockReasons.join('; ')}`}
       >
         <AlertTriangle size={10} /> Auto: blocked
@@ -39,7 +39,7 @@ export default function AutoEligibilityBadge({ rec, automationStatus }) {
 
   if (automationStatus.dry_run) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-900/40 text-yellow-300 border border-yellow-800/40" title="Auto-migration is in dry-run mode — would simulate only">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800/40" title="Auto-migration is in dry-run mode — would simulate only">
         <Eye size={10} /> Auto: dry-run
       </span>
     );
@@ -47,7 +47,7 @@ export default function AutoEligibilityBadge({ rec, automationStatus }) {
 
   if (!automationStatus.timer_active) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-900/40 text-orange-300 border border-orange-800/40" title="Auto-migration timer is paused — resume to allow execution">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40" title="Auto-migration timer is paused — resume to allow execution">
         <Pause size={10} /> Auto: paused
       </span>
     );
@@ -55,7 +55,7 @@ export default function AutoEligibilityBadge({ rec, automationStatus }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-900/40 text-green-300 border border-green-800/40"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800/40"
       title="Auto-migration would execute this on the next run unless safety checks intervene"
     >
       <CheckCircle size={10} /> Auto-eligible
