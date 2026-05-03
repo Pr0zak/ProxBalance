@@ -80,6 +80,7 @@ export default function ClusterSection(props) {
           setShowTagModal={props.setShowTagModal}
           nodeRecCounts={props.nodeRecCounts}
           guestRecMap={props.guestRecMap}
+          setConfirmMigration={props.setConfirmMigration}
         />
       )}
       {effectiveTab === 'guests' && (
@@ -92,6 +93,7 @@ export default function ClusterSection(props) {
           setTagModalGuest={props.setTagModalGuest}
           setShowTagModal={props.setShowTagModal}
           guestRecMap={props.guestRecMap}
+          setConfirmMigration={props.setConfirmMigration}
         />
       )}
       {effectiveTab === 'map' && (
