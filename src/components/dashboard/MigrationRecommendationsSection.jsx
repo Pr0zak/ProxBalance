@@ -31,6 +31,8 @@ export default function MigrationRecommendationsSection({
   nodeScores,
   // API
   API_BASE,
+  // For per-rec auto-eligibility badges
+  automationStatus,
   // When embedded (e.g. inside a tab), suppress the section title block.
   embedded = false,
 }) {
@@ -258,6 +260,7 @@ export default function MigrationRecommendationsSection({
                   canMigrate={canMigrate}
                   collapsedSections={collapsedSections}
                   setCollapsedSections={setCollapsedSections}
+                  automationStatus={automationStatus}
                 />
               ))}
             </div>

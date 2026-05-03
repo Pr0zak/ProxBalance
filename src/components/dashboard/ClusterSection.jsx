@@ -5,6 +5,7 @@ import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './MigrationRecommendationsSection.jsx';
+import ClusterHealthChart from './ClusterHealthChart.jsx';
 
 const { useState, useEffect, useRef } = React;
 
@@ -170,7 +171,9 @@ export default function ClusterSection(props) {
         />
       )}
       {effectiveTab === 'charts' && (
-        <NodeStatusSection
+        <>
+          <ClusterHealthChart scoreHistory={props.scoreHistory} />
+          <NodeStatusSection
           embedded
           data={props.data}
           showPredicted={props.showPredicted}
@@ -183,8 +186,8 @@ export default function ClusterSection(props) {
           setChartPeriod={props.setChartPeriod}
           nodeScores={props.nodeScores}
           generateSparkline={props.generateSparkline}
-          darkMode={props.darkMode}
         />
+        </>
       )}
       {effectiveTab === 'recommendations' && (
           <MigrationRecommendationsSection
@@ -211,6 +214,7 @@ export default function ClusterSection(props) {
             setOpenPenaltyConfigOnAutomation={props.setOpenPenaltyConfigOnAutomation}
             nodeScores={props.nodeScores}
             API_BASE={props.API_BASE}
+            automationStatus={props.automationStatus}
           />
       )}
     </div>
