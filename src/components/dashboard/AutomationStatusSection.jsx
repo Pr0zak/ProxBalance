@@ -24,15 +24,23 @@ export default function AutomationStatusSection({
   setCancelMigrationModal,
   runHistory,
   expandedRun,
-  setExpandedRun
+  setExpandedRun,
+  // When slim, suppress the status header block (icon badge / title / button bar)
+  // — the parent owns the status indicator. Chart + run history still render.
+  slim = false,
+  // When embedded (inside a tab), drop the GLASS_CARD wrapper.
+  embedded = false,
 }) {
   const [chartTab, setChartTab] = useState('migrations');
 
   if (!automationStatus) return null;
 
+  const Wrapper = embedded ? React.Fragment : 'div';
+  const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
+
   return (
-        <div className={`${GLASS_CARD} overflow-hidden`}>
-            {/* ── Header ── */}
+        <Wrapper {...wrapperProps}>
+            {!slim && (<>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={automationStatus.enabled
@@ -186,8 +194,9 @@ export default function AutomationStatusSection({
                   return null;
                 })()}
             </div>
+            </>)}
 
-            {!collapsedSections.automatedMigrations && (
+            {(!collapsedSections.automatedMigrations || slim) && (
             <>
             {runNowMessage && (
               <div className={`mb-4 p-3 rounded-lg text-sm ${
@@ -949,6 +958,6 @@ export default function AutomationStatusSection({
             )}
             </>
             )}
-          </div>
+          </Wrapper>
   );
 }
