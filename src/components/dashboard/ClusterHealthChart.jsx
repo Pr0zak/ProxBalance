@@ -1,15 +1,54 @@
 import { GLASS_CARD } from '../../utils/designTokens.js';
 
+const { useState } = React;
+
+const PERIODS = [
+  { id: '1d',  label: '1d',  ms: 24 * 60 * 60 * 1000 },
+  { id: '7d',  label: '7d',  ms: 7 * 24 * 60 * 60 * 1000 },
+  { id: '30d', label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
+  { id: '90d', label: '90d', ms: 90 * 24 * 60 * 60 * 1000 },
+  { id: 'all', label: 'All', ms: null },
+];
+
 /**
- * Cluster-wide cluster_health over time, derived from scoreHistory entries.
- * Optionally overlays migration-run markers on the chart so you can see when
- * automigrate took action and how it correlated with health changes.
+ * Cluster-wide cluster_health over time. User-adjustable period selector
+ * (1d/7d/30d/90d/all, default 30d) filters both the line and the migration
+ * markers. Markers are status-colored triangles for runs with executed
+ * migrations: green=success, yellow=partial, red=failed.
  */
 export default function ClusterHealthChart({ scoreHistory, runHistory }) {
+  const [period, setPeriod] = useState(() => localStorage.getItem('clusterHealthChartPeriod') || '30d');
+  const setPeriodPersisted = (id) => {
+    setPeriod(id);
+    localStorage.setItem('clusterHealthChartPeriod', id);
+  };
+
   if (!scoreHistory || scoreHistory.length < 2) return null;
-  const points = scoreHistory.map(e => ({ t: new Date(e.timestamp).getTime(), v: e.cluster_health }))
+
+  const allPoints = scoreHistory
+    .map(e => ({ t: new Date(e.timestamp).getTime(), v: e.cluster_health }))
     .filter(p => typeof p.v === 'number' && !isNaN(p.t));
-  if (points.length < 2) return null;
+  if (allPoints.length < 2) return null;
+
+  // Anchor the period to the latest sample so a stale collector doesn't blank the chart.
+  const latestT = allPoints[allPoints.length - 1].t;
+  const periodCfg = PERIODS.find(p => p.id === period) || PERIODS[2];
+  const cutoff = periodCfg.ms == null ? -Infinity : latestT - periodCfg.ms;
+  const points = allPoints.filter(p => p.t >= cutoff);
+
+  if (points.length < 2) {
+    return (
+      <div className={`${GLASS_CARD} mb-3`}>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <h3 className="text-base font-bold text-white">Cluster Health Over Time</h3>
+          <PeriodPills value={period} onChange={setPeriodPersisted} />
+        </div>
+        <div className="text-sm text-gray-500 italic py-6 text-center">
+          Not enough data in the last {periodCfg.label} — pick a wider range.
+        </div>
+      </div>
+    );
+  }
 
   const w = 600, h = 80, pad = 4;
   const tStart = points[0].t;
@@ -28,7 +67,7 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
   const latest = points[points.length - 1].v;
   const trend = latest - points[0].v;
 
-  // Migration markers — runs with executed migrations within scoreHistory's window
+  // Migration markers — only those within the selected period
   const markers = (runHistory || [])
     .filter(r => (r.migrations_executed || 0) > 0)
     .map(r => {
@@ -52,18 +91,21 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
   return (
     <div className={`${GLASS_CARD} mb-3`}>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <div>
+        <div className="min-w-0">
           <h3 className="text-base font-bold text-white">Cluster Health Over Time</h3>
           <p className="text-[11px] text-gray-500">
-            From {new Date(tStart).toLocaleDateString()} to now
+            {new Date(tStart).toLocaleDateString()} → {new Date(tEnd).toLocaleDateString()}
             {markers.length > 0 && ` · ${markers.length} migration run${markers.length !== 1 ? 's' : ''} marked`}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-bold text-white tabular-nums">{latest.toFixed(1)}</span>
-          <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
-          </span>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-bold text-white tabular-nums">{latest.toFixed(1)}</span>
+            <span className={`text-xs font-semibold tabular-nums ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(1)}
+            </span>
+          </div>
+          <PeriodPills value={period} onChange={setPeriodPersisted} />
         </div>
       </div>
       <svg viewBox={`0 0 ${w} ${h + 8}`} className="w-full" style={{ height: 88 }} preserveAspectRatio="none">
@@ -101,6 +143,26 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
           <span className="ml-auto">hover a marker for detail</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function PeriodPills({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg bg-slate-800/60 border border-slate-700/50 p-0.5">
+      {PERIODS.map(p => (
+        <button
+          key={p.id}
+          onClick={() => onChange(p.id)}
+          className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+            value === p.id
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          {p.label}
+        </button>
+      ))}
     </div>
   );
 }
