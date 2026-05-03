@@ -1,12 +1,14 @@
 import { GLASS_CARD } from '../../utils/designTokens.js';
 import NodeSummaryTable from './NodeSummaryTable.jsx';
+import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
 
 const { useState, useEffect } = React;
 
 const TABS = [
-  { id: 'table', label: 'Table' },
+  { id: 'table', label: 'Nodes' },
+  { id: 'guests', label: 'Guests' },
   { id: 'map', label: 'Map' },
   { id: 'charts', label: 'Charts' },
 ];
@@ -59,6 +61,17 @@ export default function ClusterSection(props) {
           data={props.data}
           nodeScores={props.nodeScores}
           onNodeClick={props.setSelectedNode}
+          onGuestClick={props.setSelectedGuestDetails}
+          canMigrate={props.canMigrate}
+          guestProfiles={props.guestProfiles}
+          handleRemoveTag={props.handleRemoveTag}
+          setTagModalGuest={props.setTagModalGuest}
+          setShowTagModal={props.setShowTagModal}
+        />
+      )}
+      {activeTab === 'guests' && (
+        <GuestsTable
+          data={props.data}
           onGuestClick={props.setSelectedGuestDetails}
           canMigrate={props.canMigrate}
           guestProfiles={props.guestProfiles}

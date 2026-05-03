@@ -437,7 +437,7 @@ export default function NodeSummaryTable({
                   return (
                     <React.Fragment key={node.name}>
                       <tr
-                        className={`${TABLE_ROW} ${idx % 2 === 1 ? 'bg-slate-800/30' : ''} cursor-pointer`}
+                        className={`${TABLE_ROW} ${idx % 2 === 1 ? 'bg-slate-700/30' : ''} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
                         <td className="p-3 w-8">
