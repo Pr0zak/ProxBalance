@@ -22,7 +22,7 @@ export default function SkippedGuests({
       {!collapsedSections.skippedGuests && (
         <div className="mt-2 space-y-1">
           {recommendationData.skipped_guests.slice(0, 20).map((skipped, idx) => (
-            <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-gray-700/30 rounded-xl border border-pb-border dark:border-slate-600/30">
+            <div key={idx} className="flex items-start gap-2 text-xs p-2 bg-pb-surface2 dark:bg-gray-700/30 rounded-xl border border-pb-border dark:border-slate-600/30">
               <span className={`shrink-0 mt-0.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold ${
                 skipped.reason === 'insufficient_improvement'
                   ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400'

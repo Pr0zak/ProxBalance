@@ -14,7 +14,7 @@ export default function BatchImpact({ recommendationData }) {
           const memDelta = after.mem - before.mem;
           const guestDelta = after.guest_count - before.guest_count;
           return (
-            <div key={node} className="p-2 bg-gray-700/30 rounded">
+            <div key={node} className="p-2 bg-pb-surface2 dark:bg-gray-700/30 rounded">
               <div className="font-semibold text-pb-text dark:text-gray-200 mb-1">{node}</div>
               <div className="grid grid-cols-3 gap-1">
                 <div>

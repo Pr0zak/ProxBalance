@@ -154,7 +154,7 @@ export default function IconLegend({ onClose }) {
                 {group.icons.map(({ Icon, name }) => (
                   <div
                     key={name}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-700/50 text-sm"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-pb-surface2 dark:bg-gray-700/50 text-sm"
                   >
                     <Icon size={16} className="text-pb-text dark:text-gray-300 flex-shrink-0" />
                     <span className="text-pb-text dark:text-gray-200 truncate">{name}</span>

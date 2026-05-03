@@ -21,14 +21,14 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             checked={automationConfig.notifications?.enabled || false}
                             onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, enabled: e.target.checked } })}
                             className="sr-only peer" />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                          <div className="w-11 h-6 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-200 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                         </label>
                       </div>
 
                       {automationConfig.notifications?.enabled && (
                       <div className="space-y-4 mt-4">
                         {/* Migration Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">Migration Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer">
@@ -76,7 +76,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Cluster Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">Cluster Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer" title="Alert when a node goes offline or comes back online">
@@ -101,7 +101,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* System Events */}
-                        <div className="p-3 bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">System Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer" title="Alert when new migration recommendations are generated">
@@ -126,7 +126,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Pushover */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -142,7 +142,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.pushover = { ...(providers.pushover || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-pushover" className="hidden p-3 pt-0 space-y-3">
@@ -226,7 +226,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Email (SMTP) */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -242,7 +242,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.email = { ...(providers.email || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-email" className="hidden p-3 pt-0 space-y-3">
@@ -332,7 +332,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Telegram */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.telegram = { ...(providers.telegram || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-telegram" className="hidden p-3 pt-0 space-y-3">
@@ -381,7 +381,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Discord */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.discord = { ...(providers.discord || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-discord" className="hidden p-3 pt-0 space-y-3">
@@ -417,7 +417,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Slack */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -433,7 +433,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.slack = { ...(providers.slack || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-slack" className="hidden p-3 pt-0 space-y-3">
@@ -453,7 +453,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Generic Webhook */}
-                        <div className="bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
                           <div className="flex items-center justify-between p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2">
@@ -469,7 +469,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                   providers.webhook = { ...(providers.webhook || {}), enabled: e.target.checked };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
+                              <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
                           </div>
                           <div id="settings-notif-webhook" className="hidden p-3 pt-0 space-y-3">
@@ -508,7 +508,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                            className="px-4 py-2 bg-pb-accent hover:bg-pb-accent-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
                             <Bell size={14} />
                             Send Test Notification

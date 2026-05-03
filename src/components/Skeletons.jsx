@@ -2,7 +2,7 @@
 // Skeleton loaders for progressive UI rendering
 
 export const SkeletonCard = () => (
-  <div className="backdrop-blur-xl bg-gray-800/60 rounded-2xl shadow-lg shadow-black/20 border border-gray-700/50 p-6">
+  <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-800/60 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-black/20 border border-pb-border dark:border-gray-700/50 p-6">
     <div className="skeleton h-6 w-32 mb-4"></div>
     <div className="skeleton h-24 w-full mb-3"></div>
     <div className="skeleton h-4 w-3/4"></div>
@@ -10,7 +10,7 @@ export const SkeletonCard = () => (
 );
 
 export const SkeletonNodeCard = () => (
-  <div className="backdrop-blur-xl bg-gray-800/60 rounded-2xl shadow-lg shadow-black/20 border border-gray-700/50 p-6">
+  <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-800/60 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-black/20 border border-pb-border dark:border-gray-700/50 p-6">
     <div className="flex items-center justify-between mb-4">
       <div className="skeleton h-6 w-24"></div>
       <div className="skeleton h-8 w-16 rounded-full"></div>
@@ -24,7 +24,7 @@ export const SkeletonNodeCard = () => (
 );
 
 export const SkeletonClusterMap = () => (
-  <div className="backdrop-blur-xl bg-gray-800/60 rounded-2xl shadow-lg shadow-black/20 border border-gray-700/50 p-6">
+  <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-800/60 rounded-2xl shadow-lg shadow-slate-200/50 dark:shadow-black/20 border border-pb-border dark:border-gray-700/50 p-6">
     <div className="skeleton h-6 w-40 mb-6"></div>
     <div className="skeleton h-96 w-full"></div>
   </div>
