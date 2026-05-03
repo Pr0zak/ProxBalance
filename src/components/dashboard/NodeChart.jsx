@@ -4,7 +4,7 @@ const { useRef, useEffect } = React;
  * Renders a Chart.js line chart for a single node's trend data.
  * Creates/destroys the chart instance internally — no parent chart management needed.
  */
-export default function NodeChart({ nodeName, trendData, chartPeriod, darkMode, nodeScore }) {
+export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
@@ -39,7 +39,8 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, darkMode, 
     const sampleRate = { '1h': 2, '6h': 5, '12h': 10, '24h': 20, '7d': 20, '30d': 25, '1y': 25 }[chartPeriod] || 1;
     const sampled = filtered.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i % sampleRate === 0);
 
-    const isDark = darkMode;
+    // App is dark-only; hardcode chart theme.
+    const isDark = true;
     const ctx = canvasRef.current.getContext('2d');
 
     // Build annotation for suitability score line
@@ -101,7 +102,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, darkMode, 
         chartRef.current = null;
       }
     };
-  }, [trendData, chartPeriod, darkMode, nodeScore?.suitability_rating]);
+  }, [trendData, chartPeriod, nodeScore?.suitability_rating]);
 
   return <canvas ref={canvasRef}></canvas>;
 }

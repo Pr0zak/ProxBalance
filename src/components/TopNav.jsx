@@ -1,7 +1,7 @@
-import { ProxBalanceLogo, Sun, Moon, RefreshCw, GitBranch, GitHub } from './Icons.jsx';
+import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
-  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, BTN_ICON
+  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE
 } from '../utils/designTokens.js';
 
 const { useMemo } = React;
@@ -15,7 +15,6 @@ const TABS = [
 
 export default function TopNav({
   currentPage, setCurrentPage,
-  darkMode, toggleDarkMode,
   connected, lastUpdate,
   onRefresh, refreshing,
   systemInfo, onShowUpdate, onShowBranches
@@ -111,10 +110,6 @@ export default function TopNav({
               <GitHub size={16} />
             </a>
 
-            {/* Dark mode toggle */}
-            <button onClick={toggleDarkMode} className={BTN_ICON} title={darkMode ? 'Light Mode' : 'Dark Mode'}>
-              {darkMode ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} />}
-            </button>
           </div>
         </div>
       </div>

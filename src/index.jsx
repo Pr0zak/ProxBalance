@@ -6,7 +6,6 @@ import TopNav from './components/TopNav.jsx';
 import IconLegend from './components/IconLegend.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr } from './utils/formatters.js';
-import { useDarkMode } from './hooks/useDarkMode.js';
 import { useUIState } from './hooks/useUIState.js';
 import { useAuth } from './hooks/useAuth.js';
 import { useConfig } from './hooks/useConfig.js';
@@ -31,7 +30,6 @@ const ProxmoxBalanceManager = () => {
   const isMobile = useIsMobile(640);
 
   // Initialize hooks
-  const { darkMode, setDarkMode, toggleDarkMode } = useDarkMode(true);
   const ui = useUIState();
   const auth = useAuth(API_BASE);
   const automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) });
@@ -229,7 +227,7 @@ const ProxmoxBalanceManager = () => {
 
   // Icon Legend modal - rendered on all pages
   const iconLegendModal = ui.showIconLegend ? (
-    <IconLegend darkMode={darkMode} onClose={() => ui.setShowIconLegend(false)} />
+    <IconLegend onClose={() => ui.setShowIconLegend(false)} />
   ) : null;
 
   // Shared TopNav across all pages
@@ -237,8 +235,6 @@ const ProxmoxBalanceManager = () => {
     <TopNav
       currentPage={ui.currentPage}
       setCurrentPage={ui.setCurrentPage}
-      darkMode={darkMode}
-      toggleDarkMode={toggleDarkMode}
       connected={!!cluster.data && !cluster.error}
       lastUpdate={cluster.lastUpdate}
       onRefresh={handleRefresh}
@@ -252,7 +248,6 @@ const ProxmoxBalanceManager = () => {
   // Settings Page
   if (ui.currentPage === 'settings') {
     return <div className={PAGE_BG}>{topNav}{iconLegendModal}<SettingsPage
-      darkMode={darkMode} setDarkMode={setDarkMode}
       setCurrentPage={ui.setCurrentPage}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
       aiProvider={ai.aiProvider} setAiProvider={ai.setAiProvider}
@@ -418,13 +413,10 @@ const ProxmoxBalanceManager = () => {
     data={cluster.data} setData={cluster.setData}
     loading={cluster.loading} error={cluster.error} setError={cluster.setError}
     config={configHook.config}
-    darkMode={darkMode} toggleDarkMode={toggleDarkMode}
     setCurrentPage={ui.setCurrentPage}
     setScrollToApiConfig={ui.setScrollToApiConfig}
     setOpenPenaltyConfigOnAutomation={configHook.setOpenPenaltyConfigOnAutomation}
     tokenAuthError={auth.tokenAuthError} setTokenAuthError={auth.setTokenAuthError}
-    dashboardHeaderCollapsed={ui.dashboardHeaderCollapsed} setDashboardHeaderCollapsed={ui.setDashboardHeaderCollapsed}
-    handleLogoHover={ui.handleLogoHover} logoBalancing={ui.logoBalancing}
     clusterHealth={cluster.clusterHealth}
     systemInfo={updates.systemInfo}
     showUpdateModal={updates.showUpdateModal} setShowUpdateModal={updates.setShowUpdateModal}

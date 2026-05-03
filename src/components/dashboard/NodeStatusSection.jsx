@@ -11,7 +11,6 @@ export default function NodeStatusSection({
   chartPeriod, setChartPeriod,
   nodeScores,
   generateSparkline,
-  darkMode,
   embedded = false,
 }) {
   // When embedded, the parent owns the section card and header; always render expanded.
@@ -348,7 +347,6 @@ export default function NodeStatusSection({
                       nodeName={node.name}
                       trendData={node.trend_data}
                       chartPeriod={chartPeriod}
-                      darkMode={darkMode}
                       nodeScore={nodeScores?.[node.name]}
                     />
                   </div>

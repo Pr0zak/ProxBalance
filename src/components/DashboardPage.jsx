@@ -22,14 +22,10 @@ import SystemModals from './dashboard/SystemModals.jsx';
 export default function DashboardPage({
   // Data & loading
   data, setData, loading, error, setError, config,
-  // Dark mode
-  darkMode, toggleDarkMode,
   // Navigation
   setCurrentPage, setScrollToApiConfig, setOpenPenaltyConfigOnAutomation,
   // Token auth
   tokenAuthError, setTokenAuthError,
-  // Dashboard header
-  dashboardHeaderCollapsed, setDashboardHeaderCollapsed, handleLogoHover, logoBalancing,
   // Cluster health
   clusterHealth,
   // System info & updates
@@ -173,7 +169,6 @@ export default function DashboardPage({
           recommendations={recommendations}
           chartPeriod={chartPeriod}
           setChartPeriod={setChartPeriod}
-          darkMode={darkMode}
           generateSparkline={generateSparkline}
           setSelectedNode={setSelectedNode}
           setSelectedGuestDetails={setSelectedGuestDetails}
@@ -253,6 +248,7 @@ export default function DashboardPage({
             setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
             nodeScores={nodeScores}
             API_BASE={API_BASE}
+            automationStatus={automationStatus}
           />
         )}
         {promotedSections.map && (
@@ -287,7 +283,6 @@ export default function DashboardPage({
             setChartPeriod={setChartPeriod}
             nodeScores={nodeScores}
             generateSparkline={generateSparkline}
-            darkMode={darkMode}
           />
         )}
 

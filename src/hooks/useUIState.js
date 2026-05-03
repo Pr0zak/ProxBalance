@@ -6,14 +6,8 @@ export function useUIState() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showIconLegend, setShowIconLegend] = useState(false);
   const [scrollToApiConfig, setScrollToApiConfig] = useState(false);
-  const [logoBalancing, setLogoBalancing] = useState(false);
   const [countdownTick, setCountdownTick] = useState(0);
   const [refreshElapsed, setRefreshElapsed] = useState(0);
-
-  const [dashboardHeaderCollapsed, setDashboardHeaderCollapsed] = useState(() => {
-    const saved = localStorage.getItem('dashboardHeaderCollapsed');
-    return saved ? JSON.parse(saved) : false;
-  });
 
   const [nodeGridColumns, setNodeGridColumns] = useState(() => {
     const saved = localStorage.getItem('nodeGridColumns');
@@ -85,10 +79,6 @@ export function useUIState() {
     localStorage.setItem('showPoweredOffGuests', showPoweredOffGuests.toString());
   }, [showPoweredOffGuests]);
 
-  useEffect(() => {
-    localStorage.setItem('dashboardHeaderCollapsed', JSON.stringify(dashboardHeaderCollapsed));
-  }, [dashboardHeaderCollapsed]);
-
   // Update countdown timer every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -111,29 +101,19 @@ export function useUIState() {
     }));
   };
 
-  const handleLogoHover = () => {
-    if (!logoBalancing) {
-      setLogoBalancing(true);
-      setTimeout(() => setLogoBalancing(false), 2000);
-    }
-  };
-
   return {
     currentPage, setCurrentPage,
     showSettings, setShowSettings,
     showAdvancedSettings, setShowAdvancedSettings,
     showIconLegend, setShowIconLegend,
     scrollToApiConfig, setScrollToApiConfig,
-    logoBalancing,
     countdownTick,
     refreshElapsed, setRefreshElapsed,
-    dashboardHeaderCollapsed, setDashboardHeaderCollapsed,
     nodeGridColumns, setNodeGridColumns,
     collapsedSections, setCollapsedSections,
     clusterMapViewMode, setClusterMapViewMode,
     showPoweredOffGuests, setShowPoweredOffGuests,
     guestModalCollapsed, setGuestModalCollapsed,
     toggleSection,
-    handleLogoHover
   };
 }

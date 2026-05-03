@@ -4,12 +4,14 @@ import {
   TrendingUp, TrendingDown, Minus, Zap, Activity
 } from '../../Icons.jsx';
 import { INNER_CARD } from '../../../utils/designTokens.js';
+import AutoEligibilityBadge from './AutoEligibilityBadge.jsx';
 
 export default function RecommendationCard({
   rec, idx, penaltyConfig, recommendationData,
   migrationStatus, setMigrationStatus, completedMigrations, guestsMigrating, migrationProgress,
   cancelMigration, setConfirmMigration, canMigrate,
-  collapsedSections, setCollapsedSections
+  collapsedSections, setCollapsedSections,
+  automationStatus,
 }) {
   const key = `${rec.vmid}-${rec.target_node}`;
   const status = migrationStatus[key];
@@ -55,6 +57,7 @@ export default function RecommendationCard({
                 TARGET CHANGED
               </span>
             )}
+            {!isCompleted && <AutoEligibilityBadge rec={rec} automationStatus={automationStatus} />}
             {isCompleted && <CheckCircle size={18} className="text-green-400" />}
             {status === 'failed' && <XCircle size={18} className="text-red-400" />}
           </div>

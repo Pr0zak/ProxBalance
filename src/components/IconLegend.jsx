@@ -108,7 +108,7 @@ const iconGroups = [
   },
 ];
 
-export default function IconLegend({ darkMode, onClose }) {
+export default function IconLegend({ onClose }) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredGroups = iconGroups.map(group => ({
