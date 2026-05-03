@@ -1,7 +1,7 @@
 import { GLASS_CARD, INNER_CARD, iconBadge, ICON, MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 import { ClipboardList, CheckCircle, XCircle, MinusCircle, ChevronDown, X } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
-import RunDetailBlock from './RunDetailBlock.jsx';
+import RunDetailBlock, { RunSummaryRow } from './RunDetailBlock.jsx';
 
 const { useState } = React;
 
@@ -99,8 +99,7 @@ function TimelineVariant({ runHistory, lastRun }) {
       </div>
       {lastRun && typeof lastRun === 'object' && (
         <div className="mt-4 pt-4 border-t border-slate-700/50">
-          <div className="text-xs font-semibold text-gray-300 mb-2">Most recent run</div>
-          <RunDetailBlock run={lastRun} compact />
+          <RunSummaryRow run={lastRun} label="Most recent" />
         </div>
       )}
       <DetailModal run={selected} onClose={() => setSelected(null)} />
@@ -243,8 +242,7 @@ function StatSparklineVariant({ runHistory, lastRun }) {
       </div>
       {lastRun && typeof lastRun === 'object' && (
         <div className="pt-3 border-t border-slate-700/50">
-          <div className="text-xs font-semibold text-gray-300 mb-2">Last run</div>
-          <RunDetailBlock run={lastRun} compact />
+          <RunSummaryRow run={lastRun} label="Last run" />
         </div>
       )}
       <RunListWithModal runs={runHistory.slice(0, 20)} />
