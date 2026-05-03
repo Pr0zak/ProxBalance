@@ -12,6 +12,7 @@ export function useAutomation(API_BASE, deps = {}) {
   });
   const [loadingAutomationStatus, setLoadingAutomationStatus] = useState(false);
   const [runHistory, setRunHistory] = useState([]);
+  const [migrationHistory, setMigrationHistory] = useState([]);
   const [loadingRunHistory, setLoadingRunHistory] = useState(false);
   const [expandedRun, setExpandedRun] = useState(null);
   const [automationConfig, setAutomationConfig] = useState({
@@ -84,6 +85,18 @@ export function useAutomation(API_BASE, deps = {}) {
       console.error('Failed to fetch run history:', err);
     } finally {
       setLoadingRunHistory(false);
+    }
+  };
+
+  const fetchMigrationHistory = async (limit = 2000) => {
+    try {
+      const response = await fetch(`${API_BASE}/automigrate/history?type=migrations&limit=${limit}`);
+      const result = await response.json();
+      if (result.success) {
+        setMigrationHistory(result.migrations || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch migration history:', err);
     }
   };
 
@@ -222,6 +235,7 @@ export function useAutomation(API_BASE, deps = {}) {
     automationStatus, setAutomationStatus,
     loadingAutomationStatus,
     runHistory, expandedRun, setExpandedRun,
+    migrationHistory, fetchMigrationHistory,
     automationConfig, setAutomationConfig,
     savingAutomationConfig,
     testResult, setTestResult,

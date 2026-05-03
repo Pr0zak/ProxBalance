@@ -13,10 +13,10 @@ const PERIODS = [
 /**
  * Cluster-wide cluster_health over time. User-adjustable period selector
  * (1d/7d/30d/90d/all, default 30d) filters both the line and the migration
- * markers. Markers are status-colored triangles for runs with executed
- * migrations: green=success, yellow=partial, red=failed.
+ * markers. Markers are status-colored triangles per migration in
+ * migration_history (green=completed, yellow=other, red=failed).
  */
-export default function ClusterHealthChart({ scoreHistory, runHistory }) {
+export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
   const [period, setPeriod] = useState(() => localStorage.getItem('clusterHealthChartPeriod') || '30d');
   const setPeriodPersisted = (id) => {
     setPeriod(id);
@@ -67,24 +67,23 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
   const latest = points[points.length - 1].v;
   const trend = latest - points[0].v;
 
-  // Migration markers — only those within the selected period
-  const markers = (runHistory || [])
-    .filter(r => (r.migrations_executed || 0) > 0)
-    .map(r => {
-      const t = new Date(r.timestamp).getTime();
+  // Per-migration markers (from migration_history) within the selected period.
+  const markers = (migrationHistory || [])
+    .map(m => {
+      const t = new Date(m.timestamp).getTime();
       if (isNaN(t) || t < tStart || t > tEnd) return null;
-      const ok = r.migrations_successful || 0;
-      const total = r.migrations_executed || 0;
-      const failed = total - ok;
-      let color = 'fill-green-500';
-      if (r.status === 'failed' || failed === total) color = 'fill-red-500';
-      else if (r.status === 'partial' || failed > 0) color = 'fill-yellow-500';
-      const x = xFor(t);
-      const dur = r.duration_seconds != null
-        ? (r.duration_seconds < 60 ? `${r.duration_seconds}s` : `${Math.floor(r.duration_seconds / 60)}m ${r.duration_seconds % 60}s`)
+      const status = (m.status || '').toLowerCase();
+      let color = 'fill-yellow-500';
+      if (status === 'completed' || status === 'success') color = 'fill-green-500';
+      else if (status === 'failed' || status === 'error' || status === 'cancelled') color = 'fill-red-500';
+      const dur = m.duration_seconds != null
+        ? (m.duration_seconds < 60 ? `${Math.round(m.duration_seconds)}s` : `${Math.floor(m.duration_seconds / 60)}m ${Math.round(m.duration_seconds % 60)}s`)
         : '';
-      const title = `${new Date(t).toLocaleString()} — ${r.status} · ${ok}/${total} migrations${dur ? ' · ' + dur : ''}`;
-      return { x, color, title };
+      const trigger = m.initiated_by ? ` (${m.initiated_by})` : '';
+      const guest = m.name || (m.vmid ? `VM/CT ${m.vmid}` : 'guest');
+      const route = (m.source_node && m.target_node) ? `${m.source_node} → ${m.target_node}` : '';
+      const title = `${new Date(t).toLocaleString()} — ${guest}${trigger} ${route} · ${m.status}${dur ? ' · ' + dur : ''}`;
+      return { x: xFor(t), color, title };
     })
     .filter(Boolean);
 
@@ -95,7 +94,7 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
           <h3 className="text-base font-bold text-white">Cluster Health Over Time</h3>
           <p className="text-[11px] text-gray-500">
             {new Date(tStart).toLocaleDateString()} → {new Date(tEnd).toLocaleDateString()}
-            {markers.length > 0 && ` · ${markers.length} migration run${markers.length !== 1 ? 's' : ''} marked`}
+            {markers.length > 0 && ` · ${markers.length} migration${markers.length !== 1 ? 's' : ''} marked`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -137,8 +136,8 @@ export default function ClusterHealthChart({ scoreHistory, runHistory }) {
       </div>
       {markers.length > 0 && (
         <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-green-500" />success</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-yellow-500" />partial</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-green-500" />completed</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-yellow-500" />other</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-red-500" />failed</span>
           <span className="ml-auto">hover a marker for detail</span>
         </div>
