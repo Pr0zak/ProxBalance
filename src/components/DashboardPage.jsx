@@ -145,6 +145,7 @@ export default function DashboardPage({
           nodeScores={nodeScores}
           automationStatus={automationStatus}
           recommendations={recommendations}
+          recommendationData={recommendationData}
           ignoredGuests={ignoredGuests}
           autoMigrateOkGuests={autoMigrateOkGuests}
           affinityGuests={affinityGuests}

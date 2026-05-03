@@ -1,14 +1,18 @@
 import { KPI_CARD, scoreColor } from '../../utils/designTokens.js';
 import { Server, Activity, CheckCircle, MoveRight, Tag } from '../Icons.jsx';
+import ClusterHealthBreakdown from './ClusterHealthBreakdown.jsx';
+
+const { useState } = React;
 
 /**
  * KPI summary row — 6 stat cards. The "Cluster Health" card is a circular
  * gauge filled to the avg suitability score across all nodes.
  */
 export default function KpiRow({
-  data, nodeScores, automationStatus, recommendations,
+  data, nodeScores, automationStatus, recommendations, recommendationData,
   ignoredGuests = [], autoMigrateOkGuests = [], affinityGuests = [], excludeGuests = [],
 }) {
+  const [showHealthDetail, setShowHealthDetail] = useState(false);
   if (!data) return null;
 
   const nodesObj = data.nodes || {};
@@ -17,13 +21,23 @@ export default function KpiRow({
   const totalNodes = nodes.length;
   const allGuests = Object.keys(data.guests || {}).length;
 
-  // Average cluster health from per-node suitability_rating (0-100 scale)
+  // Cluster health: prefer the backend-computed summary value (matches what
+  // the Recommendations section shows), fall back to averaging per-node
+  // suitability_rating when no recommendation summary is available.
   let avgScore = null;
-  if (nodeScores && Object.keys(nodeScores).length > 0) {
+  let healthSource = 'unknown';
+  const backendHealth = recommendationData?.summary?.cluster_health;
+  if (typeof backendHealth === 'number') {
+    avgScore = Math.round(backendHealth);
+    healthSource = 'backend';
+  } else if (nodeScores && Object.keys(nodeScores).length > 0) {
     const scores = Object.values(nodeScores)
       .map(s => s.suitability_rating)
       .filter(v => typeof v === 'number');
-    if (scores.length > 0) avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    if (scores.length > 0) {
+      avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      healthSource = 'avg';
+    }
   }
 
   const activeMigrations = automationStatus?.active_migrations || 0;
@@ -60,8 +74,13 @@ export default function KpiRow({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-      {/* Cluster Health — circular gauge */}
-      <div className={KPI_CARD}>
+      {/* Cluster Health — circular gauge (clickable for breakdown) */}
+      <button
+        type="button"
+        onClick={() => setShowHealthDetail(true)}
+        className={`${KPI_CARD} text-left hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        title="Click for per-node breakdown"
+      >
         <div className="shrink-0 relative" style={{ width: 56, height: 56 }}>
           <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
             <circle cx="28" cy="28" r={r} stroke="currentColor" className="text-slate-700" strokeWidth="5" fill="none" />
@@ -78,9 +97,17 @@ export default function KpiRow({
         </div>
         <div className="min-w-0">
           <div className="text-xs text-gray-500 truncate">Cluster Health</div>
-          <div className="text-[10px] text-gray-600">/100</div>
+          <div className="text-[10px] text-gray-600">/100 · click for detail</div>
         </div>
-      </div>
+      </button>
+
+      <ClusterHealthBreakdown
+        open={showHealthDetail}
+        onClose={() => setShowHealthDetail(false)}
+        avgScore={avgScore}
+        nodeScores={nodeScores}
+        healthSource={healthSource}
+      />
 
       {/* Other cards */}
       {otherCards.map((card, i) => (
