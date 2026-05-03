@@ -45,7 +45,7 @@ export default function NodeStatusSection({
                   onClick={() => setShowPredicted(!showPredicted)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     showPredicted
-                      ? 'bg-indigo-600 text-pb-text dark:text-white shadow-md ring-2 ring-indigo-700'
+                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-700'
                       : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600 border border-pb-border dark:border-slate-600'
                   }`}
                   title="Show predicted node metrics after all recommended migrations"
@@ -63,7 +63,7 @@ export default function NodeStatusSection({
                       onClick={() => setNodeGridColumns(cols)}
                       className={`px-3 py-1.5 text-sm rounded transition-colors ${
                         nodeGridColumns === cols
-                          ? 'bg-blue-600 text-pb-text dark:text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600'
                       }`}
                       title={`${cols} column${cols > 1 ? 's' : ''}`}

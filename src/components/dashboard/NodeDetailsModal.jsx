@@ -29,7 +29,7 @@ export default function NodeDetailsModal({
               <p className="text-xs sm:text-sm text-pb-text2 dark:text-gray-400">Node Details</p>
             </div>
             {maintenanceNodes.has(selectedNode.name) && (
-              <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-pb-text dark:text-white text-xs font-bold rounded-full shrink-0">
+              <span className="hidden sm:inline px-2.5 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full shrink-0">
                 MAINTENANCE
               </span>
             )}

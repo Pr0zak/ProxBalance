@@ -166,7 +166,7 @@ function PeriodPills({ value, onChange }) {
           onClick={() => onChange(p.id)}
           className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
             value === p.id
-              ? 'bg-blue-600 text-pb-text dark:text-white'
+              ? 'bg-blue-600 text-white'
               : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
           }`}
         >

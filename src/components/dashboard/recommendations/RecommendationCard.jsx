@@ -46,13 +46,13 @@ export default function RecommendationCard({
               </span>
             )}
             {isMaintenance && !isCompleted && (
-              <span className="px-2 py-0.5 bg-yellow-500 text-pb-text dark:text-white text-[10px] font-bold rounded">MAINTENANCE</span>
+              <span className="px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded">MAINTENANCE</span>
             )}
             {isNewRec && !isCompleted && (
-              <span className="px-2 py-0.5 bg-green-500 text-pb-text dark:text-white text-[10px] font-bold rounded">NEW</span>
+              <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded">NEW</span>
             )}
             {changedTarget && !isCompleted && (
-              <span className="px-2 py-0.5 bg-indigo-500 text-pb-text dark:text-white text-[10px] font-bold rounded"
+              <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded"
                 title={`Target changed from ${changedTarget.old_target} → ${changedTarget.new_target}`}>
                 TARGET CHANGED
               </span>
@@ -476,7 +476,7 @@ export default function RecommendationCard({
             if (isCompleted) {
               return (
                 <div className="flex items-center gap-2">
-                  <div className="px-4 py-2 bg-green-500 text-pb-text dark:text-white rounded flex items-center gap-2">
+                  <div className="px-4 py-2 bg-green-500 text-white rounded flex items-center gap-2">
                     <CheckCircle size={16} />
                     Migrated
                   </div>
@@ -539,7 +539,7 @@ export default function RecommendationCard({
               return (
                 <button
                   onClick={() => cancelMigration(rec.vmid, rec.target_node)}
-                  className="px-4 py-2 bg-red-500 text-pb-text dark:text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2 animate-pulse"
                   title={tooltipText}
                 >
                   <RefreshCw size={16} className="animate-spin" />
@@ -552,7 +552,7 @@ export default function RecommendationCard({
               <button
                 onClick={() => setConfirmMigration(rec)}
                 disabled={!canMigrate || status === 'running' || isMigrating}
-                className="px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                 title={!canMigrate ? 'Read-only API token (PVEAuditor) - Cannot perform migrations' : isMigrating ? 'Migration in progress' : ''}
               >
                 {!canMigrate ? (

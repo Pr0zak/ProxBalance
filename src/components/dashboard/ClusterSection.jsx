@@ -84,7 +84,7 @@ export default function ClusterSection(props) {
                 onClick={() => setTab(t.id)}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
                   effectiveTab === t.id
-                    ? 'bg-blue-600 text-pb-text dark:text-white shadow'
+                    ? 'bg-blue-600 text-white shadow'
                     : t.accent
                       ? 'text-orange-700 dark:text-orange-300 hover:text-orange-800 dark:hover:text-orange-200'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'

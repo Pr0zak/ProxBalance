@@ -140,7 +140,7 @@ export default function AutomationStatusSection({
                 {/* Configure Button */}
                 <button
                   onClick={() => setCurrentPage('automation')}
-                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
+                  className="px-2 py-1 sm:px-3 sm:py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2"
                   title="Configure Automation"
                 >
                   <Settings size={16} />
@@ -154,7 +154,7 @@ export default function AutomationStatusSection({
                   disabled={!automationStatus.enabled || runningAutomation}
                   className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 sm:gap-2 ${
                     automationStatus.enabled && !runningAutomation
-                      ? 'bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 text-pb-text dark:text-white'
+                      ? 'bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 text-white'
                       : 'bg-gray-600 text-pb-text2 dark:text-gray-400 cursor-not-allowed'
                   }`}
                   title={!automationStatus.enabled ? "Enable automation first" : runningAutomation ? "Running..." : "Run automation check now"}

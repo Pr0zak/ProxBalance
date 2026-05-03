@@ -12,7 +12,7 @@ function WindowTypeButtons({ currentType, onSelect }) {
         onClick={() => onSelect('migration')}
         className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
           currentType === 'migration'
-            ? 'bg-green-600 text-pb-text dark:text-white'
+            ? 'bg-green-600 text-white'
             : 'bg-gray-600 text-pb-text dark:text-gray-300'
         }`}
       >
@@ -23,7 +23,7 @@ function WindowTypeButtons({ currentType, onSelect }) {
         onClick={() => onSelect('blackout')}
         className={`px-3 py-2 rounded text-sm font-semibold flex items-center gap-1 ${
           currentType === 'blackout'
-            ? 'bg-red-600 text-pb-text dark:text-white'
+            ? 'bg-red-600 text-white'
             : 'bg-gray-600 text-pb-text dark:text-gray-300'
         }`}
       >
@@ -525,7 +525,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           <div className="flex gap-2">
                             <button
                               onClick={() => setEditingWindowIndex(null)}
-                              className="px-3 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
                               title="Done"
                             >
                               <Check size={14} />
@@ -538,8 +538,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Type Badge */}
                           <span className={`px-2 py-1 rounded text-xs font-semibold ${
                             isMigration
-                              ? 'bg-green-600 text-pb-text dark:text-white'
-                              : 'bg-red-600 text-pb-text dark:text-white'
+                              ? 'bg-green-600 text-white'
+                              : 'bg-red-600 text-white'
                           }`}>
                             {isMigration ? 'MIGRATION' : 'BLACKOUT'}
                           </span>
@@ -557,7 +557,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1"
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -844,7 +844,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
           ) : (
             <button
               onClick={() => setShowTimeWindowForm(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
             >
               <Plus size={14} />
               Add Time Window

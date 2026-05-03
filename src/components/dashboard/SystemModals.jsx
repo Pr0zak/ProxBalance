@@ -100,7 +100,7 @@ const SystemModals = ({
                 <button
                   onClick={handleUpdate}
                   disabled={systemInfo && systemInfo.update_in_progress}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw size={18} />
                   {systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : 'Update Now'}
@@ -147,7 +147,7 @@ const SystemModals = ({
               <div className="flex justify-end">
                 <button
                   onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
                   <RefreshCw size={16} />
                   Close & Reload
@@ -165,7 +165,7 @@ const SystemModals = ({
               </div>
               <button
                 onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                className="px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
                 Close
               </button>
@@ -212,7 +212,7 @@ const SystemModals = ({
               <div className="flex justify-end">
                 <button
                   onClick={() => { setShowUpdateModal(false); setUpdateLog([]); setUpdateResult(null); }}
-                  className="px-4 py-2 bg-blue-500 text-pb-text dark:text-white rounded hover:bg-blue-600 flex items-center justify-center gap-1.5"
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center gap-1.5"
                 >
                   <X size={14} /> Close
                 </button>
@@ -287,7 +287,7 @@ const SystemModals = ({
                         <button
                           onClick={rollbackBranch}
                           disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                          className="px-3 py-1.5 bg-amber-600 text-pb-text dark:text-white text-sm rounded hover:bg-amber-100 dark:hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-100 dark:hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
                         </button>
@@ -342,7 +342,7 @@ const SystemModals = ({
                       <button
                         onClick={() => switchBranch(branchPreview.branch)}
                         disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                        className="px-4 py-2 bg-purple-500 text-pb-text dark:text-white text-sm rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : `Switch to ${branchPreview.branch}`)}
                       </button>
@@ -385,12 +385,12 @@ const SystemModals = ({
                                 {branch.name}
                               </span>
                               {branch.current && (
-                                <span className="px-2 py-0.5 bg-purple-500 text-pb-text dark:text-white text-xs rounded-full">
+                                <span className="px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
                                   Current
                                 </span>
                               )}
                               {branch.previous && !branch.current && (
-                                <span className="px-2 py-0.5 bg-amber-500 text-pb-text dark:text-white text-xs rounded-full">
+                                <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">
                                   Previous
                                 </span>
                               )}
@@ -426,7 +426,7 @@ const SystemModals = ({
                               <button
                                 onClick={() => switchBranch(branch.name)}
                                 disabled={switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                                className="px-3 py-2 text-sm bg-purple-500 text-pb-text dark:text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-3 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {switchingBranch ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Switch')}
                               </button>

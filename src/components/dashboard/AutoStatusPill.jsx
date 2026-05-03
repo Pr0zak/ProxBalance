@@ -151,7 +151,7 @@ export default function AutoStatusPill({
               <button
                 onClick={() => runAutomationNow()}
                 disabled={runningAutomation}
-                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-pb-text dark:text-white hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
+                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-white hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
                 title="Trigger an automation run now"
               >
                 {runningAutomation ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}

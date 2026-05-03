@@ -129,7 +129,7 @@ export default function MigrationRecommendationsSection({
               <button
                 onClick={generateRecommendations}
                 disabled={loadingRecommendations || !data}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-pb-text dark:text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
                 title="Manually generate new recommendations now"
               >
                 {loadingRecommendations ? (
@@ -175,7 +175,7 @@ export default function MigrationRecommendationsSection({
           <button
             onClick={generateRecommendations}
             disabled={loadingRecommendations || !data}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-pb-text dark:text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
             title="Generate now"
           >
             {loadingRecommendations ? (

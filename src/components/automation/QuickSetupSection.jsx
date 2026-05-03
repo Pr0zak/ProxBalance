@@ -71,7 +71,7 @@ export default function QuickSetupSection({
                           saveAutomationConfig({ enabled: true });
                           setConfirmEnableAutomation(false);
                         }}
-                        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
+                        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
                       >
                         <Power size={14} />
                         Enable Automation
@@ -123,7 +123,7 @@ export default function QuickSetupSection({
                           saveAutomationConfig({ dry_run: false });
                           setConfirmDisableDryRun(false);
                         }}
-                        className="px-3 py-1.5 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-pb-text dark:text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
                       >
                         <AlertTriangle size={14} />
                         Yes, Disable Dry Run
@@ -153,9 +153,9 @@ export default function QuickSetupSection({
             {[1, 2, 3].map((level) => {
               const isActive = settings.sensitivity === level;
               const colors = {
-                1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
-                2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
-                3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
+                1: isActive ? 'bg-green-600 text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
+                2: isActive ? 'bg-blue-600 text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
+                3: isActive ? 'bg-orange-600 text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
               };
               return (
                 <button
