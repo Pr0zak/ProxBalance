@@ -284,11 +284,14 @@ const VARIANT_RENDERERS = {
   '4': StatSparklineVariant,
 };
 
-export default function RunHistoryDisplay({ variant, runHistory, automationStatus }) {
+export default function RunHistoryDisplay({ variant, runHistory, automationStatus, embedded = false }) {
   const Renderer = VARIANT_RENDERERS[variant];
   if (!Renderer) return null;
   const lastRun = automationStatus?.state?.last_run;
   const count = runHistory?.length || 0;
+  if (embedded) {
+    return <Renderer runHistory={runHistory} lastRun={lastRun} />;
+  }
   return (
     <div className={`${GLASS_CARD} overflow-hidden`}>
       <HeaderRow count={count} />
