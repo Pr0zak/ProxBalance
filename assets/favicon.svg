@@ -1,14 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
   <g transform="translate(128,128)">
-    <g transform="translate(0,-76)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.7"/></g>
-    <g transform="translate(66,-38)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.6"/></g>
-    <g transform="translate(66,38)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.5"/></g>
-    <g transform="translate(0,76)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.55"/></g>
-    <g transform="translate(-66,38)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.6"/></g>
-    <g transform="translate(-66,-38)"><polygon points="0,-24 21,-12 21,12 0,24 -21,12 -21,-12" fill="#2563eb" opacity="0.7"/></g>
-    <polygon points="0,-42 36,-21 36,21 0,42 -36,21 -36,-21" fill="#1e3a8a" stroke="#3b82f6" stroke-width="4"/>
-    <line x1="-18" y1="-12" x2="18" y2="-12" stroke="#f97316" stroke-width="8" stroke-linecap="round"/>
-    <line x1="0" y1="-12" x2="0" y2="12" stroke="#f97316" stroke-width="6"/>
-    <polygon points="0,12 -10,24 10,24" fill="#f97316"/>
+    <circle r="112" stroke="#4F6EF7" stroke-width="16" fill="none" opacity="0.45"/>
+    <path d="M 0,-80 L -72,56 M 0,-80 L 72,56 M -64,56 L 64,56" stroke="#4F6EF7" stroke-width="11" stroke-linecap="round" opacity="0.55" fill="none"/>
+    <circle cx="0" cy="-80" r="22" fill="#4F6EF7"/>
+    <circle cx="-80" cy="48" r="22" fill="#7C5CFF"/>
+    <circle cx="80" cy="48" r="22" fill="#7C5CFF"/>
   </g>
 </svg>
