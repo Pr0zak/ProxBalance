@@ -1,11 +1,14 @@
-import { Clock, Pause, Play, Loader, Settings } from '../Icons.jsx';
+import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
+import RunDetailBlock from './RunDetailBlock.jsx';
+
+const { useState, useEffect } = React;
 
 /**
  * Reusable auto-migration status indicator. Three sizes:
  *  - 'pill'   : compact inline strip (TopNav-style)
- *  - 'banner' : full horizontal bar with controls (above ClusterSection)
+ *  - 'banner' : full horizontal bar with controls + expandable last-run detail
  *  - 'card'   : KPI-card-shaped (KpiRow)
- *  - 'strip'  : medium horizontal strip (inside Recs tab)
+ *  - 'strip'  : medium horizontal strip
  */
 
 function getStatus(automationStatus) {
@@ -27,6 +30,16 @@ function getNextCheck(automationStatus) {
   return 'now';
 }
 
+function relativeAgo(ts) {
+  if (!ts) return null;
+  const tsStr = typeof ts === 'object' ? ts.timestamp : ts;
+  const d = new Date(tsStr);
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  return `${Math.floor(mins / 1440)}d ago`;
+}
+
 async function togglePause(automationStatus, fetchAutomationStatus) {
   if (!automationStatus?.enabled) return;
   try {
@@ -40,6 +53,12 @@ async function togglePause(automationStatus, fetchAutomationStatus) {
 }
 
 const COLOR_TO_TEXT = { green: 'text-green-400', yellow: 'text-yellow-400', orange: 'text-orange-400', gray: 'text-gray-400' };
+const COLOR_TO_BG = {
+  green: 'bg-green-900/15 border-green-800/40',
+  yellow: 'bg-yellow-900/15 border-yellow-800/40',
+  orange: 'bg-orange-900/15 border-orange-800/40',
+  gray: 'bg-slate-800/60 border-slate-700/50',
+};
 
 export default function AutoStatusPill({
   size = 'pill',
@@ -52,10 +71,21 @@ export default function AutoStatusPill({
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
+
+  // Banner-only: persisted expand/collapse state for last-run detail
+  const [expanded, setExpanded] = useState(() => {
+    if (size !== 'banner') return false;
+    return localStorage.getItem('autoBannerExpanded') === 'true';
+  });
+  useEffect(() => {
+    if (size === 'banner') localStorage.setItem('autoBannerExpanded', String(expanded));
+  }, [expanded, size]);
+
   if (!automationStatus) return null;
   const status = getStatus(automationStatus);
   const nextCheck = getNextCheck(automationStatus);
   const showActions = (size === 'banner' || size === 'card' || size === 'strip') && automationStatus.enabled;
+  const canExpand = size === 'banner' && lastRunObj;
 
   if (size === 'pill') {
     return (
@@ -84,66 +114,72 @@ export default function AutoStatusPill({
 
   // banner OR strip
   return (
-    <div className={`flex items-center justify-between gap-3 flex-wrap px-4 py-2 rounded-lg border ${
-      status.color === 'green' ? 'bg-green-900/15 border-green-800/40'
-      : status.color === 'yellow' ? 'bg-yellow-900/15 border-yellow-800/40'
-      : status.color === 'orange' ? 'bg-orange-900/15 border-orange-800/40'
-      : 'bg-slate-800/60 border-slate-700/50'
-    }`}>
-      <div className="flex items-center gap-2 text-sm flex-wrap">
-        <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
-        <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto-migration: {status.label}</span>
-        {nextCheck && <span className="text-gray-400 text-xs">next check {nextCheck}</span>}
-        {automationStatus.state?.last_run && (
-          <span className="text-gray-500 text-xs">· last run {(() => {
-            let ts = typeof automationStatus.state.last_run === 'object' ? automationStatus.state.last_run.timestamp : automationStatus.state.last_run;
-            const d = new Date(ts);
-            const mins = Math.floor((Date.now() - d.getTime()) / 60000);
-            if (mins < 60) return `${mins}m ago`;
-            if (mins < 1440) return `${Math.floor(mins/60)}h ago`;
-            return `${Math.floor(mins/1440)}d ago`;
-          })()}</span>
-        )}
-        {showLastRunSummary && lastRunObj && (
-          <span className="text-xs ml-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">
-            <span className={`font-semibold ${lastRunObj.status === 'success' ? 'text-green-400' : lastRunObj.status === 'partial' ? 'text-yellow-400' : lastRunObj.status === 'failed' ? 'text-red-400' : lastRunObj.status === 'no_action' ? 'text-green-400' : 'text-gray-400'}`}>
-              {lastRunObj.status === 'no_action' ? 'balanced' : lastRunObj.status}
+    <div className={`rounded-lg border ${COLOR_TO_BG[status.color]}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-2">
+        <div className="flex items-center gap-2 text-sm flex-wrap min-w-0">
+          {canExpand && (
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="p-0.5 rounded hover:bg-slate-700/50 transition-colors"
+              title={expanded ? 'Hide last-run detail' : 'Show last-run detail'}
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
+            </button>
+          )}
+          <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
+          <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto-migration: {status.label}</span>
+          {nextCheck && <span className="text-gray-400 text-xs">next check {nextCheck}</span>}
+          {lastRun && (
+            <span className="text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
+          )}
+          {showLastRunSummary && lastRunObj && (
+            <span className="text-xs ml-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">
+              <span className={`font-semibold ${lastRunObj.status === 'success' ? 'text-green-400' : lastRunObj.status === 'partial' ? 'text-yellow-400' : lastRunObj.status === 'failed' ? 'text-red-400' : lastRunObj.status === 'no_action' ? 'text-green-400' : 'text-gray-400'}`}>
+                {lastRunObj.status === 'no_action' ? 'balanced' : lastRunObj.status}
+              </span>
+              <span className="text-gray-400"> · {lastRunObj.migrations_successful || 0}/{lastRunObj.migrations_executed || 0} migrations</span>
+              {lastRunObj.duration_seconds != null && <span className="text-gray-500"> · {lastRunObj.duration_seconds < 60 ? `${lastRunObj.duration_seconds}s` : `${Math.floor(lastRunObj.duration_seconds/60)}m`}</span>}
             </span>
-            <span className="text-gray-400"> · {lastRunObj.migrations_successful || 0}/{lastRunObj.migrations_executed || 0} migrations</span>
-            {lastRunObj.duration_seconds != null && <span className="text-gray-500"> · {lastRunObj.duration_seconds < 60 ? `${lastRunObj.duration_seconds}s` : `${Math.floor(lastRunObj.duration_seconds/60)}m`}</span>}
-          </span>
+          )}
+        </div>
+        {showActions && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => togglePause(automationStatus, fetchAutomationStatus)}
+              className="px-2.5 py-1 text-xs rounded border bg-slate-800/60 border-slate-700/50 text-gray-200 hover:bg-slate-700/60 inline-flex items-center gap-1"
+              title={automationStatus.timer_active ? 'Pause auto-migration timer' : 'Resume auto-migration timer'}
+            >
+              {automationStatus.timer_active ? <Pause size={12} /> : <Play size={12} />}
+              {automationStatus.timer_active ? 'Pause' : 'Resume'}
+            </button>
+            {runAutomationNow && (
+              <button
+                onClick={() => runAutomationNow()}
+                disabled={runningAutomation}
+                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-white hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
+                title="Trigger an automation run now"
+              >
+                {runningAutomation ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
+                Run Now
+              </button>
+            )}
+            {setCurrentPage && (
+              <button
+                onClick={() => setCurrentPage('automation')}
+                className="px-2.5 py-1 text-xs rounded border bg-slate-800/60 border-slate-700/50 text-gray-300 hover:bg-slate-700/60 inline-flex items-center gap-1"
+                title="Open automation settings"
+              >
+                <Settings size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
-      {showActions && (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => togglePause(automationStatus, fetchAutomationStatus)}
-            className="px-2.5 py-1 text-xs rounded border bg-slate-800/60 border-slate-700/50 text-gray-200 hover:bg-slate-700/60 inline-flex items-center gap-1"
-            title={automationStatus.timer_active ? 'Pause auto-migration timer' : 'Resume auto-migration timer'}
-          >
-            {automationStatus.timer_active ? <Pause size={12} /> : <Play size={12} />}
-            {automationStatus.timer_active ? 'Pause' : 'Resume'}
-          </button>
-          {runAutomationNow && (
-            <button
-              onClick={() => runAutomationNow()}
-              disabled={runningAutomation}
-              className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-white hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
-              title="Trigger an automation run now"
-            >
-              {runningAutomation ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}
-              Run Now
-            </button>
-          )}
-          {setCurrentPage && (
-            <button
-              onClick={() => setCurrentPage('automation')}
-              className="px-2.5 py-1 text-xs rounded border bg-slate-800/60 border-slate-700/50 text-gray-300 hover:bg-slate-700/60 inline-flex items-center gap-1"
-              title="Open automation settings"
-            >
-              <Settings size={12} />
-            </button>
-          )}
+      {canExpand && expanded && (
+        <div className="px-4 pb-4 pt-1 border-t border-slate-700/40">
+          <div className="text-xs text-gray-500 mb-2">Last run detail · what was migrated, why, and any failures</div>
+          <RunDetailBlock run={lastRunObj} />
         </div>
       )}
     </div>
