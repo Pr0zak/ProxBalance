@@ -60,6 +60,11 @@ export default function ClusterSection(props) {
           nodeScores={props.nodeScores}
           onNodeClick={props.setSelectedNode}
           onGuestClick={props.setSelectedGuestDetails}
+          canMigrate={props.canMigrate}
+          guestProfiles={props.guestProfiles}
+          handleRemoveTag={props.handleRemoveTag}
+          setTagModalGuest={props.setTagModalGuest}
+          setShowTagModal={props.setShowTagModal}
         />
       )}
       {activeTab === 'map' && (

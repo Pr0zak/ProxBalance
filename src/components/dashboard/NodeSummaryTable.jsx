@@ -3,7 +3,7 @@ import {
   metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON,
   INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE
 } from '../../utils/designTokens.js';
-import { ChevronDown } from '../Icons.jsx';
+import { ChevronDown, Tag, X } from '../Icons.jsx';
 
 const { useState, useMemo } = React;
 
@@ -13,7 +13,25 @@ const FILTERS = [
   { id: 'lxc', label: 'LXCs' },
   { id: 'running', label: 'Running' },
   { id: 'stopped', label: 'Stopped' },
+  { id: 'ignored', label: 'Ignored' },
+  { id: 'auto_migrate', label: 'Auto-Migrate' },
+  { id: 'affinity', label: 'Affinity' },
+  { id: 'anti_affinity', label: 'Anti-Affinity' },
 ];
+
+const WORKLOAD_BADGE_COLORS = {
+  steady: 'bg-green-900/30 text-green-300',
+  bursty: 'bg-orange-900/30 text-orange-300',
+  growing: 'bg-blue-900/30 text-blue-300',
+  cyclical: 'bg-purple-900/30 text-purple-300',
+};
+
+function guestHasAnyTag(guest) {
+  return !!(guest.tags?.has_ignore
+    || guest.tags?.all_tags?.includes('auto_migrate_ok')
+    || guest.tags?.exclude_groups?.length > 0
+    || guest.tags?.affinity_groups?.length > 0);
+}
 
 const TOTAL_COLS = 10;
 
@@ -64,7 +82,67 @@ function formatMem(gb) {
   return `${(gb * 1024).toFixed(0)} MB`;
 }
 
-function GuestList({ guests, onGuestClick }) {
+function TagChips({ guest, canMigrate, handleRemoveTag }) {
+  const t = guest.tags || {};
+  const hasIgnore = !!t.has_ignore;
+  const hasAutoMigrate = t.all_tags?.includes('auto_migrate_ok');
+  const exclude = t.exclude_groups || [];
+  const affinity = t.affinity_groups || [];
+  if (!hasIgnore && !hasAutoMigrate && exclude.length === 0 && affinity.length === 0) return null;
+
+  const Chip = ({ label, color, onRemove }) => (
+    <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${color}`}>
+      {label}
+      {canMigrate && onRemove && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="hover:bg-black/20 rounded-full p-0.5 -mr-0.5"
+          title={`Remove "${label}"`}
+          aria-label={`Remove tag ${label}`}
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
+  );
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {hasIgnore && (
+        <Chip label="ignore" color="bg-yellow-900/40 text-yellow-300"
+          onRemove={() => handleRemoveTag?.(guest, 'ignore')} />
+      )}
+      {hasAutoMigrate && (
+        <Chip label="auto" color="bg-green-900/40 text-green-300"
+          onRemove={() => handleRemoveTag?.(guest, 'auto_migrate_ok')} />
+      )}
+      {affinity.map(tag => (
+        <Chip key={`aff-${tag}`} label={tag} color="bg-purple-900/40 text-purple-300"
+          onRemove={() => handleRemoveTag?.(guest, tag)} />
+      ))}
+      {exclude.map(tag => (
+        <Chip key={`exc-${tag}`} label={tag} color="bg-blue-900/40 text-blue-300"
+          onRemove={() => handleRemoveTag?.(guest, tag)} />
+      ))}
+    </div>
+  );
+}
+
+function WorkloadBadge({ profile }) {
+  if (!profile || profile.confidence === 'low') return null;
+  const cls = WORKLOAD_BADGE_COLORS[profile.behavior];
+  if (!cls) return null;
+  return (
+    <span
+      className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${cls}`}
+      title={`${profile.behavior} workload (${profile.confidence} confidence, ${profile.data_points} samples)`}
+    >
+      {profile.behavior.charAt(0).toUpperCase() + profile.behavior.slice(1)}
+    </span>
+  );
+}
+
+function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal }) {
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
@@ -74,12 +152,13 @@ function GuestList({ guests, onGuestClick }) {
         <div
           key={guest.vmid}
           onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest); }}
-          className="flex items-center gap-3 px-3 py-2 rounded hover:bg-slate-700/30 cursor-pointer transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded hover:bg-slate-700/30 cursor-pointer transition-colors flex-wrap"
         >
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${guest.status === 'running' ? 'bg-green-400' : 'bg-gray-600'}`} />
-          <span className="text-sm text-gray-200 min-w-[160px]">
+          <span className="text-sm text-gray-200 min-w-[160px] flex items-center gap-1.5">
             {guest.name || `guest-${guest.vmid}`}
-            <span className="text-[10px] text-gray-600 ml-1.5">{guest.vmid}</span>
+            <span className="text-[10px] text-gray-600">{guest.vmid}</span>
+            <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} />
           </span>
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
             guest.type === 'VM'
@@ -88,6 +167,17 @@ function GuestList({ guests, onGuestClick }) {
           }`}>
             {guest.type}
           </span>
+          <TagChips guest={guest} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} />
+          {canMigrate && openTagModal && (
+            <button
+              onClick={(e) => { e.stopPropagation(); openTagModal(guest); }}
+              className="p-1 text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 rounded transition-colors"
+              title="Manage tags"
+              aria-label="Manage tags"
+            >
+              <Tag size={12} />
+            </button>
+          )}
           {guest.status === 'running' ? (
             <div className="flex items-center gap-4 ml-auto text-xs text-gray-500 tabular-nums">
               {guest.cpu_current != null && (
@@ -110,7 +200,12 @@ export default function NodeSummaryTable({
   data, nodeScores, onNodeClick, onGuestClick,
   collapsedSections, setCollapsedSections,
   embedded = false,
+  // Tag management
+  canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
 }) {
+  const openTagModal = setTagModalGuest && setShowTagModal
+    ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
+    : null;
   // When embedded, the parent owns the section header (and thus the
   // collapse state and the collapsed-chip summary). Always render the body.
   const collapsed = embedded ? false : collapsedSections?.nodeOverview;
@@ -136,6 +231,10 @@ export default function NodeSummaryTable({
       if (filter === 'lxc' && guest.type !== 'LXC') return;
       if (filter === 'running' && guest.status !== 'running') return;
       if (filter === 'stopped' && guest.status !== 'stopped') return;
+      if (filter === 'ignored' && !guest.tags?.has_ignore) return;
+      if (filter === 'auto_migrate' && !guest.tags?.all_tags?.includes('auto_migrate_ok')) return;
+      if (filter === 'affinity' && !(guest.tags?.affinity_groups?.length > 0)) return;
+      if (filter === 'anti_affinity' && !(guest.tags?.exclude_groups?.length > 0)) return;
       const nodeName = guest.node || 'unknown';
       if (!byNode[nodeName]) byNode[nodeName] = [];
       byNode[nodeName].push(guest);
@@ -375,7 +474,14 @@ export default function NodeSummaryTable({
                       {isExpanded && (
                         <tr className="bg-slate-900/40">
                           <td colSpan={TOTAL_COLS} className="px-3 pb-3 pt-1">
-                            <GuestList guests={nodeGuests} onGuestClick={onGuestClick} />
+                            <GuestList
+                              guests={nodeGuests}
+                              onGuestClick={onGuestClick}
+                              canMigrate={canMigrate}
+                              guestProfiles={guestProfiles}
+                              handleRemoveTag={handleRemoveTag}
+                              openTagModal={openTagModal}
+                            />
                           </td>
                         </tr>
                       )}
