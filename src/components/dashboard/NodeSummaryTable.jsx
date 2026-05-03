@@ -479,11 +479,20 @@ export default function NodeSummaryTable({
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-white">{node.name}</span>
-                            {nodeRecCounts?.[node.name] && (nodeRecCounts[node.name].outbound > 0 || nodeRecCounts[node.name].inbound > 0) && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 tabular-nums" title="Pending migration recommendations">
-                                {nodeRecCounts[node.name].outbound > 0 && `→${nodeRecCounts[node.name].outbound}`}
-                                {nodeRecCounts[node.name].outbound > 0 && nodeRecCounts[node.name].inbound > 0 && ' · '}
-                                {nodeRecCounts[node.name].inbound > 0 && `←${nodeRecCounts[node.name].inbound}`}
+                            {recs?.outbound > 0 && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 tabular-nums"
+                                title={`${recs.outbound} guest${recs.outbound !== 1 ? 's' : ''} recommended to leave this node`}
+                              >
+                                →{recs.outbound}
+                              </span>
+                            )}
+                            {recs?.inbound > 0 && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-800/40 tabular-nums"
+                                title={`${recs.inbound} guest${recs.inbound !== 1 ? 's' : ''} recommended to move to this node`}
+                              >
+                                ←{recs.inbound}
                               </span>
                             )}
                           </div>
