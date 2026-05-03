@@ -17,10 +17,12 @@ export default function KpiRow({
   const totalNodes = nodes.length;
   const allGuests = Object.keys(data.guests || {}).length;
 
-  // Average cluster health from per-node suitability_score
+  // Average cluster health from per-node suitability_rating (0-100 scale)
   let avgScore = null;
   if (nodeScores && Object.keys(nodeScores).length > 0) {
-    const scores = Object.values(nodeScores).map(s => s.suitability_score).filter(Boolean);
+    const scores = Object.values(nodeScores)
+      .map(s => s.suitability_rating)
+      .filter(v => typeof v === 'number');
     if (scores.length > 0) avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }
 

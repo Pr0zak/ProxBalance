@@ -301,7 +301,7 @@ export default function NodeSummaryTable({
       const diskUsedGB = storageArr.reduce((sum, s) => sum + (s.used_gb || 0), 0);
       const diskPct = diskTotalGB > 0 ? (diskUsedGB / diskTotalGB) * 100 : 0;
 
-      const score = nodeScores?.[node.name]?.suitability_score;
+      const score = nodeScores?.[node.name]?.suitability_rating;
 
       const guestVmids = node.guests || [];
       let vms = 0, cts = 0;
