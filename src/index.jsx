@@ -69,6 +69,7 @@ const ProxmoxBalanceManager = () => {
     automation.fetchAutomationStatus();
     automation.fetchAutomationConfig();
     automation.fetchRunHistory();
+    automation.fetchMigrationHistory();
     auth.checkPermissions();
     configHook.fetchPenaltyConfig();
     configHook.fetchMigrationSettings();
@@ -435,6 +436,7 @@ const ProxmoxBalanceManager = () => {
     runAutomationNow={automation.runAutomationNow} runningAutomation={automation.runningAutomation}
     runNowMessage={automation.runNowMessage} setRunNowMessage={automation.setRunNowMessage}
     runHistory={automation.runHistory} expandedRun={automation.expandedRun} setExpandedRun={automation.setExpandedRun}
+    migrationHistory={automation.migrationHistory}
     recommendations={recs.recommendations} loadingRecommendations={recs.loadingRecommendations}
     generateRecommendations={recs.generateRecommendations}
     recommendationData={recs.recommendationData} penaltyConfig={configHook.penaltyConfig}

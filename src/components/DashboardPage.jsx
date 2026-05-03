@@ -37,6 +37,7 @@ export default function DashboardPage({
   // Automation
   automationStatus, automationConfig, fetchAutomationStatus, runAutomationNow, runningAutomation,
   runNowMessage, setRunNowMessage, runHistory, expandedRun, setExpandedRun,
+  migrationHistory,
   // Recommendations
   recommendations, loadingRecommendations, generateRecommendations, recommendationData, penaltyConfig,
   // AI recommendations
@@ -220,6 +221,7 @@ export default function DashboardPage({
           setRunNowMessage={setRunNowMessage}
           setCancelMigrationModal={setCancelMigrationModal}
           runHistory={runHistory}
+          migrationHistory={migrationHistory}
           expandedRun={expandedRun}
           setExpandedRun={setExpandedRun}
         />
