@@ -3,10 +3,12 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState } = React;
+const { useState, useEffect, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
+import RecsLayoutPicker from './dashboard/RecsLayoutPicker.jsx';
+import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -93,6 +95,16 @@ export default function DashboardPage({
   // Dashboard Page - data is guaranteed to be available here
   const [showPredicted, setShowPredicted] = useState(false);
 
+  // Recommendations integration preview state (feat/cluster-overview-merge)
+  const [recsLayoutPreview, setRecsLayoutPreview] = useState(() => localStorage.getItem('recsLayoutPreview') || 'current');
+  useEffect(() => { localStorage.setItem('recsLayoutPreview', recsLayoutPreview); }, [recsLayoutPreview]);
+  const showRecsBadges = recsLayoutPreview === 'B' || recsLayoutPreview === 'C' || recsLayoutPreview === 'D';
+  const showRecsTab = recsLayoutPreview === 'A' || recsLayoutPreview === 'D';
+  const showBannerAbove = recsLayoutPreview === 'C';
+  const showSectionBelow = recsLayoutPreview === 'current' || recsLayoutPreview === 'B' || recsLayoutPreview === 'C';
+  const nodeRecCounts = useMemo(() => showRecsBadges ? recsByNode(recommendations) : null, [showRecsBadges, recommendations]);
+  const guestRecMap = useMemo(() => showRecsBadges ? recsByGuest(recommendations) : null, [showRecsBadges, recommendations]);
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -137,6 +149,27 @@ export default function DashboardPage({
           excludeGuests={excludeGuests}
         />
 
+        {/* PREVIEW: recommendations integration picker */}
+        <RecsLayoutPicker value={recsLayoutPreview} onChange={setRecsLayoutPreview} />
+
+        {/* Variant C — banner at top of Cluster section */}
+        {showBannerAbove && recommendations.length > 0 && (
+          <div className="mb-3 px-4 py-2 rounded-lg bg-orange-900/20 border border-orange-700/50 flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm text-orange-200">
+              <span className="font-bold">{recommendations.length}</span> migration recommendation{recommendations.length !== 1 ? 's' : ''} pending
+            </div>
+            <button
+              onClick={() => {
+                const el = document.getElementById('migration-recs-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="px-3 py-1 text-xs font-medium rounded bg-orange-600 hover:bg-orange-700 text-white transition-colors"
+            >
+              Review →
+            </button>
+          </div>
+        )}
+
         {/* Unified Cluster section — Table / Map / Charts tabs */}
         <ClusterSection
           data={data}
@@ -168,6 +201,23 @@ export default function DashboardPage({
           handleRemoveTag={handleRemoveTag}
           setTagModalGuest={setTagModalGuest}
           setShowTagModal={setShowTagModal}
+          recsTab={showRecsTab}
+          nodeRecCounts={nodeRecCounts}
+          guestRecMap={guestRecMap}
+          loadingRecommendations={loadingRecommendations}
+          generateRecommendations={generateRecommendations}
+          penaltyConfig={penaltyConfig}
+          toggleSection={toggleSection}
+          migrationStatus={migrationStatus}
+          setMigrationStatus={setMigrationStatus}
+          cancelMigration={cancelMigration}
+          trackMigration={trackMigration}
+          setConfirmMigration={setConfirmMigration}
+          setCurrentPage={setCurrentPage}
+          setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
+          API_BASE={API_BASE}
+          collapsedSections={collapsedSections}
+          setCollapsedSections={setCollapsedSections}
         />
 
         {/* Automated Migrations Status */}
@@ -241,30 +291,34 @@ export default function DashboardPage({
           API_BASE={API_BASE}
         />
 
-        <MigrationRecommendationsSection
-          data={data}
-          recommendations={recommendations}
-          loadingRecommendations={loadingRecommendations}
-          generateRecommendations={generateRecommendations}
-          recommendationData={recommendationData}
-          penaltyConfig={penaltyConfig}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-          toggleSection={toggleSection}
-          canMigrate={canMigrate}
-          migrationStatus={migrationStatus}
-          setMigrationStatus={setMigrationStatus}
-          completedMigrations={completedMigrations}
-          guestsMigrating={guestsMigrating}
-          migrationProgress={migrationProgress}
-          cancelMigration={cancelMigration}
-          trackMigration={trackMigration}
-          setConfirmMigration={setConfirmMigration}
-          setCurrentPage={setCurrentPage}
-          setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
-          nodeScores={nodeScores}
-          API_BASE={API_BASE}
-        />
+        {showSectionBelow && (
+          <div id="migration-recs-section">
+            <MigrationRecommendationsSection
+              data={data}
+              recommendations={recommendations}
+              loadingRecommendations={loadingRecommendations}
+              generateRecommendations={generateRecommendations}
+              recommendationData={recommendationData}
+              penaltyConfig={penaltyConfig}
+              collapsedSections={collapsedSections}
+              setCollapsedSections={setCollapsedSections}
+              toggleSection={toggleSection}
+              canMigrate={canMigrate}
+              migrationStatus={migrationStatus}
+              setMigrationStatus={setMigrationStatus}
+              completedMigrations={completedMigrations}
+              guestsMigrating={guestsMigrating}
+              migrationProgress={migrationProgress}
+              cancelMigration={cancelMigration}
+              trackMigration={trackMigration}
+              setConfirmMigration={setConfirmMigration}
+              setCurrentPage={setCurrentPage}
+              setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
+              nodeScores={nodeScores}
+              API_BASE={API_BASE}
+            />
+          </div>
+        )}
 
         <AIRecommendationsSection
           config={config}

@@ -143,7 +143,7 @@ function WorkloadBadge({ profile, running }) {
   );
 }
 
-function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal }) {
+function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal, guestRecMap }) {
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
@@ -160,6 +160,11 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
             {guest.name || `guest-${guest.vmid}`}
             <span className="text-[10px] text-gray-600">{guest.vmid}</span>
             <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} running={guest.status === 'running'} />
+            {guestRecMap?.[String(guest.vmid)] && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40" title={`Recommended: move to ${guestRecMap[String(guest.vmid)].target_node}`}>
+                ↗ {guestRecMap[String(guest.vmid)].target_node}
+              </span>
+            )}
           </span>
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
             guest.type === 'VM'
@@ -203,6 +208,8 @@ export default function NodeSummaryTable({
   embedded = false,
   // Tag management
   canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
+  // Optional cross-reference badges from recommendations
+  nodeRecCounts, guestRecMap,
 }) {
   const openTagModal = setTagModalGuest && setShowTagModal
     ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
@@ -453,7 +460,16 @@ export default function NodeSummaryTable({
                           </button>
                         </td>
                         <td className="p-3">
-                          <span className="text-sm font-medium text-white">{node.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white">{node.name}</span>
+                            {nodeRecCounts?.[node.name] && (nodeRecCounts[node.name].outbound > 0 || nodeRecCounts[node.name].inbound > 0) && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 tabular-nums" title="Pending migration recommendations">
+                                {nodeRecCounts[node.name].outbound > 0 && `→${nodeRecCounts[node.name].outbound}`}
+                                {nodeRecCounts[node.name].outbound > 0 && nodeRecCounts[node.name].inbound > 0 && ' · '}
+                                {nodeRecCounts[node.name].inbound > 0 && `←${nodeRecCounts[node.name].inbound}`}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3"><StatusDot online={node.online} /></td>
                         <td className="p-3 text-xs text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
@@ -482,6 +498,7 @@ export default function NodeSummaryTable({
                               guestProfiles={guestProfiles}
                               handleRemoveTag={handleRemoveTag}
                               openTagModal={openTagModal}
+                              guestRecMap={guestRecMap}
                             />
                           </td>
                         </tr>
