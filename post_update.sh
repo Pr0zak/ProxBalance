@@ -93,6 +93,11 @@ if [ "$NEEDS_BUILD" = "true" ]; then
   echo "  → Copying index.html..."
   cp index.html /var/www/html/index.html
 
+  # Sync brand assets (favicon, logos, etc.) — these aren't built artifacts
+  # but they live in assets/ alongside the bundled JS/CSS.
+  echo "  → Syncing brand SVGs..."
+  cp assets/*.svg /var/www/html/assets/ 2>/dev/null || true
+
   echo "  ✓ Web interface built and optimized"
 else
   # Just copy pre-built files
