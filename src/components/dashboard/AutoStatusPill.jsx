@@ -1,5 +1,6 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
 import RunDetailBlock from './RunDetailBlock.jsx';
+import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 
 const { useState, useEffect } = React;
 
@@ -68,6 +69,8 @@ export default function AutoStatusPill({
   runningAutomation,
   setCurrentPage,
   showLastRunSummary = false,
+  runHistory,
+  runHistoryVariant = '3', // default to result-card layout for inline expansion
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
@@ -177,9 +180,23 @@ export default function AutoStatusPill({
         )}
       </div>
       {canExpand && expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-slate-700/40">
-          <div className="text-xs text-gray-500 mb-2">Last run detail · what was migrated, why, and any failures</div>
-          <RunDetailBlock run={lastRunObj} />
+        <div className="px-4 pb-4 pt-3 border-t border-slate-700/40 space-y-4">
+          <div>
+            <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Last run · what was migrated, why, and any failures</div>
+            <RunDetailBlock run={lastRunObj} />
+          </div>
+          {runHistory && runHistory.length > 0 && (
+            <div>
+              <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
+              {/* Variants 1-4 use the dedicated layouts; current/5 fall back to a sensible default. */}
+              <RunHistoryDisplay
+                embedded
+                variant={['1','2','3','4'].includes(runHistoryVariant) ? runHistoryVariant : '3'}
+                runHistory={runHistory}
+                automationStatus={automationStatus}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

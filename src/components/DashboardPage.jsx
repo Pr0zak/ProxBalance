@@ -10,13 +10,11 @@ import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
 import ClusterHealthPicker from './dashboard/ClusterHealthPicker.jsx';
 import RunHistoryPicker from './dashboard/RunHistoryPicker.jsx';
-import RunHistoryDisplay from './dashboard/RunHistoryDisplay.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
 import MigrationModals from './dashboard/MigrationModals.jsx';
-import AutomationStatusSection from './dashboard/AutomationStatusSection.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
 import SystemModals from './dashboard/SystemModals.jsx';
 
@@ -106,7 +104,6 @@ export default function DashboardPage({
   useEffect(() => { localStorage.setItem('healthVariant', healthVariant); }, [healthVariant]);
   const [runHistoryVariant, setRunHistoryVariant] = useState(() => localStorage.getItem('runHistoryVariant') || 'current');
   useEffect(() => { localStorage.setItem('runHistoryVariant', runHistoryVariant); }, [runHistoryVariant]);
-  const useAltRunHistory = ['1','2','3','4'].includes(runHistoryVariant);
 
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
@@ -158,7 +155,7 @@ export default function DashboardPage({
           clusterHealthVariant={healthVariant}
         />
 
-        {/* Auto-migration status banner */}
+        {/* Auto-migration status banner — expandable to show last-run + run history */}
         <div className="mb-3">
           <AutoStatusPill
             size="banner"
@@ -168,6 +165,8 @@ export default function DashboardPage({
             runningAutomation={runningAutomation}
             setCurrentPage={setCurrentPage}
             showLastRunSummary={runHistoryVariant === '5'}
+            runHistory={runHistory}
+            runHistoryVariant={runHistoryVariant}
           />
         </div>
 
@@ -232,35 +231,9 @@ export default function DashboardPage({
           setExpandedRun={setExpandedRun}
         />
 
-        {/* Automated Migrations Status — slim mode (chart + history only; status header moved to banner above) */}
-        {!useAltRunHistory && (
-          <AutomationStatusSection
-            automationStatus={automationStatus}
-            automationConfig={automationConfig}
-            scoreHistory={scoreHistory}
-            collapsedSections={collapsedSections}
-            setCollapsedSections={setCollapsedSections}
-            toggleSection={toggleSection}
-            setCurrentPage={setCurrentPage}
-            fetchAutomationStatus={fetchAutomationStatus}
-            runAutomationNow={runAutomationNow}
-            runningAutomation={runningAutomation}
-            runNowMessage={runNowMessage}
-            setRunNowMessage={setRunNowMessage}
-            setCancelMigrationModal={setCancelMigrationModal}
-            runHistory={runHistory}
-            expandedRun={expandedRun}
-            setExpandedRun={setExpandedRun}
-            slim
-          />
-        )}
-        {useAltRunHistory && (
-          <RunHistoryDisplay
-            variant={runHistoryVariant}
-            runHistory={runHistory}
-            automationStatus={automationStatus}
-          />
-        )}
+        {/* AutomationStatusSection removed — its content (last-run detail + run history)
+            now lives inside the expandable auto-migration banner above. The score-history
+            chart that lived here was dropped per direction. */}
 
         <NodeDetailsModal
           selectedNode={selectedNode}
