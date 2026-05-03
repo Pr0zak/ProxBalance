@@ -158,6 +158,7 @@ export default function DashboardPage({
             runningAutomation={runningAutomation}
             setCurrentPage={setCurrentPage}
             runHistory={runHistory}
+            API_BASE={API_BASE}
           />
         </div>
 

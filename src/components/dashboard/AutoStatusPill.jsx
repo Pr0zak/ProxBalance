@@ -1,6 +1,7 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
 import { RunSummaryRow } from './RunDetailBlock.jsx';
 import RunHistoryDisplay from './RunHistoryDisplay.jsx';
+import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 
 const { useState, useEffect } = React;
 
@@ -69,6 +70,7 @@ export default function AutoStatusPill({
   runningAutomation,
   setCurrentPage,
   runHistory,
+  API_BASE,
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
@@ -179,6 +181,12 @@ export default function AutoStatusPill({
                 runHistory={runHistory}
                 automationStatus={automationStatus}
               />
+            </div>
+          )}
+          {API_BASE && (
+            <div>
+              <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Migration outcomes — predicted vs actual</div>
+              <MigrationOutcomes API_BASE={API_BASE} active={expanded} />
             </div>
           )}
         </div>
