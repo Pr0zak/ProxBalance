@@ -1,5 +1,7 @@
-import { CheckCircle, Eye } from '../Icons.jsx';
+import { CheckCircle, Eye, ChevronDown } from '../Icons.jsx';
 import { formatRelativeTime } from '../../utils/formatters.js';
+
+const { useState } = React;
 
 const STATUS_LABEL = {
   success: 'Success',
@@ -104,6 +106,28 @@ function DecisionsList({ decisions }) {
   );
 }
 
+function ActivityLogList({ log }) {
+  if (!log || log.length === 0) return null;
+  const colorFor = (lv) => lv === 'error' ? 'text-red-400' : lv === 'warn' ? 'text-yellow-400' : 'text-gray-400';
+  return (
+    <div className="bg-slate-800/60 border border-slate-700/50 rounded p-3">
+      <div className="text-xs font-semibold text-gray-300 mb-2">Logs ({log.length})</div>
+      <div className="font-mono text-[11px] space-y-0.5 max-h-48 overflow-y-auto">
+        {log.map((entry, i) => {
+          const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+          return (
+            <div key={i} className="flex gap-2">
+              {ts && <span className="text-gray-600 shrink-0">{ts}</span>}
+              <span className={`uppercase shrink-0 ${colorFor(entry.level)}`}>{(entry.level || 'info').padEnd(5)}</span>
+              <span className="text-gray-300 break-words">{entry.message}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SafetyChecksList({ safety }) {
   if (!safety || Object.keys(safety).length === 0) return null;
   const rows = [];
@@ -168,7 +192,52 @@ export default function RunDetailBlock({ run, compact = false }) {
         </div>
       )}
       <DecisionsList decisions={run.decisions} />
+      <ActivityLogList log={run.activity_log} />
       {!compact && <SafetyChecksList safety={run.safety_checks} />}
+    </div>
+  );
+}
+
+/**
+ * Simple-by-default summary row with click-to-expand for full RunDetailBlock.
+ * Used wherever a "last run" or "recent run" is shown alongside other content.
+ */
+const STATUS_DOT_LOCAL = {
+  success: 'bg-green-400',
+  partial: 'bg-yellow-400',
+  failed: 'bg-red-400',
+  no_action: 'bg-green-500',
+};
+
+export function RunSummaryRow({ run, defaultExpanded = false, label = 'Last run' }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  if (!run) return null;
+  const status = run.status;
+  return (
+    <div className="bg-slate-800/40 border border-slate-700/50 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-700/30 transition-colors flex-wrap"
+      >
+        <ChevronDown size={14} className={`text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
+        <span className="text-[11px] uppercase tracking-wider text-gray-500 shrink-0">{label}</span>
+        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_LOCAL[status] || 'bg-gray-500'}`} />
+        <span className={`text-sm font-semibold ${STATUS_COLOR[status] || 'text-gray-400'}`}>
+          {STATUS_LABEL[status] || status}
+        </span>
+        <span className="text-xs text-gray-400 tabular-nums">
+          · {run.migrations_successful || 0}/{run.migrations_executed || 0} migrations
+        </span>
+        <span className="text-xs text-gray-500 tabular-nums">· {fmtDuration(run.duration_seconds)}</span>
+        {run.timestamp && (
+          <span className="text-xs text-gray-500 ml-auto">{formatRelativeTime(run.timestamp)}</span>
+        )}
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-slate-700/40">
+          <RunDetailBlock run={run} />
+        </div>
+      )}
     </div>
   );
 }
