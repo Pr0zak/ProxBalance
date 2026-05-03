@@ -150,11 +150,13 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
   }
   return (
     <div className="border-l border-slate-700/40 ml-2">
-      {guests.map(guest => (
+      {guests.map(guest => {
+        const hasRec = !!guestRecMap?.[String(guest.vmid)];
+        return (
         <div
           key={guest.vmid}
           onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest); }}
-          className="flex items-center gap-3 px-3 py-2 rounded hover:bg-slate-700/30 cursor-pointer transition-colors flex-wrap"
+          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-900/15 hover:bg-orange-900/25' : 'hover:bg-slate-700/30'}`}
         >
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${guest.status === 'running' ? 'bg-green-400' : 'bg-gray-600'}`} />
           <span className="text-sm text-gray-200 min-w-[160px] flex items-center gap-1.5">
@@ -209,7 +211,8 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
             <span className="ml-auto text-xs text-gray-600">stopped</span>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -453,10 +456,12 @@ export default function NodeSummaryTable({
                 {nodes.map(node => {
                   const isExpanded = effectiveExpanded.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
+                  const recs = nodeRecCounts?.[node.name];
+                  const hasRecs = recs && (recs.outbound > 0 || recs.inbound > 0);
                   return (
                     <React.Fragment key={node.name}>
                       <tr
-                        className={`${TABLE_ROW} cursor-pointer`}
+                        className={`${TABLE_ROW} ${hasRecs ? 'bg-orange-900/15' : ''} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
                         <td className="p-3 w-8">
