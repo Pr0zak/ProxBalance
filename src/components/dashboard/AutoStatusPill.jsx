@@ -54,11 +54,11 @@ async function togglePause(automationStatus, fetchAutomationStatus) {
   } catch (e) { /* no-op */ }
 }
 
-const COLOR_TO_TEXT = { green: 'text-green-400', yellow: 'text-yellow-400', orange: 'text-orange-400', gray: 'text-pb-text2 dark:text-gray-400' };
+const COLOR_TO_TEXT = { green: 'text-green-600 dark:text-green-400', yellow: 'text-yellow-600 dark:text-yellow-400', orange: 'text-orange-600 dark:text-orange-400', gray: 'text-pb-text2 dark:text-gray-400' };
 const COLOR_TO_BG = {
-  green: 'bg-green-900/15 border-green-800/40',
-  yellow: 'bg-yellow-900/15 border-yellow-800/40',
-  orange: 'bg-orange-900/15 border-orange-800/40',
+  green: 'bg-green-50 dark:bg-green-900/15 border-green-200 dark:border-green-800/40',
+  yellow: 'bg-yellow-50 dark:bg-yellow-900/15 border-yellow-200 dark:border-yellow-800/40',
+  orange: 'bg-orange-50 dark:bg-orange-900/15 border-orange-200 dark:border-orange-800/40',
   gray: 'bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50',
 };
 
@@ -151,7 +151,7 @@ export default function AutoStatusPill({
               <button
                 onClick={() => runAutomationNow()}
                 disabled={runningAutomation}
-                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-pb-text dark:text-white hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
+                className="px-2.5 py-1 text-xs rounded border bg-blue-600 border-blue-500 text-pb-text dark:text-white hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-600 inline-flex items-center gap-1"
                 title="Trigger an automation run now"
               >
                 {runningAutomation ? <Loader size={12} className="animate-spin" /> : <Play size={12} />}

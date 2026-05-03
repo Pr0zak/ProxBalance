@@ -21,7 +21,7 @@ export default function RecommendationFilters({
         <Filter size={12} />
         {showRecFilters ? 'Hide Filters' : 'Filter & Sort'}
         {(recFilterConfidence || recFilterTargetNode || recFilterSourceNode || recSortBy) && (
-          <span className="ml-1 px-1.5 py-0.5 bg-orange-900/40 text-orange-400 rounded text-[10px] font-medium">Active</span>
+          <span className="ml-1 px-1.5 py-0.5 bg-orange-50 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded text-[10px] font-medium">Active</span>
         )}
       </button>
       {showRecFilters && (
@@ -78,7 +78,7 @@ export default function RecommendationFilters({
           {(recFilterConfidence || recFilterTargetNode || recFilterSourceNode || recSortBy) && (
             <button
               onClick={() => { setRecFilterConfidence(''); setRecFilterTargetNode(''); setRecFilterSourceNode(''); setRecSortBy(''); }}
-              className="text-xs px-2 py-1.5 text-red-400 hover:text-red-300"
+              className="text-xs px-2 py-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
             >
               Clear All
             </button>

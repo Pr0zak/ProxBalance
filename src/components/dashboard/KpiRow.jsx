@@ -65,11 +65,11 @@ export default function KpiRow({
   const scoreColorClass = avgScore !== null ? scoreColor(avgScore) : 'text-pb-text2 dark:text-gray-500';
 
   const otherCards = [
-    { label: 'Nodes Online', value: `${onlineNodes}/${totalNodes}`, icon: <Server size={18} className="text-green-400" />, color: onlineNodes === totalNodes ? 'text-green-400' : 'text-yellow-400' },
-    { label: 'Total Guests', value: allGuests, icon: <Activity size={18} className="text-blue-400" />, color: 'text-pb-text dark:text-white' },
-    { label: 'Active Migrations', value: activeMigrations, icon: <MoveRight size={18} className="text-blue-400" />, color: activeMigrations > 0 ? 'text-blue-400' : 'text-pb-text2 dark:text-gray-400' },
-    { label: 'Recommendations', value: pendingRecs, icon: <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>, color: pendingRecs > 0 ? 'text-purple-400' : 'text-pb-text2 dark:text-gray-400' },
-    { label: 'Tagged', value: taggedCount, icon: <Tag size={18} className={taggedCount > 0 ? 'text-pink-400' : 'text-pb-text2 dark:text-gray-500'} />, color: taggedCount > 0 ? 'text-pink-400' : 'text-pb-text2 dark:text-gray-400', sublabel: tagBreakdown },
+    { label: 'Nodes Online', value: `${onlineNodes}/${totalNodes}`, icon: <Server size={18} className="text-green-600 dark:text-green-400" />, color: onlineNodes === totalNodes ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400' },
+    { label: 'Total Guests', value: allGuests, icon: <Activity size={18} className="text-blue-600 dark:text-blue-400" />, color: 'text-pb-text dark:text-white' },
+    { label: 'Active Migrations', value: activeMigrations, icon: <MoveRight size={18} className="text-blue-600 dark:text-blue-400" />, color: activeMigrations > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-400' },
+    { label: 'Recommendations', value: pendingRecs, icon: <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-600 dark:text-purple-400"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>, color: pendingRecs > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-pb-text2 dark:text-gray-400' },
+    { label: 'Tagged', value: taggedCount, icon: <Tag size={18} className={taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-500'} />, color: taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-400', sublabel: tagBreakdown },
   ];
 
   return (

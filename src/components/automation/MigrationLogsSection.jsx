@@ -20,27 +20,27 @@ export default function MigrationLogsSection({
             <div className="flex items-center gap-2 min-w-0">
               <h2 className="text-xl font-bold text-pb-text dark:text-white">Migration Logs & History</h2>
               <span className="relative group inline-block">
-                <Info size={16} className="text-pb-text2 dark:text-gray-400 hover:text-blue-400 cursor-help" />
+                <Info size={16} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
-                  <div className="font-semibold mb-2 text-blue-400 border-b border-gray-700 pb-2">Migration Scoring System</div>
+                  <div className="font-semibold mb-2 text-blue-600 dark:text-blue-400 border-b border-gray-700 pb-2">Migration Scoring System</div>
                   <div className="text-[11px] space-y-1">
                     <div className="text-pb-text dark:text-gray-300">Migrations are scored using a penalty-based system:</div>
                     <div className="mt-2 space-y-0.5">
-                      <div>• <span className="text-blue-300">CPU Load</span> × 30%</div>
-                      <div>• <span className="text-blue-300">Memory Load</span> × 30%</div>
-                      <div>• <span className="text-blue-300">IOWait</span> × 20%</div>
-                      <div>• <span className="text-blue-300">Load Average</span> × 10%</div>
-                      <div>• <span className="text-blue-300">Storage Pressure</span> × 10%</div>
+                      <div>• <span className="text-blue-700 dark:text-blue-300">CPU Load</span> × 30%</div>
+                      <div>• <span className="text-blue-700 dark:text-blue-300">Memory Load</span> × 30%</div>
+                      <div>• <span className="text-blue-700 dark:text-blue-300">IOWait</span> × 20%</div>
+                      <div>• <span className="text-blue-700 dark:text-blue-300">Load Average</span> × 10%</div>
+                      <div>• <span className="text-blue-700 dark:text-blue-300">Storage Pressure</span> × 10%</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-gray-700">
                       <div className="text-pb-text2 dark:text-gray-400">Lower penalty score = better target</div>
                       <div className="text-pb-text2 dark:text-gray-400">Plus penalties for high usage & trends</div>
                     </div>
                     <div className="mt-2 pt-2 border-t border-gray-700">
-                      <div><span className="text-green-400 font-semibold">70%+</span> = Excellent</div>
-                      <div><span className="text-yellow-400 font-semibold">50-69%</span> = Good</div>
-                      <div><span className="text-orange-400 font-semibold">30-49%</span> = Fair</div>
-                      <div><span className="text-red-400 font-semibold">&lt;30%</span> = Poor</div>
+                      <div><span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent</div>
+                      <div><span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good</div>
+                      <div><span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair</div>
+                      <div><span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor</div>
                     </div>
                   </div>
                 </div>
@@ -55,7 +55,7 @@ export default function MigrationLogsSection({
                 onClick={() => setMigrationLogsTab('history')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   migrationLogsTab === 'history'
-                    ? 'border-blue-600 text-blue-400'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                 }`}
               >
@@ -65,7 +65,7 @@ export default function MigrationLogsSection({
                 onClick={() => setMigrationLogsTab('logs')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   migrationLogsTab === 'logs'
-                    ? 'border-blue-600 text-blue-400'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
                 }`}
               >
@@ -101,7 +101,7 @@ export default function MigrationLogsSection({
                 </div>
                 <button
                   onClick={fetchAutomationStatus}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
                 >
                   <RefreshCw size={14} />
                   Refresh
@@ -176,17 +176,17 @@ export default function MigrationLogsSection({
                                   return (
                                 <div className="flex items-center gap-1">
                                   <span className={`font-semibold ${
-                                    suitabilityPercent >= 70 ? 'text-green-400' :
-                                    suitabilityPercent >= 50 ? 'text-yellow-400' :
-                                    suitabilityPercent >= 30 ? 'text-orange-400' :
-                                    'text-red-400'
+                                    suitabilityPercent >= 70 ? 'text-green-600 dark:text-green-400' :
+                                    suitabilityPercent >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                    suitabilityPercent >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                                    'text-red-600 dark:text-red-400'
                                   }`}>
                                     {suitabilityPercent}%
                                   </span>
                                   <span className="relative group inline-block">
-                                    <Info size={12} className="text-pb-text2 dark:text-gray-400 hover:text-blue-400 cursor-help" />
+                                    <Info size={12} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
                                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
-                                      <div className="font-semibold mb-1 text-blue-400">Scoring Breakdown</div>
+                                      <div className="font-semibold mb-1 text-blue-600 dark:text-blue-400">Scoring Breakdown</div>
                                       <div className="text-[10px] space-y-0.5">
                                         <div>Target: {migration.target_node}</div>
                                         <div>Penalty Score: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
@@ -201,7 +201,7 @@ export default function MigrationLogsSection({
                                           <div className="mt-1 text-pb-text2 dark:text-gray-400">+ Penalties for high usage/trends</div>
                                         </div>
                                         {migration.target_node_score > 100 && (
-                                          <div className="border-t border-gray-700 pt-1 mt-1 text-red-400">
+                                          <div className="border-t border-gray-700 pt-1 mt-1 text-red-600 dark:text-red-400">
                                             ⚠ Penalty score &gt;100 indicates heavy load/trends
                                           </div>
                                         )}
@@ -224,11 +224,11 @@ export default function MigrationLogsSection({
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-1 rounded text-xs font-semibold inline-flex items-center gap-1 ${
                                   migration.status === 'completed'
-                                    ? 'bg-green-900/30 text-green-400'
+                                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                                     : migration.status === 'failed'
-                                    ? 'bg-red-900/30 text-red-400'
+                                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                                     : migration.status === 'timeout'
-                                    ? 'bg-orange-900/30 text-orange-400'
+                                    ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
                                     : 'bg-gray-900/30 text-pb-text2 dark:text-gray-400'
                                 }`}>
                                   {migration.status === 'completed' && <CheckCircle size={12} />}
@@ -237,7 +237,7 @@ export default function MigrationLogsSection({
                                   {migration.status}
                                 </span>
                                 {migration.dry_run && (
-                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-900/30 text-yellow-400">
+                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
                                     DRY RUN
                                   </span>
                                 )}
@@ -323,7 +323,7 @@ export default function MigrationLogsSection({
                         console.error('Error fetching logs:', error);
                       }
                     }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
                     title="Refresh Logs"
                   >
                     <RefreshCw size={14} />
@@ -343,7 +343,7 @@ export default function MigrationLogsSection({
                       window.URL.revokeObjectURL(url);
                     }}
                     disabled={!automigrateLogs}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-pb-text dark:text-white rounded text-sm font-medium flex items-center gap-2"
                   >
                     <Download size={14} />
                     Download
@@ -351,7 +351,7 @@ export default function MigrationLogsSection({
                 </div>
               </div>
               <div className="bg-black rounded border border-gray-700 p-4 max-h-96 overflow-y-auto">
-                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                <pre className="text-xs text-green-600 dark:text-green-400 font-mono whitespace-pre-wrap">
                   {automigrateLogs || 'Click "Refresh" to load logs...'}
                 </pre>
               </div>

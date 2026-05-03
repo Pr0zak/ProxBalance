@@ -39,7 +39,7 @@ export default function TopNav({
             <ProxBalanceLogo size={28} />
             <span className="text-lg hidden sm:inline">
               <span className="font-light text-pb-text dark:text-gray-300">Prox</span>
-              <span className="font-extrabold text-blue-400">Balance</span>
+              <span className="font-extrabold text-blue-600 dark:text-blue-400">Balance</span>
             </span>
           </div>
 
@@ -62,7 +62,7 @@ export default function TopNav({
             {systemInfo?.updates_available && (
               <button
                 onClick={onShowUpdate}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-900/30 text-yellow-400 border border-yellow-700/30 hover:bg-yellow-900/50 transition-colors"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700/30 hover:bg-yellow-50 dark:hover:bg-yellow-900/50 transition-colors"
                 title={`${systemInfo.commits_behind} update(s) available`}
               >
                 <RefreshCw size={12} />
@@ -80,7 +80,7 @@ export default function TopNav({
             {systemInfo?.branch && (
               <button
                 onClick={onShowBranches}
-                className="hidden lg:flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-500 hover:text-blue-400 transition-colors"
+                className="hidden lg:flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 title="Manage branches"
               >
                 <GitBranch size={12} />
@@ -119,7 +119,7 @@ export default function TopNav({
                 title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                 aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {darkMode ? <Sun size={16} className="text-yellow-400" /> : <Moon size={16} />}
+                {darkMode ? <Sun size={16} className="text-yellow-600 dark:text-yellow-400" /> : <Moon size={16} />}
               </button>
             )}
           </div>

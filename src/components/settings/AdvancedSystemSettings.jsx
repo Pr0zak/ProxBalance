@@ -199,39 +199,39 @@ export default function AdvancedSystemSettings({
                         {tokenValidationResult && (
                           <div className={`p-4 rounded border ${
                             tokenValidationResult.success
-                              ? 'bg-green-900/20 border-green-800'
-                              : 'bg-red-900/20 border-red-800'
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                           }`}>
                             <div className="flex items-start gap-2">
                               {tokenValidationResult.success ? (
-                                <CheckCircle size={20} className="text-green-400 shrink-0 mt-0.5" />
+                                <CheckCircle size={20} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
                               ) : (
-                                <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
+                                <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                               )}
                               <div className="flex-1">
                                 <p className={`font-semibold text-sm mb-1 ${
                                   tokenValidationResult.success
-                                    ? 'text-green-200'
-                                    : 'text-red-200'
+                                    ? 'text-green-800 dark:text-green-200'
+                                    : 'text-red-800 dark:text-red-200'
                                 }`}>
                                   {tokenValidationResult.message}
                                 </p>
                                 {tokenValidationResult.success && (
                                   <>
                                     {tokenValidationResult.version && (
-                                      <p className="text-xs text-green-300 mb-2">
+                                      <p className="text-xs text-green-700 dark:text-green-300 mb-2">
                                         Proxmox VE Version: {tokenValidationResult.version}
                                       </p>
                                     )}
                                     {tokenValidationResult.permissions && tokenValidationResult.permissions.length > 0 && (
                                       <div className="mt-2">
-                                        <p className="text-xs font-semibold text-green-200 mb-1">
+                                        <p className="text-xs font-semibold text-green-800 dark:text-green-200 mb-1">
                                           Token Permissions:
                                         </p>
-                                        <ul className="text-xs text-green-300 space-y-1 ml-4">
+                                        <ul className="text-xs text-green-700 dark:text-green-300 space-y-1 ml-4">
                                           {tokenValidationResult.permissions.map((perm, idx) => (
                                             <li key={idx} className="flex items-start gap-1">
-                                              <span className="text-green-400">•</span>
+                                              <span className="text-green-600 dark:text-green-400">•</span>
                                               <span>{perm}</span>
                                             </li>
                                           ))}
@@ -245,8 +245,8 @@ export default function AdvancedSystemSettings({
                           </div>
                         )}
 
-                        <div className="bg-blue-900/30 border border-blue-800 rounded p-3">
-                          <p className="text-sm text-blue-200">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
                             <strong>Tip:</strong> Use the installation script to automatically create an API token with proper permissions. Click "Validate Token" after entering credentials to verify connectivity and check permissions.
                           </p>
                         </div>
@@ -258,8 +258,8 @@ export default function AdvancedSystemSettings({
                     <div>
                       <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Proxmox Host Configuration</h3>
                       <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                        <div className="bg-blue-900/30 border border-blue-800 rounded p-3 mb-4">
-                          <p className="text-sm text-blue-200">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
                             <strong>Current Proxmox Host:</strong> {config?.proxmox_host || 'Not configured'}
                           </p>
                         </div>
@@ -317,7 +317,7 @@ export default function AdvancedSystemSettings({
                         </p>
 
                         {/* Export Configuration */}
-                        <div className="p-4 bg-blue-900/20 border border-blue-800 rounded">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
                           <h4 className="font-semibold text-pb-text dark:text-white mb-2">Export Configuration</h4>
                           <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">
                             Download all settings as a JSON file for backup or migration to another instance.
@@ -334,7 +334,7 @@ export default function AdvancedSystemSettings({
                         </div>
 
                         {/* Import Configuration */}
-                        <div className="p-4 bg-green-900/20 border border-green-800 rounded">
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
                           <h4 className="font-semibold text-pb-text dark:text-white mb-2">Import Configuration</h4>
                           <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">
                             Upload a configuration file to restore settings. Your current configuration will be automatically backed up before import.
@@ -402,7 +402,7 @@ export default function AdvancedSystemSettings({
                         </div>
 
                         {/* Manual Backup */}
-                        <div className="p-4 bg-purple-900/20 border border-purple-800 rounded">
+                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded">
                           <h4 className="font-semibold text-pb-text dark:text-white mb-2">Create Backup</h4>
                           <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">
                             Create a manual backup of your current configuration. Last 5 backups are kept automatically.
@@ -432,7 +432,7 @@ export default function AdvancedSystemSettings({
                           </button>
                         </div>
 
-                        <div className="text-xs text-pb-text2 dark:text-gray-400 italic p-3 bg-yellow-900/20 border border-yellow-800 rounded">
+                        <div className="text-xs text-pb-text2 dark:text-gray-400 italic p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
                           <strong>Note:</strong> Backups are stored in /opt/proxmox-balance-manager/backups/ and rotated automatically (last 5 kept).
                         </div>
                       </div>

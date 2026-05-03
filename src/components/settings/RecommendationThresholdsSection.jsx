@@ -90,8 +90,8 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
       {!isCollapsed && (
       <div className="space-y-4">
-        <div className="bg-blue-900/30 border border-blue-800 rounded-lg p-3">
-          <p className="text-sm text-blue-200">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
             <strong>When to recommend migrations:</strong> When a node's resource usage exceeds these thresholds,
             the engine will start recommending migrations to move guests off that node. Lower values mean more
             proactive balancing. These are used by both the dashboard and background recommendation services.
@@ -101,7 +101,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         {/* CPU Threshold */}
         <div>
           <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            CPU Threshold: <span className="font-bold text-blue-400">{cpuThreshold}%</span>
+            CPU Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{cpuThreshold}%</span>
           </label>
           <input
             type="range"
@@ -126,7 +126,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         {/* Memory Threshold */}
         <div>
           <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            Memory Threshold: <span className="font-bold text-blue-400">{memThreshold}%</span>
+            Memory Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{memThreshold}%</span>
           </label>
           <input
             type="range"
@@ -151,7 +151,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         {/* IOWait Threshold */}
         <div>
           <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            IOWait Threshold: <span className="font-bold text-blue-400">{iowaitThreshold}%</span>
+            IOWait Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{iowaitThreshold}%</span>
           </label>
           <input
             type="range"
@@ -174,8 +174,8 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 

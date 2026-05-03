@@ -106,8 +106,8 @@ export default function NodeStatusSection({
                     <div className="flex items-center gap-1">
                       {showPredicted && predicted && before && (
                         <span className={`text-[9px] font-medium px-1 py-0.5 rounded ${
-                          predicted.cpu < before.cpu - 0.5 ? 'bg-green-900/30 text-green-400' :
-                          predicted.cpu > before.cpu + 0.5 ? 'bg-orange-900/30 text-orange-400' :
+                          predicted.cpu < before.cpu - 0.5 ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                          predicted.cpu > before.cpu + 0.5 ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
                           'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-500'
                         }`}>
                           {predicted.guest_count !== before.guest_count
@@ -129,7 +129,7 @@ export default function NodeStatusSection({
                             const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
                             const dir = ta?.cpu_direction || trend;
                             if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
-                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising'} />;
+                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title={ta ? `CPU ${ta.cpu_rate_per_day > 0 ? '+' : ''}${ta.cpu_rate_per_day?.toFixed(1)}%/day` : 'Rising'} />;
                             if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="Falling" />;
                             return null;
                           })()}
@@ -137,12 +137,12 @@ export default function NodeStatusSection({
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
                             <span className="text-pb-text2 dark:text-gray-400 line-through mr-1">{(node.cpu_percent || 0).toFixed(0)}%</span>
-                            <span className={`${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? 'text-green-400' : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? 'text-orange-400' : 'text-blue-400'}`}>
+                            <span className={`${predicted.cpu < (node.cpu_percent || 0) - 0.5 ? 'text-green-600 dark:text-green-400' : predicted.cpu > (node.cpu_percent || 0) + 0.5 ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
                               {predicted.cpu.toFixed(1)}%
                             </span>
                           </span>
                         ) : (
-                          <span className="font-semibold text-blue-400">
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
                             {(node.cpu_percent || 0).toFixed(1)}%
                           </span>
                         )}
@@ -167,7 +167,7 @@ export default function NodeStatusSection({
                             const ta = node.score_details?.trend_analysis || nodeScores?.[node.name]?.trend_analysis;
                             const dir = ta?.mem_direction || trend;
                             if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={ta ? `Mem ${ta.mem_rate_per_day > 0 ? '+' : ''}${ta.mem_rate_per_day?.toFixed(1)}%/day` : 'Rising fast'} />;
-                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-400" title="Rising" />;
+                            if (dir === 'rising') return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title="Rising" />;
                             if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="Falling" />;
                             return null;
                           })()}
@@ -175,12 +175,12 @@ export default function NodeStatusSection({
                         {showPredicted && predicted ? (
                           <span className="font-semibold">
                             <span className="text-pb-text2 dark:text-gray-400 line-through mr-1">{(node.mem_percent || 0).toFixed(0)}%</span>
-                            <span className={`${predicted.mem < (node.mem_percent || 0) - 0.5 ? 'text-green-400' : predicted.mem > (node.mem_percent || 0) + 0.5 ? 'text-orange-400' : 'text-purple-400'}`}>
+                            <span className={`${predicted.mem < (node.mem_percent || 0) - 0.5 ? 'text-green-600 dark:text-green-400' : predicted.mem > (node.mem_percent || 0) + 0.5 ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'}`}>
                               {predicted.mem.toFixed(1)}%
                             </span>
                           </span>
                         ) : (
-                        <span className="font-semibold text-purple-400">
+                        <span className="font-semibold text-purple-600 dark:text-purple-400">
                           {(node.mem_percent || 0).toFixed(1)}%
                         </span>
                         )}
@@ -204,14 +204,14 @@ export default function NodeStatusSection({
                             const iowait = node.metrics?.current_iowait || 0;
                             const avgIowait = node.metrics?.avg_iowait || 0;
                             if (iowait > 30) return <TrendingUp size={10} className="text-red-500" title={`IOWait ${iowait.toFixed(1)}% (critical)`} />;
-                            if (iowait > 15 && avgIowait > 10) return <TrendingUp size={10} className="text-orange-400" title={`IOWait ${iowait.toFixed(1)}% (elevated, avg ${avgIowait.toFixed(1)}%)`} />;
+                            if (iowait > 15 && avgIowait > 10) return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title={`IOWait ${iowait.toFixed(1)}% (elevated, avg ${avgIowait.toFixed(1)}%)`} />;
                             return null;
                           })()}
                         </span>
                         <span className={`font-semibold ${
-                          (node.metrics?.current_iowait || 0) > 30 ? 'text-red-400' :
-                          (node.metrics?.current_iowait || 0) > 15 ? 'text-orange-400' :
-                          'text-orange-400'
+                          (node.metrics?.current_iowait || 0) > 30 ? 'text-red-600 dark:text-red-400' :
+                          (node.metrics?.current_iowait || 0) > 15 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-orange-600 dark:text-orange-400'
                         }`}>
                           {(node.metrics?.current_iowait || 0).toFixed(1)}%
                         </span>
@@ -231,10 +231,10 @@ export default function NodeStatusSection({
                       <span className="text-pb-text2 dark:text-gray-400">Suitability:</span>
                       <span className={`font-semibold ${
                         nodeScores && nodeScores[node.name] ? (
-                          nodeScores[node.name].suitability_rating >= 70 ? 'text-green-400' :
-                          nodeScores[node.name].suitability_rating >= 50 ? 'text-yellow-400' :
-                          nodeScores[node.name].suitability_rating >= 30 ? 'text-orange-400' :
-                          'text-red-400'
+                          nodeScores[node.name].suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
+                          nodeScores[node.name].suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                          nodeScores[node.name].suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
                         ) : 'text-pb-text dark:text-white'
                       }`}>
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
@@ -247,10 +247,10 @@ export default function NodeStatusSection({
                         {nodeScores[node.name].trend_analysis?.stability_score != null && (() => {
                           const s = nodeScores[node.name].trend_analysis.stability_score;
                           const label = s >= 80 ? 'Stable' : s >= 60 ? 'Moderate' : s >= 40 ? 'Variable' : 'Volatile';
-                          const color = s >= 80 ? 'bg-green-900/30 text-green-300'
-                            : s >= 60 ? 'bg-blue-900/30 text-blue-300'
-                            : s >= 40 ? 'bg-yellow-900/30 text-yellow-300'
-                            : 'bg-red-900/30 text-red-300';
+                          const color = s >= 80 ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : s >= 60 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : s >= 40 ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+                            : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300';
                           const factor = nodeScores[node.name].trend_analysis.cpu_stability_factor;
                           const factorTip = factor && factor !== 1.0 ? ` | CPU penalties ${factor < 1 ? `reduced ${Math.round((1 - factor) * 100)}%` : `inflated ${Math.round((factor - 1) * 100)}%`}` : '';
                           return (
@@ -263,9 +263,9 @@ export default function NodeStatusSection({
                         {nodeScores[node.name].overcommit_ratio > 0 && (() => {
                           const oc = nodeScores[node.name].overcommit_ratio;
                           const committed = nodeScores[node.name].committed_mem_gb;
-                          const color = oc > 1.2 ? 'bg-red-900/30 text-red-300'
-                            : oc > 1.0 ? 'bg-orange-900/30 text-orange-300'
-                            : oc > 0.85 ? 'bg-yellow-900/30 text-yellow-300'
+                          const color = oc > 1.2 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            : oc > 1.0 ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                            : oc > 0.85 ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
                             : '';
                           if (!color) return null;
                           return (
@@ -330,13 +330,13 @@ export default function NodeStatusSection({
               <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-pb-text dark:text-white">{node.name}</h3>
-                  <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-400' : 'text-red-400'}`}>{node.status}</span>
+                  <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
-                  <div><span className="text-pb-text2 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-pb-text2 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-pb-text2 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-pb-text2 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
                   <div><span className="text-pb-text2 dark:text-gray-400">Cores:</span> <span className="font-semibold text-pb-text dark:text-white">{node.cpu_cores || 0}</span></div>
                   <div><span className="text-pb-text2 dark:text-gray-400">Guests:</span> <span className="font-semibold text-pb-text dark:text-white">{node.guests?.length || 0}</span></div>
                 </div>

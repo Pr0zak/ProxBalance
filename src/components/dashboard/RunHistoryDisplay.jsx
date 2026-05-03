@@ -12,10 +12,10 @@ const STATUS_LABEL = {
   no_action: 'Balanced',
 };
 const STATUS_COLOR = {
-  success: 'text-green-400',
-  partial: 'text-yellow-400',
-  failed: 'text-red-400',
-  no_action: 'text-green-400',
+  success: 'text-green-600 dark:text-green-400',
+  partial: 'text-yellow-600 dark:text-yellow-400',
+  failed: 'text-red-600 dark:text-red-400',
+  no_action: 'text-green-600 dark:text-green-400',
 };
 const STATUS_DOT = {
   success: 'bg-green-400',

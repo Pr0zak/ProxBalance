@@ -20,16 +20,16 @@ export default function AlertsBanner({
           {recommendationData.capacity_advisories.map((adv, i) => (
             <div key={i} className={`rounded-xl border p-3 text-sm ${
               adv.severity === 'critical'
-                ? 'bg-red-900/20 border-red-700/50 text-red-200'
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700/50 text-red-800 dark:text-red-200'
                 : adv.severity === 'warning'
-                ? 'bg-yellow-900/20 border-yellow-700/50 text-yellow-200'
-                : 'bg-blue-900/20 border-blue-700/50 text-blue-200'
+                ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-200'
+                : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700/50 text-blue-800 dark:text-blue-200'
             }`}>
               <div className="flex items-start gap-2">
                 <AlertTriangle size={16} className={`shrink-0 mt-0.5 ${
-                  adv.severity === 'critical' ? 'text-red-400' :
-                  adv.severity === 'warning' ? 'text-yellow-400' :
-                  'text-blue-400'
+                  adv.severity === 'critical' ? 'text-red-600 dark:text-red-400' :
+                  adv.severity === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-blue-600 dark:text-blue-400'
                 }`} />
                 <div className="flex-1">
                   <div className="font-medium text-xs uppercase tracking-wide mb-0.5">
@@ -50,22 +50,22 @@ export default function AlertsBanner({
 
       {/* Migration Conflicts */}
       {hasConflicts && (
-        <div className="mb-4 rounded-xl border border-orange-700/50 bg-orange-900/20 p-3 text-sm">
+        <div className="mb-4 rounded-xl border border-orange-300 dark:border-orange-700/50 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={16} className="text-orange-400" />
-            <span className="font-semibold text-orange-200">
+            <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400" />
+            <span className="font-semibold text-orange-800 dark:text-orange-200">
               Migration Conflicts Detected ({recommendationData.conflicts.length})
             </span>
           </div>
-          <div className="space-y-2 text-xs text-orange-300">
+          <div className="space-y-2 text-xs text-orange-700 dark:text-orange-300">
             {recommendationData.conflicts.map((c, i) => (
-              <div key={i} className="p-2 bg-gray-800/50 rounded border border-orange-800">
+              <div key={i} className="p-2 bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800">
                 <div className="font-medium mb-1">
                   Target: {c.target_node} — {c.incoming_guests.length} incoming migrations
                 </div>
                 <div className="flex flex-wrap gap-2 mb-1">
-                  {c.exceeds_cpu && <span className="text-red-400">Combined CPU: {c.combined_predicted_cpu}% (threshold: {c.cpu_threshold}%)</span>}
-                  {c.exceeds_mem && <span className="text-red-400">Combined Memory: {c.combined_predicted_mem}% (threshold: {c.mem_threshold}%)</span>}
+                  {c.exceeds_cpu && <span className="text-red-600 dark:text-red-400">Combined CPU: {c.combined_predicted_cpu}% (threshold: {c.cpu_threshold}%)</span>}
+                  {c.exceeds_mem && <span className="text-red-600 dark:text-red-400">Combined Memory: {c.combined_predicted_mem}% (threshold: {c.mem_threshold}%)</span>}
                 </div>
                 <div className="italic">{c.resolution}</div>
               </div>
@@ -90,15 +90,15 @@ export default function AlertsBanner({
             <div className="space-y-2">
               {recommendationData.forecasts.map((fc, idx) => (
                 <div key={idx} className={`flex items-start gap-3 p-3 rounded-xl border ${
-                  fc.severity === 'critical' ? 'bg-red-900/20 border-red-700/50'
-                  : fc.severity === 'warning' ? 'bg-amber-900/20 border-amber-700/50'
-                  : 'bg-blue-900/20 border-blue-700/50'
+                  fc.severity === 'critical' ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700/50'
+                  : fc.severity === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700/50'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700/50'
                 }`}>
                   <div className={`shrink-0 p-1.5 rounded-full ${
-                    fc.severity === 'critical' ? 'bg-red-800' : fc.severity === 'warning' ? 'bg-amber-800' : 'bg-blue-800'
+                    fc.severity === 'critical' ? 'bg-red-100 dark:bg-red-800' : fc.severity === 'warning' ? 'bg-amber-100 dark:bg-amber-800' : 'bg-blue-100 dark:bg-blue-800'
                   }`}>
                     <AlertTriangle size={14} className={
-                      fc.severity === 'critical' ? 'text-red-400' : fc.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'
+                      fc.severity === 'critical' ? 'text-red-600 dark:text-red-400' : fc.severity === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
                     } />
                   </div>
                   <div className="flex-1 min-w-0">

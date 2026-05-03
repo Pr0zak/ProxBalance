@@ -132,7 +132,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Pushover</span>
                               {automationConfig.notifications?.providers?.pushover?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -232,7 +232,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Email (SMTP)</span>
                               {automationConfig.notifications?.providers?.email?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -338,7 +338,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Telegram</span>
                               {automationConfig.notifications?.providers?.telegram?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -387,7 +387,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Discord</span>
                               {automationConfig.notifications?.providers?.discord?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -423,7 +423,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Slack</span>
                               {automationConfig.notifications?.providers?.slack?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -459,7 +459,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-pb-text dark:text-gray-300">Generic Webhook</span>
                               {automationConfig.notifications?.providers?.webhook?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-900 text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
+                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
                               )}
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
@@ -508,7 +508,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
                             <Bell size={14} />
                             Send Test Notification

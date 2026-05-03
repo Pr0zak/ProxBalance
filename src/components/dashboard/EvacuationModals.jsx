@@ -42,8 +42,8 @@ export default function EvacuationModals({
 
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
               {evacuationPlan.will_skip > 0 && (
-                <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-800 rounded">
-                  <p className="text-sm text-yellow-200">
+                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     <span className="font-semibold">{evacuationPlan.will_skip}</span> guest(s) cannot be migrated. Reasons may include: missing storage on target nodes, errors, or "ignore" tag. These are shown in yellow below.
                   </p>
                 </div>
@@ -65,13 +65,13 @@ export default function EvacuationModals({
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {evacuationPlan.plan.map((item) => (
-                      <tr key={item.vmid} className={item.skipped ? 'bg-yellow-900/10' : ''}>
+                      <tr key={item.vmid} className={item.skipped ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}>
                         <td className="px-4 py-3 font-medium text-pb-text dark:text-white">{item.vmid}</td>
                         <td className="px-4 py-3 text-pb-text dark:text-gray-300">{item.name}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded ${
-                            item.type === 'qemu' ? 'bg-blue-900/30 text-blue-300' :
-                            item.type === 'lxc' ? 'bg-purple-900/30 text-purple-300' :
+                            item.type === 'qemu' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                            item.type === 'lxc' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
                             'bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-300'
                           }`}>
                             {item.type === 'qemu' ? 'VM' : item.type === 'lxc' ? 'CT' : 'Unknown'}
@@ -79,7 +79,7 @@ export default function EvacuationModals({
                         </td>
                         <td className="px-4 py-3">
                           {item.storage_volumes && item.storage_volumes.length > 0 ? (
-                            <span className={`text-xs ${!item.storage_compatible ? 'text-red-400 font-semibold' : 'text-pb-text2 dark:text-gray-400'}`}>
+                            <span className={`text-xs ${!item.storage_compatible ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-pb-text2 dark:text-gray-400'}`}>
                               {item.storage_volumes.join(', ')}
                             </span>
                           ) : (
@@ -88,16 +88,16 @@ export default function EvacuationModals({
                         </td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded ${
-                            item.status === 'running' ? 'bg-green-900/30 text-green-300' :
+                            item.status === 'running' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                             item.status === 'stopped' ? 'bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-300' :
-                            'bg-orange-900/30 text-orange-300'
+                            'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
                           }`}>
                             {item.status}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {item.skipped ? (
-                            <span className="text-yellow-400 text-xs italic">{item.skip_reason}</span>
+                            <span className="text-yellow-600 dark:text-yellow-400 text-xs italic">{item.skip_reason}</span>
                           ) : (
                             <select
                               value={guestTargets[item.vmid] || item.target}
@@ -113,9 +113,9 @@ export default function EvacuationModals({
                         <td className="px-4 py-3">
                           {!item.skipped && (
                             item.will_restart ? (
-                              <span className="text-orange-400 font-medium">Yes</span>
+                              <span className="text-orange-600 dark:text-orange-400 font-medium">Yes</span>
                             ) : (
-                              <span className="text-green-400">No</span>
+                              <span className="text-green-600 dark:text-green-400">No</span>
                             )
                           )}
                         </td>
@@ -140,9 +140,9 @@ export default function EvacuationModals({
                 </table>
               </div>
 
-              <div className="mt-6 bg-blue-900/20 p-4 rounded">
+              <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
                 <h4 className="font-semibold text-blue-100 mb-2">Important Notes:</h4>
-                <ul className="text-sm text-blue-200 space-y-1 list-disc list-inside">
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
                   <li>Running VMs will use live migration (no downtime)</li>
                   <li>Running containers will restart during migration (brief downtime)</li>
                   <li>Stopped VMs/CTs will be moved without starting</li>
@@ -166,7 +166,7 @@ export default function EvacuationModals({
               </button>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-pb-text dark:text-white rounded font-medium"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-pb-text dark:text-white rounded font-medium"
               >
                 <Check size={16} className="sm:hidden" /><span className="hidden sm:inline">Review & Confirm</span>
               </button>
@@ -207,7 +207,7 @@ export default function EvacuationModals({
                         <h4 className="text-lg font-semibold text-blue-600 mb-2">Migrate ({toMigrate.length})</h4>
                         <div className="space-y-2">
                           {toMigrate.map(item => (
-                            <div key={item.vmid} className="flex justify-between p-2 bg-blue-900/20 rounded">
+                            <div key={item.vmid} className="flex justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
                               <span>{item.vmid} - {item.name}</span>
                               <span>→ {item.target}</span>
                             </div>
@@ -283,7 +283,7 @@ export default function EvacuationModals({
                     });
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-pb-text dark:text-white rounded"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-pb-text dark:text-white rounded"
               >
                 <AlertTriangle size={14} /> Confirm Evacuation
               </button>

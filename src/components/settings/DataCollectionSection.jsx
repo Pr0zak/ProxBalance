@@ -21,9 +21,9 @@ export default function DataCollectionSection({
                           {backendCollected && (
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <Server size={16} className="text-green-400" />
+                                <Server size={16} className="text-green-600 dark:text-green-400" />
                                 <span className="text-sm text-pb-text dark:text-gray-300">
-                                  Last collected: <span className="font-semibold text-green-400">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>
+                                  Last collected: <span className="font-semibold text-green-600 dark:text-green-400">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>
                                 </span>
                               </div>
                               <button
@@ -43,24 +43,24 @@ export default function DataCollectionSection({
                     {data?.performance && (
                       <div className="mb-6">
                         <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Performance Metrics</h4>
-                        <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-800 rounded">
+                        <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-200 dark:border-green-800 rounded">
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="bg-gray-800/50 rounded p-3">
                               <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Total Time</div>
-                              <div className="text-2xl font-bold text-green-400">{data.performance.total_time}s</div>
+                              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.performance.total_time}s</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
                               <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Node Processing</div>
-                              <div className="text-2xl font-bold text-blue-400">{data.performance.node_processing_time}s</div>
+                              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{data.performance.node_processing_time}s</div>
                               <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
                               <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Guest Processing</div>
-                              <div className="text-2xl font-bold text-purple-400">{data.performance.guest_processing_time}s</div>
+                              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{data.performance.guest_processing_time}s</div>
                             </div>
                             <div className="bg-gray-800/50 rounded p-3">
                               <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Workers Used</div>
-                              <div className="text-2xl font-bold text-orange-400">{data.performance.max_workers}</div>
+                              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.performance.max_workers}</div>
                               <div className="text-xs text-pb-text2 dark:text-gray-500 mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
                             </div>
                           </div>
@@ -72,8 +72,8 @@ export default function DataCollectionSection({
                       <div>
                         <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Optimization Settings</h4>
                         <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                          <div className="bg-blue-900/30 border border-blue-800 rounded p-3 mb-4">
-                            <p className="text-sm text-blue-200">
+                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
                               <strong>Collection Performance:</strong> Optimize data collection speed based on cluster size. Parallel collection can reduce collection time by 3-5x.
                             </p>
                           </div>

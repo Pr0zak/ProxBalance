@@ -32,7 +32,7 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
         </div>
         <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
           <div className="text-pb-text2 dark:text-gray-400 mb-0.5">AI Enhanced</div>
-          <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-400' : 'text-pb-text2 dark:text-gray-400'}`}>
+          <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-600 dark:text-purple-400' : 'text-pb-text2 dark:text-gray-400'}`}>
             {recommendationData.ai_enhanced ? 'Yes' : 'No'}
           </div>
         </div>
@@ -44,9 +44,9 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
         </div>
       </div>
       {recommendationData.summary?.convergence_message && (
-        <div className="p-2 bg-green-900/20 rounded border border-green-700 text-xs">
-          <span className="text-green-300 font-medium">Cluster Converged: </span>
-          <span className="text-green-400">{recommendationData.summary.convergence_message}</span>
+        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-300 dark:border-green-700 text-xs">
+          <span className="text-green-700 dark:text-green-300 font-medium">Cluster Converged: </span>
+          <span className="text-green-600 dark:text-green-400">{recommendationData.summary.convergence_message}</span>
         </div>
       )}
       {recommendationData.parameters && (
@@ -56,7 +56,7 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
             CPU {recommendationData.parameters.cpu_threshold}% | Mem {recommendationData.parameters.mem_threshold}% | IOWait {recommendationData.parameters.iowait_threshold}%
           </span>
           {recommendationData.parameters.maintenance_nodes?.length > 0 && (
-            <span className="ml-2 text-yellow-400">
+            <span className="ml-2 text-yellow-600 dark:text-yellow-400">
               | Maintenance: {recommendationData.parameters.maintenance_nodes.join(', ')}
             </span>
           )}

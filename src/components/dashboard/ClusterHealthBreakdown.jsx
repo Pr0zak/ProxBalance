@@ -2,25 +2,25 @@ import { MODAL_OVERLAY, MODAL_CONTAINER, scoreColor } from '../../utils/designTo
 import { X } from '../Icons.jsx';
 
 const PENALTY_SEGMENTS = [
-  { key: 'cpu',     label: 'CPU',     color: 'bg-red-500',    text: 'text-red-300' },
-  { key: 'memory',  label: 'Memory',  color: 'bg-blue-500',   text: 'text-blue-300' },
-  { key: 'iowait',  label: 'IOWait',  color: 'bg-orange-500', text: 'text-orange-300' },
-  { key: 'trends',  label: 'Trends',  color: 'bg-yellow-500', text: 'text-yellow-300' },
-  { key: 'spikes',  label: 'Spikes',  color: 'bg-purple-500', text: 'text-purple-300' },
+  { key: 'cpu',     label: 'CPU',     color: 'bg-red-500',    text: 'text-red-700 dark:text-red-300' },
+  { key: 'memory',  label: 'Memory',  color: 'bg-blue-500',   text: 'text-blue-700 dark:text-blue-300' },
+  { key: 'iowait',  label: 'IOWait',  color: 'bg-orange-500', text: 'text-orange-700 dark:text-orange-300' },
+  { key: 'trends',  label: 'Trends',  color: 'bg-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
+  { key: 'spikes',  label: 'Spikes',  color: 'bg-purple-500', text: 'text-purple-700 dark:text-purple-300' },
 ];
 
 function StabilityLabel(score) {
   if (score == null) return null;
-  if (score >= 80) return { label: 'Stable',   cls: 'bg-green-900/30 text-green-300' };
-  if (score >= 60) return { label: 'Moderate', cls: 'bg-blue-900/30 text-blue-300' };
-  if (score >= 40) return { label: 'Variable', cls: 'bg-yellow-900/30 text-yellow-300' };
-  return { label: 'Volatile', cls: 'bg-red-900/30 text-red-300' };
+  if (score >= 80) return { label: 'Stable',   cls: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' };
+  if (score >= 60) return { label: 'Moderate', cls: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' };
+  if (score >= 40) return { label: 'Variable', cls: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' };
+  return { label: 'Volatile', cls: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' };
 }
 
 function PenaltyBar({ cats }) {
   if (!cats) return null;
   const total = PENALTY_SEGMENTS.reduce((s, p) => s + (cats[p.key] || 0), 0);
-  if (total === 0) return <div className="text-xs text-green-400">no penalties</div>;
+  if (total === 0) return <div className="text-xs text-green-600 dark:text-green-400">no penalties</div>;
   const segs = PENALTY_SEGMENTS.filter(p => (cats[p.key] || 0) > 0);
   return (
     <div>
@@ -48,13 +48,13 @@ function PenaltyBar({ cats }) {
 function NodeCard({ name, rating, score, isWorst }) {
   const stab = StabilityLabel(score?.trend_analysis?.stability_score);
   const oc = score?.overcommit_ratio;
-  const ocColor = oc > 1.2 ? 'text-red-400' : oc > 1.0 ? 'text-orange-400' : oc > 0.85 ? 'text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
+  const ocColor = oc > 1.2 ? 'text-red-600 dark:text-red-400' : oc > 1.0 ? 'text-orange-600 dark:text-orange-400' : oc > 0.85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
   return (
-    <div className={`p-3 rounded-lg border ${isWorst ? 'border-red-700/50 bg-red-900/10' : 'border-pb-border dark:border-slate-700/50 bg-pb-surface2 dark:bg-slate-800/40'}`}>
+    <div className={`p-3 rounded-lg border ${isWorst ? 'border-red-300 dark:border-red-700/50 bg-red-50 dark:bg-red-900/10' : 'border-pb-border dark:border-slate-700/50 bg-pb-surface2 dark:bg-slate-800/40'}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-pb-text dark:text-white text-sm">{name}</span>
-          {isWorst && <span className="text-[9px] uppercase tracking-wider text-red-300 bg-red-900/50 px-1.5 py-0.5 rounded">drag</span>}
+          {isWorst && <span className="text-[9px] uppercase tracking-wider text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/50 px-1.5 py-0.5 rounded">drag</span>}
         </div>
         <span className={`text-lg font-bold tabular-nums ${scoreColor(rating)}`}>{rating.toFixed(0)}<span className="text-xs text-pb-text2 dark:text-gray-500">/100</span></span>
       </div>

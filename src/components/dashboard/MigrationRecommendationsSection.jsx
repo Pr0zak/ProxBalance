@@ -100,7 +100,7 @@ export default function MigrationRecommendationsSection({
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-sm text-pb-text2 dark:text-gray-400">Suggested optimizations</p>
                   {recommendationData?.ai_enhanced && (
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300">
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-700 dark:text-purple-300">
                       AI Enhanced
                     </span>
                   )}
@@ -153,7 +153,7 @@ export default function MigrationRecommendationsSection({
       {embedded && (
         <div className="flex items-center justify-end gap-2 mb-3 flex-wrap">
           {recommendationData?.ai_enhanced && (
-            <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-300 mr-auto">
+            <span className="px-2 py-0.5 bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-600 rounded text-xs font-semibold text-purple-700 dark:text-purple-300 mr-auto">
               AI Enhanced
             </span>
           )}
@@ -246,16 +246,16 @@ export default function MigrationRecommendationsSection({
           {/* Main Content: Loading / Empty / Recommendation Cards */}
           {loadingRecommendations ? (
             <div className="text-center py-8">
-              <RefreshCw size={48} className="mx-auto mb-3 text-blue-400 animate-spin" />
+              <RefreshCw size={48} className="mx-auto mb-3 text-blue-600 dark:text-blue-400 animate-spin" />
               <p className="font-medium text-pb-text dark:text-gray-300">Generating recommendations...</p>
               {recommendationData?.ai_enhanced && (
-                <p className="text-sm text-purple-400 mt-1">AI enhancement in progress</p>
+                <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">AI enhancement in progress</p>
               )}
             </div>
           ) : recommendations.length === 0 ? (
             <div className="space-y-4">
               <div className="text-center py-6 text-pb-text2 dark:text-gray-400">
-                <CheckCircle size={48} className="mx-auto mb-2 text-green-400" />
+                <CheckCircle size={48} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
                 <p className="font-medium">Cluster is balanced</p>
                 <p className="text-sm">No migrations recommended right now</p>
               </div>

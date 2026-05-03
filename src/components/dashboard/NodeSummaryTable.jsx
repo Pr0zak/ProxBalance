@@ -21,10 +21,10 @@ const FILTERS = [
 ];
 
 const WORKLOAD_BADGE_COLORS = {
-  steady: 'bg-green-900/30 text-green-300',
-  bursty: 'bg-orange-900/30 text-orange-300',
-  growing: 'bg-blue-900/30 text-blue-300',
-  cyclical: 'bg-purple-900/30 text-purple-300',
+  steady: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+  bursty: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  growing: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+  cyclical: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
 };
 
 function guestHasAnyTag(guest) {
@@ -61,7 +61,7 @@ function StatusDot({ online }) {
   return (
     <span className="flex items-center gap-1.5">
       <span className={`w-2 h-2 rounded-full ${online ? 'bg-green-400' : 'bg-red-400'}`} />
-      <span className={`text-xs ${online ? 'text-green-400' : 'text-red-400'}`}>
+      <span className={`text-xs ${online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
         {online ? 'Online' : 'Offline'}
       </span>
     </span>
@@ -110,19 +110,19 @@ function TagChips({ guest, canMigrate, handleRemoveTag }) {
   return (
     <div className="flex flex-wrap gap-1">
       {hasIgnore && (
-        <Chip label="ignore" color="bg-yellow-900/40 text-yellow-300"
+        <Chip label="ignore" color="bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300"
           onRemove={() => handleRemoveTag?.(guest, 'ignore')} />
       )}
       {hasAutoMigrate && (
-        <Chip label="auto" color="bg-green-900/40 text-green-300"
+        <Chip label="auto" color="bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300"
           onRemove={() => handleRemoveTag?.(guest, 'auto_migrate_ok')} />
       )}
       {affinity.map(tag => (
-        <Chip key={`aff-${tag}`} label={tag} color="bg-purple-900/40 text-purple-300"
+        <Chip key={`aff-${tag}`} label={tag} color="bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
           onRemove={() => handleRemoveTag?.(guest, tag)} />
       ))}
       {exclude.map(tag => (
-        <Chip key={`exc-${tag}`} label={tag} color="bg-blue-900/40 text-blue-300"
+        <Chip key={`exc-${tag}`} label={tag} color="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
           onRemove={() => handleRemoveTag?.(guest, tag)} />
       ))}
     </div>
@@ -156,7 +156,7 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
         <div
           key={guest.vmid}
           onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest); }}
-          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-900/15 hover:bg-orange-900/25' : 'hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30'}`}
+          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-50 dark:bg-orange-900/15 hover:bg-orange-50 dark:hover:bg-orange-900/25' : 'hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30'}`}
         >
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${guest.status === 'running' ? 'bg-green-400' : 'bg-gray-600'}`} />
           <span className="text-sm text-pb-text dark:text-gray-200 min-w-[160px] flex items-center gap-1.5">
@@ -173,7 +173,7 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
                   onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
                   disabled={!clickable}
                   title={recBadgeTooltip(rec)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 ${clickable ? 'hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
+                  className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 ${clickable ? 'hover:bg-orange-100 dark:hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
                 >
                   ↗ {rec.target_node}
                 </button>
@@ -182,8 +182,8 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
           </span>
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
             guest.type === 'VM'
-              ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30'
-              : 'bg-orange-900/30 text-orange-400 border border-orange-800/30'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30'
+              : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30'
           }`}>
             {guest.type}
           </span>
@@ -191,7 +191,7 @@ function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemo
           {canMigrate && openTagModal && (
             <button
               onClick={(e) => { e.stopPropagation(); openTagModal(guest); }}
-              className="p-1 text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 rounded transition-colors"
+              className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
               title="Manage tags"
               aria-label="Manage tags"
             >
@@ -400,7 +400,7 @@ export default function NodeSummaryTable({
                     )}
                   </>
                 ) : (
-                  <span className="text-red-400">offline</span>
+                  <span className="text-red-600 dark:text-red-400">offline</span>
                 )}
               </button>
             );
@@ -480,7 +480,7 @@ export default function NodeSummaryTable({
                             <span className="text-sm font-medium text-pb-text dark:text-white">{node.name}</span>
                             {recs?.outbound > 0 && (
                               <span
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 border border-orange-800/40 tabular-nums"
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 tabular-nums"
                                 title={`${recs.outbound} guest${recs.outbound !== 1 ? 's' : ''} recommended to leave this node`}
                               >
                                 →{recs.outbound}
@@ -488,7 +488,7 @@ export default function NodeSummaryTable({
                             )}
                             {recs?.inbound > 0 && (
                               <span
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-800/40 tabular-nums"
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 tabular-nums"
                                 title={`${recs.inbound} guest${recs.inbound !== 1 ? 's' : ''} recommended to move to this node`}
                               >
                                 ←{recs.inbound}

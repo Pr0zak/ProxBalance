@@ -43,7 +43,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
         const post = outcome.post_migration || {};
         const isPending = outcome.status && outcome.status.startsWith('pending_');
         return (
-          <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-800 bg-amber-900/20' : 'border-pb-border dark:border-slate-700 bg-gray-800/50'}`}>
+          <div key={idx} className={`text-xs p-2.5 rounded border ${isPending ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20' : 'border-pb-border dark:border-slate-700 bg-gray-800/50'}`}>
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-medium text-pb-text dark:text-gray-300">
                 [{outcome.guest_type} {outcome.vmid}] {outcome.source_node} → {outcome.target_node}
@@ -59,7 +59,7 @@ export default function MigrationOutcomes({ API_BASE, active }) {
                   <div className="flex items-center gap-1">
                     <span className="text-pb-text2 dark:text-gray-400">{pre.source_node?.cpu}%</span>
                     <ArrowRight size={8} className="text-pb-text2 dark:text-gray-400" />
-                    <span className={`font-medium ${(pre.source_node?.cpu || 0) > (post.source_node?.cpu || 0) ? 'text-green-400' : 'text-red-400'}`}>{post.source_node?.cpu}%</span>
+                    <span className={`font-medium ${(pre.source_node?.cpu || 0) > (post.source_node?.cpu || 0) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{post.source_node?.cpu}%</span>
                   </div>
                 </div>
                 <div>
@@ -67,13 +67,13 @@ export default function MigrationOutcomes({ API_BASE, active }) {
                   <div className="flex items-center gap-1">
                     <span className="text-pb-text2 dark:text-gray-400">{pre.source_node?.mem}%</span>
                     <ArrowRight size={8} className="text-pb-text2 dark:text-gray-400" />
-                    <span className={`font-medium ${(pre.source_node?.mem || 0) > (post.source_node?.mem || 0) ? 'text-green-400' : 'text-red-400'}`}>{post.source_node?.mem}%</span>
+                    <span className={`font-medium ${(pre.source_node?.mem || 0) > (post.source_node?.mem || 0) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{post.source_node?.mem}%</span>
                   </div>
                 </div>
               </div>
             )}
             {isPending && (
-              <div className="text-[10px] text-amber-400">Post-migration metrics pending (captured after 5 minute cooldown)</div>
+              <div className="text-[10px] text-amber-600 dark:text-amber-400">Post-migration metrics pending (captured after 5 minute cooldown)</div>
             )}
           </div>
         );

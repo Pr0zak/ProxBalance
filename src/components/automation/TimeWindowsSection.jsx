@@ -51,9 +51,9 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
           }
 
           {/* Timezone Selector */}
-          <div className="mb-4 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <Info size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-pb-text dark:text-gray-300 mb-2">
                   Timezone for Time Windows
@@ -128,11 +128,11 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                         {/* Day Label */}
                         <div className={`w-20 flex-shrink-0 text-xs font-medium flex items-center ${
                           isToday
-                            ? 'text-blue-400 font-bold'
+                            ? 'text-blue-600 dark:text-blue-400 font-bold'
                             : 'text-pb-text2 dark:text-gray-400'
                         }`}>
                           {day.slice(0, 3)}
-                          {isToday && <span className="ml-1 text-blue-400">●</span>}
+                          {isToday && <span className="ml-1 text-blue-600 dark:text-blue-400">●</span>}
                         </div>
 
                         {/* Timeline Bar */}
@@ -182,7 +182,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             return (
                               <div
                                 key={`blackout-${idx}`}
-                                className="absolute top-0 bottom-0 bg-red-600 hover:bg-red-700 transition-colors z-10 cursor-pointer"
+                                className="absolute top-0 bottom-0 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 transition-colors z-10 cursor-pointer"
                                 style={{ left: `${startPercent}%`, width: `${width}%` }}
                                 title={`${window.name}: ${window.start_time}-${window.end_time} (BLOCKED) - Click to edit`}
                                 onClick={() => {
@@ -217,7 +217,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             return (
                               <div
                                 key={`migration-${idx}`}
-                                className="absolute top-0 bottom-0 bg-green-600 hover:bg-green-700 transition-colors z-10 cursor-pointer"
+                                className="absolute top-0 bottom-0 bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 transition-colors z-10 cursor-pointer"
                                 style={{ left: `${startPercent}%`, width: `${width}%` }}
                                 title={`${window.name}: ${window.start_time}-${window.end_time} (ALLOWED) - Click to edit`}
                                 onClick={() => {
@@ -293,8 +293,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                       data-window-index={idx}
                       className={`p-3 rounded-lg border ${
                         isMigration
-                          ? 'bg-green-900/10 border-green-700'
-                          : 'bg-red-900/10 border-red-700'
+                          ? 'bg-green-50 dark:bg-green-900/10 border-green-300 dark:border-green-700'
+                          : 'bg-red-50 dark:bg-red-900/10 border-red-300 dark:border-red-700'
                       }`}
                     >
                       {isEditing ? (
@@ -378,7 +378,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                     isMigration ? 'text-green-600 focus:ring-green-500' : 'text-red-600 focus:ring-red-500'
                                   }`}
                                 />
-                                <span className="ml-2 text-xs font-semibold text-blue-400">All Days</span>
+                                <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                               </label>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -525,7 +525,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           <div className="flex gap-2">
                             <button
                               onClick={() => setEditingWindowIndex(null)}
-                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
                               title="Done"
                             >
                               <Check size={14} />
@@ -557,7 +557,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1"
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1"
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -588,8 +588,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             }}
                             className={`px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
                               confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
-                                ? 'bg-orange-600 hover:bg-orange-700'
-                                : 'bg-red-600 hover:bg-red-700'
+                                ? 'bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700'
+                                : 'bg-red-600 hover:bg-red-100 dark:hover:bg-red-700'
                             }`}
                             title="Remove"
                           >
@@ -609,8 +609,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
           {showTimeWindowForm ? (
             <div className={`rounded-lg p-4 mb-3 border ${
               newWindowData.type === 'migration'
-                ? 'bg-green-900/20 border-green-700'
-                : 'bg-red-900/20 border-red-700'
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
+                : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
             }`}>
               <h4 className="font-semibold text-pb-text dark:text-white mb-3">Add Time Window</h4>
               <div className="space-y-3">
@@ -661,7 +661,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                             : 'text-red-600 focus:ring-red-500'
                         }`}
                       />
-                      <span className="ml-2 text-xs font-semibold text-blue-400">All Days</span>
+                      <span className="ml-2 text-xs font-semibold text-blue-600 dark:text-blue-400">All Days</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -698,19 +698,19 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                     <div className="flex gap-2">
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '00:00', end_time: '23:59' })}
-                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/50"
                       >
                         All Day
                       </button>
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '09:00', end_time: '17:00' })}
-                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/50"
                       >
                         Business Hours
                       </button>
                       <button
                         onClick={() => setNewWindowData({ ...newWindowData, start_time: '22:00', end_time: '06:00' })}
-                        className="px-2 py-1 bg-purple-900/30 text-purple-400 rounded text-xs font-semibold hover:bg-purple-900/50"
+                        className="px-2 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded text-xs font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/50"
                       >
                         Night
                       </button>
@@ -821,8 +821,8 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold text-pb-text dark:text-white flex items-center justify-center gap-1.5 ${
                       newWindowData.type === 'migration'
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'bg-red-600 hover:bg-red-700'
+                        ? 'bg-green-600 hover:bg-green-100 dark:hover:bg-green-700'
+                        : 'bg-red-600 hover:bg-red-100 dark:hover:bg-red-700'
                     }`}
                   >
                     <Save size={14} />
@@ -844,7 +844,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
           ) : (
             <button
               onClick={() => setShowTimeWindowForm(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
             >
               <Plus size={14} />
               Add Time Window

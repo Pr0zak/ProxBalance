@@ -81,22 +81,22 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
             <div className="space-y-4">
               {/* Level Suggestion Banner */}
               {suggestedLevel && suggestedLevel !== currentLevel && !dismissedSuggestion && (
-                <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3">
+                <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2 flex-1">
-                    <Info size={16} className="text-blue-400 mt-0.5 shrink-0" />
-                    <div className="text-sm text-blue-200">
+                    <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <div className="text-sm text-blue-800 dark:text-blue-200">
                       You've collected enough data to enable <strong>{suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)}</strong> intelligence.
                       {suggestedLevel === 'standard' && ' This adds cost-benefit analysis and outcome learning.'}
                       {suggestedLevel === 'full' && ' This adds trend analysis, pattern recognition, and risk gating.'}
                       <button
                         onClick={() => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: suggestedLevel } } })}
-                        className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-pb-text dark:text-white text-xs rounded font-semibold"
+                        className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-pb-text dark:text-white text-xs rounded font-semibold"
                       >
                         Upgrade
                       </button>
                     </div>
                   </div>
-                  <button onClick={() => setDismissedSuggestion(true)} className="text-blue-400 hover:text-blue-600 shrink-0">
+                  <button onClick={() => setDismissedSuggestion(true)} className="text-blue-600 dark:text-blue-400 hover:text-blue-600 shrink-0">
                     <X size={14} />
                   </button>
                 </div>
@@ -114,7 +114,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                         onClick={() => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: level.key } } })}
                         className={`relative text-left p-3 rounded-lg border-2 transition-all ${
                           isSelected
-                            ? 'border-blue-400 bg-blue-900/20 shadow-md'
+                            ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
                             : 'border-pb-border dark:border-slate-600 hover:border-blue-500 bg-pb-surface2 dark:bg-gray-700'
                         }`}
                       >
@@ -122,11 +122,11 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                           <span className="font-bold text-pb-text dark:text-white text-sm">{level.label}</span>
                           <div className="flex items-center gap-1.5">
                             {level.recommended && (
-                              <span className="px-1.5 py-0.5 bg-green-900/30 text-green-300 text-xs font-semibold rounded">
+                              <span className="px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold rounded">
                                 RECOMMENDED
                               </span>
                             )}
-                            {isSelected && <CheckCircle size={16} className="text-blue-400" />}
+                            {isSelected && <CheckCircle size={16} className="text-blue-600 dark:text-blue-400" />}
                           </div>
                         </div>
                         <div className="text-xs text-pb-text dark:text-gray-300">{level.description}</div>
@@ -177,7 +177,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
 
               {/* Advanced Tuning */}
               <details className="group">
-                <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-200 flex items-center gap-1 list-none">
+                <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
                   <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
                   Advanced Tuning
                 </summary>

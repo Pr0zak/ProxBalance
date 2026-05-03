@@ -135,9 +135,9 @@ export default function PenaltyScoringSection({
               {[1, 2, 3].map((level) => {
                 const isActive = settings.sensitivity === level;
                 const colors = {
-                  1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-900/20 border border-gray-600',
-                  2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-900/20 border border-gray-600',
-                  3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-900/20 border border-gray-600',
+                  1: isActive ? 'bg-green-600 text-pb-text dark:text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
+                  2: isActive ? 'bg-blue-600 text-pb-text dark:text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
+                  3: isActive ? 'bg-orange-600 text-pb-text dark:text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
                 };
                 return (
                   <button
@@ -212,7 +212,7 @@ export default function PenaltyScoringSection({
 
           {/* Advanced Settings */}
           <details className="group">
-            <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-200 flex items-center gap-1 list-none">
+            <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
               <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
               Advanced Settings
             </summary>
@@ -225,7 +225,7 @@ export default function PenaltyScoringSection({
                   {settings.min_score_improvement != null && (
                     <button
                       onClick={() => updateSetting('min_score_improvement', null)}
-                      className="text-xs text-blue-400 hover:underline ml-auto"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline ml-auto"
                     >
                       Reset to preset ({SENSITIVITY_MSI[settings.sensitivity] || 15})
                     </button>
@@ -291,9 +291,9 @@ export default function PenaltyScoringSection({
                         <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Proposed Settings</div>
                         <div className={`text-2xl font-bold ${
                           simulatorResult.proposed_count > simulatorResult.current_count
-                            ? 'text-orange-400'
+                            ? 'text-orange-600 dark:text-orange-400'
                             : simulatorResult.proposed_count < simulatorResult.current_count
-                            ? 'text-green-400'
+                            ? 'text-green-600 dark:text-green-400'
                             : 'text-pb-text dark:text-white'
                         }`}>{simulatorResult.proposed_count}</div>
                         <div className="text-xs text-pb-text2 dark:text-gray-400">recommendations</div>
@@ -308,8 +308,8 @@ export default function PenaltyScoringSection({
                             <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-white dark:bg-slate-800 rounded-lg">
                               <span className={`px-1.5 py-0.5 rounded-lg font-medium ${
                                 change.action === 'added'
-                                  ? 'bg-green-900/30 text-green-400'
-                                  : 'bg-red-900/30 text-red-400'
+                                  ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                  : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                               }`}>
                                 {change.action === 'added' ? '+New' : '-Removed'}
                               </span>
@@ -335,8 +335,8 @@ export default function PenaltyScoringSection({
                               <span className="text-pb-text2 dark:text-gray-400">
                                 {scores.current} &rarr; {scores.proposed}
                                 <span className={`ml-1 font-medium ${
-                                  scores.delta < 0 ? 'text-green-400' :
-                                  scores.delta > 0 ? 'text-red-400' :
+                                  scores.delta < 0 ? 'text-green-600 dark:text-green-400' :
+                                  scores.delta > 0 ? 'text-red-600 dark:text-red-400' :
                                   'text-pb-text2 dark:text-gray-500'
                                 }`}>
                                   ({scores.delta > 0 ? '+' : ''}{scores.delta})
@@ -357,7 +357,7 @@ export default function PenaltyScoringSection({
                 )}
 
                 {showSimulator && simulatorResult?.error && (
-                  <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded-lg text-sm text-red-400">
+                  <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
                     Simulation error: {simulatorResult.error}
                   </div>
                 )}
@@ -367,15 +367,15 @@ export default function PenaltyScoringSection({
 
           {/* Expert Mode (collapsed by default) */}
           <details className="group" open={showExpertMode} onToggle={(e) => setShowExpertMode(e.target.open)}>
-            <summary className="cursor-pointer text-sm font-medium text-blue-400 hover:text-blue-200 flex items-center gap-1 list-none">
+            <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
               <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
               Expert Mode: Raw Penalty Weights
             </summary>
             <div className="mt-3 space-y-4">
-              <div className="p-3 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-yellow-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-yellow-300">
+                  <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
                     These values are automatically managed by the simplified settings above. Manual changes here will override automatic mapping and your settings will be saved as expert overrides.
                   </p>
                 </div>
@@ -384,7 +384,7 @@ export default function PenaltyScoringSection({
               {/* Time Period Weights */}
               {penaltyConfig && penaltyDefaults && (
                 <>
-                  <div className="space-y-3 p-4 bg-blue-900/20 border border-blue-800 rounded-lg">
+                  <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">Time Period Weights</label>
                     <p className="text-xs text-pb-text2 dark:text-gray-400">
                       Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.
@@ -428,7 +428,7 @@ export default function PenaltyScoringSection({
                       const sum = (penaltyConfig.weight_current || 0) + (penaltyConfig.weight_24h || 0) + (penaltyConfig.weight_7d || 0);
                       const isValid = Math.abs(sum - 1.0) < 0.01;
                       return (
-                        <div className={`text-xs font-medium ${isValid ? 'text-green-400' : 'text-red-400'}`}>
+                        <div className={`text-xs font-medium ${isValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                           Sum: {sum.toFixed(2)} {isValid ? '\u2713 Valid' : '\u2717 Must equal 1.0'}
                         </div>
                       );
@@ -499,7 +499,7 @@ export default function PenaltyScoringSection({
                   </div>
 
                   {/* Minimum Score Improvement */}
-                  <div className="space-y-3 p-4 bg-yellow-900/20 border border-yellow-800 rounded-lg">
+                  <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">Minimum Score Improvement</label>
                     <p className="text-xs text-pb-text2 dark:text-gray-400">
                       Minimum score improvement (in points) required for a migration to be recommended.
@@ -538,7 +538,7 @@ export default function PenaltyScoringSection({
 
           {/* Success Message */}
           {isSaved && (
-            <div className="p-3 bg-green-900/30 border border-green-500 rounded-lg text-green-300 text-sm">
+            <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-700 dark:text-green-300 text-sm">
               Settings saved successfully!
             </div>
           )}

@@ -86,7 +86,7 @@ export default function ClusterSection(props) {
                   effectiveTab === t.id
                     ? 'bg-blue-600 text-pb-text dark:text-white shadow'
                     : t.accent
-                      ? 'text-orange-300 hover:text-orange-200'
+                      ? 'text-orange-700 dark:text-orange-300 hover:text-orange-800 dark:hover:text-orange-200'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
               >
