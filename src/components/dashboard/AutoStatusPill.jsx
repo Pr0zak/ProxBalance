@@ -68,9 +68,7 @@ export default function AutoStatusPill({
   runAutomationNow,
   runningAutomation,
   setCurrentPage,
-  showLastRunSummary = false,
   runHistory,
-  runHistoryVariant = '3', // default to result-card layout for inline expansion
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
@@ -136,15 +134,6 @@ export default function AutoStatusPill({
           {lastRun && (
             <span className="text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
           )}
-          {showLastRunSummary && lastRunObj && (
-            <span className="text-xs ml-1 px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/50">
-              <span className={`font-semibold ${lastRunObj.status === 'success' ? 'text-green-400' : lastRunObj.status === 'partial' ? 'text-yellow-400' : lastRunObj.status === 'failed' ? 'text-red-400' : lastRunObj.status === 'no_action' ? 'text-green-400' : 'text-gray-400'}`}>
-                {lastRunObj.status === 'no_action' ? 'balanced' : lastRunObj.status}
-              </span>
-              <span className="text-gray-400"> · {lastRunObj.migrations_successful || 0}/{lastRunObj.migrations_executed || 0} migrations</span>
-              {lastRunObj.duration_seconds != null && <span className="text-gray-500"> · {lastRunObj.duration_seconds < 60 ? `${lastRunObj.duration_seconds}s` : `${Math.floor(lastRunObj.duration_seconds/60)}m`}</span>}
-            </span>
-          )}
         </div>
         {showActions && (
           <div className="flex items-center gap-1.5">
@@ -185,10 +174,8 @@ export default function AutoStatusPill({
           {runHistory && runHistory.length > 0 && (
             <div>
               <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
-              {/* Variants 1-4 use the dedicated layouts; current/5 fall back to a sensible default. */}
               <RunHistoryDisplay
                 embedded
-                variant={['1','2','3','4'].includes(runHistoryVariant) ? runHistoryVariant : '3'}
                 runHistory={runHistory}
                 automationStatus={automationStatus}
               />
