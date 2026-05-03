@@ -172,7 +172,7 @@ export default function ClusterSection(props) {
       )}
       {effectiveTab === 'charts' && (
         <>
-          <ClusterHealthChart scoreHistory={props.scoreHistory} />
+          <ClusterHealthChart scoreHistory={props.scoreHistory} runHistory={props.runHistory} />
           <NodeStatusSection
           embedded
           data={props.data}
