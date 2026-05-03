@@ -3,11 +3,14 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState, useMemo } = React;
+const { useState, useEffect, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
+import ClusterHealthPicker from './dashboard/ClusterHealthPicker.jsx';
+import RunHistoryPicker from './dashboard/RunHistoryPicker.jsx';
+import RunHistoryDisplay from './dashboard/RunHistoryDisplay.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
 import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
 import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
@@ -98,6 +101,13 @@ export default function DashboardPage({
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
 
+  // Preview state for two design pickers
+  const [healthVariant, setHealthVariant] = useState(() => localStorage.getItem('healthVariant') || 'current');
+  useEffect(() => { localStorage.setItem('healthVariant', healthVariant); }, [healthVariant]);
+  const [runHistoryVariant, setRunHistoryVariant] = useState(() => localStorage.getItem('runHistoryVariant') || 'current');
+  useEffect(() => { localStorage.setItem('runHistoryVariant', runHistoryVariant); }, [runHistoryVariant]);
+  const useAltRunHistory = ['1','2','3','4'].includes(runHistoryVariant);
+
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
@@ -130,6 +140,10 @@ export default function DashboardPage({
           </div>
         )}
 
+        {/* PREVIEW: design pickers */}
+        <ClusterHealthPicker value={healthVariant} onChange={setHealthVariant} />
+        <RunHistoryPicker value={runHistoryVariant} onChange={setRunHistoryVariant} />
+
         {/* KPI Summary Row */}
         <KpiRow
           data={data}
@@ -140,6 +154,8 @@ export default function DashboardPage({
           autoMigrateOkGuests={autoMigrateOkGuests}
           affinityGuests={affinityGuests}
           excludeGuests={excludeGuests}
+          scoreHistory={scoreHistory}
+          clusterHealthVariant={healthVariant}
         />
 
         {/* Auto-migration status banner */}
@@ -151,6 +167,7 @@ export default function DashboardPage({
             runAutomationNow={runAutomationNow}
             runningAutomation={runningAutomation}
             setCurrentPage={setCurrentPage}
+            showLastRunSummary={runHistoryVariant === '5'}
           />
         </div>
 
@@ -216,25 +233,34 @@ export default function DashboardPage({
         />
 
         {/* Automated Migrations Status — slim mode (chart + history only; status header moved to banner above) */}
-        <AutomationStatusSection
-          automationStatus={automationStatus}
-          automationConfig={automationConfig}
-          scoreHistory={scoreHistory}
-          collapsedSections={collapsedSections}
-          setCollapsedSections={setCollapsedSections}
-          toggleSection={toggleSection}
-          setCurrentPage={setCurrentPage}
-          fetchAutomationStatus={fetchAutomationStatus}
-          runAutomationNow={runAutomationNow}
-          runningAutomation={runningAutomation}
-          runNowMessage={runNowMessage}
-          setRunNowMessage={setRunNowMessage}
-          setCancelMigrationModal={setCancelMigrationModal}
-          runHistory={runHistory}
-          expandedRun={expandedRun}
-          setExpandedRun={setExpandedRun}
-          slim
-        />
+        {!useAltRunHistory && (
+          <AutomationStatusSection
+            automationStatus={automationStatus}
+            automationConfig={automationConfig}
+            scoreHistory={scoreHistory}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+            toggleSection={toggleSection}
+            setCurrentPage={setCurrentPage}
+            fetchAutomationStatus={fetchAutomationStatus}
+            runAutomationNow={runAutomationNow}
+            runningAutomation={runningAutomation}
+            runNowMessage={runNowMessage}
+            setRunNowMessage={setRunNowMessage}
+            setCancelMigrationModal={setCancelMigrationModal}
+            runHistory={runHistory}
+            expandedRun={expandedRun}
+            setExpandedRun={setExpandedRun}
+            slim
+          />
+        )}
+        {useAltRunHistory && (
+          <RunHistoryDisplay
+            variant={runHistoryVariant}
+            runHistory={runHistory}
+            automationStatus={automationStatus}
+          />
+        )}
 
         <NodeDetailsModal
           selectedNode={selectedNode}
