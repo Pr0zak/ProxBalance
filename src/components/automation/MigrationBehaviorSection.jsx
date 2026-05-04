@@ -1,9 +1,10 @@
-import { ChevronDown } from '../Icons.jsx';
-import { GLASS_CARD, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
+import { Settings } from '../Icons.jsx';
+import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import { ToggleRow } from '../Toggle.jsx';
 import SmartMigrationsSection from './SmartMigrationsSection.jsx';
 import PenaltyScoringSection from './PenaltyScoringSection.jsx';
+import SectionHeader from './SectionHeader.jsx';
 
 export default function MigrationBehaviorSection({
   automationConfig, saveAutomationConfig, automationStatus,
@@ -24,16 +25,13 @@ export default function MigrationBehaviorSection({
 }) {
   return (
     <div className={GLASS_CARD + ' overflow-hidden'}>
-      <button
-        onClick={() => setCollapsedSections(prev => ({ ...prev, migrationBehaviorSection: !prev.migrationBehaviorSection }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
-        <h2 className="text-xl font-bold text-pb-text dark:text-white">How to Migrate</h2>
-        <ChevronDown
-          size={ICON.section}
-          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.migrationBehaviorSection ? 'rotate-180' : ''}`}
-        />
-      </button>
+      <SectionHeader
+        title="How to Migrate"
+        icon={Settings}
+        accent={['violet', 'purple']}
+        collapsed={collapsedSections.migrationBehaviorSection}
+        onToggle={() => setCollapsedSections(prev => ({ ...prev, migrationBehaviorSection: !prev.migrationBehaviorSection }))}
+      />
 
       {!collapsedSections.migrationBehaviorSection && (
         <div className="space-y-6">

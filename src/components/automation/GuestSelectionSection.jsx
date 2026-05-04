@@ -1,11 +1,12 @@
 import {
-  AlertTriangle, ChevronDown, X
+  AlertTriangle, ChevronDown, X, Filter
 } from '../Icons.jsx';
-import { GLASS_CARD, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
+import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import { ToggleRow } from '../Toggle.jsx';
 import RecommendationThresholdsSection from '../settings/RecommendationThresholdsSection.jsx';
 import DistributionBalancingSection from './DistributionBalancingSection.jsx';
+import SectionHeader from './SectionHeader.jsx';
 
 const { useState } = React;
 
@@ -18,16 +19,13 @@ export default function GuestSelectionSection({
 
   return (
     <div className={GLASS_CARD + ' overflow-hidden'}>
-      <button
-        onClick={() => setCollapsedSections(prev => ({ ...prev, guestSelectionSection: !prev.guestSelectionSection }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
-        <h2 className="text-xl font-bold text-pb-text dark:text-white">What to Migrate</h2>
-        <ChevronDown
-          size={ICON.section}
-          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.guestSelectionSection ? 'rotate-180' : ''}`}
-        />
-      </button>
+      <SectionHeader
+        title="What to Migrate"
+        icon={Filter}
+        accent={['teal', 'cyan']}
+        collapsed={collapsedSections.guestSelectionSection}
+        onToggle={() => setCollapsedSections(prev => ({ ...prev, guestSelectionSection: !prev.guestSelectionSection }))}
+      />
 
       {!collapsedSections.guestSelectionSection && (
         <div className="space-y-6">

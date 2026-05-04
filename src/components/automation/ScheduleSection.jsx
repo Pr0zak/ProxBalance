@@ -1,7 +1,8 @@
-import { ChevronDown } from '../Icons.jsx';
-import { GLASS_CARD, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
+import { Clock } from '../Icons.jsx';
+import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import TimeWindowsSection from './TimeWindowsSection.jsx';
+import SectionHeader from './SectionHeader.jsx';
 
 export default function ScheduleSection({
   automationConfig, saveAutomationConfig,
@@ -10,16 +11,13 @@ export default function ScheduleSection({
 }) {
   return (
     <div className={GLASS_CARD + ' overflow-hidden'}>
-      <button
-        onClick={() => setCollapsedSections(prev => ({ ...prev, scheduleSection: !prev.scheduleSection }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
-        <h2 className="text-xl font-bold text-pb-text dark:text-white">When to Migrate</h2>
-        <ChevronDown
-          size={ICON.section}
-          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.scheduleSection ? 'rotate-180' : ''}`}
-        />
-      </button>
+      <SectionHeader
+        title="When to Migrate"
+        icon={Clock}
+        accent={['indigo', 'violet']}
+        collapsed={collapsedSections.scheduleSection}
+        onToggle={() => setCollapsedSections(prev => ({ ...prev, scheduleSection: !prev.scheduleSection }))}
+      />
 
       {!collapsedSections.scheduleSection && (
         <div className="space-y-4">

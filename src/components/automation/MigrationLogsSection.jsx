@@ -1,8 +1,9 @@
 import {
-  ArrowRight, CheckCircle, Clock, Download, Info,
+  ArrowRight, CheckCircle, ClipboardList, Clock, Download, Info,
   RefreshCw, XCircle
 } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
+import SectionHeader from './SectionHeader.jsx';
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,
@@ -16,12 +17,14 @@ export default function MigrationLogsSection({
   return (<>
         {/* Migration Logs & History */}
         <div className={GLASS_CARD + ' overflow-hidden'}>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="text-xl font-bold text-pb-text dark:text-white">Migration Logs & History</h2>
+          <SectionHeader
+            title="Migration Logs & History"
+            icon={ClipboardList}
+            accent={['green', 'emerald']}
+            right={
               <span className="relative group inline-block">
                 <Info size={16} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700" style={{minWidth: '280px'}}>
+                <div className="absolute top-full right-0 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700" style={{minWidth: '280px'}}>
                   <div className="font-semibold mb-2 text-blue-600 dark:text-blue-400 border-b border-pb-border dark:border-gray-700 pb-2">Migration Scoring System</div>
                   <div className="text-[11px] space-y-1">
                     <div className="text-pb-text dark:text-gray-300">Migrations are scored using a penalty-based system:</div>
@@ -45,8 +48,8 @@ export default function MigrationLogsSection({
                   </div>
                 </div>
               </span>
-            </div>
-          </div>
+            }
+          />
 
           {/* Tabs */}
           <div className="border-b border-pb-border dark:border-slate-700 mb-4">
