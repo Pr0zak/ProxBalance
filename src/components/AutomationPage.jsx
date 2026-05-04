@@ -104,31 +104,27 @@ export default function AutomationPage(props) {
           ))}
         </div>
 
-        {/* Tab content */}
+        {/* Tab content — every section spans full width to match Quick Setup */}
         {activeTab === 'schedule' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ScheduleSection
-              automationConfig={automationConfig}
-              saveAutomationConfig={saveAutomationConfig}
-              collapsedSections={collapsedSections}
-              setCollapsedSections={setCollapsedSections}
-              setError={setError}
-            />
-          </div>
+          <ScheduleSection
+            automationConfig={automationConfig}
+            saveAutomationConfig={saveAutomationConfig}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+            setError={setError}
+          />
         )}
 
         {activeTab === 'filters' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <GuestSelectionSection
-              automationConfig={automationConfig}
-              saveAutomationConfig={saveAutomationConfig}
-              config={config}
-              fetchConfig={fetchConfig}
-              setConfig={setConfig}
-              collapsedSections={collapsedSections}
-              setCollapsedSections={setCollapsedSections}
-            />
-          </div>
+          <GuestSelectionSection
+            automationConfig={automationConfig}
+            saveAutomationConfig={saveAutomationConfig}
+            config={config}
+            fetchConfig={fetchConfig}
+            setConfig={setConfig}
+            collapsedSections={collapsedSections}
+            setCollapsedSections={setCollapsedSections}
+          />
         )}
 
         {activeTab === 'behavior' && (
