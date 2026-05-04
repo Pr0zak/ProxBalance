@@ -2,7 +2,7 @@ import { Clock } from '../Icons.jsx';
 import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import TimeWindowsSection from './TimeWindowsSection.jsx';
-import SectionHeader from './SectionHeader.jsx';
+import SectionHeader from '../SectionHeader.jsx';
 
 export default function ScheduleSection({
   automationConfig, saveAutomationConfig,

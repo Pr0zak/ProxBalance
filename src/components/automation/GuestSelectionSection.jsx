@@ -6,7 +6,7 @@ import NumberField from '../NumberField.jsx';
 import { ToggleRow } from '../Toggle.jsx';
 import RecommendationThresholdsSection from '../settings/RecommendationThresholdsSection.jsx';
 import DistributionBalancingSection from './DistributionBalancingSection.jsx';
-import SectionHeader from './SectionHeader.jsx';
+import SectionHeader from '../SectionHeader.jsx';
 
 const { useState } = React;
 

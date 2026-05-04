@@ -4,6 +4,7 @@ import {
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { GLASS_CARD, INPUT_FIELD, ICON } from '../../utils/designTokens.js';
+import SectionHeader from '../SectionHeader.jsx';
 const { useState } = React;
 
 export default function AdvancedSystemSettings({
@@ -19,22 +20,13 @@ export default function AdvancedSystemSettings({
   return (<>
                     {/* Advanced System Settings - Collapsible */}
                     <div className={`${GLASS_CARD} border-red-600/50`}>
-                      <button
-                        onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                        className="w-full flex items-center justify-between text-left group flex-wrap gap-y-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <AlertTriangle className="text-red-500 shrink-0" size={ICON.section} />
-                          <div className="min-w-0">
-                            <h3 className="text-lg font-semibold text-pb-text dark:text-white">Advanced System Settings</h3>
-                            <p className="text-sm text-pb-text2 dark:text-gray-400">Data management, debugging, API configuration, and system controls</p>
-                          </div>
-                        </div>
-                        <ChevronDown
-                          className={`text-pb-text2 dark:text-gray-400 transition-transform shrink-0 ${showAdvancedSettings ? 'rotate-180' : ''}`}
-                          size={ICON.section}
-                        />
-                      </button>
+                      <SectionHeader
+                        title="Advanced System Settings"
+                        icon={AlertTriangle}
+                        accent={['red', 'rose']}
+                        collapsed={!showAdvancedSettings}
+                        onToggle={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                      />
 
                       {showAdvancedSettings && (
                         <div className="mt-4 space-y-6">
