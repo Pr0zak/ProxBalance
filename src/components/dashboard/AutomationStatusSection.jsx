@@ -808,7 +808,7 @@ export default function AutomationStatusSection({
                                   }`}>
                                     {suitabilityPercent}%
                                   </span>
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1.5 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1.5 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700">
                                     <div>Target: {migration.target_node}</div>
                                     <div>Penalty: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
                                     <div>Suitability: {suitabilityPercent}%</div>
