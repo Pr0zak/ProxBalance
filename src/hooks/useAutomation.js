@@ -206,7 +206,9 @@ export function useAutomation(API_BASE, deps = {}) {
               if (filterReasons.length > 0) {
                 messageText += ':\n' + filterReasons.map(r => `  • ${r}`).join('\n');
               } else {
-                messageText += ' (cluster is balanced or no recommendations available).';
+                // Don't claim "balanced" — that implies a measurement was made.
+                // It just means nothing reached the migration step.
+                messageText += ' — no actionable recommendations this cycle.';
               }
 
               setRunNowMessage({
