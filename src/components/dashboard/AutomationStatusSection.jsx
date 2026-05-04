@@ -3,7 +3,7 @@ import {
   Play, Loader, X, Info, AlertTriangle, RefreshCw, ClipboardList,
   Download, MinusCircle, ChevronRight, Minus, Eye
 } from '../Icons.jsx';
-import { formatRelativeTime } from '../../utils/formatters.js';
+import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
 const { useState } = React;
@@ -523,24 +523,31 @@ export default function AutomationStatusSection({
                   <ChevronDown size={ICON.action} className={`text-pb-text2 dark:text-gray-500 transition-transform duration-200 ${!collapsedSections.lastRunSummary ? 'rotate-180' : ''}`} />
                 </button>
 
-                {!collapsedSections.lastRunSummary && (
+                {!collapsedSections.lastRunSummary && (() => {
+                  const lastRun = automationStatus.state.last_run;
+                  const rsl = runStatusLabel(lastRun);
+                  const toneClass = {
+                    success: 'text-green-600 dark:text-green-400',
+                    warn:    'text-yellow-600 dark:text-yellow-400',
+                    error:   'text-red-600 dark:text-red-400',
+                    info:    'text-blue-600 dark:text-blue-400',
+                    neutral: 'text-pb-text2 dark:text-gray-400',
+                  }[rsl.tone] || 'text-pb-text2 dark:text-gray-400';
+                  const bannerClass = {
+                    success: 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300',
+                    warn:    'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300',
+                    error:   'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300',
+                    info:    'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300',
+                    neutral: 'bg-pb-surface2 dark:bg-slate-700/50 border-pb-border dark:border-slate-600 text-pb-text dark:text-gray-300',
+                  }[rsl.tone] || '';
+                  return (
                   <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4 border border-pb-border dark:border-slate-600">
                     {/* Run Overview */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                       <div className="bg-white dark:bg-slate-800 rounded p-3">
                         <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
-                        <div className={`text-sm font-bold ${
-                          automationStatus.state.last_run.status === 'success' ? 'text-green-600 dark:text-green-400' :
-                          automationStatus.state.last_run.status === 'partial' ? 'text-yellow-600 dark:text-yellow-400' :
-                          automationStatus.state.last_run.status === 'failed' ? 'text-red-600 dark:text-red-400' :
-                          automationStatus.state.last_run.status === 'no_action' ? 'text-green-600 dark:text-green-400' :
-                          'text-pb-text2 dark:text-gray-400'
-                        }`}>
-                          {automationStatus.state.last_run.status === 'success' ? 'Success' :
-                           automationStatus.state.last_run.status === 'partial' ? 'Partial' :
-                           automationStatus.state.last_run.status === 'failed' ? 'Failed' :
-                           automationStatus.state.last_run.status === 'no_action' ? 'Cluster Balanced' :
-                           automationStatus.state.last_run.status}
+                        <div className={`text-sm font-bold ${toneClass}`}>
+                          {rsl.label}
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-800 rounded p-3">
@@ -563,11 +570,11 @@ export default function AutomationStatusSection({
                       </div>
                     </div>
 
-                    {/* Cluster Balanced Banner */}
-                    {automationStatus.state.last_run.status === 'no_action' && (
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-lg mb-4 flex items-center gap-2">
-                        <CheckCircle size={16} className="text-green-600 dark:text-green-400 shrink-0" />
-                        <span className="text-sm text-green-700 dark:text-green-300">No action needed — cluster is balanced and no migrations were required.</span>
+                    {/* Status banner — context-aware (balanced vs. observing vs. filtered) */}
+                    {rsl.banner && (
+                      <div className={`p-3 border rounded-lg mb-4 flex items-center gap-2 ${bannerClass}`}>
+                        <CheckCircle size={16} className="shrink-0" />
+                        <span className="text-sm">{rsl.banner}</span>
                       </div>
                     )}
 
@@ -736,7 +743,8 @@ export default function AutomationStatusSection({
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
@@ -890,7 +898,7 @@ export default function AutomationStatusSection({
                               run.status === 'no_action' ? 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400' :
                               'bg-white dark:bg-slate-800 text-red-700 dark:text-red-300'
                             }`}>
-                              {run.status === 'no_action' ? 'balanced' : run.status}
+                              {runStatusLabel(run).label.toLowerCase()}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-pb-text dark:text-gray-300">
