@@ -3,7 +3,7 @@ import {
 } from '../Icons.jsx';
 import { GLASS_CARD, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
-import SectionHeader from './SectionHeader.jsx';
+import SectionHeader from '../SectionHeader.jsx';
 
 const { useState, useEffect } = React;
 

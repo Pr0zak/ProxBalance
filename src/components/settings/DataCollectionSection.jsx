@@ -12,8 +12,6 @@ export default function DataCollectionSection({
 
   return (
                     <div>
-                      <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-6">Data Collection & Performance</h3>
-
                       {/* Last Collection Status */}
                       <div className="mb-6">
                         <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Status</h4>

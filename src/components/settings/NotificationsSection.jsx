@@ -3,19 +3,13 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { GLASS_CARD, INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   return (
-                    <div className={GLASS_CARD}>
+                    <div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Bell className="text-pb-text2 dark:text-gray-400 shrink-0" size={ICON.section} />
-                          <div className="min-w-0">
-                            <h3 className="text-lg font-semibold text-pb-text dark:text-white">Notifications</h3>
-                            <p className="text-sm text-pb-text2 dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
-                          </div>
-                        </div>
+                        <p className="text-sm text-pb-text2 dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox"
                             checked={automationConfig.notifications?.enabled || false}

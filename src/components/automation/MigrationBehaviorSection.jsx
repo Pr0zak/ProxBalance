@@ -4,7 +4,7 @@ import NumberField from '../NumberField.jsx';
 import { ToggleRow } from '../Toggle.jsx';
 import SmartMigrationsSection from './SmartMigrationsSection.jsx';
 import PenaltyScoringSection from './PenaltyScoringSection.jsx';
-import SectionHeader from './SectionHeader.jsx';
+import SectionHeader from '../SectionHeader.jsx';
 
 export default function MigrationBehaviorSection({
   automationConfig, saveAutomationConfig, automationStatus,

@@ -3,7 +3,7 @@ import {
   RefreshCw, XCircle
 } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
-import SectionHeader from './SectionHeader.jsx';
+import SectionHeader from '../SectionHeader.jsx';
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,

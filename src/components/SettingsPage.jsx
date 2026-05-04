@@ -1,5 +1,5 @@
 import {
-  Lock, Save
+  Lock, Save, Cpu, HardDrive, Bell, Settings
 } from './Icons.jsx';
 import { GLASS_CARD } from '../utils/designTokens.js';
 
@@ -7,6 +7,7 @@ import AIProviderSection from './settings/AIProviderSection.jsx';
 import DataCollectionSection from './settings/DataCollectionSection.jsx';
 import NotificationsSection from './settings/NotificationsSection.jsx';
 import AdvancedSystemSettings from './settings/AdvancedSystemSettings.jsx';
+import SectionHeader from './SectionHeader.jsx';
 
 export default function SettingsPage(props) {
   const {
@@ -49,36 +50,45 @@ export default function SettingsPage(props) {
         {/* Settings Content */}
         <div className={`${GLASS_CARD} space-y-8`}>
 
-          <AIProviderSection
-            aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
-            aiProvider={aiProvider} setAiProvider={setAiProvider}
-            openaiKey={openaiKey} setOpenaiKey={setOpenaiKey}
-            openaiModel={openaiModel} setOpenaiModel={setOpenaiModel}
-            anthropicKey={anthropicKey} setAnthropicKey={setAnthropicKey}
-            anthropicModel={anthropicModel} setAnthropicModel={setAnthropicModel}
-            localUrl={localUrl} setLocalUrl={setLocalUrl}
-            localModel={localModel} setLocalModel={setLocalModel}
-            localLoadingModels={localLoadingModels} setLocalLoadingModels={setLocalLoadingModels}
-            localAvailableModels={localAvailableModels} setLocalAvailableModels={setLocalAvailableModels}
-          />
+          <div>
+            <SectionHeader title="AI Provider" icon={Cpu} accent={['blue', 'cyan']} />
+            <AIProviderSection
+              aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
+              aiProvider={aiProvider} setAiProvider={setAiProvider}
+              openaiKey={openaiKey} setOpenaiKey={setOpenaiKey}
+              openaiModel={openaiModel} setOpenaiModel={setOpenaiModel}
+              anthropicKey={anthropicKey} setAnthropicKey={setAnthropicKey}
+              anthropicModel={anthropicModel} setAnthropicModel={setAnthropicModel}
+              localUrl={localUrl} setLocalUrl={setLocalUrl}
+              localModel={localModel} setLocalModel={setLocalModel}
+              localLoadingModels={localLoadingModels} setLocalLoadingModels={setLocalLoadingModels}
+              localAvailableModels={localAvailableModels} setLocalAvailableModels={setLocalAvailableModels}
+            />
+          </div>
 
           <hr className="border-pb-border dark:border-slate-600" />
 
-          <DataCollectionSection
-            backendCollected={backendCollected}
-            loading={loading}
-            data={data}
-            config={config}
-            handleRefresh={handleRefresh}
-            fetchConfig={fetchConfig}
-          />
+          <div>
+            <SectionHeader title="Data Collection & Performance" icon={HardDrive} accent={['emerald', 'green']} />
+            <DataCollectionSection
+              backendCollected={backendCollected}
+              loading={loading}
+              data={data}
+              config={config}
+              handleRefresh={handleRefresh}
+              fetchConfig={fetchConfig}
+            />
+          </div>
 
           <hr className="border-pb-border dark:border-slate-600" />
 
-          <NotificationsSection
-            automationConfig={automationConfig}
-            saveAutomationConfig={saveAutomationConfig}
-          />
+          <div>
+            <SectionHeader title="Notifications" icon={Bell} accent={['amber', 'orange']} />
+            <NotificationsSection
+              automationConfig={automationConfig}
+              saveAutomationConfig={saveAutomationConfig}
+            />
+          </div>
 
           <hr className="border-pb-border dark:border-slate-600" />
 
@@ -89,10 +99,7 @@ export default function SettingsPage(props) {
                 COMING SOON
               </span>
             </div>
-            <div className="flex items-center gap-3 mb-4">
-              <Lock className="text-pb-text2 dark:text-gray-400" size={24} />
-              <h3 className="text-lg font-bold text-pb-text2 dark:text-gray-400">Authentication</h3>
-            </div>
+            <SectionHeader title="Authentication" icon={Lock} accent={['slate', 'gray']} />
             <p className="text-sm text-pb-text2 dark:text-gray-400 mb-4">
               Protect access to ProxBalance with user authentication. Configure login credentials, session management, and access control.
             </p>

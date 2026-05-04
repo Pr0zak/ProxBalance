@@ -1,5 +1,5 @@
-import { ChevronDown } from '../Icons.jsx';
-import { iconBadge, ICON } from '../../utils/designTokens.js';
+import { ChevronDown } from './Icons.jsx';
+import { iconBadge, ICON } from '../utils/designTokens.js';
 
 /**
  * Uniform section header for the Automation page. Every top-level
