@@ -3,6 +3,7 @@ import {
 } from '../Icons.jsx';
 import { GLASS_CARD, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
+import SectionHeader from './SectionHeader.jsx';
 
 const { useState, useEffect } = React;
 
@@ -39,7 +40,7 @@ export default function QuickSetupSection({
 
   return (
     <div className={GLASS_CARD}>
-      <h2 className="text-xl font-bold text-pb-text dark:text-white mb-4">Quick Setup</h2>
+      <SectionHeader title="Quick Setup" icon={Power} accent={['blue', 'cyan']} />
 
       <div className="space-y-4">
         {/* Enable/Disable */}

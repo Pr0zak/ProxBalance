@@ -1,23 +1,21 @@
 import {
-  ChevronDown
+  ChevronDown, Info
 } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import SectionHeader from './SectionHeader.jsx';
 
 export default function DecisionTreeFlowchart({
   collapsedSections, setCollapsedSections
 }) {
   return (
         <div className={GLASS_CARD + ' overflow-hidden'}>
-          <button
-            onClick={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
-            className="w-full flex items-center justify-between text-left hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-          >
-            <h2 className="text-xl font-bold text-pb-text dark:text-white">Migration Decision Flowchart</h2>
-            <ChevronDown
-              size={ICON.section}
-              className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.decisionTree ? 'rotate-180' : ''}`}
-            />
-          </button>
+          <SectionHeader
+            title="Migration Decision Flowchart"
+            icon={Info}
+            accent={['amber', 'orange']}
+            collapsed={collapsedSections.decisionTree}
+            onToggle={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
+          />
 
           {!collapsedSections.decisionTree && (
             <div className="mt-4">
