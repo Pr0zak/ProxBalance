@@ -245,7 +245,12 @@ The frontend uses **esbuild** (not Babel). The build script (`build.sh`) bundles
 
 **Production path**: `/opt/proxmox-balance-manager`
 
-**Deployment note**: Nginx serves static files from `/var/www/html/`, not `/opt/proxmox-balance-manager/`. After building, the `post_update.sh` script copies built assets to the nginx root. If deploying manually, copy `assets/js/app.js`, `assets/css/tailwind.css`, and `index.html` to `/var/www/html/`.
+**Deployment note**: Nginx serves static files from `/var/www/html/`, not `/opt/proxmox-balance-manager/`. After building, the `post_update.sh` script copies built assets to the nginx root. If deploying manually, copy `assets/js/app.js`, `assets/css/tailwind.css`, `index.html`, and any brand SVGs to `/var/www/html/` (and `/var/www/html/assets/` for the SVGs).
+
+**Deploy gotchas**:
+- `update.sh` runs from the Proxmox host and chmods `*.py +x` after pulling. `post_update.sh` runs from inside the CT and does not — so a `git pull && bash post_update.sh` deploy can leave systemd unable to exec a script that's invoked by path. The fix is structural: every systemd `ExecStart=` should call `venv/bin/python3 /path/to/script.py` instead of relying on the executable bit. Audit `systemd/*.service` for any direct `.py` invocations when adding a new background service.
+- `post_update.sh` is itself often missing `+x` — invoke it as `bash post_update.sh`.
+- Brand SVGs (`assets/*.svg`) live alongside the built JS/CSS; `post_update.sh` syncs them in the pre-compiled branch since 2026-05-03.
 
 ### Design System (Glassmorphism)
 
@@ -453,7 +458,9 @@ Skills are in `.claude/skills/` and available via `/command`:
 | Command | Description |
 |---------|-------------|
 | `/build` | Build the frontend (esbuild + Tailwind) |
-| `/deploy [ctid]` | Deploy to the production LXC container via update.sh |
+| `/deploy [ctid]` | Pull, build, restart on the production LXC via `bash post_update.sh` (default CT 100). Smoke-tests the asset URLs after. |
 | `/check-cluster` | Check cluster health, automation, and recommendations via MCP |
+| `/check-services [ctid]` | Audit ProxBalance systemd units in the production LXC — surfaces failed services, stuck timers, EXEC-203 errors, stale score-history. |
+| `/light-sweep` | Find Tailwind classes that lack a light-mode counterpart (the recurring source of dark bands when light mode is enabled). |
 | `/review [file\|branch]` | Code review for security, bugs, and style issues |
 | `/test` | Run Python syntax checks, shell validation, pytest, and import verification |

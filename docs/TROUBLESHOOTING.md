@@ -199,6 +199,31 @@ pct exec <ctid> -- curl -k -I https://<proxmox-host>:8006
 
 If connection refused, check firewall on the Proxmox host allows port 8006 from the container IP.
 
+### Cluster Health chart stops updating / score history is stale
+
+The "Cluster Health Over Time" chart is fed by the `proxmox-balance-recommendations.service` (runs every 10–15 min), which writes a `score_history` row each cycle. If the chart line stops at a wall-clock time hours in the past, that service is failing.
+
+```bash
+pct exec <ctid> -- systemctl status proxmox-balance-recommendations.timer
+pct exec <ctid> -- journalctl -u proxmox-balance-recommendations.service -n 30 --no-pager
+```
+
+A repeat `status=203/EXEC` failure means systemd can't execute the script — almost always because the executable bit was stripped (e.g., a deploy via `post_update.sh` that didn't `chmod +x`). The repo's service file invokes the script through `venv/bin/python3` explicitly so the bit shouldn't matter, but legacy installs may still have the older form. Fix:
+
+```bash
+pct exec <ctid> -- bash -c "
+  sed -i 's|^ExecStart=/opt/proxmox-balance-manager/generate_recommendations.py$|ExecStart=/opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/generate_recommendations.py|' /etc/systemd/system/proxmox-balance-recommendations.service
+  systemctl daemon-reload
+  systemctl start proxmox-balance-recommendations.service
+"
+```
+
+Verify a fresh sample landed:
+
+```bash
+curl -s http://<ctid-ip>/api/score-history?limit=1 | jq '.history[-1].timestamp'
+```
+
 ---
 
 ## Migration Issues
