@@ -9,6 +9,7 @@ import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
 import ClusterMap from './dashboard/ClusterMap.jsx';
+import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
@@ -272,21 +273,24 @@ export default function DashboardPage({
           />
         )}
         {promotedSections.charts && (
-          <NodeStatusSection
-            data={data}
-            collapsedSections={collapsedSections}
-            toggleSection={toggleSection}
-            showPredicted={showPredicted}
-            setShowPredicted={setShowPredicted}
-            recommendationData={recommendationData}
-            recommendations={recommendations}
-            nodeGridColumns={nodeGridColumns}
-            setNodeGridColumns={setNodeGridColumns}
-            chartPeriod={chartPeriod}
-            setChartPeriod={setChartPeriod}
-            nodeScores={nodeScores}
-            generateSparkline={generateSparkline}
-          />
+          <>
+            <ClusterHealthChart scoreHistory={scoreHistory} migrationHistory={migrationHistory} />
+            <NodeStatusSection
+              data={data}
+              collapsedSections={collapsedSections}
+              toggleSection={toggleSection}
+              showPredicted={showPredicted}
+              setShowPredicted={setShowPredicted}
+              recommendationData={recommendationData}
+              recommendations={recommendations}
+              nodeGridColumns={nodeGridColumns}
+              setNodeGridColumns={setNodeGridColumns}
+              chartPeriod={chartPeriod}
+              setChartPeriod={setChartPeriod}
+              nodeScores={nodeScores}
+              generateSparkline={generateSparkline}
+            />
+          </>
         )}
 
         <NodeDetailsModal
