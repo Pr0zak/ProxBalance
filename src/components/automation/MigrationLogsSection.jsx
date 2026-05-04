@@ -21,8 +21,8 @@ export default function MigrationLogsSection({
               <h2 className="text-xl font-bold text-pb-text dark:text-white">Migration Logs & History</h2>
               <span className="relative group inline-block">
                 <Info size={16} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700" style={{minWidth: '280px'}}>
-                  <div className="font-semibold mb-2 text-blue-600 dark:text-blue-400 border-b border-gray-700 pb-2">Migration Scoring System</div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700" style={{minWidth: '280px'}}>
+                  <div className="font-semibold mb-2 text-blue-600 dark:text-blue-400 border-b border-pb-border dark:border-gray-700 pb-2">Migration Scoring System</div>
                   <div className="text-[11px] space-y-1">
                     <div className="text-pb-text dark:text-gray-300">Migrations are scored using a penalty-based system:</div>
                     <div className="mt-2 space-y-0.5">
@@ -32,11 +32,11 @@ export default function MigrationLogsSection({
                       <div>• <span className="text-blue-700 dark:text-blue-300">Load Average</span> × 10%</div>
                       <div>• <span className="text-blue-700 dark:text-blue-300">Storage Pressure</span> × 10%</div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-gray-700">
+                    <div className="mt-2 pt-2 border-t border-pb-border dark:border-gray-700">
                       <div className="text-pb-text2 dark:text-gray-400">Lower penalty score = better target</div>
                       <div className="text-pb-text2 dark:text-gray-400">Plus penalties for high usage & trends</div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-gray-700">
+                    <div className="mt-2 pt-2 border-t border-pb-border dark:border-gray-700">
                       <div><span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent</div>
                       <div><span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good</div>
                       <div><span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair</div>
@@ -185,13 +185,13 @@ export default function MigrationLogsSection({
                                   </span>
                                   <span className="relative group inline-block">
                                     <Info size={12} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-gray-700">
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700">
                                       <div className="font-semibold mb-1 text-blue-600 dark:text-blue-400">Scoring Breakdown</div>
                                       <div className="text-[10px] space-y-0.5">
                                         <div>Target: {migration.target_node}</div>
                                         <div>Penalty Score: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
                                         <div>Suitability: {suitabilityPercent}%</div>
-                                        <div className="border-t border-gray-700 pt-1 mt-1">
+                                        <div className="border-t border-pb-border dark:border-gray-700 pt-1 mt-1">
                                           <div className="text-pb-text2 dark:text-gray-400">Lower penalty = better target</div>
                                           <div>• CPU Load × 30%</div>
                                           <div>• Memory Load × 30%</div>
@@ -201,7 +201,7 @@ export default function MigrationLogsSection({
                                           <div className="mt-1 text-pb-text2 dark:text-gray-400">+ Penalties for high usage/trends</div>
                                         </div>
                                         {migration.target_node_score > 100 && (
-                                          <div className="border-t border-gray-700 pt-1 mt-1 text-red-600 dark:text-red-400">
+                                          <div className="border-t border-pb-border dark:border-gray-700 pt-1 mt-1 text-red-600 dark:text-red-400">
                                             ⚠ Penalty score &gt;100 indicates heavy load/trends
                                           </div>
                                         )}
@@ -271,28 +271,28 @@ export default function MigrationLogsSection({
                     <button
                       onClick={() => setMigrationHistoryPage(1)}
                       disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
                     >
                       First
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(migrationHistoryPage - 1)}
                       disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(migrationHistoryPage + 1)}
                       disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
                     >
                       Next
                     </button>
                     <button
                       onClick={() => setMigrationHistoryPage(Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize))}
                       disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
+                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
                     >
                       Last
                     </button>

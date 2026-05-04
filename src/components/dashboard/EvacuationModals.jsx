@@ -102,7 +102,7 @@ export default function EvacuationModals({
                             <select
                               value={guestTargets[item.vmid] || item.target}
                               onChange={(e) => setGuestTargets({...guestTargets, [item.vmid]: e.target.value})}
-                              className="text-sm px-2 py-1 border rounded bg-pb-surface2 dark:bg-gray-700 border-gray-600 text-pb-text dark:text-white font-medium"
+                              className="text-sm px-2 py-1 border rounded bg-pb-surface2 dark:bg-gray-700 border-pb-border dark:border-gray-600 text-pb-text dark:text-white font-medium"
                             >
                               {evacuationPlan.available_targets.map(target => (
                                 <option key={target} value={target}>{target}</option>
@@ -126,7 +126,7 @@ export default function EvacuationModals({
                             <select
                               value={guestActions[item.vmid] || 'migrate'}
                               onChange={(e) => setGuestActions({...guestActions, [item.vmid]: e.target.value})}
-                              className="text-sm px-2 py-1 border rounded bg-pb-surface2 dark:bg-gray-700 border-gray-600 text-pb-text dark:text-white"
+                              className="text-sm px-2 py-1 border rounded bg-pb-surface2 dark:bg-gray-700 border-pb-border dark:border-gray-600 text-pb-text dark:text-white"
                             >
                               <option value="migrate">Migrate</option>
                               <option value="ignore">Ignore</option>
