@@ -833,7 +833,31 @@ def automigrate_config():
                     override_dir.mkdir(parents=True, exist_ok=True)
 
                     override_file = override_dir / "interval.conf"
-                    override_content = f"""[Timer]
+                    # Use OnCalendar (wall-clock) instead of OnUnitActiveSec.
+                    # OnUnitActiveSec re-arms only after a successful activation
+                    # so a single crashing run silently breaks the schedule
+                    # forever (see TROUBLESHOOTING.md). OnCalendar fires on the
+                    # clock regardless of past failures.
+                    if 1 <= interval_minutes <= 59:
+                        on_calendar = f"*:0/{interval_minutes}"
+                    elif interval_minutes == 60:
+                        on_calendar = "*:00"
+                    elif interval_minutes % 60 == 0 and interval_minutes < 1440:
+                        # Multi-hour interval — fire at top of every Nth hour
+                        hours = interval_minutes // 60
+                        on_calendar = f"*-*-* 0/{hours}:00:00"
+                    else:
+                        # Awkward value — fall back to OnUnitActiveSec for it
+                        on_calendar = None
+                    if on_calendar:
+                        override_content = f"""[Timer]
+OnUnitActiveSec=
+OnCalendar=
+OnCalendar={on_calendar}
+"""
+                    else:
+                        override_content = f"""[Timer]
+OnCalendar=
 OnUnitActiveSec=
 OnUnitActiveSec={interval_minutes}min
 """

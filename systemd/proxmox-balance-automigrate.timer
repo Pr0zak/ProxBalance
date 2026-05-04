@@ -3,9 +3,15 @@ Description=ProxBalance Automated Migration Timer
 Requires=proxmox-balance.service
 
 [Timer]
+# Wall-clock schedule. OnCalendar is resilient to service crashes: even if
+# automigrate.py exits non-zero, the next tick is still anchored to the
+# clock instead of the previous activation. The interval is overridden by
+# the drop-in at /etc/systemd/system/proxmox-balance-automigrate.timer.d/
+# interval.conf when the user changes check_interval_minutes via the API.
 OnBootSec=5min
-OnUnitActiveSec=5min
-AccuracySec=1min
+OnCalendar=*:0/5
+AccuracySec=30s
+Persistent=false
 
 [Install]
 WantedBy=timers.target
