@@ -1465,6 +1465,23 @@ def main():
                     recommendations = ready_recs + maint_recs
                     if not recommendations:
                         logger.info("[Intelligent] No recommendations ready yet (all still observing)")
+                        # Surface the gating reason so the UI doesn't claim
+                        # the cluster is "balanced" when it actually has
+                        # candidate migrations awaiting their observation
+                        # window. Single summary line beats N per-VM lines.
+                        obs_count = len(observing_recs)
+                        if obs_count:
+                            obs_periods = intelligent_config.get('observation_periods') or 3
+                            min_hours = intelligent_config.get('minimum_data_collection_hours') or 0
+                            detail = f"{obs_count} candidate{'s' if obs_count != 1 else ''} in observation window"
+                            if min_hours > 0:
+                                detail += f" (need {obs_periods} consecutive runs and {min_hours}h of data)"
+                            else:
+                                detail += f" (need {obs_periods} consecutive runs)"
+                            try:
+                                filtered_reasons.append(detail)
+                            except NameError:
+                                filtered_reasons = [detail]
                         break
 
             elif intelligent_enabled and migrations_attempted > 0:
