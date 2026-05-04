@@ -257,11 +257,31 @@ Download migration history from the web UI for offline analysis. Includes timest
 # Check timer is enabled
 pct exec <ctid> -- systemctl is-enabled proxmox-balance-automigrate.timer
 
-# Check timer schedule
+# Check timer schedule — should show a future NEXT timestamp
 pct exec <ctid> -- systemctl list-timers proxmox-balance-automigrate.timer
 
 # Check config
 pct exec <ctid> -- jq '.automated_migrations.enabled' /opt/proxmox-balance-manager/config.json
+```
+
+If `NEXT` is `n/a`, the timer has no future trigger. As of v2.9.0 the unit
+uses wall-clock `OnCalendar=*:0/N` so this should be self-healing — but
+older installs may still carry the legacy `OnUnitActiveSec=` drop-in,
+which silently breaks the schedule the first time the service exits
+non-zero. Either run `bash post_update.sh` (auto-migrates the drop-in)
+or rewrite it manually:
+
+```bash
+pct exec <ctid> -- bash -c '
+  cat > /etc/systemd/system/proxmox-balance-automigrate.timer.d/interval.conf <<EOF
+[Timer]
+OnUnitActiveSec=
+OnCalendar=
+OnCalendar=*:0/30
+EOF
+  systemctl daemon-reload
+  systemctl restart proxmox-balance-automigrate.timer
+'
 ```
 
 ### Migrations skipped

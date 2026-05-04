@@ -34,9 +34,9 @@ Click nodes to view detailed metrics, manage maintenance mode, and plan evacuati
 - Orange dot: Container with unshared bind mounts (may require manual migration)
 - Red dot: VM with passthrough disks (cannot migrate, excluded from recommendations)
 
-### Dark Mode
+### Light + Dark Mode
 
-Automatic theme detection with manual light/dark toggle. Persistent preference across sessions.
+Manual light/dark toggle in the top nav, persisted to `localStorage`. Both modes are first-class — every component pairs a light Tailwind class with a `dark:` variant via the `pb.*` palette in `tailwind.config.js`. Saturated buttons keep `text-white` in both modes; ClusterMap node-info tooltips intentionally stay dark in both modes for contrast against the map.
 
 ---
 

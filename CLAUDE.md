@@ -297,6 +297,8 @@ The UI uses a **glassmorphism/depth aesthetic** — backdrop-blur, frosted glass
 - **`src/utils/designTokens.js`** — Centralized design tokens for the glassmorphism UI. Exports `GLASS_CARD`, `GLASS_CARD_SUBTLE`, `INNER_CARD`, `BTN_PRIMARY`, `BTN_SECONDARY`, `BTN_DANGER`, `BTN_ICON`, `MODAL_OVERLAY`, `MODAL_CONTAINER`, `BADGE`, `TEXT_HEADING`, `TEXT_SUBHEADING`, `ICON` sizes, and `iconBadge()` helper. **All UI components import from here — never copy-paste Tailwind classes for cards/buttons/modals.**
 - **`src/hooks/`** — 11 custom React hooks encapsulating all state management (data fetching, migrations, automation, auth, config, etc.). Hooks accept `deps` objects for cross-hook references.
 - **`src/components/MobileTabBar.jsx`** — Reusable mobile bottom tab navigation with last-update timestamp. Used on all 3 pages.
+- **`src/components/SectionHeader.jsx`** — Shared section-header component used by both Automation and Settings pages. Renders `[icon badge] [title] ... [chevron]` with optional `right` slot. **Use this for any new top-level section.** Accepts `accent={[from, to]}` for `iconBadge()` colors and `onToggle/collapsed` for collapsibility.
+- **`src/utils/formatters.js`** — Time formatters plus `runStatusLabel(run)`. The latter inspects an automigrate run's `decisions[]` to disambiguate "balanced" from "awaiting observations" from "no action (filtered)" — use it everywhere a run status is rendered. Returns `{ label, tone, banner }` where `tone` ∈ `success|warn|error|info|neutral`.
 - **`src/components/dashboard/NodeChart.jsx`** — Self-contained Chart.js component per node. Manages its own chart lifecycle (create/destroy).
 - **`src/components/DashboardPage.jsx`** — Dashboard wrapper (~416 lines) delegating to 14 sub-components in `dashboard/`.
 - **`src/components/AutomationPage.jsx`** — Automation wrapper (~170 lines) delegating to 10 sub-components in `automation/`. Organized into 5 logical sections: Quick Setup, When to Migrate, What to Migrate, How to Migrate, History & Logs.
@@ -462,5 +464,7 @@ Skills are in `.claude/skills/` and available via `/command`:
 | `/check-cluster` | Check cluster health, automation, and recommendations via MCP |
 | `/check-services [ctid]` | Audit ProxBalance systemd units in the production LXC — surfaces failed services, stuck timers, EXEC-203 errors, stale score-history. |
 | `/light-sweep` | Find Tailwind classes that lack a light-mode counterpart (the recurring source of dark bands when light mode is enabled). |
+| `/pre-merge-audit` | One-shot audit before opening a PR — orphan dark-mode classes, naive datetime risks, lingering TODOs, build sanity, branch divergence stats. |
+| `/release <version>` | Tag and publish a GitHub release with notes synthesized from the commit log. Asks for confirmation before pushing public artifacts. |
 | `/review [file\|branch]` | Code review for security, bugs, and style issues |
 | `/test` | Run Python syntax checks, shell validation, pytest, and import verification |
