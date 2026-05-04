@@ -6,7 +6,7 @@ After=network.target proxmox-balance.service
 Type=oneshot
 User=root
 WorkingDirectory=/opt/proxmox-balance-manager
-ExecStart=/opt/proxmox-balance-manager/generate_recommendations.py
+ExecStart=/opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/generate_recommendations.py
 StandardOutput=journal
 StandardError=journal
 
