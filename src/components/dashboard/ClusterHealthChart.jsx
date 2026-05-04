@@ -33,12 +33,14 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
 
   if (allPoints.length === 0 && allMigTs.length === 0) return null;
 
-  // Anchor the period to the latest known event so collector gaps don't blank the chart.
+  // Anchor the period to the most recent actual data point. Using Date.now()
+  // as a fallback would leave dead space on the right edge whenever the
+  // recommendation timer hasn't fired in a while — that's misleading because
+  // it makes the chart look broken when the data is just stale.
   const latestT = Math.max(
     allPoints.length ? allPoints[allPoints.length - 1].t : 0,
-    allMigTs.length ? Math.max(...allMigTs) : 0,
-    Date.now()
-  );
+    allMigTs.length ? Math.max(...allMigTs) : 0
+  ) || Date.now();
   const earliestT = Math.min(
     allPoints.length ? allPoints[0].t : Infinity,
     allMigTs.length ? Math.min(...allMigTs) : Infinity
