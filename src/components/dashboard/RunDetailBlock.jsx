@@ -1,19 +1,14 @@
 import { CheckCircle, Eye, ChevronDown } from '../Icons.jsx';
-import { formatRelativeTime } from '../../utils/formatters.js';
+import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
 
 const { useState } = React;
 
-const STATUS_LABEL = {
-  success: 'Success',
-  partial: 'Partial',
-  failed: 'Failed',
-  no_action: 'Cluster Balanced',
-};
-const STATUS_COLOR = {
+const TONE_COLOR = {
   success: 'text-green-600 dark:text-green-400',
-  partial: 'text-yellow-600 dark:text-yellow-400',
-  failed: 'text-red-600 dark:text-red-400',
-  no_action: 'text-green-600 dark:text-green-400',
+  warn:    'text-yellow-600 dark:text-yellow-400',
+  error:   'text-red-600 dark:text-red-400',
+  info:    'text-blue-600 dark:text-blue-400',
+  neutral: 'text-pb-text2 dark:text-gray-400',
 };
 
 function fmtDuration(s) {
@@ -161,12 +156,13 @@ function SafetyChecksList({ safety }) {
 export default function RunDetailBlock({ run, compact = false }) {
   if (!run) return <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4">No run selected.</div>;
   const status = run.status;
+  const rsl = runStatusLabel(run);
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
           <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Status</div>
-          <div className={`text-sm font-bold ${STATUS_COLOR[status] || 'text-pb-text2 dark:text-gray-400'}`}>{STATUS_LABEL[status] || status}</div>
+          <div className={`text-sm font-bold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>{rsl.label}</div>
         </div>
         <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
           <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Migrations</div>
@@ -186,9 +182,15 @@ export default function RunDetailBlock({ run, compact = false }) {
       {run.timestamp && (
         <div className="text-[11px] text-pb-text2 dark:text-gray-500">{formatRelativeTime(run.timestamp)}</div>
       )}
-      {status === 'no_action' && (
-        <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded px-3 py-2">
-          <CheckCircle size={14} className="shrink-0" /> Cluster balanced — no action needed.
+      {rsl.banner && (
+        <div className={`flex items-center gap-2 text-xs rounded px-3 py-2 border ${
+          rsl.tone === 'success' ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/40' :
+          rsl.tone === 'info'    ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/40' :
+          rsl.tone === 'warn'    ? 'text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/40' :
+          rsl.tone === 'error'   ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40' :
+          'text-pb-text2 dark:text-gray-300 bg-pb-surface2 dark:bg-slate-700/30 border-pb-border dark:border-slate-700/40'
+        }`}>
+          <CheckCircle size={14} className="shrink-0" /> {rsl.banner}
         </div>
       )}
       <DecisionsList decisions={run.decisions} />
@@ -202,17 +204,18 @@ export default function RunDetailBlock({ run, compact = false }) {
  * Simple-by-default summary row with click-to-expand for full RunDetailBlock.
  * Used wherever a "last run" or "recent run" is shown alongside other content.
  */
-const STATUS_DOT_LOCAL = {
-  success: 'bg-green-400',
-  partial: 'bg-yellow-400',
-  failed: 'bg-red-400',
-  no_action: 'bg-green-500',
+const TONE_DOT = {
+  success: 'bg-green-500',
+  warn:    'bg-yellow-400',
+  error:   'bg-red-400',
+  info:    'bg-blue-400',
+  neutral: 'bg-gray-500',
 };
 
 export function RunSummaryRow({ run, defaultExpanded = false, label = 'Last run' }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   if (!run) return null;
-  const status = run.status;
+  const rsl = runStatusLabel(run);
   return (
     <div className="bg-pb-surface2 dark:bg-slate-800/40 border border-pb-border dark:border-slate-700/50 rounded-lg overflow-hidden">
       <button
@@ -221,9 +224,9 @@ export function RunSummaryRow({ run, defaultExpanded = false, label = 'Last run'
       >
         <ChevronDown size={14} className={`text-pb-text2 dark:text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
         <span className="text-[11px] uppercase tracking-wider text-pb-text2 dark:text-gray-500 shrink-0">{label}</span>
-        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_LOCAL[status] || 'bg-gray-500'}`} />
-        <span className={`text-sm font-semibold ${STATUS_COLOR[status] || 'text-pb-text2 dark:text-gray-400'}`}>
-          {STATUS_LABEL[status] || status}
+        <span className={`w-2 h-2 rounded-full shrink-0 ${TONE_DOT[rsl.tone] || TONE_DOT.neutral}`} />
+        <span className={`text-sm font-semibold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>
+          {rsl.label}
         </span>
         <span className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">
           · {run.migrations_successful || 0}/{run.migrations_executed || 0} migrations

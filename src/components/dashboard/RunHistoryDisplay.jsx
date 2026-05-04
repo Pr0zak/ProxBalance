@@ -1,27 +1,23 @@
 import { GLASS_CARD, MODAL_OVERLAY, MODAL_CONTAINER, iconBadge, ICON } from '../../utils/designTokens.js';
 import { ClipboardList, CheckCircle, ChevronDown, X } from '../Icons.jsx';
-import { formatRelativeTime } from '../../utils/formatters.js';
+import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
 import RunDetailBlock, { RunSummaryRow } from './RunDetailBlock.jsx';
 
 const { useState } = React;
 
-const STATUS_LABEL = {
-  success: 'Success',
-  partial: 'Partial',
-  failed: 'Failed',
-  no_action: 'Balanced',
-};
-const STATUS_COLOR = {
+const TONE_COLOR = {
   success: 'text-green-600 dark:text-green-400',
-  partial: 'text-yellow-600 dark:text-yellow-400',
-  failed: 'text-red-600 dark:text-red-400',
-  no_action: 'text-green-600 dark:text-green-400',
+  warn:    'text-yellow-600 dark:text-yellow-400',
+  error:   'text-red-600 dark:text-red-400',
+  info:    'text-blue-600 dark:text-blue-400',
+  neutral: 'text-pb-text2 dark:text-gray-400',
 };
-const STATUS_DOT = {
-  success: 'bg-green-400',
-  partial: 'bg-yellow-400',
-  failed: 'bg-red-400',
-  no_action: 'bg-green-500',
+const TONE_DOT = {
+  success: 'bg-green-500',
+  warn:    'bg-yellow-400',
+  error:   'bg-red-400',
+  info:    'bg-blue-400',
+  neutral: 'bg-gray-500',
 };
 
 function fmtDuration(s) {
@@ -84,9 +80,14 @@ function ResultCardVariant({ runHistory, lastRun }) {
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <div className="text-[11px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Last Run</div>
-              <div className={`text-2xl font-bold ${STATUS_COLOR[lastRun.status] || 'text-pb-text2 dark:text-gray-400'}`}>
-                {STATUS_LABEL[lastRun.status] || lastRun.status}
-              </div>
+              {(() => {
+                const rsl = runStatusLabel(lastRun);
+                return (
+                  <div className={`text-2xl font-bold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>
+                    {rsl.label}
+                  </div>
+                );
+              })()}
               <div className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">
                 {formatRelativeTime(lastRun.timestamp)} · {fmtDuration(lastRun.duration_seconds)} · {lastRun.mode === 'dry_run' ? 'dry run' : 'live'}
               </div>
@@ -111,20 +112,23 @@ function ResultCardVariant({ runHistory, lastRun }) {
           {showAll ? 'Hide' : `Show ${olderRuns.length} previous run${olderRuns.length !== 1 ? 's' : ''}`}
         </button>
       )}
-      {showAll && olderRuns.map((r, i) => (
-        <button
-          key={i}
-          onClick={() => setSelected(r)}
-          className="w-full text-left bg-pb-surface2 dark:bg-slate-800/40 border border-pb-border dark:border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
-        >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[r.status] || 'bg-gray-500'}`} />
-          <span className="text-pb-text dark:text-gray-300">{formatRelativeTime(r.timestamp)}</span>
-          <span className={`text-[10px] ${STATUS_COLOR[r.status]}`}>{STATUS_LABEL[r.status] || r.status}</span>
-          <span className="ml-auto text-pb-text2 dark:text-gray-500 tabular-nums">
-            {r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)} · click for detail
-          </span>
-        </button>
-      ))}
+      {showAll && olderRuns.map((r, i) => {
+        const rsl = runStatusLabel(r);
+        return (
+          <button
+            key={i}
+            onClick={() => setSelected(r)}
+            className="w-full text-left bg-pb-surface2 dark:bg-slate-800/40 border border-pb-border dark:border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
+          >
+            <span className={`w-2 h-2 rounded-full shrink-0 ${TONE_DOT[rsl.tone] || TONE_DOT.neutral}`} />
+            <span className="text-pb-text dark:text-gray-300">{formatRelativeTime(r.timestamp)}</span>
+            <span className={`text-[10px] ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>{rsl.label}</span>
+            <span className="ml-auto text-pb-text2 dark:text-gray-500 tabular-nums">
+              {r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)} · click for detail
+            </span>
+          </button>
+        );
+      })}
       <DetailModal run={selected} onClose={() => setSelected(null)} />
     </div>
   );

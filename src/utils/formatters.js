@@ -16,6 +16,56 @@ export function getTimezoneAbbr() {
   return timeZoneName;
 }
 
+/**
+ * Best label for an automigrate run. The raw status field collapses several
+ * different "didn't migrate" cases into 'no_action' — but in the UI those
+ * cases mean very different things to the operator. Inspect the decisions
+ * array to disambiguate "genuinely balanced" from "held back by the
+ * intelligent observation gate" or "filtered by per-VM rules".
+ *
+ * Returns { label, tone, banner } where:
+ *   label  — short text for the status pill
+ *   tone   — semantic color: 'success' | 'warn' | 'error' | 'info' | 'neutral'
+ *   banner — longer sentence for the explanatory banner (or null)
+ */
+export function runStatusLabel(run) {
+  if (!run) return { label: '—', tone: 'neutral', banner: null };
+  const status = run.status;
+  if (status === 'success') return { label: 'Success', tone: 'success', banner: null };
+  if (status === 'partial') return { label: 'Partial', tone: 'warn', banner: null };
+  if (status === 'failed')  return { label: 'Failed',  tone: 'error', banner: null };
+  if (status !== 'no_action') return { label: status || '—', tone: 'neutral', banner: null };
+
+  // no_action — figure out *why*
+  const decisions = Array.isArray(run.decisions) ? run.decisions : [];
+  const observing = decisions.filter(d => d.action === 'observing').length;
+  const filtered  = decisions.filter(d => d.action === 'filtered' || d.action === 'skipped').length;
+
+  if (observing > 0 && filtered === 0) {
+    return {
+      label: 'Awaiting Observations',
+      tone: 'info',
+      banner: `${observing} candidate${observing === 1 ? '' : 's'} in observation window — Intelligent mode is collecting data before acting.`,
+    };
+  }
+  if (filtered > 0 || observing > 0) {
+    const parts = [];
+    if (observing) parts.push(`${observing} observing`);
+    if (filtered)  parts.push(`${filtered} filtered`);
+    return {
+      label: 'No Action',
+      tone: 'info',
+      banner: `No migrations this cycle — ${parts.join(', ')}. See decisions below for details.`,
+    };
+  }
+  // Genuinely no recommendations to act on.
+  return {
+    label: 'No Action',
+    tone: 'success',
+    banner: 'No actionable recommendations — cluster is balanced this cycle.',
+  };
+}
+
 export function formatRelativeTime(timestamp) {
   if (!timestamp) return '';
   try {
