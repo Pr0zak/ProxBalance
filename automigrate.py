@@ -75,6 +75,20 @@ class AutomigrateLock:
         return False  # Do not suppress exceptions
 
 
+def _parse_iso_utc(value: str) -> datetime:
+    """
+    Parse an ISO-8601 timestamp string and return a UTC-aware datetime.
+
+    Stored timestamps in this project are mixed: some columns/files write naive
+    isoformat (no timezone), others write `+00:00` or `Z`. Comparing aware vs
+    naive datetimes raises TypeError, so always normalize to UTC-aware.
+    """
+    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _acquire_lock() -> Any:
     """
     Prevent concurrent runs using file lock.
@@ -842,11 +856,11 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
     if cooldown_minutes <= 0:
         return False
 
-    # Parse cooldown reset timestamp if provided
+    # Parse cooldown reset timestamp if provided.
     reset_time = None
     if cooldown_reset_at:
         try:
-            reset_time = datetime.fromisoformat(cooldown_reset_at.replace('Z', '+00:00'))
+            reset_time = _parse_iso_utc(cooldown_reset_at)
         except (ValueError, TypeError):
             pass
 
@@ -873,7 +887,7 @@ def is_vm_in_cooldown(vmid: int, cooldown_minutes: int, cooldown_reset_at: str =
         return False
 
     try:
-        migration_time = datetime.fromisoformat(row["timestamp"].replace('Z', '+00:00'))
+        migration_time = _parse_iso_utc(row["timestamp"])
     except (ValueError, TypeError):
         return False
 
@@ -984,7 +998,7 @@ def update_recommendation_tracking(
             entry['status'] = 'stale'
         else:
             # Already stale — check retention period
-            stale_since = datetime.fromisoformat(entry['stale_since'].replace('Z', '+00:00'))
+            stale_since = _parse_iso_utc(entry['stale_since'])
             if stale_since < stale_cutoff:
                 keys_to_delete.append(k)
     for k in keys_to_delete:
@@ -1035,7 +1049,7 @@ def update_recommendation_tracking(
         # Prune observations older than window
         entry["observations"] = [
             obs for obs in entry["observations"]
-            if datetime.fromisoformat(obs["timestamp"].replace('Z', '+00:00')) > window_cutoff
+            if _parse_iso_utc(obs["timestamp"]) > window_cutoff
         ]
 
         # Recalculate averages
@@ -1051,7 +1065,7 @@ def update_recommendation_tracking(
         count_met = entry["consecutive_count"] >= observation_periods
         time_met = True
         if min_data_hours > 0:
-            first_seen = datetime.fromisoformat(entry["first_seen"].replace('Z', '+00:00'))
+            first_seen = _parse_iso_utc(entry["first_seen"])
             hours_tracked = (now - first_seen).total_seconds() / 3600
             time_met = hours_tracked >= min_data_hours
 
@@ -1420,7 +1434,7 @@ def main():
                         count = entry.get('consecutive_count', 1)
                         min_hours = intelligent_config.get('minimum_data_collection_hours') or 0
                         if min_hours > 0 and count >= obs_periods:
-                            first_seen = datetime.fromisoformat(entry.get('first_seen', '').replace('Z', '+00:00'))
+                            first_seen = _parse_iso_utc(entry.get('first_seen', ''))
                             hours_tracked = (datetime.now(timezone.utc) - first_seen).total_seconds() / 3600
                             obs_msg = f"observing {count}/{obs_periods}, waiting for {min_hours}h data (seen for {hours_tracked:.1f}h)"
                         else:
