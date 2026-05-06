@@ -59,7 +59,9 @@ const ProxmoxBalanceManager = () => {
 
   // Initialize on mount
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    // Theme is managed by useDarkMode (reads localStorage, applies the
+    // `dark` class). Do not force it here — that overrode the user's
+    // light-mode choice on every mount.
     configHook.fetchConfig().then(cfg => {
       if (cfg) {
         ai.initFromConfig(cfg);
