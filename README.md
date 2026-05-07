@@ -27,7 +27,7 @@
 ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE. It monitors your cluster in real time, generates intelligent migration recommendations using a penalty-based scoring algorithm, and can automate load balancing across your nodes.
 
 <div align="center">
-<img src="docs/images/pb_showcase.gif" alt="ProxBalance in Action" width="800"/>
+<img src="docs/images/dashboard-nodes.png" alt="ProxBalance Dashboard" width="900"/>
 </div>
 
 ---
@@ -87,30 +87,39 @@ Open `http://<container-ip>` in your browser.
 
 ## Screenshots
 
+The Cluster section is split across five tabs — Nodes, Guests, Map, Charts, and Recs — each showing a different view of the same data.
+
 <div align="center">
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="docs/images/dashboard-0.png" alt="Dashboard" width="400"/>
+        <img src="docs/images/dashboard-nodes.png" alt="Nodes — node table with sparklines" width="450"/>
         <br/>
-        <b>Dashboard Overview</b>
+        <b>Nodes</b> — guest browser grouped by node
       </td>
       <td align="center" width="50%">
-        <img src="docs/images/clustermap.png" alt="Cluster Map" width="400"/>
+        <img src="docs/images/dashboard-guests.png" alt="Guests — flat guest list" width="450"/>
         <br/>
-        <b>Interactive Cluster Map</b>
+        <b>Guests</b> — flat searchable guest table
       </td>
     </tr>
     <tr>
       <td align="center" width="50%">
-        <img src="docs/images/nodestatus.png" alt="Node Status" width="400"/>
+        <img src="docs/images/dashboard-map.png" alt="Map — bubble cluster map" width="450"/>
         <br/>
-        <b>Detailed Node Metrics</b>
+        <b>Map</b> — bubble cluster map (5 view modes)
       </td>
       <td align="center" width="50%">
-        <img src="docs/images/ai_recomendation.png" alt="AI Recommendations" width="400"/>
+        <img src="docs/images/dashboard-charts.png" alt="Charts — cluster health and per-node history" width="450"/>
         <br/>
-        <b>AI-Powered Recommendations</b>
+        <b>Charts</b> — cluster health + per-node history
+      </td>
+    </tr>
+    <tr>
+      <td align="center" colspan="2">
+        <img src="docs/images/dashboard-recs.png" alt="Recs — migration recommendations" width="900"/>
+        <br/>
+        <b>Recs</b> — migration recommendations with batch impact and execution plan
       </td>
     </tr>
   </table>
