@@ -81,6 +81,47 @@ async function shoot(browser, theme, page) {
     await sleep(1500);
   }
 
+  // Blur VM/CT names so screenshots are safe to publish. Pull the live
+  // guest list from /api/guests-only, walk every text node in the DOM,
+  // and replace matches with a blurred span. Generic across all pages —
+  // nothing in the source needs to opt in.
+  if (process.env.BLUR_NAMES !== '0') {
+    const names = await tab.evaluate(async () => {
+      try {
+        const r = await fetch('/api/guests-only');
+        const d = await r.json();
+        const guests = (d.data && d.data.guests) || {};
+        return Object.values(guests)
+          .map(g => g.name)
+          .filter(n => typeof n === 'string' && n.length >= 3);
+      } catch (e) { return []; }
+    });
+    await tab.evaluate((names) => {
+      if (!names || !names.length) return;
+      names.sort((a, b) => b.length - a.length);
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (n) => {
+          if (!n.parentElement) return NodeFilter.FILTER_REJECT;
+          if (n.parentElement.closest('script, style, [data-no-blur]')) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const targets = [];
+      while (walker.nextNode()) {
+        const t = walker.currentNode.textContent;
+        if (t && names.some(n => t.includes(n))) targets.push(walker.currentNode);
+      }
+      for (const node of targets) {
+        const span = document.createElement('span');
+        span.style.filter = 'blur(4px)';
+        span.style.userSelect = 'none';
+        span.textContent = node.textContent;
+        node.parentNode.replaceChild(span, node);
+      }
+    }, names);
+    await sleep(500);
+  }
+
   const filename = `${page.id}-${theme}.png`;
   const outPath = path.join(OUTDIR, filename);
   await tab.screenshot({ path: outPath, fullPage: false });
