@@ -1,6 +1,6 @@
 import { GLASS_CARD } from '../../utils/designTokens.js';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 // Each period also declares its preferred backend bucket size (minutes).
 // Short ranges request raw ~15-min samples; longer ranges request
@@ -33,6 +33,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     setPeriod(id);
     localStorage.setItem('clusterHealthChartPeriod', id);
   };
+  // hover = { point, pixelX, pixelY, containerW } when cursor is over the chart
+  const [hover, setHover] = useState(null);
+  const containerRef = useRef(null);
 
   // Re-fetch with the appropriate bucket whenever the period changes.
   useEffect(() => {
@@ -91,6 +94,38 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const latest = points.length > 0 ? points[points.length - 1].v : null;
   const trend = points.length > 1 ? (latest - points[0].v) : null;
 
+  // Mouse-tracking crosshair: convert cursor pixel-X to viewBox space, snap
+  // to the nearest data point, and stash the pixel offset for the tooltip.
+  const handleMouseMove = (e) => {
+    if (!points.length) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pxX = e.clientX - rect.left;
+    const pxY = e.clientY - rect.top;
+    const vbX = (pxX / rect.width) * w;
+    if (vbX < pad - 2 || vbX > w - pad + 2) {
+      setHover(null);
+      return;
+    }
+    // Linear scan — points is bounded to ~800 by the period limits.
+    let best = points[0];
+    let bestDist = Math.abs(xFor(best.t) - vbX);
+    for (let i = 1; i < points.length; i++) {
+      const d = Math.abs(xFor(points[i].t) - vbX);
+      if (d < bestDist) { bestDist = d; best = points[i]; }
+    }
+    setHover({ point: best, pixelX: pxX, pixelY: pxY, containerW: rect.width });
+  };
+  const handleMouseLeave = () => setHover(null);
+
+  // Format timestamp based on bucket size — short ranges show time-of-day,
+  // long ranges show just the date.
+  const fmtHoverTime = (t) => {
+    const d = new Date(t);
+    if (periodCfg.bucket >= 1440) return d.toLocaleDateString();
+    if (periodCfg.bucket >= 60) return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
   // Per-migration markers (from migration_history) within the selected period.
   const markers = (migrationHistory || [])
     .map(m => {
@@ -135,30 +170,70 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           <PeriodPills value={period} onChange={setPeriodPersisted} />
         </div>
       </div>
-      <svg viewBox={`0 0 ${w} ${h + 8}`} className="w-full" style={{ height: 88 }} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="clusterHealthGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {hasLine && <polygon points={areaPoints} fill="url(#clusterHealthGrad)" />}
-        {hasLine && <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />}
-        {!hasLine && (
-          <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No cluster_health samples in this period</text>
-        )}
-        {markers.map((m, i) => (
-          <g key={i}>
-            <line x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-slate-600/40" strokeWidth="0.5" strokeDasharray="2,2" />
-            <polygon
-              points={`${m.x - 3},${h + 2} ${m.x + 3},${h + 2} ${m.x},${h - 4}`}
-              className={m.color}
+      <div ref={containerRef} className="relative">
+        <svg
+          viewBox={`0 0 ${w} ${h + 8}`}
+          className="w-full"
+          style={{ height: 88 }}
+          preserveAspectRatio="none"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          <defs>
+            <linearGradient id="clusterHealthGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {hasLine && <polygon points={areaPoints} fill="url(#clusterHealthGrad)" />}
+          {hasLine && <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />}
+          {!hasLine && (
+            <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No cluster_health samples in this period</text>
+          )}
+          {markers.map((m, i) => (
+            <g key={i}>
+              <line x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-slate-600/40" strokeWidth="0.5" strokeDasharray="2,2" />
+              <polygon
+                points={`${m.x - 3},${h + 2} ${m.x + 3},${h + 2} ${m.x},${h - 4}`}
+                className={m.color}
+              >
+                <title>{m.title}</title>
+              </polygon>
+            </g>
+          ))}
+          {hover && (
+            <g pointerEvents="none">
+              <line
+                x1={xFor(hover.point.t)} y1={pad}
+                x2={xFor(hover.point.t)} y2={h - pad}
+                stroke="currentColor" className="text-pb-text dark:text-white" strokeOpacity="0.4" strokeWidth="0.6"
+              />
+              <circle
+                cx={xFor(hover.point.t)} cy={yFor(hover.point.v)}
+                r="3.5"
+                fill="#3b82f6" stroke="white" strokeWidth="1"
+              />
+            </g>
+          )}
+        </svg>
+        {hover && (() => {
+          // Anchor tooltip near the cursor; flip to the left if the cursor is
+          // past the midpoint so the tip doesn't slide off the right edge.
+          const flipLeft = hover.containerW && hover.pixelX > hover.containerW * 0.6;
+          const style = flipLeft
+            ? { right: Math.max(0, hover.containerW - hover.pixelX + 12), top: Math.max(0, hover.pixelY - 44) }
+            : { left: hover.pixelX + 12, top: Math.max(0, hover.pixelY - 44) };
+          return (
+            <div
+              className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px]"
+              style={style}
             >
-              <title>{m.title}</title>
-            </polygon>
-          </g>
-        ))}
-      </svg>
+              <div className="font-semibold text-pb-text dark:text-white tabular-nums">{hover.point.v.toFixed(1)}</div>
+              <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap">{fmtHoverTime(hover.point.t)}</div>
+            </div>
+          );
+        })()}
+      </div>
       <div className="flex justify-between text-[10px] text-pb-text2 dark:text-gray-500 mt-1">
         <span>{new Date(tStart).toLocaleDateString()}</span>
         <span>min {min.toFixed(1)}</span>
