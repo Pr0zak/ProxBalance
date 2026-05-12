@@ -1,4 +1,4 @@
-const { useState, useMemo } = React;
+const { useState, useMemo, useCallback } = React;
 
 export function useClusterData(API_BASE, deps = {}) {
   const { setTokenAuthError, checkPermissions, autoRefreshInterval } = deps;
@@ -214,7 +214,12 @@ export function useClusterData(API_BASE, deps = {}) {
   // ~15-min samples, longer ranges (30d → 1yr) ask for hourly/daily
   // averages so we don't blow up payload or render time. Default args
   // mirror "raw, last 10k rows" for callers that don't care.
-  const fetchScoreHistory = async (limit = 10000, bucketMinutes = 0) => {
+  //
+  // Wrapped in useCallback so the reference is stable across renders —
+  // the chart depends on this function in a useEffect dep array, and an
+  // unstable reference made the effect fire on every parent re-render,
+  // visibly "vibrating" the chart for a few seconds after period changes.
+  const fetchScoreHistory = useCallback(async (limit = 10000, bucketMinutes = 0) => {
     try {
       const q = new URLSearchParams({ limit: String(limit) });
       if (bucketMinutes > 0) q.set('bucket', String(bucketMinutes));
@@ -226,7 +231,7 @@ export function useClusterData(API_BASE, deps = {}) {
     } catch (err) {
       console.error('Error fetching score history:', err);
     }
-  };
+  }, [API_BASE]);
 
   // Load a script with CDN primary and local fallback
   const loadScript = (cdnUrl, localUrl) => {
