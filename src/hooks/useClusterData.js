@@ -209,7 +209,10 @@ export function useClusterData(API_BASE, deps = {}) {
     }
   };
 
-  const fetchScoreHistory = async (limit = 168) => {
+  // 10k covers ~104 days at 15-min sample intervals — enough headroom for
+  // the chart's All/90d/30d/7d views. Backend returns whatever it has;
+  // current retention caps around ~720 rows (~6 days). Payload is ~250KB.
+  const fetchScoreHistory = async (limit = 10000) => {
     try {
       const response = await fetch(`${API_BASE}/score-history?limit=${limit}`);
       const result = await response.json();
