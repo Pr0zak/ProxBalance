@@ -70,7 +70,7 @@ export default function DashboardPage({
   // Node status
   nodeGridColumns, setNodeGridColumns, chartPeriod, setChartPeriod, nodeScores,
   // Guest profiles & score history
-  guestProfiles, scoreHistory,
+  guestProfiles, scoreHistory, fetchScoreHistory,
   // Maintenance & evacuation
   maintenanceNodes, setMaintenanceNodes, evacuatingNodes, setEvacuatingNodes, planningNodes, setPlanningNodes,
   evacuationPlan, setEvacuationPlan, planNode, setPlanNode,
@@ -215,6 +215,7 @@ export default function DashboardPage({
           automationStatus={automationStatus}
           automationConfig={automationConfig}
           scoreHistory={scoreHistory}
+          fetchScoreHistory={fetchScoreHistory}
           fetchAutomationStatus={fetchAutomationStatus}
           runAutomationNow={runAutomationNow}
           runningAutomation={runningAutomation}
@@ -274,7 +275,7 @@ export default function DashboardPage({
         )}
         {promotedSections.charts && (
           <>
-            <ClusterHealthChart scoreHistory={scoreHistory} migrationHistory={migrationHistory} />
+            <ClusterHealthChart scoreHistory={scoreHistory} migrationHistory={migrationHistory} fetchScoreHistory={fetchScoreHistory} />
             <NodeStatusSection
               data={data}
               collapsedSections={collapsedSections}

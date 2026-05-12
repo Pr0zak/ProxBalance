@@ -352,3 +352,48 @@ def get_score_history(limit: int = 720) -> List[Dict[str, Any]]:
             "recommendation_count": r["recommendation_count"],
         })
     return result
+
+
+def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[Dict[str, Any]]:
+    """Retrieve score history aggregated into fixed-size time buckets.
+
+    Each returned row represents one bucket: the average cluster_health and
+    summed recommendation count across all raw samples that fell into the
+    bucket. ``nodes`` is left empty — the chart only renders cluster_health
+    for these long-range views, and aggregating a JSON blob in SQL is more
+    trouble than it's worth.
+
+    Args:
+        bucket_minutes: Bucket size in minutes (60 = hourly, 360 = 6h, 1440 = daily).
+        limit: Max buckets to return (most recent N).
+    """
+    if bucket_minutes <= 0:
+        return get_score_history(limit=limit)
+    conn = get_connection()
+    bucket_seconds = bucket_minutes * 60
+    rows = conn.execute(
+        """
+        SELECT
+          MAX(timestamp) AS timestamp,
+          AVG(cluster_health) AS cluster_health,
+          SUM(recommendation_count) AS recommendation_count,
+          COUNT(*) AS sample_count
+        FROM score_history
+        WHERE cluster_health IS NOT NULL
+        GROUP BY CAST(strftime('%s', timestamp) AS INTEGER) / ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+        """,
+        (bucket_seconds, limit),
+    ).fetchall()
+
+    result = []
+    for r in reversed(rows):
+        result.append({
+            "timestamp": r["timestamp"],
+            "nodes": {},
+            "cluster_health": round(r["cluster_health"], 2) if r["cluster_health"] is not None else None,
+            "recommendation_count": r["recommendation_count"] or 0,
+            "sample_count": r["sample_count"],
+        })
+    return result

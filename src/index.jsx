@@ -485,6 +485,7 @@ const ProxmoxBalanceManager = () => {
     loadChartJs={cluster.loadChartJs} chartJsLoaded={cluster.chartJsLoaded}
     guestProfiles={cluster.guestProfiles}
     scoreHistory={cluster.scoreHistory}
+    fetchScoreHistory={cluster.fetchScoreHistory}
     maintenanceNodes={evacuation.maintenanceNodes} setMaintenanceNodes={evacuation.setMaintenanceNodes}
     evacuatingNodes={evacuation.evacuatingNodes} setEvacuatingNodes={evacuation.setEvacuatingNodes}
     planningNodes={evacuation.planningNodes} setPlanningNodes={evacuation.setPlanningNodes}

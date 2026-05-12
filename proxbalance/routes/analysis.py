@@ -157,10 +157,27 @@ def get_guests_only():
 @analysis_bp.route("/api/score-history", methods=["GET"])
 @api_route
 def get_score_history():
-    """Return cluster health score history for timeline charting"""
-    from proxbalance.forecasting import get_score_history as fetch_score_history
+    """Return cluster health score history for timeline charting.
+
+    Query params:
+      limit  — max rows to return (default 168)
+      bucket — bucket size in minutes for query-time downsampling. When set,
+               raw samples are grouped by time bucket and cluster_health is
+               averaged across each bucket. Use 60 for hourly, 360 for 6h,
+               1440 for daily. When omitted/zero, raw rows are returned.
+    """
+    from proxbalance.forecasting import (
+        get_score_history as fetch_score_history,
+        get_score_history_bucketed,
+    )
     limit = request.args.get('limit', 168, type=int)
-    entries = fetch_score_history(limit=limit)
+    bucket = request.args.get('bucket', 0, type=int)
+
+    if bucket and bucket > 0:
+        entries = get_score_history_bucketed(bucket_minutes=bucket, limit=limit)
+    else:
+        entries = fetch_score_history(limit=limit)
+
     slim = [{
         "timestamp": e.get("timestamp"),
         "cluster_health": e.get("cluster_health"),
@@ -168,7 +185,7 @@ def get_score_history():
         "nodes": {k: {"suitability": v.get("suitability"), "cpu": v.get("cpu"), "mem": v.get("mem")}
                   for k, v in e.get("nodes", {}).items()}
     } for e in entries]
-    return jsonify({"success": True, "history": slim})
+    return jsonify({"success": True, "history": slim, "bucket_minutes": bucket})
 
 
 @analysis_bp.route("/api/refresh", methods=["POST"])

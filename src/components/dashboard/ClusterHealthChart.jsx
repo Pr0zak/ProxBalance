@@ -1,27 +1,45 @@
 import { GLASS_CARD } from '../../utils/designTokens.js';
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
+// Each period also declares its preferred backend bucket size (minutes).
+// Short ranges request raw ~15-min samples; longer ranges request
+// averaged buckets so the payload stays bounded and the line stays
+// readable across thousands of samples.
+//   bucket=0  → raw rows (no aggregation, server caps via `limit`)
+//   bucket=60 → hourly average
 const PERIODS = [
-  { id: '1d',  label: '1d',  ms: 24 * 60 * 60 * 1000 },
-  { id: '7d',  label: '7d',  ms: 7 * 24 * 60 * 60 * 1000 },
-  { id: '30d', label: '30d', ms: 30 * 24 * 60 * 60 * 1000 },
-  { id: '90d', label: '90d', ms: 90 * 24 * 60 * 60 * 1000 },
-  { id: 'all', label: 'All', ms: null },
+  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 200 },
+  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 800 },
+  { id: '30d',  label: '30d',  ms: 30 * 24 * 60 * 60 * 1000,  bucket: 60,   limit: 800 },
+  { id: '90d',  label: '90d',  ms: 90 * 24 * 60 * 60 * 1000,  bucket: 360,  limit: 400 },
+  { id: '180d', label: '180d', ms: 180 * 24 * 60 * 60 * 1000, bucket: 720,  limit: 400 },
+  { id: '1yr',  label: '1yr',  ms: 365 * 24 * 60 * 60 * 1000, bucket: 1440, limit: 400 },
 ];
 
 /**
  * Cluster-wide cluster_health over time. User-adjustable period selector
- * (1d/7d/30d/90d/all, default 30d) filters both the line and the migration
- * markers. Markers are status-colored triangles per migration in
- * migration_history (green=completed, yellow=other, red=failed).
+ * (1d/7d/30d/90d/180d/1yr, default 30d) drives both the chart window and
+ * the backend's downsampling bucket size — short ranges fetch raw samples,
+ * longer ranges fetch hourly/daily averages. Migration markers are status-
+ * colored triangles per migration in migration_history.
  */
-export default function ClusterHealthChart({ scoreHistory, migrationHistory }) {
-  const [period, setPeriod] = useState(() => localStorage.getItem('clusterHealthChartPeriod') || '30d');
+export default function ClusterHealthChart({ scoreHistory, migrationHistory, fetchScoreHistory }) {
+  const [period, setPeriod] = useState(() => {
+    const saved = localStorage.getItem('clusterHealthChartPeriod');
+    return PERIODS.find(p => p.id === saved) ? saved : '30d';
+  });
   const setPeriodPersisted = (id) => {
     setPeriod(id);
     localStorage.setItem('clusterHealthChartPeriod', id);
   };
+
+  // Re-fetch with the appropriate bucket whenever the period changes.
+  useEffect(() => {
+    if (typeof fetchScoreHistory !== 'function') return;
+    const cfg = PERIODS.find(p => p.id === period) || PERIODS[2];
+    fetchScoreHistory(cfg.limit, cfg.bucket);
+  }, [period, fetchScoreHistory]);
 
   const allPoints = (scoreHistory || [])
     .map(e => ({ t: new Date(e.timestamp).getTime(), v: e.cluster_health }))

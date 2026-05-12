@@ -209,12 +209,16 @@ export function useClusterData(API_BASE, deps = {}) {
     }
   };
 
-  // 10k covers ~104 days at 15-min sample intervals — enough headroom for
-  // the chart's All/90d/30d/7d views. Backend returns whatever it has;
-  // current retention caps around ~720 rows (~6 days). Payload is ~250KB.
-  const fetchScoreHistory = async (limit = 10000) => {
+  // Score history powers the cluster-health chart. The chart picks bucket
+  // size based on the selected period — short ranges (1d/7d) ask for raw
+  // ~15-min samples, longer ranges (30d → 1yr) ask for hourly/daily
+  // averages so we don't blow up payload or render time. Default args
+  // mirror "raw, last 10k rows" for callers that don't care.
+  const fetchScoreHistory = async (limit = 10000, bucketMinutes = 0) => {
     try {
-      const response = await fetch(`${API_BASE}/score-history?limit=${limit}`);
+      const q = new URLSearchParams({ limit: String(limit) });
+      if (bucketMinutes > 0) q.set('bucket', String(bucketMinutes));
+      const response = await fetch(`${API_BASE}/score-history?${q}`);
       const result = await response.json();
       if (result.success) {
         setScoreHistory(result.history);
