@@ -1,5 +1,4 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
-import { RunSummaryRow } from './RunDetailBlock.jsx';
 import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 
@@ -172,8 +171,7 @@ export default function AutoStatusPill({
       </div>
       {canExpand && expanded && (
         <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 space-y-4">
-          <RunSummaryRow run={lastRunObj} label="Last run" />
-          {runHistory && runHistory.length > 0 && (
+          {(runHistory && runHistory.length > 0) || lastRunObj ? (
             <div>
               <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
               <RunHistoryDisplay
@@ -182,7 +180,7 @@ export default function AutoStatusPill({
                 automationStatus={automationStatus}
               />
             </div>
-          )}
+          ) : null}
           {API_BASE && (
             <div>
               <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Migration outcomes — predicted vs actual</div>
