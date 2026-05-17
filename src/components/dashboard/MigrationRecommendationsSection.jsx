@@ -1,5 +1,5 @@
 import {
-  Activity, RefreshCw, CheckCircle, ChevronDown, Terminal
+  Activity, RefreshCw, CheckCircle, ChevronDown, Terminal, Moon
 } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
@@ -189,6 +189,21 @@ export default function MigrationRecommendationsSection({
 
       {expanded && (
         <div className="transition-all duration-300 ease-in-out">
+
+          {/* Outside-window notice — auto-migration is paused; manual still works */}
+          {(() => {
+            const outsideWindow = automationStatus?.enabled
+              && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
+            if (!outsideWindow) return null;
+            return (
+              <div className="mb-4 flex items-start gap-2 px-3 py-2 rounded-lg border bg-slate-100 dark:bg-slate-700/50 border-slate-300 dark:border-slate-600/60 text-slate-700 dark:text-slate-300">
+                <Moon size={14} className="shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <span className="font-semibold">Outside migration window</span> — auto-migration is paused and will not pick these up until the next window opens. Manual migrations from the cards below still work.
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Summary Digest */}
           {!loadingRecommendations && (

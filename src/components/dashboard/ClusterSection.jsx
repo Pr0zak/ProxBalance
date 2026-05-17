@@ -10,15 +10,15 @@ import ClusterHealthChart from './ClusterHealthChart.jsx';
 const { useState, useEffect, useRef } = React;
 
 const ALL_TABS = [
-  { id: 'table',           label: 'Nodes',   promoteKey: null   },
-  { id: 'guests',          label: 'Guests',  promoteKey: null   },
-  { id: 'map',             label: 'Map',     promoteKey: 'map'    },
-  { id: 'charts',          label: 'Charts',  promoteKey: 'charts' },
-  { id: 'recommendations', label: 'Recs',    promoteKey: 'recs'   },
+  { id: 'table',           label: 'Nodes',       promoteKey: null   },
+  { id: 'guests',          label: 'Guests',      promoteKey: null   },
+  { id: 'map',             label: 'Map',         promoteKey: 'map'    },
+  { id: 'charts',          label: 'Charts',      promoteKey: 'charts' },
+  { id: 'recommendations', label: 'Suggestions', promoteKey: 'recs'   },
 ];
 
 const PROMOTABLE = [
-  { key: 'recs',   label: 'Recommendations' },
+  { key: 'recs',   label: 'Suggestions' },
   { key: 'map',    label: 'Map' },
   { key: 'charts', label: 'Charts' },
 ];
@@ -37,7 +37,7 @@ export default function ClusterSection(props) {
   const TABS = ALL_TABS
     .filter(t => !t.promoteKey || !promoted[t.promoteKey])
     .map(t => t.id === 'recommendations'
-      ? { ...t, label: `Recs${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }
+      ? { ...t, label: `Suggestions${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }
       : t);
 
   const [activeTab, setActiveTab] = useState(() => {
