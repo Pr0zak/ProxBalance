@@ -460,6 +460,7 @@ const ProxmoxBalanceManager = () => {
     selectedGuest={migrations.selectedGuest} setSelectedGuest={migrations.setSelectedGuest}
     migrationTarget={migrations.migrationTarget} setMigrationTarget={migrations.setMigrationTarget}
     executeMigration={migrations.executeMigration}
+    runPlanStep={migrations.runPlanStep}
     showTagModal={migrations.showTagModal} setShowTagModal={migrations.setShowTagModal}
     tagModalGuest={migrations.tagModalGuest} setTagModalGuest={migrations.setTagModalGuest}
     newTag={migrations.newTag} setNewTag={migrations.setNewTag}

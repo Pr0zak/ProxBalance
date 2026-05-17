@@ -1,6 +1,6 @@
-import { List, ArrowRight } from '../../../Icons.jsx';
+import { List, ArrowRight, Play } from '../../../Icons.jsx';
 
-export default function ExecutionPlan({ recommendationData }) {
+export default function ExecutionPlan({ recommendationData, onRunPlan, canMigrate }) {
   const plan = recommendationData?.execution_plan;
   if (!plan?.ordered_recommendations?.length || plan.ordered_recommendations.length <= 1) {
     return (
@@ -16,6 +16,15 @@ export default function ExecutionPlan({ recommendationData }) {
         <span className="text-xs text-pb-text2 dark:text-gray-400">{plan.total_steps} steps</span>
         {plan.can_parallelize && (
           <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">Parallel groups available</span>
+        )}
+        {onRunPlan && canMigrate && (
+          <button
+            onClick={onRunPlan}
+            className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+            title="Execute this plan now — runs migrations group-by-group, halts on first failure"
+          >
+            <Play size={10} /> Run Plan
+          </button>
         )}
       </div>
       <div className="space-y-1.5">

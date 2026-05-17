@@ -209,6 +209,7 @@ export default function ClusterSection(props) {
             migrationProgress={props.migrationProgress}
             cancelMigration={props.cancelMigration}
             trackMigration={props.trackMigration}
+            runPlanStep={props.runPlanStep}
             setConfirmMigration={props.setConfirmMigration}
             setCurrentPage={props.setCurrentPage}
             setOpenPenaltyConfigOnAutomation={props.setOpenPenaltyConfigOnAutomation}

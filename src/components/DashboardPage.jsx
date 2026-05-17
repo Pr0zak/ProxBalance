@@ -49,6 +49,7 @@ export default function DashboardPage({
   // Migration dialog
   showMigrationDialog, setShowMigrationDialog, selectedGuest, setSelectedGuest, migrationTarget, setMigrationTarget,
   executeMigration,
+  runPlanStep,
   // Tag management
   showTagModal, setShowTagModal, tagModalGuest, setTagModalGuest, newTag, setNewTag,
   handleAddTag, handleRemoveTag,
@@ -204,6 +205,7 @@ export default function DashboardPage({
           setMigrationStatus={setMigrationStatus}
           cancelMigration={cancelMigration}
           trackMigration={trackMigration}
+          runPlanStep={runPlanStep}
           setConfirmMigration={setConfirmMigration}
           setCurrentPage={setCurrentPage}
           setOpenPenaltyConfigOnAutomation={setOpenPenaltyConfigOnAutomation}
@@ -254,6 +256,7 @@ export default function DashboardPage({
             nodeScores={nodeScores}
             API_BASE={API_BASE}
             automationStatus={automationStatus}
+            runPlanStep={runPlanStep}
           />
         )}
         {promotedSections.map && (

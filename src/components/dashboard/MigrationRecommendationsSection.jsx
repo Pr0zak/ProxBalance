@@ -13,6 +13,7 @@ import SkippedGuests from './recommendations/SkippedGuests.jsx';
 import BatchImpact from './recommendations/insights/BatchImpact.jsx';
 import ExecutionPlan from './recommendations/insights/ExecutionPlan.jsx';
 import EngineDiagnostics from './recommendations/insights/EngineDiagnostics.jsx';
+import RunPlanModal from './recommendations/insights/RunPlanModal.jsx';
 import { Info } from '../Icons.jsx';
 
 const { useState } = React;
@@ -34,6 +35,8 @@ export default function MigrationRecommendationsSection({
   API_BASE,
   // For per-rec auto-eligibility badges
   automationStatus,
+  // Run Plan orchestration (migrationProgress already destructured above)
+  runPlanStep,
   // When embedded (e.g. inside a tab), suppress the section title block.
   embedded = false,
 }) {
@@ -45,6 +48,7 @@ export default function MigrationRecommendationsSection({
   const [recSortBy, setRecSortBy] = useState('');
   const [recSortDir, setRecSortDir] = useState('desc');
   const [showRecFilters, setShowRecFilters] = useState(false);
+  const [showRunPlanModal, setShowRunPlanModal] = useState(false);
 
 
   // Apply client-side filters and sorting
@@ -234,7 +238,11 @@ export default function MigrationRecommendationsSection({
                   <span>Execution Plan</span>
                   <span className="text-pb-text2 dark:text-gray-500 font-normal">— optimal order</span>
                 </div>
-                <ExecutionPlan recommendationData={recommendationData} />
+                <ExecutionPlan
+                  recommendationData={recommendationData}
+                  canMigrate={canMigrate && runPlanStep}
+                  onRunPlan={runPlanStep ? () => setShowRunPlanModal(true) : null}
+                />
               </div>
             </div>
           )}
@@ -319,6 +327,20 @@ export default function MigrationRecommendationsSection({
             />
           )}
         </div>
+      )}
+
+      {showRunPlanModal && (
+        <RunPlanModal
+          plan={recommendationData?.execution_plan}
+          recommendations={recommendations}
+          runPlanStep={runPlanStep}
+          migrationProgress={migrationProgress}
+          outsideWindow={
+            automationStatus?.enabled
+            && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside')
+          }
+          onClose={() => setShowRunPlanModal(false)}
+        />
       )}
 
     </Wrapper>

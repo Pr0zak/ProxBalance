@@ -50,6 +50,10 @@ export function useMigrations(API_BASE, deps = {}) {
 
     setGuestsMigrating(prev => ({ ...prev, [vmid]: true }));
 
+    // Returns a Promise resolving to {vmid, status, error?} when the migration
+    // ends. Existing fire-and-forget callers just ignore the Promise; the plan
+    // orchestrator awaits it to know when to advance to the next group.
+    return new Promise((resolvePoll) => {
     const pollInterval = setInterval(async () => {
       try {
         const migrationStatusResponse = await fetch(`${API_BASE}/guests/${vmid}/migration-status`);
@@ -93,6 +97,7 @@ export function useMigrations(API_BASE, deps = {}) {
                 delete updated[vmid];
                 return updated;
               });
+              resolvePoll({ vmid, status: 'cancelled' });
               return;
             }
 
@@ -163,6 +168,9 @@ export function useMigrations(API_BASE, deps = {}) {
               }, 5000);
 
               if (fetchGuestLocations) fetchGuestLocations();
+              resolvePoll({ vmid, status: 'success', newNode: locationResult.node });
+            } else {
+              resolvePoll({ vmid, status: 'failed', error: 'Could not fetch new location' });
             }
           }
         }
@@ -170,9 +178,46 @@ export function useMigrations(API_BASE, deps = {}) {
         console.error('Error polling migration task:', err);
       }
     }, MIGRATION_POLL_INTERVAL);
-
+    });
     // No timeout — polling self-terminates when migration completes or is cancelled.
     // Interval is also cleaned up when the component detects !is_migrating.
+  };
+
+  // Used by the Run Plan orchestrator. POSTs /api/migrate for one step and
+  // returns a Promise that resolves with the final status once the migration
+  // ends (or immediately on POST failure). Mirrors executeMigration but
+  // returns a Promise the caller can await.
+  const runPlanStep = async (step, recByVmid) => {
+    const rec = recByVmid[step.vmid] || {};
+    const type = step.type || rec.type;
+    if (!type) {
+      return { vmid: step.vmid, status: 'failed', error: 'Missing guest type' };
+    }
+    const key = `${step.vmid}-${step.target_node}`;
+    setMigrationStatus(prev => ({ ...prev, [key]: 'running' }));
+    try {
+      const response = await fetch(`${API_BASE}/migrate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_node: step.source_node,
+          vmid: step.vmid,
+          target_node: step.target_node,
+          type,
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+        return { vmid: step.vmid, status: 'failed', error: result.error || result.message || 'POST failed' };
+      }
+      // trackMigration was refactored to return a Promise resolving to
+      // {vmid, status, ...} when the migration ends.
+      return await trackMigration(step.vmid, result.source_node, result.target_node, result.task_id, type);
+    } catch (err) {
+      setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+      return { vmid: step.vmid, status: 'failed', error: err.message || String(err) };
+    }
   };
 
   const executeMigration = async (rec) => {
@@ -488,6 +533,7 @@ export function useMigrations(API_BASE, deps = {}) {
     selectedGuestDetails, setSelectedGuestDetails,
     trackMigration,
     executeMigration,
+    runPlanStep,
     cancelMigration,
     confirmAndMigrate,
     fetchGuestMigrationOptions,
