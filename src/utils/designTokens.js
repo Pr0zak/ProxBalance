@@ -189,6 +189,9 @@ export const CONNECTION_BADGE_ONLINE =
 export const CONNECTION_BADGE_OFFLINE =
   'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30';
 
+export const CONNECTION_BADGE_IDLE =
+  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700/60 dark:text-slate-300 dark:border-slate-600/60';
+
 // ---------------------------------------------------------------------------
 // KPI card
 // ---------------------------------------------------------------------------

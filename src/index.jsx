@@ -249,6 +249,7 @@ const ProxmoxBalanceManager = () => {
       systemInfo={updates.systemInfo}
       onShowUpdate={() => updates.setShowUpdateModal(true)}
       onShowBranches={() => { updates.fetchBranches(); updates.setShowBranchModal(true); }}
+      automationStatus={automation.automationStatus}
     />
   );
 

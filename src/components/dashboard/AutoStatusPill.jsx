@@ -1,4 +1,4 @@
-import { Clock, Pause, Play, Loader, Settings, ChevronDown, Moon } from '../Icons.jsx';
+import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
 import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 
@@ -17,6 +17,10 @@ function getStatus(automationStatus) {
   if (!automationStatus.enabled) return { label: 'Off', color: 'gray', dotColor: 'bg-gray-500' };
   if (automationStatus.dry_run) return { label: 'Dry-Run', color: 'yellow', dotColor: 'bg-yellow-400' };
   if (!automationStatus.timer_active) return { label: 'Paused', color: 'orange', dotColor: 'bg-orange-400' };
+  // Timer is running but we're outside every configured migration window —
+  // scheduled runs will exit early, so don't claim "Active".
+  const cw = (automationStatus.state?.current_window || '').toLowerCase();
+  if (cw.startsWith('outside')) return { label: 'Idle', color: 'gray', dotColor: 'bg-gray-400' };
   return { label: 'Active', color: 'green', dotColor: 'bg-green-400' };
 }
 
@@ -133,14 +137,6 @@ export default function AutoStatusPill({
           )}
           <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
           <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto-migration: {status.label}</span>
-          {outsideWindow && (
-            <span
-              className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border bg-slate-100 dark:bg-slate-700/60 border-slate-300 dark:border-slate-600/60 text-slate-700 dark:text-slate-300"
-              title="Outside any configured migration window — scheduled runs will exit early until the next window opens"
-            >
-              <Moon size={10} /> Outside window
-            </span>
-          )}
           {nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>}
           {lastRun && (
             <span className="text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>

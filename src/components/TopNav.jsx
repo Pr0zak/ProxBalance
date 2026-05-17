@@ -1,7 +1,7 @@
 import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub, Sun, Moon } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
-  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, BTN_ICON
+  CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, CONNECTION_BADGE_IDLE, BTN_ICON
 } from '../utils/designTokens.js';
 
 const { useMemo } = React;
@@ -18,8 +18,12 @@ export default function TopNav({
   darkMode, toggleDarkMode,
   connected, lastUpdate,
   onRefresh, refreshing,
-  systemInfo, onShowUpdate, onShowBranches
+  systemInfo, onShowUpdate, onShowBranches,
+  automationStatus,
 }) {
+  const outsideWindow = connected
+    && automationStatus?.enabled
+    && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
   const timeAgo = useMemo(() => {
     if (!lastUpdate) return null;
     const seconds = Math.floor((Date.now() - new Date(lastUpdate).getTime()) / 1000);
@@ -70,11 +74,26 @@ export default function TopNav({
               </button>
             )}
 
-            {/* Connection badge */}
-            <span className={`hidden sm:inline-flex ${connected ? CONNECTION_BADGE_ONLINE : CONNECTION_BADGE_OFFLINE}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
-              {connected ? 'Connected' : 'Disconnected'}
-            </span>
+            {/* Connection / window badge — Disconnected wins, then Outside window, then Connected */}
+            {!connected ? (
+              <span className={`hidden sm:inline-flex ${CONNECTION_BADGE_OFFLINE}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                Disconnected
+              </span>
+            ) : outsideWindow ? (
+              <span
+                className={`hidden sm:inline-flex ${CONNECTION_BADGE_IDLE}`}
+                title="Outside any configured migration window — scheduled auto-migration runs will exit early until the next window opens"
+              >
+                <Moon size={10} />
+                Outside window
+              </span>
+            ) : (
+              <span className={`hidden sm:inline-flex ${CONNECTION_BADGE_ONLINE}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                Connected
+              </span>
+            )}
 
             {/* Branch info */}
             {systemInfo?.branch && (
