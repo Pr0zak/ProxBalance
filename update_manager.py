@@ -85,7 +85,11 @@ class GitManager:
         return result.stdout.strip() if result.returncode == 0 else 'unknown'
 
     def tag_commit(self, tag: str) -> Optional[str]:
-        result = self._run(['rev-parse', tag], timeout=5)
+        # ^{commit} dereferences annotated tags (which are objects in their own
+        # right) to the underlying commit. Lightweight tags resolve the same
+        # way, so this is safe for either form. Without ^{commit}, annotated
+        # tags resolve to the tag-object hash, never matching HEAD's commit.
+        result = self._run(['rev-parse', f'{tag}^{{commit}}'], timeout=5)
         return result.stdout.strip() if result.returncode == 0 else None
 
     def is_on_release(self, commit: str, tag: Optional[str]) -> bool:
