@@ -164,7 +164,7 @@ export default function DashboardPage({
           />
         </div>
 
-        {/* Unified Cluster section — Nodes / Guests / Map / Charts / Recs / Auto tabs */}
+        {/* Unified Cluster section — Nodes / Guests / Map / Charts / Suggestions / Auto tabs */}
         <ClusterSection
           data={data}
           nodeScores={nodeScores}

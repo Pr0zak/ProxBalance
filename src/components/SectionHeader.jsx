@@ -39,7 +39,10 @@ export default function SectionHeader({
       <div className="flex items-center gap-3 min-w-0">
         {Icon && (
           <div className={iconBadge(accent[0], accent[1])}>
-            <Icon size={iconSize} className="text-pb-text dark:text-white" />
+            {/* Inherit the badge's accent color via currentColor — overriding
+                with text-white/text-pb-text drains the tint and reads as
+                "whited out" against low-contrast badge backgrounds. */}
+            <Icon size={iconSize} />
           </div>
         )}
         <TitleTag className={titleClass}>{title}</TitleTag>

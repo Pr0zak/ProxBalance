@@ -89,7 +89,7 @@ def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Di
     after_node_scores = {n: dict(d) for n, d in before_node_scores.items()}
 
     for rec in recommendations:
-        source = rec.get("source_node") or rec.get("current_node")
+        source = rec.get("source_node")
         target = rec.get("target_node")
 
         if not source or not target:

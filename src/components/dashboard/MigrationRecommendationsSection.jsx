@@ -88,7 +88,7 @@ export default function MigrationRecommendationsSection({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg sm:text-2xl font-bold text-pb-text dark:text-white">Migration Recommendations</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-pb-text dark:text-white">Migration Suggestions</h2>
                   <button
                     onClick={() => toggleSection('recommendations')}
                     className="p-1 hover:bg-pb-surface2 dark:hover:bg-slate-700 rounded transition-all duration-200"

@@ -13,7 +13,7 @@ export default function EngineDiagnostics({ recommendationData, recommendations 
           </div>
         </div>
         <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Recommendations</div>
+          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Suggestions</div>
           <div className="font-mono font-semibold text-pb-text dark:text-white">
             {recommendationData.count || recommendations.length}
           </div>

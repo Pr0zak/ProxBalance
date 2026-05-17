@@ -887,7 +887,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "vmid": vmid_int,
                     "name": candidate['guest_name'],
                     "type": candidate['guest_type'],
-                    "current_node": candidate['source_node'],
+                    "source_node": candidate['source_node'],
                     "target_node": candidate['target_node'],
                     "target_node_score": 50,  # Neutral score for distribution balancing
                     "suitability_rating": 50,  # Neutral suitability

@@ -89,7 +89,7 @@ const iconGroups = [
       { Icon: Bell, name: 'Notifications' },
       { Icon: Calendar, name: 'Schedule / Window' },
       { Icon: Tag, name: 'Tag / Label' },
-      { Icon: ClipboardList, name: 'Recommendations' },
+      { Icon: ClipboardList, name: 'Suggestions' },
       { Icon: Folder, name: 'Group / Category' },
       { Icon: List, name: 'List view' },
       { Icon: Terminal, name: 'Console / CLI' },

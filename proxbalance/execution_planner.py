@@ -51,7 +51,7 @@ def compute_execution_order(recommendations: List[Dict[str, Any]], nodes: Dict[s
                     "parallel_group": 1,
                     "vmid": rec.get("vmid"),
                     "name": rec.get("name", "unknown"),
-                    "source_node": rec.get("source_node") or rec.get("current_node", ""),
+                    "source_node": rec.get("source_node", ""),
                     "target_node": rec.get("target_node", ""),
                     "reason_for_order": "Only migration in plan",
                 }
@@ -74,7 +74,7 @@ def compute_execution_order(recommendations: List[Dict[str, Any]], nodes: Dict[s
     target_by_node = {}  # node_name -> list of rec indices that SEND TO that node
 
     for i, rec in enumerate(recommendations):
-        src = rec.get("source_node") or rec.get("current_node", "")
+        src = rec.get("source_node", "")
         tgt = rec.get("target_node", "")
 
         if src:
@@ -220,7 +220,7 @@ def compute_execution_order(recommendations: List[Dict[str, Any]], nodes: Dict[s
         for rec_idx in group:
             step += 1
             rec = recommendations[rec_idx]
-            src = rec.get("source_node") or rec.get("current_node", "")
+            src = rec.get("source_node", "")
             tgt = rec.get("target_node", "")
 
             # Determine reason for ordering
@@ -228,7 +228,7 @@ def compute_execution_order(recommendations: List[Dict[str, Any]], nodes: Dict[s
             if predecessors:
                 pred_nodes = set()
                 for p in predecessors:
-                    pred_src = recommendations[p].get("source_node") or recommendations[p].get("current_node", "")
+                    pred_src = recommendations[p].get("source_node", "")
                     if pred_src == tgt:
                         pred_nodes.add(pred_src)
                 if pred_nodes:
