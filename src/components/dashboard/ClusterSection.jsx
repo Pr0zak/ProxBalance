@@ -216,6 +216,7 @@ export default function ClusterSection(props) {
             nodeScores={props.nodeScores}
             API_BASE={props.API_BASE}
             automationStatus={props.automationStatus}
+            automationConfig={props.automationConfig}
           />
       )}
     </div>

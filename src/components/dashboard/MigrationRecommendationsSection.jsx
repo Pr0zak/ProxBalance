@@ -35,6 +35,7 @@ export default function MigrationRecommendationsSection({
   API_BASE,
   // For per-rec auto-eligibility badges
   automationStatus,
+  automationConfig,
   // Run Plan orchestration (migrationProgress already destructured above)
   runPlanStep,
   // When embedded (e.g. inside a tab), suppress the section title block.
@@ -339,6 +340,7 @@ export default function MigrationRecommendationsSection({
             automationStatus?.enabled
             && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside')
           }
+          maxConcurrent={automationConfig?.rules?.max_concurrent_migrations || 1}
           onClose={() => setShowRunPlanModal(false)}
         />
       )}

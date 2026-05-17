@@ -256,6 +256,7 @@ export default function DashboardPage({
             nodeScores={nodeScores}
             API_BASE={API_BASE}
             automationStatus={automationStatus}
+            automationConfig={automationConfig}
             runPlanStep={runPlanStep}
           />
         )}

@@ -15,6 +15,7 @@ export default function RunPlanModal({
   runPlanStep,
   migrationProgress,
   outsideWindow,
+  maxConcurrent = 1,
   onClose,
 }) {
   const steps = plan?.ordered_recommendations || [];
@@ -52,21 +53,38 @@ export default function RunPlanModal({
   const run = async () => {
     setPhase('running');
     haltedRef.current = false;
+    const concurrency = Math.max(1, maxConcurrent || 1);
     for (const [groupKey, groupSteps] of groups) {
       if (haltedRef.current) break;
-      // Mark all in group as running
-      for (const s of groupSteps) updateStep(s.vmid, { status: 'running' });
 
-      const results = await Promise.all(
-        groupSteps.map(s => runPlanStep(s, recByVmid))
-      );
-      // Apply per-step results
-      results.forEach(r => updateStep(r.vmid, { status: r.status, error: r.error }));
+      // Within a parallel-group, cap concurrency to max_concurrent_migrations
+      // from the user's automation config. The plan's parallel_group means
+      // "safe to run together", not "must run together"; users with smaller
+      // clusters want serial execution to limit network/storage pressure.
+      const groupResults = [];
+      for (let i = 0; i < groupSteps.length; i += concurrency) {
+        if (haltedRef.current) break;
+        const chunk = groupSteps.slice(i, i + concurrency);
+        for (const s of chunk) updateStep(s.vmid, { status: 'running' });
+        const chunkResults = await Promise.all(chunk.map(s => runPlanStep(s, recByVmid)));
+        chunkResults.forEach(r => updateStep(r.vmid, { status: r.status, error: r.error }));
+        groupResults.push(...chunkResults);
+        // Halt as soon as any chunk has a failure — don't burn through
+        // remaining steps in this group when we already know we're going to
+        // halt at the group boundary.
+        if (chunkResults.some(r => r.status !== 'success')) {
+          haltedRef.current = true;
+        }
+      }
 
-      if (results.some(r => r.status !== 'success')) {
+      if (groupResults.some(r => r.status !== 'success')) {
         haltedRef.current = true;
         setHaltMessage(`Halted after group ${groupKey}: at least one migration did not succeed. Remaining steps were not started.`);
-        // Mark any subsequent (still-pending) steps as skipped
+        // Mark any subsequent (still-pending) steps as skipped — both the
+        // rest of this group (if we halted mid-chunk) and all later groups.
+        for (const s of groupSteps) {
+          if ((stepStatus[s.vmid]?.status || 'pending') === 'pending') updateStep(s.vmid, { status: 'skipped' });
+        }
         const groupIdx = groups.findIndex(([k]) => k === groupKey);
         for (let i = groupIdx + 1; i < groups.length; i++) {
           for (const s of groups[i][1]) updateStep(s.vmid, { status: 'skipped' });
@@ -96,7 +114,9 @@ export default function RunPlanModal({
             </h3>
             <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">
               {steps.length} step{steps.length !== 1 ? 's' : ''} across {groups.length} group{groups.length !== 1 ? 's' : ''}.
-              {plan?.can_parallelize && ' Steps within a group run concurrently; groups run sequentially.'}
+              {maxConcurrent === 1
+                ? ' Running 1 at a time (max_concurrent_migrations).'
+                : ` Up to ${maxConcurrent} at a time within each group, groups run sequentially.`}
             </p>
           </div>
           <button
