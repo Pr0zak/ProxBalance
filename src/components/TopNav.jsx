@@ -38,13 +38,24 @@ export default function TopNav({
     <nav className={TOP_NAV}>
       <div className="max-w-screen-2xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
-          {/* Logo */}
+          {/* Logo + version */}
           <div className="flex items-center gap-2 shrink-0">
             <ProxBalanceLogo size={28} />
             <span className="text-lg hidden sm:inline">
               <span className="font-light text-pb-text dark:text-gray-300">Prox</span>
               <span className="font-extrabold text-blue-600 dark:text-blue-400">Balance</span>
             </span>
+            {systemInfo?.version && (
+              <button
+                onClick={onShowUpdate}
+                className="hidden sm:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/40 transition-colors"
+                title={systemInfo.on_release
+                  ? `Running ${systemInfo.version} (${systemInfo.commit || ''}) on ${systemInfo.branch || 'main'}`
+                  : `Running ${systemInfo.commit || systemInfo.current_version || systemInfo.version} on ${systemInfo.branch || 'main'} — ahead of tag ${systemInfo.version}`}
+              >
+                {systemInfo.version}{!systemInfo.on_release && <span className="text-pb-text3 dark:text-gray-500">+</span>}
+              </button>
+            )}
           </div>
 
           {/* Center tabs */}

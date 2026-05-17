@@ -879,9 +879,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
 
                 # Create recommendation
                 vmid_int = int(guest_id) if isinstance(guest_id, str) and guest_id.isdigit() else guest_id
-                guest_type = guest.get('type', 'qemu')
-                cmd_type = 'pct' if guest_type == 'lxc' else 'qm'
-                cmd_flag = '--restart' if guest_type == 'lxc' else '--online'
+                # guest['type'] is normalized to 'CT' / 'VM' upstream (see collector)
+                is_ct = guest.get('type') == 'CT'
+                cmd_type = 'pct' if is_ct else 'qm'
+                cmd_flag = '--restart' if is_ct else '--online'
 
                 recommendation = {
                     "vmid": vmid_int,

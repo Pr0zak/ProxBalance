@@ -41,23 +41,45 @@ export const INNER_CARD =
 // Light mode uses 8% tints, dark uses 18%. Keys map to old (from,to) calls so
 // existing call sites need no changes.
 
+// IMPORTANT: every accent combo used anywhere in the app must have an
+// explicit entry here. Tailwind purges classes it doesn't see literally
+// in the source; template-literal fallbacks (bg-${from}-50 etc) get
+// stripped from the compiled CSS, leaving badges without backgrounds
+// — which renders as white/transparent on the page surface.
+// Audit with: grep -rhn 'accent=' src/ | grep -oE "accent=\\{?\\[[^]]+\\]" | sort -u
 const ICON_BADGE_MAP = {
+  // single-color accents
+  'gray':
+    'p-2 bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300 rounded-lg shrink-0',
+  'indigo':
+    'p-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300 rounded-lg shrink-0',
+  // gradient pairs — first color drives the actual tint, second is decorative
+  'amber,orange':
+    'p-2 bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300 rounded-lg shrink-0',
+  'blue,cyan':
+    'p-2 bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300 rounded-lg shrink-0',
   'blue,indigo':
     'p-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300 rounded-lg shrink-0',
   'cyan,blue':
     'p-2 bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300 rounded-lg shrink-0',
-  'teal,cyan':
-    'p-2 bg-teal-50 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300 rounded-lg shrink-0',
+  'emerald,green':
+    'p-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-lg shrink-0',
+  'green,emerald':
+    'p-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-lg shrink-0',
+  'indigo,violet':
+    'p-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300 rounded-lg shrink-0',
   'orange,red':
     'p-2 bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300 rounded-lg shrink-0',
   'purple,pink':
     'p-2 bg-purple-50 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300 rounded-lg shrink-0',
+  'red,rose':
+    'p-2 bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300 rounded-lg shrink-0',
+  'slate,gray':
+    'p-2 bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300 rounded-lg shrink-0',
+  'teal,cyan':
+    'p-2 bg-teal-50 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300 rounded-lg shrink-0',
   'violet,purple':
     'p-2 bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300 rounded-lg shrink-0',
-  'green,emerald':
-    'p-2 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300 rounded-lg shrink-0',
-  'gray':
-    'p-2 bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300 rounded-lg shrink-0',
 };
 export const iconBadge = (from, to) => {
   const key = to ? `${from},${to}` : from;
