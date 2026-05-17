@@ -1416,9 +1416,18 @@ def main():
             if intelligent_enabled and migrations_attempted == 0:
                 # First iteration: update tracking with current recommendations
                 tracking = load_tracking()
-                # Bypass for maintenance evacuations
-                non_maint_recs = [r for r in recommendations if r.get('source_node') not in maintenance_nodes]
-                maint_recs = [r for r in recommendations if r.get('source_node') in maintenance_nodes]
+                # Bypass for maintenance evacuations and distribution balancing —
+                # distribution balancing triggers on guest headcount, which is
+                # structurally stable, so the observation window adds latency
+                # without buying safety. Consistent with other intelligent gates
+                # below (cycle, confidence, risk, trend, outcome, pattern) which
+                # all bypass for is_distribution_balancing.
+                bypass_recs = [r for r in recommendations
+                               if r.get('source_node') in maintenance_nodes
+                               or r.get('distribution_balancing', False)]
+                non_maint_recs = [r for r in recommendations
+                                  if r.get('source_node') not in maintenance_nodes
+                                  and not r.get('distribution_balancing', False)]
 
                 if non_maint_recs:
                     tracking, ready_recs, observing_recs = update_recommendation_tracking(
@@ -1461,8 +1470,8 @@ def main():
                             'ha_managed': guest.get('ha_managed', False),
                         })
 
-                    # Replace recommendations with only ready + maintenance recs
-                    recommendations = ready_recs + maint_recs
+                    # Replace recommendations with only ready + bypass (maintenance + distribution) recs
+                    recommendations = ready_recs + bypass_recs
                     if not recommendations:
                         logger.info("[Intelligent] No recommendations ready yet (all still observing)")
                         # Surface the gating reason so the UI doesn't claim
@@ -1490,7 +1499,8 @@ def main():
                 tracked = tracking.get('tracked', {})
                 filtered_by_tracking = []
                 for r in recommendations:
-                    if r.get('source_node') in maintenance_nodes:
+                    # Bypass for maintenance evacuations and distribution balancing
+                    if r.get('source_node') in maintenance_nodes or r.get('distribution_balancing', False):
                         filtered_by_tracking.append(r)
                         continue
                     key = make_tracking_key(r.get('vmid'), r.get('source_node'))
