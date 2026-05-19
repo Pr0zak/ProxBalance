@@ -34,7 +34,7 @@ function guestHasAnyTag(guest) {
     || guest.tags?.affinity_groups?.length > 0);
 }
 
-const TOTAL_COLS = 10;
+const TOTAL_COLS = 11;
 
 /** Inline progress bar with label */
 function MetricBar({ pct, detail }) {
@@ -54,6 +54,22 @@ function MetricBar({ pct, detail }) {
         />
       </div>
     </div>
+  );
+}
+
+/** IOWait cell — different scale than CPU/Mem (5% is fine, 30% is critical) so
+ *  we don't use the standard MetricBar coloring. Shows current with 24h-avg
+ *  tooltip. */
+function IOWaitCell({ pct, avg }) {
+  const v = pct || 0;
+  const cls = v > 30 ? 'text-red-600 dark:text-red-400'
+            : v > 15 ? 'text-orange-600 dark:text-orange-400'
+            : v > 5  ? 'text-yellow-600 dark:text-yellow-400'
+            : 'text-pb-text2 dark:text-gray-400';
+  return (
+    <span className={`text-xs font-mono tabular-nums ${cls}`} title={`24h avg ${(avg || 0).toFixed(1)}%`}>
+      {v.toFixed(1)}%
+    </span>
   );
 }
 
@@ -293,6 +309,8 @@ export default function NodeSummaryTable({
     return nodesArr.map(node => {
       const cpuPct = node.cpu_percent || 0;
       const memPct = node.mem_percent || 0;
+      const iowaitPct = node.metrics?.current_iowait || 0;
+      const iowaitAvg = node.metrics?.avg_iowait || 0;
       const totalMemGB = node.total_mem_gb || 0;
       const usedMemGB = totalMemGB * (memPct / 100);
 
@@ -318,9 +336,10 @@ export default function NodeSummaryTable({
         status: node.status,
         online: node.status === 'online',
         uptime: node.uptime,
-        cpuPct, memPct, diskPct, score, vms, cts,
+        cpuPct, memPct, iowaitPct, iowaitAvg, diskPct, score, vms, cts,
         cpuDetail: `${node.cpu_cores || 0} cores`,
         memDetail: `${usedMemGB.toFixed(1)}/${totalMemGB.toFixed(0)} GB`,
+        iowaitDetail: `24h avg ${iowaitAvg.toFixed(1)}%`,
         raw: node
       };
     }).sort((a, b) => {
@@ -329,6 +348,7 @@ export default function NodeSummaryTable({
       if (sortField === 'score') return ((a.score || 0) - (b.score || 0)) * v;
       if (sortField === 'cpu') return (a.cpuPct - b.cpuPct) * v;
       if (sortField === 'mem') return (a.memPct - b.memPct) * v;
+      if (sortField === 'iowait') return (a.iowaitPct - b.iowaitPct) * v;
       return 0;
     });
   }, [data, nodeScores, sortField, sortDir]);
@@ -446,6 +466,7 @@ export default function NodeSummaryTable({
                   <th className={TABLE_HEADER}>Uptime</th>
                   <SortHeader field="cpu">CPU</SortHeader>
                   <SortHeader field="mem">Memory</SortHeader>
+                  <SortHeader field="iowait">IOWait</SortHeader>
                   <th className={TABLE_HEADER}>Disk</th>
                   <SortHeader field="score">Score</SortHeader>
                   <th className={TABLE_HEADER}>VMs</th>
@@ -500,6 +521,7 @@ export default function NodeSummaryTable({
                         <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
                         <td className="p-3"><MetricBar pct={node.cpuPct} detail={node.cpuDetail} /></td>
                         <td className="p-3"><MetricBar pct={node.memPct} detail={node.memDetail} /></td>
+                        <td className="p-3"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} /></td>
                         <td className="p-3"><MetricBar pct={node.diskPct} /></td>
                         <td className="p-3">
                           {node.score != null ? (
