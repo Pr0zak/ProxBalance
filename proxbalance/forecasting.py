@@ -9,9 +9,13 @@ manages score history snapshots for time-series analysis.
 import json
 import sys
 from typing import Any, Dict, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from proxbalance.constants import SCORE_HISTORY_FILE, SCORE_HISTORY_MAX_ENTRIES
+from proxbalance.constants import (
+    SCORE_HISTORY_FILE,
+    SCORE_HISTORY_MAX_ENTRIES,
+    SCORE_HISTORY_RETENTION_DAYS,
+)
 from proxbalance.scoring import calculate_node_health_score
 from proxbalance.db import get_connection
 
@@ -310,7 +314,11 @@ def save_score_snapshot(nodes: Dict[str, Any], recommendations: List[Dict[str, A
             (timestamp, json.dumps(node_snapshots), cluster_health, len(recommendations)),
         )
 
-        # Trim to max entries (keep most recent)
+        # Time-based retention: keep last SCORE_HISTORY_RETENTION_DAYS days.
+        # SCORE_HISTORY_MAX_ENTRIES is a safety belt for runaway cadences —
+        # the time predicate is the source of truth for "how far back we go".
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=SCORE_HISTORY_RETENTION_DAYS)).isoformat()
+        conn.execute("DELETE FROM score_history WHERE timestamp < ?", (cutoff,))
         conn.execute(
             "DELETE FROM score_history WHERE id NOT IN "
             "(SELECT id FROM score_history ORDER BY id DESC LIMIT ?)",

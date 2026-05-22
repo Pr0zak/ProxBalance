@@ -63,8 +63,9 @@ POST_CAPTURE_24H_SECONDS = 86400      # 24 hours (sustained verification)
 # Score history defaults
 # ---------------------------------------------------------------------------
 
-SCORE_HISTORY_MAX_ENTRIES = 720  # ~30 days at hourly snapshots
-MAX_GUEST_PROFILE_SAMPLES = 168  # 7 days of hourly samples
+SCORE_HISTORY_MAX_ENTRIES = 10000     # safety cap (primary retention is time-based)
+SCORE_HISTORY_RETENTION_DAYS = 30     # keep at least this many days; cadence-independent
+MAX_GUEST_PROFILE_SAMPLES = 168       # 7 days of hourly samples
 
 
 # ---------------------------------------------------------------------------
