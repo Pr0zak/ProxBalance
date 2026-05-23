@@ -294,7 +294,7 @@ def _calculate_cost_benefit(recommendation: Dict[str, Any], guest: Dict[str, Any
 # ---------------------------------------------------------------------------
 
 
-def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None) -> Dict[str, Any]:
+def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None, pve_crs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
 
@@ -444,11 +444,25 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
 
             # Skip HA-managed guests (unless on maintenance node)
             if guest.get("ha_managed", False) and src_node_name not in maintenance_nodes:
+                if pve_crs and pve_crs.get("dynamic_balancer_active"):
+                    ha_detail = (
+                        f"Guest is HA-managed. PVE 9.2 Dynamic Load Balancer is active "
+                        f"(threshold {pve_crs.get('ha-auto-rebalance-threshold', 30)}%, "
+                        f"~10s loop) and will autonomously rebalance HA guests — "
+                        f"ProxBalance defers to avoid migration races."
+                    )
+                elif pve_crs and pve_crs.get("ha") in ("static", "dynamic"):
+                    ha_detail = (
+                        f"Guest is HA-managed. Proxmox CRS (mode: {pve_crs.get('ha')}) "
+                        f"controls its placement."
+                    )
+                else:
+                    ha_detail = "Guest is HA-managed. Proxmox HA controls its placement."
                 skipped_guests.append({
                     "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
                     "name": guest_name, "type": guest_type, "node": src_node_name,
                     "reason": "ha_managed",
-                    "detail": "Guest is HA-managed. Proxmox HA controls its placement."
+                    "detail": ha_detail,
                 })
                 continue
 

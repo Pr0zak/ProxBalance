@@ -99,6 +99,7 @@ def get_cluster_summary():
         "collected_at": data.get("collected_at"),
         "summary": data.get("summary", {}),
         "cluster_health": data.get("cluster_health", {}),
+        "pve_crs": data.get("pve_crs", {}),
         "node_count": len(data.get("nodes", {})),
         "guest_count": len(data.get("guests", {}))
     }

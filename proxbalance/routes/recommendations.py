@@ -46,7 +46,8 @@ def get_recommendations():
             mem_threshold,
             iowait_threshold,
             maintenance_nodes,
-            initial_pending_guests=initial_pending
+            initial_pending_guests=initial_pending,
+            pve_crs=cache_data.get('pve_crs') or {},
         )
         recommendations = result.get("recommendations", [])
         skipped_guests = result.get("skipped_guests", [])

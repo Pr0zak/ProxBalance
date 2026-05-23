@@ -8,6 +8,7 @@ const { useState, useEffect, useMemo } = React;
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
+import CrsStatusBanner from './dashboard/CrsStatusBanner.jsx';
 import ClusterMap from './dashboard/ClusterMap.jsx';
 import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
@@ -164,6 +165,12 @@ export default function DashboardPage({
             API_BASE={API_BASE}
           />
         </div>
+
+        {/* PVE Cluster Resource Scheduler — surfaces native CRS config + warns on duels */}
+        <CrsStatusBanner
+          pveCrs={data?.pve_crs}
+          automationEnabled={automationStatus?.enabled}
+        />
 
         {/* Unified Cluster section — Nodes / Guests / Map / Charts / Suggestions / Auto tabs */}
         <ClusterSection
