@@ -1,6 +1,8 @@
 import { X, Check, XCircle, AlertTriangle } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 
+const { useState, useEffect } = React;
+
 export default function EvacuationModals({
   evacuationPlan, setEvacuationPlan,
   planNode, setPlanNode,
@@ -13,6 +15,27 @@ export default function EvacuationModals({
   setError,
   API_BASE
 }) {
+  // Plan-stage toggle. By default stopped guests are ignored — no point streaming
+  // cold disks during a routine load-rebalance. Enable to fold them in, e.g. when
+  // evacuating a node for maintenance/upgrade where the disks must move off before
+  // a reboot.
+  const [includeStopped, setIncludeStopped] = useState(false);
+
+  // Reset per plan so choices for one node don't silently carry to the next. Keyed on
+  // source_node, so it fires both when a new plan opens and when the modal closes
+  // (source_node → null) — covering the X/overlay close paths that miss guestActions.
+  useEffect(() => {
+    setIncludeStopped(false);
+    setGuestActions({});
+  }, [evacuationPlan && evacuationPlan.source_node]);
+
+  const defaultActionFor = (item) =>
+    (item.status === 'stopped' && !includeStopped) ? 'ignore' : 'migrate';
+
+  const stoppedCount = evacuationPlan
+    ? evacuationPlan.plan.filter(p => !p.skipped && p.status === 'stopped').length
+    : 0;
+
   return (
     <>
       {/* Global Evacuation Plan Modal */}
@@ -46,6 +69,23 @@ export default function EvacuationModals({
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     <span className="font-semibold">{evacuationPlan.will_skip}</span> guest(s) cannot be migrated. Reasons may include: missing storage on target nodes, errors, or "ignore" tag. These are shown in yellow below.
                   </p>
+                </div>
+              )}
+
+              {stoppedCount > 0 && (
+                <div className="mb-4 p-3 bg-pb-surface2 dark:bg-slate-700/40 border border-pb-border dark:border-slate-700 rounded flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-pb-text dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={includeStopped}
+                      onChange={(e) => setIncludeStopped(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Include {stoppedCount} stopped guest{stoppedCount !== 1 ? 's' : ''} in the migration
+                  </label>
+                  <span className="text-xs text-pb-text2 dark:text-gray-400">
+                    Off by default — stopped guests are ignored so their cold disks aren't streamed. Enable for maintenance/upgrade evacuations where the disks must move off the node.
+                  </span>
                 </div>
               )}
 
@@ -124,7 +164,7 @@ export default function EvacuationModals({
                             <span className="text-xs text-pb-text2 dark:text-gray-500 italic">N/A</span>
                           ) : (
                             <select
-                              value={guestActions[item.vmid] || 'migrate'}
+                              value={guestActions[item.vmid] || defaultActionFor(item)}
                               onChange={(e) => setGuestActions({...guestActions, [item.vmid]: e.target.value})}
                               className="text-sm px-2 py-1 border rounded bg-pb-surface2 dark:bg-gray-700 border-pb-border dark:border-gray-600 text-pb-text dark:text-white"
                             >
@@ -145,7 +185,7 @@ export default function EvacuationModals({
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
                   <li>Running VMs will use live migration (no downtime)</li>
                   <li>Running containers will restart during migration (brief downtime)</li>
-                  <li>Stopped VMs/CTs will be moved without starting</li>
+                  <li>Stopped guests are <span className="font-semibold">ignored by default</span> — tick "Include stopped guests" above to move their disks too (recommended for maintenance/upgrade evacuations)</li>
                   <li>Migrations are performed one at a time to avoid overloading hosts</li>
                   <li>Available target nodes: {evacuationPlan.available_targets.join(', ')}</li>
                 </ul>
@@ -194,7 +234,7 @@ export default function EvacuationModals({
 
                 evacuationPlan.plan.forEach(item => {
                   if (item.skipped) return;
-                  const action = guestActions[item.vmid] || 'migrate';
+                  const action = guestActions[item.vmid] || defaultActionFor(item);
                   if (action === 'migrate') toMigrate.push(item);
                   else if (action === 'ignore') toIgnore.push(item);
                   else if (action === 'poweroff') toPowerOff.push(item);
@@ -248,6 +288,14 @@ export default function EvacuationModals({
                   setShowConfirmModal(false);
                   setEvacuatingNodes(prev => new Set([...prev, planNode]));
 
+                  // Materialize effective actions so the backend gets explicit choices.
+                  // Its fallback for an unlisted guest is 'migrate', which would
+                  // wrongly move stopped guests we mean to ignore.
+                  const finalActions = {};
+                  evacuationPlan.plan.forEach(item => {
+                    if (!item.skipped) finalActions[item.vmid] = guestActions[item.vmid] || defaultActionFor(item);
+                  });
+
                   try {
                     const response = await fetch(`${API_BASE}/nodes/evacuate`, {
                       method: 'POST',
@@ -256,7 +304,7 @@ export default function EvacuationModals({
                         node: planNode,
                         maintenance_nodes: Array.from(maintenanceNodes),
                         confirm: true,
-                        guest_actions: guestActions,
+                        guest_actions: finalActions,
                         guest_targets: guestTargets  // Include per-guest target overrides
                       })
                     });
