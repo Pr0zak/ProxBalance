@@ -27,7 +27,7 @@ const CRS_METHOD_LABEL = {
  * Hidden entirely when PVE is on the default basic/no-rebalance config —
  * nothing to say, no clutter.
  */
-export default function CrsStatusBanner({ pveCrs, automationEnabled }) {
+export default function CrsStatusBanner({ pveCrs, automationEnabled, onEdit }) {
   if (!pveCrs || typeof pveCrs !== 'object') return null;
 
   const mode = pveCrs.ha || 'basic';
@@ -36,7 +36,21 @@ export default function CrsStatusBanner({ pveCrs, automationEnabled }) {
   const dynamicActive = !!pveCrs.dynamic_balancer_active;
 
   const isDefault = mode === 'basic' && !autoRebalance && !rebalanceOnStart;
-  if (isDefault) return null;
+
+  // At the vanilla default, stay unobtrusive — a single muted row that still
+  // exposes the editor (otherwise it'd be unreachable until CRS is non-default).
+  if (isDefault) {
+    return (
+      <div className="mb-3 flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-pb-text2 dark:text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <Server size={12} /> PVE CRS: <span className="font-mono">basic</span> (no auto-balancing)
+        </span>
+        {onEdit && (
+          <button onClick={onEdit} className="underline hover:text-pb-text dark:hover:text-gray-300">Edit</button>
+        )}
+      </div>
+    );
+  }
 
   const dueling = dynamicActive && automationEnabled;
 
@@ -81,6 +95,9 @@ export default function CrsStatusBanner({ pveCrs, automationEnabled }) {
               <span className={`text-xs px-2 py-0.5 rounded-full bg-white/60 dark:bg-slate-800/60 ${tone.title} font-mono`}>
                 rebalance-on-start
               </span>
+            )}
+            {onEdit && (
+              <button onClick={onEdit} className={`text-xs underline ${tone.title} hover:opacity-80 ml-auto`}>Edit</button>
             )}
           </div>
           <p className={`text-xs mt-1.5 ${tone.body}`}>

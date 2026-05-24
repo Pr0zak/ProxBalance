@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime
 import json, os
 from proxbalance.config_manager import (
-    load_config, CONFIG_FILE, trigger_collection,
+    load_config, CONFIG_FILE, trigger_collection, get_proxmox_client,
 )
 from proxbalance.error_handlers import api_route
 
@@ -105,6 +105,89 @@ def get_cluster_summary():
     }
 
     return jsonify({"success": True, "data": summary_data})
+
+
+def _build_crs_property(data):
+    """Validate CRS inputs and assemble the datacenter.cfg ``crs`` property string.
+
+    Returns ``(crs_string, error_message)``; ``error_message`` is None on success.
+    Mirrors the schema PVE 9.2 exposes for /cluster/options crs.
+    """
+    ha = data.get("ha", "basic")
+    if ha not in ("basic", "static", "dynamic"):
+        return None, f"Invalid ha mode '{ha}' (expected basic, static, or dynamic)"
+    parts = [f"ha={ha}"]
+
+    for bkey in ("ha-rebalance-on-start", "ha-auto-rebalance"):
+        if data.get(bkey) is not None:
+            parts.append(f"{bkey}={1 if data[bkey] else 0}")
+
+    for nkey, lo, hi in (
+        ("ha-auto-rebalance-threshold", 0, 100),
+        ("ha-auto-rebalance-margin", 0, 100),
+        ("ha-auto-rebalance-hold-duration", 0, 1000),
+    ):
+        raw = data.get(nkey)
+        if raw is None or raw == "":
+            continue
+        try:
+            val = int(raw)
+        except (TypeError, ValueError):
+            return None, f"{nkey} must be an integer"
+        if not (lo <= val <= hi):
+            return None, f"{nkey} must be between {lo} and {hi}"
+        parts.append(f"{nkey}={val}")
+
+    method = data.get("ha-auto-rebalance-method")
+    if method:
+        if method not in ("bruteforce", "topsis"):
+            return None, f"Invalid method '{method}' (expected bruteforce or topsis)"
+        parts.append(f"ha-auto-rebalance-method={method}")
+
+    return ",".join(parts), None
+
+
+@analysis_bp.route("/api/pve-crs", methods=["POST"])
+@api_route
+def update_pve_crs():
+    """Write Cluster Resource Scheduler settings to Proxmox /cluster/options.
+
+    Requires the API token to hold Sys.Modify on '/'. On a token without it,
+    Proxmox returns 403 and we surface an actionable message.
+    """
+    data = request.json or {}
+    config = load_config()
+    if config.get("error"):
+        return jsonify({"success": False, "error": f"Configuration Error: {config.get('message')}"}), 500
+
+    crs_str, err = _build_crs_property(data)
+    if err:
+        return jsonify({"success": False, "error": err}), 400
+
+    try:
+        proxmox = get_proxmox_client(config)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    try:
+        proxmox.cluster.options.put(crs=crs_str)
+    except Exception as e:
+        msg = str(e)
+        if "403" in msg or "permission" in msg.lower() or "privilege" in msg.lower():
+            return jsonify({
+                "success": False,
+                "error": "Proxmox API token lacks Sys.Modify on '/'. Grant it (e.g. a role "
+                         "with Sys.Modify on the token) to enable editing CRS settings.",
+            }), 403
+        return jsonify({"success": False, "error": f"Failed to update CRS: {msg}"}), 502
+
+    # Re-collect so cluster_cache.json (and the dashboard banner) reflect the change.
+    try:
+        trigger_collection()
+    except Exception:
+        pass
+
+    return jsonify({"success": True, "crs": crs_str}), 200
 
 
 @analysis_bp.route("/api/nodes-only", methods=["GET"])
