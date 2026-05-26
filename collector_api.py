@@ -181,6 +181,63 @@ class ProxmoxAPICollector:
             print(f"Warning: Failed to fetch cluster status: {str(e)}", file=sys.stderr)
             return []
 
+    def get_cluster_options(self) -> Dict:
+        """Fetch datacenter/cluster options (CRS, HA defaults, migration network, ...)."""
+        try:
+            return self.proxmox.cluster.options.get() or {}
+        except Exception as e:
+            print(f"Warning: Failed to fetch cluster options: {str(e)}", file=sys.stderr)
+            return {}
+
+    @staticmethod
+    def _normalize_crs_config(crs) -> Dict:
+        """Apply PVE defaults to the raw `crs` value from /cluster/options.
+
+        Returns a normalized dict so downstream code never has to know whether
+        a key was explicitly set. PVE 9.2 introduced ha-auto-rebalance-*; on
+        older clusters those keys will be absent and we'll fill in the docs
+        defaults so the UI can render meaningfully either way.
+
+        Accepts dict (proxmoxer-parsed form) or a "k=v,k=v" string (older
+        clients), and returns the same shape every time.
+        """
+        defaults = {
+            "ha": "basic",
+            "ha-rebalance-on-start": 0,
+            "ha-auto-rebalance": 0,
+            "ha-auto-rebalance-threshold": 30,
+            "ha-auto-rebalance-margin": 10,
+            "ha-auto-rebalance-hold-duration": 3,
+            "ha-auto-rebalance-method": "bruteforce",
+        }
+        parsed: Dict = {}
+        if isinstance(crs, dict):
+            parsed = dict(crs)
+        elif isinstance(crs, str) and crs:
+            for pair in crs.split(","):
+                if "=" not in pair:
+                    continue
+                k, v = pair.split("=", 1)
+                parsed[k.strip()] = v.strip()
+        # Coerce numerics; leave 'ha' / method as strings.
+        for k in (
+            "ha-rebalance-on-start",
+            "ha-auto-rebalance",
+            "ha-auto-rebalance-threshold",
+            "ha-auto-rebalance-margin",
+            "ha-auto-rebalance-hold-duration",
+        ):
+            if k in parsed:
+                try:
+                    parsed[k] = int(parsed[k])
+                except (TypeError, ValueError):
+                    parsed.pop(k, None)
+        merged = {**defaults, **parsed}
+        merged["dynamic_balancer_active"] = bool(
+            merged.get("ha") == "dynamic" and merged.get("ha-auto-rebalance")
+        )
+        return merged
+
     def get_storage_status(self, node: str) -> List[Dict]:
         """Fetch storage status for a node"""
         try:
@@ -601,6 +658,8 @@ class ProxmoxAPICollector:
         cluster_status = self.get_cluster_status()
         backup_info = self.get_backup_info()
         resource_pools = self.get_resource_pools()
+        cluster_options = self.get_cluster_options()
+        self.crs_config = self._normalize_crs_config(cluster_options.get("crs"))
 
         # Create HA lookup for quick access
         ha_managed = {}
@@ -845,6 +904,7 @@ class ProxmoxAPICollector:
             },
             "cluster_health": getattr(self, 'cluster_health', {}),
             "ha_status": getattr(self, 'ha_status', {}),
+            "pve_crs": getattr(self, 'crs_config', {}),
             "performance": getattr(self, 'perf_metrics', {})
         }
 

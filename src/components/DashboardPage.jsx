@@ -8,6 +8,8 @@ const { useState, useEffect, useMemo } = React;
 import KpiRow from './dashboard/KpiRow.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
+import CrsStatusBanner from './dashboard/CrsStatusBanner.jsx';
+import CrsEditorModal from './dashboard/CrsEditorModal.jsx';
 import ClusterMap from './dashboard/ClusterMap.jsx';
 import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
@@ -94,6 +96,7 @@ export default function DashboardPage({
 }) {
   // Dashboard Page - data is guaranteed to be available here
   const [showPredicted, setShowPredicted] = useState(false);
+  const [showCrsEditor, setShowCrsEditor] = useState(false);
 
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
@@ -164,6 +167,22 @@ export default function DashboardPage({
             API_BASE={API_BASE}
           />
         </div>
+
+        {/* PVE Cluster Resource Scheduler — surfaces native CRS config + warns on duels */}
+        <CrsStatusBanner
+          pveCrs={data?.pve_crs}
+          automationEnabled={automationStatus?.enabled}
+          onEdit={() => setShowCrsEditor(true)}
+        />
+        {showCrsEditor && (
+          <CrsEditorModal
+            pveCrs={data?.pve_crs}
+            automationEnabled={automationStatus?.enabled}
+            API_BASE={API_BASE}
+            onClose={() => setShowCrsEditor(false)}
+            onSaved={(normalized) => setData(prev => prev ? { ...prev, pve_crs: normalized } : prev)}
+          />
+        )}
 
         {/* Unified Cluster section — Nodes / Guests / Map / Charts / Suggestions / Auto tabs */}
         <ClusterSection
