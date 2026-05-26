@@ -11,6 +11,12 @@
 set -euo pipefail
 shopt -s inherit_errexit nullglob
 
+# With `set -euo pipefail` any unhandled non-zero command aborts the script. Without a
+# trap that abort is INVISIBLE — the installer just stops with no message and no CT
+# created (issue #103). This surfaces the failing line + command so it's actionable.
+# (Color vars are expanded when the trap fires, by which point they're defined.)
+trap 'rc=$?; echo -e "\n${RD:-}✗ install.sh aborted (exit ${rc}) at line ${LINENO}: ${BASH_COMMAND}${CL:-}\n${YW:-}  If unexpected, report this line at https://github.com/Pr0zak/ProxBalance/issues${CL:-}" >&2' ERR
+
 # ═══════════════════════════════════════════════════════════════
 # Color Definitions
 # ═══════════════════════════════════════════════════════════════
@@ -478,25 +484,33 @@ select_storage() {
 select_template() {
   subsection_header "Template Configuration"
 
-  local template_name="debian-12-standard_12.2-1_amd64.tar.zst"
-  local template_path="local:vztmpl/${template_name}"
+  # ProxBalance runs on Debian 12 OR 13 (both have a recent-enough Python; Node comes
+  # from NodeSource). Match by PREFIX, not a pinned version like "12.2-1" — that exact
+  # string disappears across PVE releases and was a cause of the silent failure (#103).
 
-  if pveam list local | grep -q "$template_name"; then
-    TEMPLATE="$template_path"
-    msg_ok "Using template: ${VALUE_COLOR}${template_name}${CL}"
+  # 1) Reuse an already-downloaded standard template (newest by version sort).
+  local existing
+  existing=$(pveam list local 2>/dev/null | awk '{print $1}' \
+    | grep -oE 'debian-1[23]-standard[^[:space:]]*\.tar\.(zst|gz|xz)' | sort -V | tail -1 || true)
+  if [ -n "$existing" ]; then
+    TEMPLATE="local:vztmpl/${existing}"
+    msg_ok "Using template: ${VALUE_COLOR}${existing}${CL}"
     return
   fi
 
-  mapfile -t TEMPLATES < <(pveam available | grep "debian-12-standard" | awk '{print $2}')
+  # 2) Otherwise list what's downloadable (Debian 12 + 13 standard, newest first).
+  mapfile -t TEMPLATES < <(pveam available 2>/dev/null | awk '{print $2}' \
+    | grep -E '^debian-1[23]-standard' | sort -V -r || true)
 
   if [ ${#TEMPLATES[@]} -eq 0 ]; then
-    msg_warn "No Debian 12 templates available"
-    echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter template path manually: "
+    msg_warn "No Debian 12/13 standard templates found via 'pveam available'"
+    msg_info "Run 'pveam update' on the host, or enter a template path manually."
+    echo -ne "${PROMPT_COLOR}${ARROW}${CL} Template path (e.g. local:vztmpl/debian-13-standard_13.0-1_amd64.tar.zst): "
     read TEMPLATE
     return
   fi
 
-  echo -e "  ${DIM_COLOR}Available Debian 12 templates:${CL}"
+  echo -e "  ${DIM_COLOR}Available Debian standard templates (newest first):${CL}"
   echo ""
   for i in "${!TEMPLATES[@]}"; do
     menu_option "$((i+1))" "${TEMPLATES[$i]}" ""
@@ -511,7 +525,7 @@ select_template() {
   if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#TEMPLATES[@]} ]; then
     local selected_template="${TEMPLATES[$((choice-1))]}"
 
-    if ! pveam list local | grep -q "$selected_template"; then
+    if ! pveam list local | grep -qF "$selected_template"; then
       echo ""
       msg_info "Downloading template..."
       if pveam download local "$selected_template"; then
