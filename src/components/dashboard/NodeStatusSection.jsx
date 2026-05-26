@@ -207,6 +207,12 @@ export default function NodeStatusSection({
                             if (iowait > 15 && avgIowait > 10) return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title={`IOWait ${iowait.toFixed(1)}% (elevated, avg ${avgIowait.toFixed(1)}%)`} />;
                             return null;
                           })()}
+                          {node.iowait_exempt && (
+                            <span
+                              className="text-[9px] font-semibold px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                              title={`Excluded from node scoring — io-exempt guest(s): ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'}`}
+                            >exempt</span>
+                          )}
                         </span>
                         <span className={`font-semibold ${
                           (node.metrics?.current_iowait || 0) > 30 ? 'text-red-600 dark:text-red-400' :
@@ -336,7 +342,11 @@ export default function NodeStatusSection({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
                   <div><span className="text-pb-text2 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
                   <div><span className="text-pb-text2 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span></div>
+                  <div><span className="text-pb-text2 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span>
+                    {node.iowait_exempt && (
+                      <span className="ml-1 text-[10px] font-semibold px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title={`Excluded from scoring — io-exempt guest(s): ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'}`}>exempt</span>
+                    )}
+                  </div>
                   <div><span className="text-pb-text2 dark:text-gray-400">Cores:</span> <span className="font-semibold text-pb-text dark:text-white">{node.cpu_cores || 0}</span></div>
                   <div><span className="text-pb-text2 dark:text-gray-400">Guests:</span> <span className="font-semibold text-pb-text dark:text-white">{node.guests?.length || 0}</span></div>
                 </div>

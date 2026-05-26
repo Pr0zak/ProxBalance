@@ -381,6 +381,18 @@ export default function PenaltyScoringSection({
                 </div>
               </div>
 
+              {/* IOWait exemption toggle */}
+              {penaltyConfig && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <ToggleRow
+                    label="Exempt passthrough / NAS nodes from IOWait scoring"
+                    description="When a node's host IOWait is dominated by a guest on dedicated/passthrough storage (e.g. a NAS VM doing a RAID resync), don't penalize the node or recommend evacuating it — migration can't relieve that IOWait. Guests are auto-detected from passthrough disks, or tag one 'io_exempt'. Turn off to score IOWait normally everywhere."
+                    checked={penaltyConfig.iowait_exempt_enabled !== false}
+                    onChange={(e) => setPenaltyConfig({ ...penaltyConfig, iowait_exempt_enabled: e.target.checked })}
+                  />
+                </div>
+              )}
+
               {/* Time Period Weights */}
               {penaltyConfig && penaltyDefaults && (
                 <>

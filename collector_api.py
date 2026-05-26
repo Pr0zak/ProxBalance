@@ -353,12 +353,17 @@ class ProxmoxAPICollector:
         exclude_groups = [t for t in tags if t.startswith("exclude_")]
         affinity_groups = [t for t in tags if t.startswith("affinity_")]
         has_bindmount_tag = "has-bindmount" in tags
+        # io_exempt: this guest's disk I/O lives on dedicated/passthrough storage,
+        # so the host iowait it generates is not relievable by migration. Used to
+        # exempt the node from iowait scoring (see scoring.py / recommendations.py).
+        has_io_exempt = "io_exempt" in tags or "proxbalance_io_exempt" in tags
 
         return {
             "has_ignore": has_ignore,
             "exclude_groups": exclude_groups,
             "affinity_groups": affinity_groups,
             "has_bindmount": has_bindmount_tag,
+            "has_io_exempt": has_io_exempt,
             "all_tags": tags
         }
 
@@ -835,6 +840,14 @@ class ProxmoxAPICollector:
                 "net_in_bps": net_in_bps,
                 "net_out_bps": net_out_bps,
                 "tags": tags_data,
+                # io_exempt: discount this guest's node from iowait scoring. True when the
+                # guest is tagged io_exempt, OR has raw-device passthrough disks (dedicated
+                # storage whose iowait migration can't relieve — e.g. a NAS VM).
+                "io_exempt": bool(tags_data.get("has_io_exempt") or local_disk_info.get("has_passthrough")),
+                "io_exempt_reason": (
+                    "tag" if tags_data.get("has_io_exempt")
+                    else ("passthrough" if local_disk_info.get("has_passthrough") else None)
+                ),
                 "ha_managed": ha_info is not None,
                 "ha_state": ha_info.get("state") if ha_info else None,
                 "ha_group": ha_info.get("group") if ha_info else None,
@@ -872,15 +885,29 @@ class ProxmoxAPICollector:
         # inflating the overcommit ratio and triggering false penalties.
         for node_name, node_data in self.nodes.items():
             committed_mem_gb = 0.0
+            io_exempt_guests = []
             for vmid in node_data.get("guests", []):
                 guest = self.guests.get(str(vmid), {})
                 if guest.get("status") == "running":
                     committed_mem_gb += guest.get("mem_max_gb", 0)
+                    # A stopped guest generates no iowait, so only running io-exempt
+                    # guests exempt the node.
+                    if guest.get("io_exempt"):
+                        io_exempt_guests.append({
+                            "vmid": guest.get("vmid"),
+                            "name": guest.get("name"),
+                            "reason": guest.get("io_exempt_reason"),
+                        })
             node_data["committed_mem_gb"] = round(committed_mem_gb, 2)
             total_mem_gb = node_data.get("total_mem_gb", 1)
             node_data["mem_overcommit_ratio"] = round(
                 committed_mem_gb / total_mem_gb, 2
             ) if total_mem_gb > 0 else 0.0
+            # Node-level iowait exemption: its host iowait is dominated by a guest on
+            # dedicated/passthrough storage, so migration can't relieve it. Consumed by
+            # scoring.py and recommendations.py to skip iowait penalties/triggers.
+            node_data["iowait_exempt"] = bool(io_exempt_guests)
+            node_data["iowait_exempt_guests"] = io_exempt_guests
 
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])

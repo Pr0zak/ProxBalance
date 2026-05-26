@@ -252,7 +252,12 @@ export default function ClusterMap({
                         </div>
                         <div className="flex justify-between gap-4">
                           <span className="text-pb-text dark:text-gray-300">IOWait:</span>
-                          <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span>
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">
+                            {(node.metrics?.current_iowait || 0).toFixed(1)}%
+                            {node.iowait_exempt && (
+                              <span className="ml-1 text-amber-600 dark:text-amber-400" title={`Excluded from scoring — io-exempt guest(s): ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ')}`}>⊘</span>
+                            )}
+                          </span>
                         </div>
                         <div className="flex justify-between gap-4 border-t border-gray-700 pt-1.5 mt-1.5">
                           <span className="text-pb-text dark:text-gray-300">Cores:</span>
@@ -366,6 +371,14 @@ export default function ClusterMap({
                             <div
                               className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
                               title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
+                            />
+                          )}
+
+                          {/* IOWait-exempt Indicator - Border Dot (Bottom Left) */}
+                          {guest.io_exempt && !isMigrating && !isCompleted && (
+                            <div
+                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
+                              title={`IOWait-exempt (${guest.io_exempt_reason || 'tag'}) — this guest's IOWait is excluded from its node's scoring`}
                             />
                           )}
 

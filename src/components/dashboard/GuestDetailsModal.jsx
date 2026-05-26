@@ -5,15 +5,56 @@ import {
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 
+const { useState } = React;
+
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
   generateSparkline,
   guestModalCollapsed, setGuestModalCollapsed,
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions,
   canMigrate,
-  setSelectedGuest, setMigrationTarget, setShowMigrationDialog
+  setSelectedGuest, setMigrationTarget, setShowMigrationDialog,
+  API_BASE
 }) {
+  const [togglingExempt, setTogglingExempt] = useState(false);
+
   if (!selectedGuestDetails) return null;
+
+  const allTags = (selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags) || [];
+  const hasExemptTag = allTags.includes('io_exempt') || allTags.includes('proxbalance_io_exempt');
+  const isPassthroughExempt = selectedGuestDetails.io_exempt_reason === 'passthrough';
+
+  const toggleIoExempt = async () => {
+    if (togglingExempt) return;
+    setTogglingExempt(true);
+    const vmid = selectedGuestDetails.vmid;
+    try {
+      if (hasExemptTag) {
+        await fetch(`${API_BASE}/guests/${vmid}/tags/io_exempt`, { method: 'DELETE' });
+      } else {
+        await fetch(`${API_BASE}/guests/${vmid}/tags`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag: 'io_exempt' })
+        });
+      }
+      const r = await fetch(`${API_BASE}/guests/${vmid}/tags/refresh`, { method: 'POST' });
+      const rj = await r.json();
+      if (rj.success && rj.tags) {
+        const nowExempt = (rj.tags.all_tags || []).includes('io_exempt');
+        setSelectedGuestDetails(prev => prev ? {
+          ...prev,
+          tags: rj.tags,
+          io_exempt: nowExempt || prev.io_exempt_reason === 'passthrough',
+          io_exempt_reason: nowExempt ? 'tag' : (prev.io_exempt_reason === 'passthrough' ? 'passthrough' : null),
+        } : prev);
+        // Recompute node scoring/flags on the next collection.
+        fetch(`${API_BASE}/refresh`, { method: 'POST' }).catch(() => {});
+      }
+    } catch (e) {
+      /* best-effort; dashboard refresh will reconcile */
+    }
+    setTogglingExempt(false);
+  };
 
   return (
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedGuestDetails(null)}>
@@ -142,6 +183,38 @@ export default function GuestDetailsModal({
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* IOWait scoring exemption */}
+          <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-0.5">IOWait scoring</div>
+                {isPassthroughExempt ? (
+                  <p className="text-xs text-pb-text2 dark:text-gray-400">
+                    Auto-exempt — this guest has passthrough disks, so its host IOWait is excluded from node scoring.
+                  </p>
+                ) : (
+                  <p className="text-xs text-pb-text2 dark:text-gray-400">
+                    {hasExemptTag
+                      ? "Exempt — this guest's IOWait is excluded from its node's health score."
+                      : "Counted — exempt this if the guest's I/O is on dedicated/passthrough storage migration can't relieve."}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={toggleIoExempt}
+                disabled={togglingExempt || isPassthroughExempt}
+                title={isPassthroughExempt ? 'Already exempt via passthrough disks' : 'Toggle the io_exempt tag'}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  (hasExemptTag || isPassthroughExempt)
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                    : 'bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-300 hover:bg-pb-surface3 dark:hover:bg-gray-600'
+                } ${(togglingExempt || isPassthroughExempt) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {togglingExempt ? '…' : (hasExemptTag || isPassthroughExempt) ? 'IOWait exempt ✓' : 'Exempt from IOWait'}
+              </button>
             </div>
           </div>
 

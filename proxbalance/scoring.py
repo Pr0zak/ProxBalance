@@ -104,6 +104,7 @@ DEFAULT_PENALTY_CONFIG = {
     "min_score_improvement": 15,      # Minimum score improvement to recommend migration
     "maintenance_score_boost": 100,   # Extra score added to maintenance nodes for evacuation priority
     "iowait_score_boost": 30,        # Extra score added to IOWait-stressed nodes to trigger migrations
+    "iowait_exempt_enabled": True,   # Honor node iowait-exemption (passthrough/io_exempt guests). Set False to score iowait normally everywhere.
 
     # Source memory migration floor: don't recommend migrating guests off a node
     # when its memory is below this % (unless CPU or IOWait is also high).
@@ -172,6 +173,13 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
         cpu = immediate_cpu
         mem = immediate_mem
         iowait = immediate_iowait
+
+    # IOWait exemption: if this node's iowait is structurally driven by a guest on
+    # dedicated/passthrough storage (flagged by the collector — e.g. a NAS VM doing a
+    # RAID resync), don't let it inflate the health score. Migration can't relieve it,
+    # so counting it just produces churn-inducing false "unhealthy" readings.
+    if penalty_config.get("iowait_exempt_enabled", True) and node.get("iowait_exempt"):
+        iowait = 0
 
     load = metrics.get("avg_load", 0)
     cores = node.get("cpu_cores", 1)
@@ -415,6 +423,13 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_high", 30)
         elif long_iowait > 10:
             penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
+
+    # IOWait exemption: a node whose iowait is structurally from a passthrough/dedicated-
+    # storage guest (collector-flagged) shouldn't be treated as a poor migration target on
+    # iowait grounds — drop those penalties so it stays eligible.
+    if penalty_config.get("iowait_exempt_enabled", True) and target_node.get("iowait_exempt"):
+        penalty_breakdown["iowait_current"] = 0
+        penalty_breakdown["iowait_sustained"] = 0
 
     # Trend penalty - use quantified trend data from metrics store when available,
     # fall back to simple rising/falling/stable labels from cluster_cache
