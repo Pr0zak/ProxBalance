@@ -329,6 +329,7 @@ export default function DashboardPage({
           setSelectedGuest={setSelectedGuest}
           setMigrationTarget={setMigrationTarget}
           setShowMigrationDialog={setShowMigrationDialog}
+          API_BASE={API_BASE}
         />
 
         <EvacuationModals

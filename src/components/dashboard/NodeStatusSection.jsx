@@ -207,6 +207,12 @@ export default function NodeStatusSection({
                             if (iowait > 15 && avgIowait > 10) return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title={`IOWait ${iowait.toFixed(1)}% (elevated, avg ${avgIowait.toFixed(1)}%)`} />;
                             return null;
                           })()}
+                          {node.iowait_exempt && (
+                            <span
+                              className="text-[9px] font-semibold px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                              title={`Excluded from node scoring — io-exempt guest(s): ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'}`}
+                            >exempt</span>
+                          )}
                         </span>
                         <span className={`font-semibold ${
                           (node.metrics?.current_iowait || 0) > 30 ? 'text-red-600 dark:text-red-400' :

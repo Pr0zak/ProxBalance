@@ -372,6 +372,12 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     for _nname, _ndata in nodes.items():
         if _ndata.get("status") != "online" or _nname in maintenance_nodes:
             continue
+        # Skip iowait-exempt nodes: their host iowait is dominated by a guest on
+        # dedicated/passthrough storage (collector-flagged), so evacuating other guests
+        # can't relieve it. Counting it here would trigger pointless migrations.
+        if _ndata.get("iowait_exempt"):
+            print(f"IOWait trigger: skipping {_nname} (iowait-exempt: {', '.join(g.get('name','?') for g in _ndata.get('iowait_exempt_guests', []))})", file=sys.stderr)
+            continue
         _nmetrics = _ndata.get("metrics", {})
         _current_iow = _nmetrics.get("current_iowait", 0)
         _avg_iow = _nmetrics.get("avg_iowait", 0) if _nmetrics.get("has_historical") else _current_iow
