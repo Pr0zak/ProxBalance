@@ -95,7 +95,7 @@ pveum user token add proxbalance@pam proxbalance --privsep=0
 
 # Set permissions on both user and token
 pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
-pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
+pveum acl modify / --tokens 'proxbalance@pam!proxbalance' --roles PVEVMAdmin
 ```
 
 Update credentials in the web UI Settings or directly in `config.json`.
@@ -108,7 +108,7 @@ Token secrets cannot be retrieved after creation. Delete and recreate:
 pveum user token remove proxbalance@pam proxbalance
 pveum user token add proxbalance@pam proxbalance --privsep=0
 pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
-pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
+pveum acl modify / --tokens 'proxbalance@pam!proxbalance' --roles PVEVMAdmin
 ```
 
 Update the secret in ProxBalance Settings and restart the collector.

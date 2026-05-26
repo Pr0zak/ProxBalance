@@ -165,29 +165,24 @@ echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${BL}Frontend Build Status${CL}"
 echo -e "${BL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
 
-# Check Node.js
+# Check Node.js — only needed to *rebuild* the frontend; the running site serves
+# prebuilt assets. esbuild (the bundler) requires Node 18+, so flag older versions:
+# a too-old Node is the usual reason app.js/index.html never got built (see issue #105).
 NODE_VERSION=$(pct exec "$CTID" -- node --version 2>/dev/null || echo "not installed")
 if [ "$NODE_VERSION" != "not installed" ]; then
-    echo -e "${CM} Node.js: ${GN}${NODE_VERSION}${CL}"
+    NODE_MAJOR=$(echo "$NODE_VERSION" | sed 's/^v//; s/\..*//')
+    if [ "${NODE_MAJOR:-0}" -ge 18 ] 2>/dev/null; then
+        echo -e "${CM} Node.js: ${GN}${NODE_VERSION}${CL}"
+    else
+        echo -e "${YW}⚠${CL} Node.js: ${YW}${NODE_VERSION} — too old to build the frontend (need v18+; install via NodeSource)${CL}"
+    fi
 else
-    echo -e "${CROSS} Node.js: ${RD}not installed${CL}"
+    echo -e "${CROSS} Node.js: ${RD}not installed${CL} (only required to rebuild)"
 fi
 
-# Check npm
-NPM_VERSION=$(pct exec "$CTID" -- npm --version 2>/dev/null || echo "not installed")
-if [ "$NPM_VERSION" != "not installed" ]; then
-    echo -e "${CM} npm: ${GN}v${NPM_VERSION}${CL}"
-else
-    echo -e "${CROSS} npm: ${RD}not installed${CL}"
-fi
-
-# Check Babel
-if pct exec "$CTID" -- test -d /opt/proxmox-balance-manager/node_modules/@babel/core 2>/dev/null; then
-    BABEL_VERSION=$(pct exec "$CTID" -- jq -r '.version // "unknown"' /opt/proxmox-balance-manager/node_modules/@babel/core/package.json 2>/dev/null)
-    echo -e "${CM} Babel: ${GN}v${BABEL_VERSION}${CL}"
-else
-    echo -e "${CROSS} Babel: ${RD}not installed${CL}"
-fi
+# NOTE: the frontend builds with esbuild + tailwindcss (fetched via npx) — there is no
+# Babel and no committed package.json. The real runtime health signal is the deployed
+# assets below (app.js / React / index.html in /var/www/html), not the build toolchain.
 
 # Check compiled app.js
 if pct exec "$CTID" -- test -f /var/www/html/assets/js/app.js 2>/dev/null; then

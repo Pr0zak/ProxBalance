@@ -112,6 +112,25 @@ chmod +x *.py *.sh 2>/dev/null || true
 "
 ```
 
+#### Build and deploy the web UI
+
+**Don't skip this** — nginx serves prebuilt files from `/var/www/html/`. If you skip it the web UI is empty and you get **403 Forbidden**. (The automated installer does this for you.) Requires the Node.js 20 installed in step 2 — distro `nodejs` (e.g. Node 12 on Ubuntu) is too old for esbuild.
+
+```bash
+pct exec $CTID -- bash -c "
+cd /opt/proxmox-balance-manager
+bash build.sh                                    # Tailwind + esbuild -> assets/js/app.js, assets/css/tailwind.css
+mkdir -p /var/www/html/assets/js /var/www/html/assets/css
+cp index.html /var/www/html/index.html
+cp assets/js/app.js /var/www/html/assets/js/app.js
+cp assets/css/tailwind.css /var/www/html/assets/css/tailwind.css
+cp assets/*.svg /var/www/html/assets/ 2>/dev/null || true
+# React/ReactDOM are served locally (index.html references them under /assets/js/)
+curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o /var/www/html/assets/js/react.production.min.js
+curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o /var/www/html/assets/js/react-dom.production.min.js
+"
+```
+
 ### 4. Configure
 
 ```bash
@@ -134,12 +153,18 @@ EOF'
 On the Proxmox host:
 
 ```bash
+# Create the PAM service account first (the token belongs to this user)
+pveum user add proxbalance@pam --comment "ProxBalance service account"
+
+# Create the API token
 pvesh create /access/users/proxbalance@pam/token/proxbalance \
   --comment "ProxBalance monitoring" --privsep 0
 
-# Set permissions (both user and token need ACLs)
+# Set permissions (both user and token need ACLs).
+# NOTE: the token ID contains '!', so it MUST be single-quoted —
+# in double quotes bash treats it as history expansion ("event not found").
 pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin --propagate 1
-pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin --propagate 1
+pveum acl modify / --tokens 'proxbalance@pam!proxbalance' --roles PVEVMAdmin --propagate 1
 ```
 
 Copy the token secret into `config.json`.
@@ -283,14 +308,29 @@ free -h && df -h    # Check host resources
 # Check token exists
 pvesh get /access/users/proxbalance@pam/token/proxbalance
 
-# Recreate if needed
+# Recreate if needed (single-quote the token ID — the '!' is history expansion in double quotes)
 pvesh delete /access/users/proxbalance@pam/token/proxbalance
 pvesh create /access/users/proxbalance@pam/token/proxbalance --comment "ProxBalance" --privsep 0
 
 # Set permissions on both user and token
 pveum acl modify / --users proxbalance@pam --roles PVEVMAdmin
-pveum acl modify / --tokens proxbalance@pam!proxbalance --roles PVEVMAdmin
+pveum acl modify / --tokens 'proxbalance@pam!proxbalance' --roles PVEVMAdmin
 ```
+
+### 403 Forbidden (or blank page) on port 80
+
+nginx has nothing to serve — the frontend was never built/deployed to `/var/www/html/`
+(the most common cause is skipping the build step, or building with a too-old Node).
+
+```bash
+# Is the web root populated?
+pct exec $CTID -- ls -l /var/www/html/ /var/www/html/assets/js/
+# Node must be v18+ for esbuild (distro 'nodejs' on Ubuntu is too old):
+pct exec $CTID -- node --version
+```
+
+If `index.html` / `assets/js/app.js` are missing, re-run the build & deploy step
+(see "Build and deploy the web UI" above), then `systemctl reload nginx`.
 
 ### 502 Bad Gateway
 
