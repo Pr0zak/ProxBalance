@@ -375,7 +375,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         # Skip iowait-exempt nodes: their host iowait is dominated by a guest on
         # dedicated/passthrough storage (collector-flagged), so evacuating other guests
         # can't relieve it. Counting it here would trigger pointless migrations.
-        if _ndata.get("iowait_exempt"):
+        # Gated by the iowait_exempt_enabled setting (default on).
+        if penalty_cfg.get("iowait_exempt_enabled", True) and _ndata.get("iowait_exempt"):
             print(f"IOWait trigger: skipping {_nname} (iowait-exempt: {', '.join(g.get('name','?') for g in _ndata.get('iowait_exempt_guests', []))})", file=sys.stderr)
             continue
         _nmetrics = _ndata.get("metrics", {})

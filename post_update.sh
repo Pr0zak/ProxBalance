@@ -109,6 +109,15 @@ else
   echo "  ✓ Web interface updated"
 fi
 
+# Cache-bust: the source index.html pins a fixed `app.js?v=...` string, so browsers
+# would serve a stale cached bundle across deploys (and never show UI changes without a
+# manual hard-refresh). Stamp the deployed copy with a unique build id each deploy.
+if [ -f /var/www/html/index.html ]; then
+  BUILD_ID="$(git -C /opt/proxmox-balance-manager rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)-$(date +%s)"
+  sed -i -E "s#(app\.js\?v=)[^\"'\\)]*#\\1${BUILD_ID}#g; s#(tailwind\.css\?v=)[^\"'\\)]*#\\1${BUILD_ID}#g" /var/www/html/index.html
+  echo "  → Cache-busted assets (build ${BUILD_ID})"
+fi
+
 # Update systemd service files (for new services/timers)
 # NOTE: Service restarts are handled by the caller (app.py or update.sh)
 # to avoid the API trying to restart itself
