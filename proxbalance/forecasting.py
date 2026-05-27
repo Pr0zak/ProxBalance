@@ -365,11 +365,10 @@ def get_score_history(limit: int = 720) -> List[Dict[str, Any]]:
 def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[Dict[str, Any]]:
     """Retrieve score history aggregated into fixed-size time buckets.
 
-    Each returned row represents one bucket: the average cluster_health and
-    summed recommendation count across all raw samples that fell into the
-    bucket. ``nodes`` is left empty — the chart only renders cluster_health
-    for these long-range views, and aggregating a JSON blob in SQL is more
-    trouble than it's worth.
+    Each returned row represents one bucket: the average cluster_health, summed
+    recommendation count, and the average per-node suitability across all raw
+    samples in the bucket. Per-node averages power the stacked/per-node chart
+    views; bucketing is done in Python because the per-node data is a JSON blob.
 
     Args:
         bucket_minutes: Bucket size in minutes (60 = hourly, 360 = 6h, 1440 = daily).
@@ -379,29 +378,57 @@ def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[D
         return get_score_history(limit=limit)
     conn = get_connection()
     bucket_seconds = bucket_minutes * 60
+    # Bound the raw scan; 20k rows covers any realistic retention window and keeps
+    # JSON parsing cheap. We bucket the most-recent rows and return the last `limit`.
+    MAX_RAW = 20000
     rows = conn.execute(
-        """
-        SELECT
-          MAX(timestamp) AS timestamp,
-          AVG(cluster_health) AS cluster_health,
-          SUM(recommendation_count) AS recommendation_count,
-          COUNT(*) AS sample_count
-        FROM score_history
-        WHERE cluster_health IS NOT NULL
-        GROUP BY CAST(strftime('%s', timestamp) AS INTEGER) / ?
-        ORDER BY timestamp DESC
-        LIMIT ?
-        """,
-        (bucket_seconds, limit),
+        "SELECT timestamp, nodes_json, cluster_health, recommendation_count "
+        "FROM score_history WHERE cluster_health IS NOT NULL "
+        "ORDER BY timestamp DESC LIMIT ?",
+        (MAX_RAW,),
     ).fetchall()
 
+    buckets: Dict[int, Dict[str, Any]] = {}
+    for r in rows:
+        try:
+            epoch = int(datetime.fromisoformat(r["timestamp"]).timestamp())
+        except (ValueError, TypeError):
+            continue
+        key = epoch // bucket_seconds
+        b = buckets.get(key)
+        if b is None:
+            b = {"ts_max": r["timestamp"], "ch_sum": 0.0, "ch_n": 0, "rec": 0, "n": 0, "nodes": {}}
+            buckets[key] = b
+        if r["cluster_health"] is not None:
+            b["ch_sum"] += r["cluster_health"]
+            b["ch_n"] += 1
+        b["rec"] += r["recommendation_count"] or 0
+        b["n"] += 1
+        if r["timestamp"] > b["ts_max"]:
+            b["ts_max"] = r["timestamp"]
+        try:
+            node_json = json.loads(r["nodes_json"]) if r["nodes_json"] else {}
+        except (ValueError, TypeError):
+            node_json = {}
+        for name, nd in node_json.items():
+            s = nd.get("suitability") if isinstance(nd, dict) else None
+            if isinstance(s, (int, float)):
+                acc = b["nodes"].setdefault(name, [0.0, 0])
+                acc[0] += s
+                acc[1] += 1
+
     result = []
-    for r in reversed(rows):
+    for key in sorted(buckets.keys())[-limit:]:
+        b = buckets[key]
+        nodes_avg = {
+            name: {"suitability": round(v[0] / v[1], 1)}
+            for name, v in b["nodes"].items() if v[1]
+        }
         result.append({
-            "timestamp": r["timestamp"],
-            "nodes": {},
-            "cluster_health": round(r["cluster_health"], 2) if r["cluster_health"] is not None else None,
-            "recommendation_count": r["recommendation_count"] or 0,
-            "sample_count": r["sample_count"],
+            "timestamp": b["ts_max"],
+            "nodes": nodes_avg,
+            "cluster_health": round(b["ch_sum"] / b["ch_n"], 2) if b["ch_n"] else None,
+            "recommendation_count": b["rec"],
+            "sample_count": b["n"],
         })
     return result
