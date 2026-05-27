@@ -8,8 +8,10 @@
 # ProxBalance - Proxmox Balance Manager
 # Standalone Installer v2.0
 
-set -euo pipefail
+set -Eeuo pipefail
 shopt -s inherit_errexit nullglob
+# -E (errtrace): make the ERR trap below fire for failures INSIDE functions too,
+# not just at the top level — otherwise an abort inside main()/helpers is silent.
 
 # With `set -euo pipefail` any unhandled non-zero command aborts the script. Without a
 # trap that abort is INVISIBLE — the installer just stops with no message and no CT
@@ -430,7 +432,13 @@ select_network() {
       ;;
   esac
 
-  [ -n "$vlan_tag" ] && msg_ok "VLAN tag: ${VALUE_COLOR}${vlan_tag}${CL}"
+  # NOTE: must be if/fi, NOT `[ -n "$vlan_tag" ] && msg_ok ...`. As the last statement
+  # in this function, a bare && list returns 1 when vlan_tag is empty (the common case),
+  # making the function return non-zero — which aborts the whole installer under
+  # `set -e`, silently, right after the VLAN prompt (issue #103).
+  if [ -n "$vlan_tag" ]; then
+    msg_ok "VLAN tag: ${VALUE_COLOR}${vlan_tag}${CL}"
+  fi
 }
 
 select_storage() {
