@@ -23,7 +23,7 @@ const aggWindow = (pts, key) => {
  *  - Synced crosshair: hovering one chart draws a vertical line at the same time on all
  *    of them (via shared hoverTime / onHoverTime).
  */
-export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore, migrationHistory, thresholds, hoverTime, onHoverTime }) {
+export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore, migrationHistory, thresholds, hoverTime, onHoverTime, showMarkers = true, showThresholds = true, showEnvelope = true }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const timesRef = useRef([]);
@@ -63,7 +63,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
       pts.push({ time: last.time, cpu: aggWindow([last], 'cpu'), mem: aggWindow([last], 'mem'), iowait: aggWindow([last], 'iowait') });
     }
     timesRef.current = pts.map(p => p.time);
-    const hasEnvelope = step > 1;
+    const hasEnvelope = step > 1 && showEnvelope;
     const multiDay = MULTI_DAY.includes(chartPeriod);
 
     const labels = pts.map(p => {
@@ -109,7 +109,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
       { v: th.mem, rgb: '16, 185, 129', name: 'Mem' },
       { v: th.iowait, rgb: '245, 158, 11', name: 'IOWait' },
     ];
-    thLines.forEach((t, i) => {
+    if (showThresholds) thLines.forEach((t, i) => {
       if (typeof t.v !== 'number') return;
       annotations[`th_${i}`] = {
         type: 'line', yMin: t.v, yMax: t.v, borderColor: `rgba(${t.rgb}, 0.35)`, borderWidth: 1, borderDash: [2, 3],
@@ -117,7 +117,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
       };
     });
     // Migration markers: nearest rendered index per migration in the window.
-    (migrationHistory || []).forEach((mig, i) => {
+    if (showMarkers) (migrationHistory || []).forEach((mig, i) => {
       const t = new Date(mig.timestamp).getTime() / 1000;
       if (isNaN(t) || t < (latestTime - periodSeconds) || t > latestTime) return;
       let bi = 0, bd = Infinity;
@@ -156,7 +156,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
     }
 
     return () => { if (chartRef.current) { try { chartRef.current.destroy(); } catch (e) {} chartRef.current = null; } };
-  }, [trendData, chartPeriod, nodeScore?.suitability_rating, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait]);
+  }, [trendData, chartPeriod, nodeScore?.suitability_rating, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait, showMarkers, showThresholds, showEnvelope]);
 
   // Synced crosshair: draw/update a vertical line at the time hovered on any sibling
   // chart, without rebuilding the whole chart.

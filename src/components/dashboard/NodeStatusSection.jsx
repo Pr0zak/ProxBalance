@@ -27,6 +27,12 @@ export default function NodeStatusSection({
     mem: recommendationData?.parameters?.mem_threshold,
     iowait: recommendationData?.parameters?.iowait_threshold,
   };
+  // Chart overlay toggles (persisted). Envelope defaults off — it's the busiest.
+  const lsBool = (k, dflt) => { try { const v = localStorage.getItem(k); return v == null ? dflt : v === 'true'; } catch { return dflt; } };
+  const [showMarkers, setShowMarkers] = useState(() => lsBool('nodeChartMarkers', true));
+  const [showThresholds, setShowThresholds] = useState(() => lsBool('nodeChartThresholds', true));
+  const [showEnvelope, setShowEnvelope] = useState(() => lsBool('nodeChartEnvelope', false));
+  const overlayToggle = (key, val, setter) => { setter(val); try { localStorage.setItem(key, String(val)); } catch {} };
   // When embedded, the parent owns the section card and header; always render expanded.
   const Wrapper = embedded ? React.Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
@@ -87,6 +93,27 @@ export default function NodeStatusSection({
                   <option value="30d">30 Days</option>
                   <option value="1y">1 Year</option>
                 </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
+                <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+                  {[
+                    { k: 'nodeChartMarkers', label: 'Markers', val: showMarkers, set: setShowMarkers },
+                    { k: 'nodeChartThresholds', label: 'Thresholds', val: showThresholds, set: setShowThresholds },
+                    { k: 'nodeChartEnvelope', label: 'Min/Max', val: showEnvelope, set: setShowEnvelope },
+                  ].map(o => (
+                    <button
+                      key={o.k}
+                      onClick={() => overlayToggle(o.k, !o.val, o.set)}
+                      className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+                        o.val ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                      }`}
+                      title={`${o.val ? 'Hide' : 'Show'} ${o.label.toLowerCase()} on the resource charts`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -375,6 +402,9 @@ export default function NodeStatusSection({
                       thresholds={thresholds}
                       hoverTime={hoverTime}
                       onHoverTime={setHoverTime}
+                      showMarkers={showMarkers}
+                      showThresholds={showThresholds}
+                      showEnvelope={showEnvelope}
                     />
                   </div>
                 )}
@@ -401,6 +431,9 @@ export default function NodeStatusSection({
                       thresholds={thresholds}
                       hoverTime={hoverTime}
                       onHoverTime={setHoverTime}
+                      showMarkers={showMarkers}
+                      showThresholds={showThresholds}
+                      showEnvelope={showEnvelope}
                     />
                   </div>
                 </div>
