@@ -1,18 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 280" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220" fill="none">
   <defs>
     <linearGradient id="pbAccentDark" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#7A98FF"/>
       <stop offset="100%" stop-color="#9F86FF"/>
     </linearGradient>
   </defs>
-  <g transform="translate(120,140)">
+  <g transform="translate(110,110)">
     <circle r="100" stroke="#7A98FF" stroke-width="14" fill="none" opacity="0.45"/>
-    <path d="M 0,-72 L -64,52 M 0,-72 L 64,52 M -56,52 L 56,52" stroke="#7A98FF" stroke-width="10" stroke-linecap="round" opacity="0.6" fill="none"/>
-    <circle cx="0" cy="-72" r="19" fill="#7A98FF"/>
-    <circle cx="-72" cy="44" r="19" fill="#9F86FF"/>
-    <circle cx="72" cy="44" r="19" fill="#9F86FF"/>
+    <path d="M 0,-75 L -65,37.5 L 65,37.5 Z" stroke="#7A98FF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" fill="none"/>
+    <circle cx="0" cy="-75" r="19" fill="#7A98FF"/>
+    <circle cx="-65" cy="37.5" r="19" fill="#9F86FF"/>
+    <circle cx="65" cy="37.5" r="19" fill="#9F86FF"/>
   </g>
-  <text x="252" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="70" fill="#E5ECF7" letter-spacing="-3">Prox</text>
-  <text x="390" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="70" fill="url(#pbAccentDark)" letter-spacing="-3">Balance</text>
-  <text x="254" y="160" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="400" font-size="14" fill="#A4B2C9" letter-spacing="4.5">PROXMOX VE CLUSTER OPTIMIZER</text>
+  <text x="235" y="120" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="70" letter-spacing="-3">
+    <tspan font-weight="300" fill="#E5ECF7">Prox</tspan><tspan font-weight="800" fill="url(#pbAccentDark)">Balance</tspan>
+  </text>
+  <text x="235" y="150" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="400" font-size="14" fill="#A4B2C9" letter-spacing="4.5">PROXMOX VE CLUSTER OPTIMIZER</text>
 </svg>
