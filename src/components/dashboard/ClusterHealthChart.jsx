@@ -77,18 +77,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     const s = lsGet('clusterHealthChartView', 'cluster');
     return VIEW_MODES.find(v => v.id === s) ? s : 'cluster';
   });
-  const [smoothId, setSmoothState] = useState(() => {
-    const s = lsGet('clusterHealthChartSmooth', 'off');
-    return SMOOTHING.find(x => x.id === s) ? s : 'off';
-  });
-  const [detailId, setDetailState] = useState(() => {
-    const s = lsGet('clusterHealthChartDetail', 'full');
-    return DETAIL.find(x => x.id === s) ? s : 'full';
-  });
+  // Locked defaults (their selectors are hidden): Medium smoothing + Full detail read best.
+  const smoothId = 'med';
+  const detailId = 'full';
   const setPeriod = (id) => { setPeriodState(id); lsSet('clusterHealthChartPeriod', id); };
   const setView = (id) => { setViewState(id); lsSet('clusterHealthChartView', id); };
-  const setSmooth = (id) => { setSmoothState(id); lsSet('clusterHealthChartSmooth', id); };
-  const setDetail = (id) => { setDetailState(id); lsSet('clusterHealthChartDetail', id); };
 
   const [hover, setHover] = useState(null);
   const containerRef = useRef(null);
@@ -253,11 +246,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
         </div>
       </div>
 
-      {/* View / Smoothing / Detail controls */}
+      {/* View selector (Smoothing=Medium + Detail=Full are locked) */}
       <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mb-2 text-[11px]">
         <LabeledPills label="View" options={VIEW_MODES} value={view} onChange={setView} />
-        <LabeledPills label="Smooth" options={SMOOTHING} value={smoothId} onChange={setSmooth} />
-        <LabeledPills label="Detail" options={DETAIL} value={detailId} onChange={setDetail} />
       </div>
 
       <div ref={containerRef} className="relative">
