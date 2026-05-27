@@ -1,6 +1,8 @@
-import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
+import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
+
+const { useState } = React;
 
 export default function NodeStatusSection({
   data,
@@ -11,8 +13,18 @@ export default function NodeStatusSection({
   chartPeriod, setChartPeriod,
   nodeScores,
   generateSparkline,
+  migrationHistory,
   embedded = false,
 }) {
+  // Shared crosshair time across all node charts; expanded node for the detail modal.
+  const [hoverTime, setHoverTime] = useState(null);
+  const [expandedNode, setExpandedNode] = useState(null);
+  // Recommendation thresholds (the lines that trigger migrations) for chart overlays.
+  const thresholds = {
+    cpu: recommendationData?.parameters?.cpu_threshold,
+    mem: recommendationData?.parameters?.mem_threshold,
+    iowait: recommendationData?.parameters?.iowait_threshold,
+  };
   // When embedded, the parent owns the section card and header; always render expanded.
   const Wrapper = embedded ? React.Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
@@ -336,7 +348,16 @@ export default function NodeStatusSection({
               <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-pb-text dark:text-white">{node.name}</h3>
-                  <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
+                    {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
+                      <button
+                        onClick={() => setExpandedNode(node.name)}
+                        title="Expand chart"
+                        className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 text-sm leading-none"
+                      >⤢</button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
@@ -358,12 +379,41 @@ export default function NodeStatusSection({
                       trendData={node.trend_data}
                       chartPeriod={chartPeriod}
                       nodeScore={nodeScores?.[node.name]}
+                      migrationHistory={migrationHistory}
+                      thresholds={thresholds}
+                      hoverTime={hoverTime}
+                      onHoverTime={setHoverTime}
                     />
                   </div>
                 )}
               </div>
             ))}
           </div>
+          )}
+
+          {expandedNode && data.nodes[expandedNode] && (
+            <div className={MODAL_OVERLAY} onClick={() => setExpandedNode(null)}>
+              <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-5xl')} !overflow-visible`} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b border-pb-border dark:border-slate-700">
+                  <h3 className="text-lg font-bold text-pb-text dark:text-white">{expandedNode} — resource trend</h3>
+                  <button onClick={() => setExpandedNode(null)} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={22} /></button>
+                </div>
+                <div className="p-4">
+                  <div style={{ height: '60vh' }}>
+                    <NodeChart
+                      nodeName={expandedNode}
+                      trendData={data.nodes[expandedNode].trend_data}
+                      chartPeriod={chartPeriod}
+                      nodeScore={nodeScores?.[expandedNode]}
+                      migrationHistory={migrationHistory}
+                      thresholds={thresholds}
+                      hoverTime={hoverTime}
+                      onHoverTime={setHoverTime}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </Wrapper>
   );

@@ -301,6 +301,7 @@ export default function DashboardPage({
             <ClusterHealthChart scoreHistory={scoreHistory} migrationHistory={migrationHistory} fetchScoreHistory={fetchScoreHistory} />
             <NodeStatusSection
               data={data}
+              migrationHistory={migrationHistory}
               collapsedSections={collapsedSections}
               toggleSection={toggleSection}
               showPredicted={showPredicted}

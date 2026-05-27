@@ -175,6 +175,7 @@ export default function ClusterSection(props) {
           <ClusterHealthChart scoreHistory={props.scoreHistory} migrationHistory={props.migrationHistory} fetchScoreHistory={props.fetchScoreHistory} />
           <NodeStatusSection
           embedded
+          migrationHistory={props.migrationHistory}
           data={props.data}
           showPredicted={props.showPredicted}
           setShowPredicted={props.setShowPredicted}
