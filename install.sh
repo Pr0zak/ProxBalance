@@ -710,13 +710,17 @@ detect_proxmox_nodes() {
       if [ -n "$host_ip" ]; then
         msg_info "Resolved ${PROXMOX_HOST} to IP: ${GN}${host_ip}${CL}"
         echo ""
-        read -p "Use IP (${host_ip}) or hostname (${PROXMOX_HOST})? [i/H]: " choice
-        choice=${choice:-H}
-        if [[ "$choice" =~ ^[Ii]$ ]]; then
+        # Default to the IP: the collector runs INSIDE the LXC, which usually can't
+        # resolve the host's bare hostname (e.g. "pve") even though the Proxmox host
+        # itself can — so a hostname here causes "Max retries exceeded" later (#107).
+        echo -e "  ${DIM_COLOR}The ProxBalance container must reach this address; the IP is recommended.${CL}"
+        read -p "Use IP (${host_ip}) or hostname (${PROXMOX_HOST})? [I/h]: " choice
+        choice=${choice:-I}
+        if [[ "$choice" =~ ^[Hh]$ ]]; then
+          msg_ok "Using hostname: ${GN}${PROXMOX_HOST}${CL}"
+        else
           PROXMOX_HOST="$host_ip"
           msg_ok "Using IP: ${GN}${PROXMOX_HOST}${CL}"
-        else
-          msg_ok "Using hostname: ${GN}${PROXMOX_HOST}${CL}"
         fi
       fi
     fi
@@ -1241,130 +1245,55 @@ EOF
 }
 
 build_frontend() {
-  msg_info "Building Frontend (Pre-compiling JSX)"
+  msg_info "Building Frontend (esbuild + Tailwind)"
   echo ""
 
   pct exec "$CTID" -- bash <<'BUILD_EOF'
+set -e
 cd /opt/proxmox-balance-manager
 
 echo "════════════════════════════════════════════════════════════════"
-echo "Frontend Build Process"
+echo "Frontend Build (esbuild bundler + Tailwind CSS)"
 echo "════════════════════════════════════════════════════════════════"
 echo ""
 
-# Check if we need to build
-# Build is required if: (1) legacy inline JSX exists, (2) JSX source exists, or (3) app.js doesn't exist
-if [ -f index.html ] && grep -q 'type="text/babel"' index.html; then
-  echo "⚠  Legacy inline JSX detected - build required"
-  NEEDS_BUILD=true
-elif [ -f src/app.jsx ]; then
-  echo "✓ Pre-compiled architecture detected - building"
-  NEEDS_BUILD=true
-elif [ ! -f assets/js/app.js ]; then
-  echo "⚠  app.js not found - build required"
-  NEEDS_BUILD=true
-else
-  echo "✓ Pre-built app.js found - skipping build"
-  NEEDS_BUILD=false
+# The frontend bundles src/index.jsx (a component module graph) with esbuild and
+# builds CSS with tailwindcss — NOT Babel. build.sh is the single source of truth and
+# falls back to npx, but install the toolchain locally for a deterministic build.
+mkdir -p /var/www/html/assets/js /var/www/html/assets/css
+
+echo "→ Installing build toolchain (esbuild + tailwindcss)..."
+[ -f package.json ] || npm init -y >/dev/null 2>&1
+npm install --no-audit --no-fund esbuild tailwindcss@3 >/dev/null 2>&1 || true
+
+echo "→ Building (build.sh)..."
+[ -f build.sh ] || { echo "ERROR: build.sh missing" >&2; exit 1; }
+bash build.sh
+
+echo "→ Deploying to /var/www/html..."
+cp index.html /var/www/html/index.html
+cp assets/js/app.js /var/www/html/assets/js/app.js
+cp assets/css/tailwind.css /var/www/html/assets/css/tailwind.css
+cp assets/*.svg /var/www/html/assets/ 2>/dev/null || true
+
+# React/ReactDOM are referenced locally by index.html
+curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o /var/www/html/assets/js/react.production.min.js
+curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o /var/www/html/assets/js/react-dom.production.min.js
+
+# Cache-bust the asset version so browsers don't serve a stale bundle after updates
+BUILD_ID="$(date +%Y%m%d%H%M%S)"
+sed -i -E "s#(app\.js\?v=)[^\"']*#\1${BUILD_ID}#g; s#(tailwind\.css\?v=)[^\"']*#\1${BUILD_ID}#g" /var/www/html/index.html
+
+# Fail loudly if the bundle didn't build. Otherwise nginx's SPA fallback serves
+# index.html for app.js (Content-Type text/html), the browser blocks it on nosniff,
+# and the UI silently won't load (issue #107).
+APP_SIZE=$(stat -c%s /var/www/html/assets/js/app.js 2>/dev/null || echo 0)
+if [ "$APP_SIZE" -lt 10000 ]; then
+  echo "ERROR: app.js build failed or too small (${APP_SIZE} bytes)." >&2
+  echo "       Check Node is >= 18 (node --version) and that npx can reach npm." >&2
+  exit 1
 fi
-
-if [ "$NEEDS_BUILD" = "true" ]; then
-  # Create directory structure
-  echo "Creating build directories..."
-  mkdir -p /var/www/html/assets/js
-  mkdir -p /opt/proxmox-balance-manager/assets/js
-  mkdir -p src
-
-  # Step 1: Install Babel dependencies
-  echo ""
-  echo "Step 1/5: Installing Babel dependencies..."
-  if [ ! -f package.json ]; then
-    npm init -y >/dev/null 2>&1
-  fi
-  npm install --save-dev @babel/core @babel/cli @babel/preset-react >/dev/null 2>&1
-  echo "  ✓ Babel installed"
-
-  # Step 2: Create Babel config
-  echo ""
-  echo "Step 2/5: Creating Babel configuration..."
-  cat > .babelrc <<'BABEL_CONFIG'
-{
-  "presets": ["@babel/preset-react"]
-}
-BABEL_CONFIG
-  echo "  ✓ .babelrc created"
-
-  # Step 3: Extract JSX from index.html if needed
-  echo ""
-  echo "Step 3/5: Preparing JSX source..."
-  if [ ! -f src/app.jsx ]; then
-    # Extract JSX from index.html
-    if grep -q 'type="text/babel"' index.html; then
-      echo "  ⚙  Extracting JSX from index.html..."
-      sed -n '/<script type="text\/babel">/,/<\/script>/p' index.html | \
-        sed '1d;$d' | \
-        sed '1,2d' > src/app.jsx
-      echo "  ✓ JSX extracted"
-    fi
-  else
-    echo "  ✓ JSX source already exists"
-  fi
-
-  # Step 4: Compile JSX to JavaScript
-  echo ""
-  echo "Step 4/5: Compiling JSX to JavaScript..."
-  if [ -f src/app.jsx ]; then
-    # Use node_modules/.bin/babel directly with preset flag if npx is not available
-    if command -v npx >/dev/null 2>&1; then
-      npx babel src/app.jsx --out-file /tmp/app.js 2>&1 | grep -v "deoptimised" || true
-    else
-      node_modules/.bin/babel src/app.jsx --presets=@babel/preset-react --out-file /tmp/app.js 2>&1 | grep -v "deoptimised" || true
-    fi
-
-    # Copy compiled app.js to BOTH locations (source and nginx serving)
-    cp /tmp/app.js /opt/proxmox-balance-manager/assets/js/app.js
-    cp /tmp/app.js /var/www/html/assets/js/app.js
-    COMPILED_SIZE=$(stat -c%s /var/www/html/assets/js/app.js 2>/dev/null)
-    echo "  ✓ Compiled to app.js (${COMPILED_SIZE} bytes)"
-  fi
-
-  # Step 5: Download React libraries locally
-  echo ""
-  echo "Step 5/5: Downloading React libraries..."
-  cd /var/www/html/assets/js
-
-  curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o react.production.min.js
-  REACT_SIZE=$(stat -c%s react.production.min.js 2>/dev/null)
-  echo "  ✓ React downloaded (${REACT_SIZE} bytes)"
-
-  curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o react-dom.production.min.js
-  REACT_DOM_SIZE=$(stat -c%s react-dom.production.min.js 2>/dev/null)
-  echo "  ✓ React-DOM downloaded (${REACT_DOM_SIZE} bytes)"
-
-  cd /opt/proxmox-balance-manager
-
-  # Copy index.html (already pre-compiled with correct structure)
-  echo ""
-  echo "Copying index.html..."
-  cp index.html /var/www/html/index.html
-
-  INDEX_SIZE=$(stat -c%s /var/www/html/index.html 2>/dev/null)
-  echo "  ✓ Optimized index.html created (${INDEX_SIZE} bytes)"
-
-  echo ""
-  echo "════════════════════════════════════════════════════════════════"
-  echo "✓ Frontend build complete!"
-  echo "════════════════════════════════════════════════════════════════"
-else
-  echo "ℹ  Skipping build - copying pre-built files..."
-  cp -f index.html /var/www/html/
-  if [ -d assets ]; then
-    echo "  → Copying assets directory..."
-    mkdir -p /var/www/html/assets
-    cp -r assets/* /var/www/html/assets/ 2>/dev/null || true
-    echo "  ✓ Assets copied"
-  fi
-fi
+echo "✓ Frontend built: app.js ${APP_SIZE} bytes, cache-bust ${BUILD_ID}"
 BUILD_EOF
 
   msg_ok "Frontend built and optimized"
