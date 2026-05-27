@@ -360,7 +360,12 @@ export default function NodeStatusSection({
                 </div>
 
                 {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
-                  <div className="mt-4" style={{height: '200px'}}>
+                  <div
+                    className="mt-4 cursor-pointer"
+                    style={{height: '200px'}}
+                    onClick={() => setExpandedNode(node.name)}
+                    title="Click to expand"
+                  >
                     <NodeChart
                       nodeName={node.name}
                       trendData={node.trend_data}
