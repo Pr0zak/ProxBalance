@@ -47,8 +47,13 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore 
     const filtered = raw.filter(p => (latestTime - p.time) <= periodSeconds);
     if (filtered.length === 0) return;
 
-    const sampleRate = { '1h': 2, '6h': 5, '12h': 10, '24h': 20, '7d': 20, '30d': 25, '1y': 25 }[chartPeriod] || 1;
+    // Target ~150-180 rendered points per period. The RRD source is already
+    // downsampled (week≈336, month/day≈1440, year≈920 pts), so the old rates
+    // (every 20-25th) left only ~16 points at 7d — too sparse, and tension then
+    // overshot into wavy curves. These rates keep the line dense and honest.
+    const sampleRate = { '1h': 1, '6h': 2, '12h': 4, '24h': 8, '7d': 2, '30d': 8, '1y': 5 }[chartPeriod] || 1;
     const sampled = filtered.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i % sampleRate === 0);
+    const multiDay = ['7d', '30d', '1y'].includes(chartPeriod);
 
     const ctx = canvasRef.current.getContext('2d');
 
@@ -79,12 +84,15 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore 
         data: {
           labels: sampled.map(p => {
             const d = new Date(p.time * 1000);
-            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            // Multi-day ranges need the date; sub-day ranges show time-of-day.
+            return multiDay
+              ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+              : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           }),
           datasets: [
-            { label: 'CPU %', data: sampled.map(p => p.cpu), borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true },
-            { label: 'Memory %', data: sampled.map(p => p.mem), borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.4, fill: true },
-            { label: 'IOWait %', data: sampled.map(p => p.iowait || 0), borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.4, fill: true }
+            { label: 'CPU %', data: sampled.map(p => p.cpu), borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.2, fill: true, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4 },
+            { label: 'Memory %', data: sampled.map(p => p.mem), borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.2, fill: true, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4 },
+            { label: 'IOWait %', data: sampled.map(p => p.iowait || 0), borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', tension: 0.2, fill: true, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4 }
           ]
         },
         options: {

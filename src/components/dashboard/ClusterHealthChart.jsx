@@ -6,8 +6,8 @@ const { useState, useEffect, useRef } = React;
 //   bucket=0  → raw rows (no aggregation, server caps via `limit`)
 //   bucket=60 → hourly average
 const PERIODS = [
-  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 200 },
-  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 800 },
+  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 300 },
+  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 30,   limit: 400 },
   { id: '30d',  label: '30d',  ms: 30 * 24 * 60 * 60 * 1000,  bucket: 60,   limit: 800 },
   { id: '90d',  label: '90d',  ms: 90 * 24 * 60 * 60 * 1000,  bucket: 360,  limit: 400 },
   { id: '180d', label: '180d', ms: 180 * 24 * 60 * 60 * 1000, bucket: 720,  limit: 400 },
