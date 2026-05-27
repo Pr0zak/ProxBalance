@@ -95,7 +95,6 @@ export default function DashboardPage({
   API_BASE
 }) {
   // Dashboard Page - data is guaranteed to be available here
-  const [showPredicted, setShowPredicted] = useState(false);
   const [showCrsEditor, setShowCrsEditor] = useState(false);
 
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
@@ -203,8 +202,6 @@ export default function DashboardPage({
           guestsMigrating={guestsMigrating}
           migrationProgress={migrationProgress}
           completedMigrations={completedMigrations}
-          showPredicted={showPredicted}
-          setShowPredicted={setShowPredicted}
           nodeGridColumns={nodeGridColumns}
           setNodeGridColumns={setNodeGridColumns}
           loadChartJs={loadChartJs}
@@ -304,8 +301,6 @@ export default function DashboardPage({
               migrationHistory={migrationHistory}
               collapsedSections={collapsedSections}
               toggleSection={toggleSection}
-              showPredicted={showPredicted}
-              setShowPredicted={setShowPredicted}
               recommendationData={recommendationData}
               recommendations={recommendations}
               nodeGridColumns={nodeGridColumns}

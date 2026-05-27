@@ -7,7 +7,6 @@ const { useState } = React;
 export default function NodeStatusSection({
   data,
   collapsedSections, toggleSection,
-  showPredicted, setShowPredicted,
   recommendationData, recommendations,
   nodeGridColumns, setNodeGridColumns,
   chartPeriod, setChartPeriod,
@@ -19,6 +18,9 @@ export default function NodeStatusSection({
   // Shared crosshair time across all node charts; expanded node for the detail modal.
   const [hoverTime, setHoverTime] = useState(null);
   const [expandedNode, setExpandedNode] = useState(null);
+  // Predicted-impact overlay was removed; keep the flag false so the collapsed-card
+  // conditionals simply render live values.
+  const showPredicted = false;
   // Recommendation thresholds (the lines that trigger migrations) for chart overlays.
   const thresholds = {
     cpu: recommendationData?.parameters?.cpu_threshold,
@@ -51,21 +53,6 @@ export default function NodeStatusSection({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              {/* B4: Predicted Impact Toggle */}
-              {recommendationData?.summary?.batch_impact && recommendations.length > 0 && (
-                <button
-                  onClick={() => setShowPredicted(!showPredicted)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    showPredicted
-                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-700'
-                      : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600 border border-pb-border dark:border-slate-600'
-                  }`}
-                  title="Show predicted node metrics after all recommended migrations"
-                >
-                  <Eye size={14} />
-                  {showPredicted ? 'Showing Predicted' : 'Show Predicted'}
-                </button>
-              )}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">

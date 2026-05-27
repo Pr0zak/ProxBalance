@@ -177,8 +177,6 @@ export default function ClusterSection(props) {
           embedded
           migrationHistory={props.migrationHistory}
           data={props.data}
-          showPredicted={props.showPredicted}
-          setShowPredicted={props.setShowPredicted}
           recommendationData={props.recommendationData}
           recommendations={props.recommendations}
           nodeGridColumns={props.nodeGridColumns}
