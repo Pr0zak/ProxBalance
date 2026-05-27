@@ -15,108 +15,11 @@ if ! command -v curl >/dev/null 2>&1; then
   echo "  ✓ curl installed"
 fi
 
-# Build and update web interface
+# Build + deploy the web interface. Shared with install.sh via deploy-frontend.sh so the
+# build path (esbuild + Tailwind), web-root deploy, React fetch, and cache-bust stay
+# identical between fresh installs and updates (cf. issues #105, #107).
 echo "Building web interface..."
-cd /opt/proxmox-balance-manager
-
-# Check if Node.js is installed
-if ! command -v node >/dev/null 2>&1; then
-  echo "  ⚠  Node.js not found - installing Node.js 20 LTS..."
-  export DEBIAN_FRONTEND=noninteractive
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null 2>&1
-  apt-get install -y nodejs >/dev/null 2>&1
-  echo "  ✓ Node.js installed"
-fi
-
-# Check if we need to build (detect if index.html has inline JSX)
-if [ -f index.html ] && grep -q 'type="text/babel"' index.html; then
-  echo "  ⚠  Legacy inline JSX detected - upgrading to pre-compiled architecture"
-  NEEDS_BUILD=true
-elif [ -f src/index.jsx ] || [ -f src/app.jsx ]; then
-  echo "  ✓ Pre-compiled architecture detected - rebuilding"
-  NEEDS_BUILD=true
-else
-  echo "  ℹ  No JSX source found - assuming pre-built"
-  NEEDS_BUILD=false
-fi
-
-if [ "$NEEDS_BUILD" = "true" ]; then
-  # Ensure tailwindcss is installed for CSS build
-  if [ ! -f "node_modules/.bin/tailwindcss" ]; then
-    echo "  → Installing tailwindcss..."
-    npm install tailwindcss@3 >/dev/null 2>&1
-  fi
-
-  # Bundle the frontend using build.sh (Tailwind CSS + esbuild)
-  echo "  → Building frontend (Tailwind CSS + esbuild)..."
-  mkdir -p assets/js assets/css
-  if [ -f build.sh ]; then
-    bash build.sh
-  else
-    # Fallback: direct build commands matching build.sh
-    if [ -f "node_modules/.bin/tailwindcss" ]; then
-      TAILWIND="node_modules/.bin/tailwindcss"
-    else
-      TAILWIND="npx tailwindcss"
-    fi
-    if [ -f "node_modules/.bin/esbuild" ]; then
-      ESBUILD="node_modules/.bin/esbuild"
-    else
-      ESBUILD="npx esbuild"
-    fi
-    $TAILWIND -i src/input.css -o assets/css/tailwind.css --minify
-    $ESBUILD src/index.jsx \
-      --bundle \
-      --outfile=assets/js/app.js \
-      --format=iife \
-      --jsx=transform \
-      --target=es2020 \
-      --minify-syntax
-  fi
-
-  # Deploy built files to web root
-  echo "  → Deploying to web root..."
-  mkdir -p /var/www/html/assets/js /var/www/html/assets/css
-  cp assets/js/app.js /var/www/html/assets/js/app.js
-  cp assets/css/tailwind.css /var/www/html/assets/css/tailwind.css
-
-  # Download React libraries if not present
-  if [ ! -f /var/www/html/assets/js/react.production.min.js ]; then
-    echo "  → Downloading React libraries..."
-    curl -sL https://unpkg.com/react@18/umd/react.production.min.js \
-      -o /var/www/html/assets/js/react.production.min.js
-    curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js \
-      -o /var/www/html/assets/js/react-dom.production.min.js
-  fi
-
-  # Copy index.html (already pre-compiled with correct structure)
-  echo "  → Copying index.html..."
-  cp index.html /var/www/html/index.html
-
-  # Sync brand assets (favicon, logos, etc.) — these aren't built artifacts
-  # but they live in assets/ alongside the bundled JS/CSS.
-  echo "  → Syncing brand SVGs..."
-  cp assets/*.svg /var/www/html/assets/ 2>/dev/null || true
-
-  echo "  ✓ Web interface built and optimized"
-else
-  # Just copy pre-built files
-  echo "  → Copying web interface files..."
-  cp index.html /var/www/html/
-  if [ -d assets ]; then
-    cp -r assets/* /var/www/html/assets/ 2>/dev/null || true
-  fi
-  echo "  ✓ Web interface updated"
-fi
-
-# Cache-bust: the source index.html pins a fixed `app.js?v=...` string, so browsers
-# would serve a stale cached bundle across deploys (and never show UI changes without a
-# manual hard-refresh). Stamp the deployed copy with a unique build id each deploy.
-if [ -f /var/www/html/index.html ]; then
-  BUILD_ID="$(git -C /opt/proxmox-balance-manager rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)-$(date +%s)"
-  sed -i -E "s#(app\.js\?v=)[^\"'\\)]*#\\1${BUILD_ID}#g; s#(tailwind\.css\?v=)[^\"'\\)]*#\\1${BUILD_ID}#g" /var/www/html/index.html
-  echo "  → Cache-busted assets (build ${BUILD_ID})"
-fi
+bash /opt/proxmox-balance-manager/deploy-frontend.sh
 
 # Update systemd service files (for new services/timers)
 # NOTE: Service restarts are handled by the caller (app.py or update.sh)

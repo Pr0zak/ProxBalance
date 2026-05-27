@@ -1248,53 +1248,11 @@ build_frontend() {
   msg_info "Building Frontend (esbuild + Tailwind)"
   echo ""
 
-  pct exec "$CTID" -- bash <<'BUILD_EOF'
-set -e
-cd /opt/proxmox-balance-manager
-
-echo "════════════════════════════════════════════════════════════════"
-echo "Frontend Build (esbuild bundler + Tailwind CSS)"
-echo "════════════════════════════════════════════════════════════════"
-echo ""
-
-# The frontend bundles src/index.jsx (a component module graph) with esbuild and
-# builds CSS with tailwindcss — NOT Babel. build.sh is the single source of truth and
-# falls back to npx, but install the toolchain locally for a deterministic build.
-mkdir -p /var/www/html/assets/js /var/www/html/assets/css
-
-echo "→ Installing build toolchain (esbuild + tailwindcss)..."
-[ -f package.json ] || npm init -y >/dev/null 2>&1
-npm install --no-audit --no-fund esbuild tailwindcss@3 >/dev/null 2>&1 || true
-
-echo "→ Building (build.sh)..."
-[ -f build.sh ] || { echo "ERROR: build.sh missing" >&2; exit 1; }
-bash build.sh
-
-echo "→ Deploying to /var/www/html..."
-cp index.html /var/www/html/index.html
-cp assets/js/app.js /var/www/html/assets/js/app.js
-cp assets/css/tailwind.css /var/www/html/assets/css/tailwind.css
-cp assets/*.svg /var/www/html/assets/ 2>/dev/null || true
-
-# React/ReactDOM are referenced locally by index.html
-curl -sL https://unpkg.com/react@18/umd/react.production.min.js -o /var/www/html/assets/js/react.production.min.js
-curl -sL https://unpkg.com/react-dom@18/umd/react-dom.production.min.js -o /var/www/html/assets/js/react-dom.production.min.js
-
-# Cache-bust the asset version so browsers don't serve a stale bundle after updates
-BUILD_ID="$(date +%Y%m%d%H%M%S)"
-sed -i -E "s#(app\.js\?v=)[^\"']*#\1${BUILD_ID}#g; s#(tailwind\.css\?v=)[^\"']*#\1${BUILD_ID}#g" /var/www/html/index.html
-
-# Fail loudly if the bundle didn't build. Otherwise nginx's SPA fallback serves
-# index.html for app.js (Content-Type text/html), the browser blocks it on nosniff,
-# and the UI silently won't load (issue #107).
-APP_SIZE=$(stat -c%s /var/www/html/assets/js/app.js 2>/dev/null || echo 0)
-if [ "$APP_SIZE" -lt 10000 ]; then
-  echo "ERROR: app.js build failed or too small (${APP_SIZE} bytes)." >&2
-  echo "       Check Node is >= 18 (node --version) and that npx can reach npm." >&2
-  exit 1
-fi
-echo "✓ Frontend built: app.js ${APP_SIZE} bytes, cache-bust ${BUILD_ID}"
-BUILD_EOF
+  # Shared with post_update.sh — see deploy-frontend.sh. It builds via build.sh, deploys
+  # to the web root, fetches React, cache-busts, and exits non-zero if app.js didn't
+  # build (which — via set -E + the ERR trap — aborts the install loudly rather than
+  # leaving a silently-broken UI, issue #107).
+  pct exec "$CTID" -- bash -c 'cd /opt/proxmox-balance-manager && bash deploy-frontend.sh'
 
   msg_ok "Frontend built and optimized"
 }
