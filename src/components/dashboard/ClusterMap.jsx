@@ -497,30 +497,30 @@ export default function ClusterMap({
                             </div>
                           )}
 
-                          {/* Mount Point Indicator - Border Dot (Top Right) */}
+                          {/* Mount Point Indicator - Square Tag (Top Right) */}
                           {guest.mount_points?.has_mount_points && !isMigrating && !isCompleted && (
                             <div
                               className={`absolute -top-0.5 -right-0.5 ${
                                 guest.mount_points.has_unshared_bind_mount
                                   ? 'bg-orange-500'
                                   : 'bg-cyan-400'
-                              } rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800`}
+                              } rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800`}
                               title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
                             />
                           )}
 
-                          {/* Pinned Disk Indicator - Border Dot (Top Left) */}
+                          {/* Pinned Disk Indicator - Square Tag (Top Left) */}
                           {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
+                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
                               title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
                             />
                           )}
 
-                          {/* IOWait-exempt Indicator - Border Dot (Bottom Left) */}
+                          {/* IOWait-exempt Indicator - Square Tag (Bottom Left) */}
                           {guest.io_exempt && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
+                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
                               title={`IOWait-exempt (${guest.io_exempt_reason || 'tag'}) — this guest's IOWait is excluded from its node's scoring`}
                             />
                           )}
@@ -668,10 +668,10 @@ export default function ClusterMap({
               )}
             </div>
             <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-cyan-400 ring-1 ring-gray-500" />shared mount</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500 ring-1 ring-gray-500" />unshared bind mount</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 ring-1 ring-gray-500" />pinned — cannot migrate</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 ring-1 ring-gray-500" />IOWait-exempt</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-cyan-400 ring-1 ring-gray-500" />shared mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-orange-500 ring-1 ring-gray-500" />unshared bind mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-red-500 ring-1 ring-gray-500" />pinned — cannot migrate</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-amber-400 ring-1 ring-gray-500" />IOWait-exempt</span>
             </div>
           </div>
         </div>
