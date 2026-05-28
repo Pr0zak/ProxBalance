@@ -172,6 +172,19 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const w = 600, h = 80, pad = 4;
   const xFor = (t) => pad + ((t - tStart) / tRange) * (w - 2 * pad);
 
+  // ---- Day markers (local-midnight gridlines, capped so the small chart stays readable) ----
+  const DAY_MS = 86400000;
+  const dayTicks = [];
+  {
+    const d = new Date(tStart); d.setHours(0, 0, 0, 0);
+    let t = d.getTime();
+    if (t < tStart) t += DAY_MS;
+    for (; t <= tEnd; t += DAY_MS) dayTicks.push(t);
+  }
+  const dayStep = Math.max(1, Math.ceil(dayTicks.length / 8));
+  const dayMarks = dayTicks.filter((_, i) => i % dayStep === 0).map(t => ({ t, x: xFor(t) }));
+  const dayLabel = (t) => new Date(t).toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+
   // ---- Per-mode geometry ----
   const colorFor = (i) => NODE_COLORS[i % NODE_COLORS.length];
   const hasData = ts.length >= 2;
@@ -347,6 +360,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No samples in this period</text>
           )}
 
+          {/* Day gridlines (behind the data) */}
+          {hasData && dayMarks.map((m, i) => (
+            <line key={`day-${i}`} x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-gray-400/50 dark:text-slate-600/50" strokeWidth="0.5" strokeDasharray="1,3" />
+          ))}
+
           {view === 'cluster' && hasData && (
             <>
               {/* Area + line gently tinted by health value (green healthy → red critical). */}
@@ -397,6 +415,21 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             />
           )}
         </svg>
+
+        {/* Day labels — crisp HTML aligned to the gridlines (SVG text would stretch). */}
+        {hasData && dayMarks.length > 1 && (
+          <div className="relative h-3">
+            {dayMarks.map((m, i) => (
+              <span
+                key={`dl-${i}`}
+                className="absolute top-0 text-[8px] leading-none text-pb-text2 dark:text-gray-500 tabular-nums whitespace-nowrap"
+                style={{ left: `${(m.x / w) * 100}%`, transform: 'translateX(-50%)' }}
+              >
+                {dayLabel(m.t)}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Count badges as HTML so digits stay crisp (SVG text is stretched by
             preserveAspectRatio="none"). Vertical viewBox units map 1:1 to px (88/88). */}
