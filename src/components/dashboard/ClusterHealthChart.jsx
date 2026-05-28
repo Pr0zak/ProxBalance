@@ -405,10 +405,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           return (
             <div
               key={i}
-              className="absolute pointer-events-none flex items-center justify-center rounded-full text-white font-bold leading-none"
+              className="absolute pointer-events-none flex items-center justify-center rounded-full font-bold leading-none"
               style={{
                 left: `${(b.x / w) * 100}%`, top: `${topPx}px`, transform: 'translate(-50%, -100%)',
-                background: binColor(b.items), fontSize: '8px', minWidth: '12px', height: '12px', padding: '0 2px',
+                background: binColor(b.items), color: 'rgba(17,24,39,0.92)', fontSize: '9px',
+                minWidth: '14px', height: '14px', padding: '0 3px', boxShadow: '0 0 0 1px rgba(255,255,255,0.9)',
               }}
             >
               {b.items.length}
