@@ -374,13 +374,15 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             // moment). Other views have no single line, so a small tick at the baseline.
             if (view === 'cluster' && hasData) {
               const cy = yOnLine(b.x);
+              // Downward triangle with its tip on the line (round dots get stretched into
+              // ovals by preserveAspectRatio="none").
               return (
                 <g key={i}>
-                  <circle cx={b.x} cy={cy} r={count > 1 ? 3.2 : 2.6} fill={color} stroke="white" strokeWidth="0.7">
+                  <polygon points={`${b.x - 3},${cy - 7} ${b.x + 3},${cy - 7} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth="0.5">
                     <title>{binTitle(b.items)}</title>
-                  </circle>
+                  </polygon>
                   {count > 1 && (
-                    <text x={b.x} y={cy - 5} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
+                    <text x={b.x} y={cy - 9} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
                   )}
                 </g>
               );
@@ -461,9 +463,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
       {showMarkers && rawMarkers.length > 0 && (
         <div className="flex items-center gap-3 mt-2 text-[10px] text-pb-text2 dark:text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.ok }} />completed</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.other }} />other</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.fail }} />failed</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
           <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · hover for detail' : 'hover for detail'}</span>
         </div>
       )}
