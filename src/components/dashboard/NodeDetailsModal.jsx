@@ -2,6 +2,7 @@ import {
   Server, X, Activity, CheckCircle, XCircle, AlertTriangle, MoveRight, Loader, Lock
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import MiniTrendChart from './MiniTrendChart.jsx';
 
 export default function NodeDetailsModal({
   selectedNode, setSelectedNode,
@@ -12,9 +13,23 @@ export default function NodeDetailsModal({
   setError,
   nodeScores, penaltyConfig,
   API_BASE,
+  data, recommendations, setSelectedGuestDetails, setConfirmMigration,
   setGuestTargets
 }) {
   if (!selectedNode) return null;
+
+  const trend = selectedNode.trend_data || {};
+  const trendPoints = (trend.day && trend.day.length >= 2) ? trend.day
+    : (trend.hour && trend.hour.length >= 2) ? trend.hour
+    : (trend.week || []);
+  const nodeGuests = data && data.guests
+    ? Object.values(data.guests).filter(g => g.node === selectedNode.name)
+    : [];
+  const recs = Array.isArray(recommendations) ? recommendations : [];
+  const movingOff = recs.filter(r => r.source_node === selectedNode.name);
+  const movingHere = recs.filter(r => r.target_node === selectedNode.name);
+  const offVmids = new Set(movingOff.map(r => String(r.vmid)));
+  const openGuest = (g) => { setSelectedNode(null); if (setSelectedGuestDetails) setSelectedGuestDetails({ ...g, currentNode: selectedNode.name }); };
 
   return (
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedNode(null)}>
@@ -87,6 +102,51 @@ export default function NodeDetailsModal({
               <div className="text-[11px] text-pb-text2 dark:text-gray-400">I/O latency</div>
             </div>
           </div>
+
+          {/* History (real trend data) */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400">History (24h)</h4>
+            </div>
+            <div className="bg-pb-surface2 dark:bg-slate-800/60 rounded-lg p-2">
+              <MiniTrendChart
+                points={trendPoints}
+                series={[
+                  { key: 'cpu', label: 'CPU', color: '#3b82f6' },
+                  { key: 'mem', label: 'Mem', color: '#a855f7' },
+                  { key: 'iowait', label: 'IOWait', color: '#f59e0b' },
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Recommendations involving this node */}
+          {(movingOff.length > 0 || movingHere.length > 0) && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/60 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <MoveRight size={14} className="text-amber-600 dark:text-amber-400" />
+                <h4 className="text-sm font-semibold text-pb-text dark:text-white">
+                  Recommendations — {movingOff.length} off / {movingHere.length} here
+                </h4>
+              </div>
+              <div className="space-y-1">
+                {[...movingOff.map(r => ({ r, dir: 'off' })), ...movingHere.map(r => ({ r, dir: 'in' }))].map(({ r, dir }) => (
+                  <div key={`${dir}-${r.vmid}`} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-pb-text dark:text-gray-200 truncate">
+                      <span className="font-mono text-pb-text2 dark:text-gray-400">{r.type} {r.vmid}</span> {r.name}
+                      <span className="text-pb-text2 dark:text-gray-400"> · {r.source_node} → {r.target_node}</span>
+                    </span>
+                    {canMigrate && setConfirmMigration && (
+                      <button
+                        onClick={() => { setSelectedNode(null); setConfirmMigration(r); }}
+                        className="shrink-0 px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium"
+                      >Migrate</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Migration Suitability Metrics */}
           {selectedNode.metrics && (
@@ -226,6 +286,39 @@ export default function NodeDetailsModal({
               </div>
               <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
                 Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor.
+              </div>
+            </div>
+          )}
+
+          {/* Guests on this node */}
+          {nodeGuests.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400 mb-1.5">Guests ({nodeGuests.length})</h4>
+              <div className="rounded-lg border border-pb-border dark:border-slate-700 divide-y divide-pb-border dark:divide-slate-700 max-h-52 overflow-y-auto">
+                {nodeGuests
+                  .slice()
+                  .sort((a, b) => (b.cpu_current || 0) - (a.cpu_current || 0))
+                  .map(g => {
+                    const memPct = g.mem_max_gb > 0 ? ((g.mem_used_gb || 0) / g.mem_max_gb) * 100 : 0;
+                    const isVM = (g.type || '').toUpperCase() === 'VM' || (g.type || '').toUpperCase() === 'QEMU';
+                    return (
+                      <button
+                        key={g.vmid}
+                        onClick={() => openGuest(g)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${g.status === 'running' ? 'bg-green-500' : 'bg-gray-400'}`} title={g.status} />
+                        <span className={`shrink-0 px-1 rounded text-[10px] font-bold ${isVM ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'}`}>{isVM ? 'VM' : 'CT'}</span>
+                        <span className="font-mono text-pb-text2 dark:text-gray-400 shrink-0">{g.vmid}</span>
+                        <span className="text-pb-text dark:text-gray-200 truncate flex-1">{g.name || ''}</span>
+                        {offVmids.has(String(g.vmid)) && (
+                          <span className="shrink-0 text-amber-600 dark:text-amber-400 flex items-center gap-0.5" title="Recommended to move off this node"><MoveRight size={11} />move</span>
+                        )}
+                        <span className="shrink-0 tabular-nums text-pb-text2 dark:text-gray-400">{(g.cpu_current || 0).toFixed(0)}% cpu</span>
+                        <span className="shrink-0 tabular-nums text-pb-text2 dark:text-gray-400">{memPct.toFixed(0)}% mem</span>
+                      </button>
+                    );
+                  })}
               </div>
             </div>
           )}

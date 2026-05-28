@@ -326,6 +326,10 @@ export default function DashboardPage({
           nodeScores={nodeScores}
           penaltyConfig={penaltyConfig}
           API_BASE={API_BASE}
+          data={data}
+          recommendations={recommendations}
+          setSelectedGuestDetails={setSelectedGuestDetails}
+          setConfirmMigration={setConfirmMigration}
         />
 
         <GuestDetailsModal
