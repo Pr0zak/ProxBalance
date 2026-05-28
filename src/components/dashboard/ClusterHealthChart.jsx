@@ -61,29 +61,25 @@ const lsGet = (k, fallback) => { try { return localStorage.getItem(k) || fallbac
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // Health bands (cluster_health / suitability: higher = healthier).
+// Softened/muted tones so the color coding stays a gentle hint, not a loud alarm.
 const HEALTH_BANDS = [
-  { min: 70, color: '#22c55e', label: 'Healthy' },
-  { min: 50, color: '#eab308', label: 'Fair' },
-  { min: 30, color: '#f97316', label: 'Strained' },
-  { min: -Infinity, color: '#ef4444', label: 'Critical' },
+  { min: 70, color: '#5fae7d', label: 'Healthy' },
+  { min: 50, color: '#cdab52', label: 'Fair' },
+  { min: 30, color: '#dd8b54', label: 'Strained' },
+  { min: -Infinity, color: '#d06b6b', label: 'Critical' },
 ];
 const healthColor = (v) => (HEALTH_BANDS.find(b => v >= b.min) || HEALTH_BANDS[HEALTH_BANDS.length - 1]).color;
-// Build vertical-gradient stops so the line/area is colored by absolute health value,
-// with hard transitions at the band boundaries — even though the y-axis is zoomed to
-// the data's [min,max]. offset 0 = top (max value), offset 1 = bottom (min value).
+// Build vertical-gradient stops so the line/area is colored by absolute health value.
+// Single stop per anchor (band boundaries) → SVG blends smoothly between bands for a
+// soft fade rather than a hard cut. offset 0 = top (max value), offset 1 = bottom (min).
 const healthStops = (vMin, vMax) => {
   const range = (vMax - vMin) || 1;
   const off = (v) => Math.min(1, Math.max(0, (vMax - v) / range));
-  const stops = [{ o: 0, c: healthColor(vMax) }];
-  [70, 50, 30].forEach(b => {
-    if (b > vMin && b < vMax) {
-      const o = off(b);
-      stops.push({ o, c: healthColor(b + 0.01) });
-      stops.push({ o, c: healthColor(b - 0.01) });
-    }
-  });
-  stops.push({ o: 1, c: healthColor(vMin) });
-  return stops;
+  const anchors = [vMax, 70, 50, 30, vMin]
+    .filter(v => v >= vMin && v <= vMax)
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort((a, b) => b - a); // high → low (offset 0 → 1)
+  return anchors.map(v => ({ o: off(v), c: healthColor(v) }));
 };
 
 /**
@@ -297,9 +293,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
           {view === 'cluster' && hasData && (
             <>
-              {/* Area + line colored by health value (green healthy → red critical). */}
-              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" fillOpacity="0.18" />
-              <polyline points={clusterLine} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2.5" strokeLinejoin="round" />
+              {/* Area + line gently tinted by health value (green healthy → red critical). */}
+              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" fillOpacity="0.12" />
+              <polyline points={clusterLine} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2" strokeOpacity="0.9" strokeLinejoin="round" />
             </>
           )}
 
