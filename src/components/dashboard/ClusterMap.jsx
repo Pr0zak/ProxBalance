@@ -298,6 +298,7 @@ export default function ClusterMap({
               const rating = ns && typeof ns.suitability_rating === 'number' ? ns.suitability_rating : null;
               const isMaint = maintenanceNodes.has(node.name);
               const scored = node.status === 'online' && !isMaint && rating != null;
+              const sc = scored ? scoreHex(rating) : null;
               const nodeIowait = node.metrics?.current_iowait || 0;
 
               return (
@@ -306,11 +307,11 @@ export default function ClusterMap({
                   <div className="relative group">
                     {scored && (
                       <div
-                        className="absolute -top-2 -right-2 z-20 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow ring-2 ring-white dark:ring-slate-900"
-                        style={{ background: scoreHex(rating) }}
+                        className="absolute -top-2 -right-2 z-20 flex items-center gap-1 pl-1 pr-1.5 py-0.5 rounded-md bg-white/85 dark:bg-slate-900/85 backdrop-blur-sm border border-pb-border/70 dark:border-slate-700/70 shadow-sm"
                         title={`Suitability ${rating}% — ${ns.suitable ? 'suitable target' : 'not a good target'}`}
                       >
-                        {Math.round(rating)}
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
+                        <span className="text-[10px] font-bold tabular-nums text-pb-text dark:text-gray-100">{Math.round(rating)}</span>
                       </div>
                     )}
                     <div
@@ -319,7 +320,7 @@ export default function ClusterMap({
                       onDragOver={dragMode ? (e) => { e.preventDefault(); setDragOverNode(node.name); } : undefined}
                       onDragLeave={dragMode ? () => setDragOverNode(prev => (prev === node.name ? null : prev)) : undefined}
                       onDrop={dragMode ? (e) => { e.preventDefault(); onGuestDrop(node.name); } : undefined}
-                      style={scored ? { borderColor: scoreHex(rating) } : undefined}
+                      style={scored ? { borderColor: `${sc}55`, boxShadow: `0 0 14px -4px ${sc}66, inset 0 0 26px -12px ${sc}99` } : undefined}
                       className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                       isMaint
                         ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
