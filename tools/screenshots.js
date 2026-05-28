@@ -75,9 +75,13 @@ async function shoot(browser, theme, page, clusterTab) {
 
   // Inject dark-mode preference *before* the first navigation so the
   // useDarkMode hook reads the right value on its initial useState.
-  await tab.evaluateOnNewDocument((t) => {
-    try { localStorage.setItem('darkMode', t === 'dark' ? 'true' : 'false'); } catch (_) {}
-  }, theme);
+  await tab.evaluateOnNewDocument((t, ct) => {
+    try {
+      localStorage.setItem('darkMode', t === 'dark' ? 'true' : 'false');
+      // The Charts docs shot reads better at the 7-day range than the 30-day default.
+      if (ct === 'charts') localStorage.setItem('clusterHealthChartPeriod', '7d');
+    } catch (_) {}
+  }, theme, clusterTab ? clusterTab.file : null);
 
   await tab.goto(URL_BASE, { waitUntil: 'networkidle0', timeout: 30000 });
   await waitForReact(tab);
@@ -96,16 +100,6 @@ async function shoot(browser, theme, page, clusterTab) {
   // Activate a Cluster section tab (Nodes/Guests/Map/Charts/Suggestions). These
   // buttons live in the Cluster card, not the TopNav; strip any "(N)" count.
   if (clusterTab) {
-    // The app lazy-loads Chart.js only after the Charts tab mounts, which races
-    // the per-node <canvas> charts (they mount before `Chart` exists and bail).
-    // Pre-inject the local Chart.js + annotation plugin so they render on mount.
-    if (clusterTab.file === 'charts') {
-      for (const f of ['chart.umd.min.js', 'chartjs-plugin-annotation.min.js']) {
-        await tab.addScriptTag({ url: new URL('assets/js/' + f, URL_BASE).href }).catch(() => {});
-      }
-      await sleep(300);
-    }
-
     await tab.evaluate((label) => {
       const btn = [...document.querySelectorAll('button')].find(
         el => !el.closest('nav') && el.textContent.trim().replace(/\s*\(\d+\)$/, '') === label
@@ -114,14 +108,26 @@ async function shoot(browser, theme, page, clusterTab) {
     }, clusterTab.label);
     await sleep(1800);
 
-    // Wait for the per-node line charts to paint, then the capture below switches
-    // to full-page so they're all in frame.
+    // The per-node line charts (Chart.js <canvas>) mount before the app finishes
+    // lazy-loading Chart.js, so their first effect bails and they come out blank.
+    // Wait for Chart.js, then toggle the "Markers" overlay (off→on) so each
+    // NodeChart's effect re-runs with Chart available and actually paints. Then
+    // the capture below goes full-page so all of them are in frame.
     if (clusterTab.file === 'charts') {
+      await tab.waitForFunction(() => typeof window.Chart !== 'undefined', { timeout: 10000 }).catch(() => {});
+      await sleep(500);
+      for (let i = 0; i < 2; i++) {
+        await tab.evaluate(() => {
+          const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Markers');
+          if (b) b.click();
+        });
+        await sleep(500);
+      }
       await tab.waitForFunction(
         () => [...document.querySelectorAll('canvas')].some(c => c.width > 0 && c.height > 0),
         { timeout: 10000 }
       ).catch(() => {});
-      await sleep(2500);
+      await sleep(1500);
     }
   }
 
