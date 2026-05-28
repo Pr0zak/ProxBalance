@@ -88,14 +88,13 @@ export default function DashboardPage({
   // Chart.js lazy loader
   loadChartJs, chartJsLoaded,
   // Helper functions
-  checkAffinityViolations, generateSparkline, fetchGuestLocations,
+  checkAffinityViolations, fetchGuestLocations,
   // Guest migration options
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions, setGuestMigrationOptions,
   // API base
   API_BASE
 }) {
   // Dashboard Page - data is guaranteed to be available here
-  const [showPredicted, setShowPredicted] = useState(false);
   const [showCrsEditor, setShowCrsEditor] = useState(false);
 
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
@@ -192,7 +191,6 @@ export default function DashboardPage({
           recommendations={recommendations}
           chartPeriod={chartPeriod}
           setChartPeriod={setChartPeriod}
-          generateSparkline={generateSparkline}
           setSelectedNode={setSelectedNode}
           setSelectedGuestDetails={setSelectedGuestDetails}
           showPoweredOffGuests={showPoweredOffGuests}
@@ -203,8 +201,6 @@ export default function DashboardPage({
           guestsMigrating={guestsMigrating}
           migrationProgress={migrationProgress}
           completedMigrations={completedMigrations}
-          showPredicted={showPredicted}
-          setShowPredicted={setShowPredicted}
           nodeGridColumns={nodeGridColumns}
           setNodeGridColumns={setNodeGridColumns}
           loadChartJs={loadChartJs}
@@ -301,10 +297,9 @@ export default function DashboardPage({
             <ClusterHealthChart scoreHistory={scoreHistory} migrationHistory={migrationHistory} fetchScoreHistory={fetchScoreHistory} />
             <NodeStatusSection
               data={data}
+              migrationHistory={migrationHistory}
               collapsedSections={collapsedSections}
               toggleSection={toggleSection}
-              showPredicted={showPredicted}
-              setShowPredicted={setShowPredicted}
               recommendationData={recommendationData}
               recommendations={recommendations}
               nodeGridColumns={nodeGridColumns}
@@ -312,7 +307,6 @@ export default function DashboardPage({
               chartPeriod={chartPeriod}
               setChartPeriod={setChartPeriod}
               nodeScores={nodeScores}
-              generateSparkline={generateSparkline}
             />
           </>
         )}
@@ -331,14 +325,16 @@ export default function DashboardPage({
           setError={setError}
           nodeScores={nodeScores}
           penaltyConfig={penaltyConfig}
-          generateSparkline={generateSparkline}
           API_BASE={API_BASE}
+          data={data}
+          recommendations={recommendations}
+          setSelectedGuestDetails={setSelectedGuestDetails}
+          setConfirmMigration={setConfirmMigration}
         />
 
         <GuestDetailsModal
           selectedGuestDetails={selectedGuestDetails}
           setSelectedGuestDetails={setSelectedGuestDetails}
-          generateSparkline={generateSparkline}
           guestModalCollapsed={guestModalCollapsed}
           setGuestModalCollapsed={setGuestModalCollapsed}
           guestMigrationOptions={guestMigrationOptions}
@@ -348,6 +344,8 @@ export default function DashboardPage({
           setSelectedGuest={setSelectedGuest}
           setMigrationTarget={setMigrationTarget}
           setShowMigrationDialog={setShowMigrationDialog}
+          setConfirmMigration={setConfirmMigration}
+          guestProfiles={guestProfiles}
           API_BASE={API_BASE}
         />
 

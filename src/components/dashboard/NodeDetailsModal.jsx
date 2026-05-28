@@ -2,6 +2,10 @@ import {
   Server, X, Activity, CheckCircle, XCircle, AlertTriangle, MoveRight, Loader, Lock
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import MiniTrendChart from './MiniTrendChart.jsx';
+import Section from './CollapsibleSection.jsx';
+
+const { useState } = React;
 
 export default function NodeDetailsModal({
   selectedNode, setSelectedNode,
@@ -11,11 +15,27 @@ export default function NodeDetailsModal({
   setEvacuationPlan, setPlanNode,
   setError,
   nodeScores, penaltyConfig,
-  generateSparkline,
   API_BASE,
+  data, recommendations, setSelectedGuestDetails, setConfirmMigration,
   setGuestTargets
 }) {
+  const [open, setOpen] = useState({ history: false, recs: false, suitability: false, guests: false });
+  const toggle = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
+
   if (!selectedNode) return null;
+
+  const trend = selectedNode.trend_data || {};
+  const trendPoints = (trend.day && trend.day.length >= 2) ? trend.day
+    : (trend.hour && trend.hour.length >= 2) ? trend.hour
+    : (trend.week || []);
+  const nodeGuests = data && data.guests
+    ? Object.values(data.guests).filter(g => g.node === selectedNode.name)
+    : [];
+  const recs = Array.isArray(recommendations) ? recommendations : [];
+  const movingOff = recs.filter(r => r.source_node === selectedNode.name);
+  const movingHere = recs.filter(r => r.target_node === selectedNode.name);
+  const offVmids = new Set(movingOff.map(r => String(r.vmid)));
+  const openGuest = (g) => { setSelectedNode(null); if (setSelectedGuestDetails) setSelectedGuestDetails({ ...g, currentNode: selectedNode.name }); };
 
   return (
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedNode(null)}>
@@ -46,99 +66,97 @@ export default function NodeDetailsModal({
         {/* Modal Body */}
         {/* Scrollable Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto">
-          {/* Node Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
-              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Guests</div>
-              <div className="text-2xl font-bold text-pb-text dark:text-white">
+          {/* Status row: Guests / Status / Uptime */}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">Guests</div>
+              <div className="text-lg font-bold text-pb-text dark:text-white">
                 {selectedNode.guests ? Object.keys(selectedNode.guests).length : 0}
               </div>
             </div>
-            <div className="relative overflow-hidden bg-gradient-to-br from-blue-900/20 to-blue-800/20 rounded-lg p-4">
-              {/* Sparkline background */}
-              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-blue-600 dark:text-blue-400"
-                  points={generateSparkline(selectedNode.cpu_percent || 0, 100, 40, 0.3)}
-                />
-              </svg>
-              <div className="relative z-10">
-                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">CPU Usage</div>
-                <div className="text-2xl font-bold text-pb-text dark:text-white">
-                  {(selectedNode.cpu_percent || 0).toFixed(1)}%
-                </div>
-                <div className="text-xs text-pb-text2 dark:text-gray-400">{selectedNode.cpu_cores || 0} cores</div>
-              </div>
-            </div>
-            <div className="relative overflow-hidden bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded-lg p-4">
-              {/* Sparkline background */}
-              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-purple-600 dark:text-purple-400"
-                  points={generateSparkline(selectedNode.mem_percent || 0, 100, 40, 0.25)}
-                />
-              </svg>
-              <div className="relative z-10">
-                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">Memory Usage</div>
-                <div className="text-2xl font-bold text-pb-text dark:text-white">
-                  {(selectedNode.mem_percent || 0).toFixed(1)}%
-                </div>
-                <div className="text-xs text-pb-text2 dark:text-gray-400">{((selectedNode.mem_used || 0) / 1073741824).toFixed(1)} GB / {((selectedNode.mem_total || 0) / 1073741824).toFixed(1)} GB</div>
-              </div>
-            </div>
-            <div className="relative overflow-hidden bg-gradient-to-br from-orange-900/20 to-orange-800/20 rounded-lg p-4">
-              {/* Sparkline background */}
-              <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-orange-600 dark:text-orange-400"
-                  points={generateSparkline(selectedNode.metrics?.current_iowait || 0, 100, 40, 0.35)}
-                />
-              </svg>
-              <div className="relative z-10">
-                <div className="text-sm text-pb-text dark:text-gray-300 mb-1">IOWait</div>
-                <div className="text-2xl font-bold text-pb-text dark:text-white">
-                  {(selectedNode.metrics?.current_iowait || 0).toFixed(1)}%
-                </div>
-                <div className="text-xs text-pb-text2 dark:text-gray-400">I/O latency</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Node Info */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3">
-              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Status</div>
-              <div className={`text-lg font-semibold ${
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">Status</div>
+              <div className={`text-lg font-bold capitalize ${
                 selectedNode.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
               }`}>
                 {selectedNode.status || 'unknown'}
               </div>
             </div>
-            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-3">
-              <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Uptime</div>
-              <div className="text-lg font-semibold text-pb-text dark:text-white">
+            <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">Uptime</div>
+              <div className="text-lg font-bold text-pb-text dark:text-white">
                 {selectedNode.uptime ? Math.floor(selectedNode.uptime / 86400) + 'd' : 'N/A'}
               </div>
             </div>
           </div>
 
+          {/* CPU / Memory / IOWait */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="bg-gradient-to-br from-blue-900/20 to-blue-800/20 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text dark:text-gray-300">CPU</div>
+              <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedNode.cpu_percent || 0).toFixed(1)}%</div>
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">{selectedNode.cpu_cores || 0} cores</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text dark:text-gray-300">Memory</div>
+              <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedNode.mem_percent || 0).toFixed(1)}%</div>
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">{((selectedNode.mem_used || 0) / 1073741824).toFixed(1)} / {((selectedNode.mem_total || 0) / 1073741824).toFixed(1)} GB</div>
+            </div>
+            <div className="bg-gradient-to-br from-orange-900/20 to-orange-800/20 rounded-lg px-3 py-2">
+              <div className="text-[11px] text-pb-text dark:text-gray-300">IOWait</div>
+              <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedNode.metrics?.current_iowait || 0).toFixed(1)}%</div>
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">I/O latency</div>
+            </div>
+          </div>
+
+          {/* History (real trend data) */}
+          <Section title="History (24h)" isOpen={open.history} onToggle={() => toggle('history')}>
+            <div className="bg-pb-surface2 dark:bg-slate-800/60 rounded-lg p-2">
+              <MiniTrendChart
+                points={trendPoints}
+                series={[
+                  { key: 'cpu', label: 'CPU', color: '#3b82f6' },
+                  { key: 'mem', label: 'Mem', color: '#a855f7' },
+                  { key: 'iowait', label: 'IOWait', color: '#f59e0b' },
+                ]}
+              />
+            </div>
+          </Section>
+
+          {/* Recommendations involving this node */}
+          {(movingOff.length > 0 || movingHere.length > 0) && (
+            <Section
+              title={<><MoveRight size={14} className="text-amber-600 dark:text-amber-400" /> Recommendations</>}
+              badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{movingOff.length} off / {movingHere.length} here</span>}
+              isOpen={open.recs}
+              onToggle={() => toggle('recs')}
+            >
+              <div className="space-y-1">
+                {[...movingOff.map(r => ({ r, dir: 'off' })), ...movingHere.map(r => ({ r, dir: 'in' }))].map(({ r, dir }) => (
+                  <div key={`${dir}-${r.vmid}`} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-pb-text dark:text-gray-200 truncate">
+                      <span className="font-mono text-pb-text2 dark:text-gray-400">{r.type} {r.vmid}</span> {r.name}
+                      <span className="text-pb-text2 dark:text-gray-400"> · {r.source_node} → {r.target_node}</span>
+                    </span>
+                    {canMigrate && setConfirmMigration && (
+                      <button
+                        onClick={() => { setSelectedNode(null); setConfirmMigration(r); }}
+                        className="shrink-0 px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium"
+                      >Migrate</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          )}
+
           {/* Migration Suitability Metrics */}
           {selectedNode.metrics && (
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity size={16} className="text-blue-600 dark:text-blue-400" />
-                <h4 className="text-sm font-semibold text-pb-text dark:text-white">Migration Target Suitability</h4>
-              </div>
-
+            <Section
+              title={<><Activity size={16} className="text-blue-600 dark:text-blue-400" /> Migration Target Suitability</>}
+              isOpen={open.suitability}
+              onToggle={() => toggle('suitability')}
+            >
               {/* Overall Score Display */}
               {nodeScores && nodeScores[selectedNode.name] && (
                 <div className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border-2 border-blue-600">
@@ -270,12 +288,49 @@ export default function NodeDetailsModal({
               <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
                 Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor.
               </div>
-            </div>
+            </Section>
+          )}
+
+          {/* Guests on this node */}
+          {nodeGuests.length > 0 && (
+            <Section
+              title="Guests"
+              badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{nodeGuests.length}</span>}
+              isOpen={open.guests}
+              onToggle={() => toggle('guests')}
+            >
+              <div className="rounded-lg border border-pb-border dark:border-slate-700 divide-y divide-pb-border dark:divide-slate-700 max-h-52 overflow-y-auto">
+                {nodeGuests
+                  .slice()
+                  .sort((a, b) => (b.cpu_current || 0) - (a.cpu_current || 0))
+                  .map(g => {
+                    const memPct = g.mem_max_gb > 0 ? ((g.mem_used_gb || 0) / g.mem_max_gb) * 100 : 0;
+                    const isVM = (g.type || '').toUpperCase() === 'VM' || (g.type || '').toUpperCase() === 'QEMU';
+                    return (
+                      <button
+                        key={g.vmid}
+                        onClick={() => openGuest(g)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${g.status === 'running' ? 'bg-green-500' : 'bg-gray-400'}`} title={g.status} />
+                        <span className={`shrink-0 px-1 rounded text-[10px] font-bold ${isVM ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'}`}>{isVM ? 'VM' : 'CT'}</span>
+                        <span className="font-mono text-pb-text2 dark:text-gray-400 shrink-0">{g.vmid}</span>
+                        <span className="text-pb-text dark:text-gray-200 truncate flex-1">{g.name || ''}</span>
+                        {offVmids.has(String(g.vmid)) && (
+                          <span className="shrink-0 text-amber-600 dark:text-amber-400 flex items-center gap-0.5" title="Recommended to move off this node"><MoveRight size={11} />move</span>
+                        )}
+                        <span className="shrink-0 tabular-nums text-pb-text2 dark:text-gray-400">{(g.cpu_current || 0).toFixed(0)}% cpu</span>
+                        <span className="shrink-0 tabular-nums text-pb-text2 dark:text-gray-400">{memPct.toFixed(0)}% mem</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </Section>
           )}
 
           {/* Maintenance Mode Info */}
           {maintenanceNodes.has(selectedNode.name) && (
-            <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <div className="flex items-start gap-3">
                 <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-yellow-800 dark:text-yellow-200">

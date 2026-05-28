@@ -551,6 +551,28 @@ def get_guest_profiles():
     return jsonify({"success": True, "profiles": result})
 
 
+@guests_bp.route("/api/guests/<vmid>/history", methods=["GET"])
+@api_route
+def get_guest_metrics_history(vmid):
+    """Return a guest's CPU/memory time-series (0-100%) for charting, downsampled."""
+    from proxbalance.metrics_store import get_guest_history
+
+    hours = request.args.get("hours", 24, type=int)
+    samples = get_guest_history(str(vmid), hours=hours)
+
+    points = [
+        {"time": s.get("ts"), "cpu": round(s.get("cpu", 0) or 0, 2), "mem": round(s.get("memory", 0) or 0, 2)}
+        for s in samples if s.get("ts") is not None
+    ]
+
+    # Downsample to ~80 points so the mini-chart stays readable.
+    if len(points) > 80:
+        step = len(points) / 80.0
+        points = [points[int(i * step)] for i in range(80)]
+
+    return jsonify({"success": True, "vmid": vmid, "points": points})
+
+
 @guests_bp.route("/api/affinity-groups", methods=["GET"])
 @api_route
 def get_affinity_groups():

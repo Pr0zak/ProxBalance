@@ -168,6 +168,8 @@ export default function ClusterSection(props) {
           guestsMigrating={props.guestsMigrating}
           migrationProgress={props.migrationProgress}
           completedMigrations={props.completedMigrations}
+          nodeScores={props.nodeScores}
+          recommendations={props.recommendations}
         />
       )}
       {effectiveTab === 'charts' && (
@@ -175,9 +177,8 @@ export default function ClusterSection(props) {
           <ClusterHealthChart scoreHistory={props.scoreHistory} migrationHistory={props.migrationHistory} fetchScoreHistory={props.fetchScoreHistory} />
           <NodeStatusSection
           embedded
+          migrationHistory={props.migrationHistory}
           data={props.data}
-          showPredicted={props.showPredicted}
-          setShowPredicted={props.setShowPredicted}
           recommendationData={props.recommendationData}
           recommendations={props.recommendations}
           nodeGridColumns={props.nodeGridColumns}
@@ -185,7 +186,6 @@ export default function ClusterSection(props) {
           chartPeriod={props.chartPeriod}
           setChartPeriod={props.setChartPeriod}
           nodeScores={props.nodeScores}
-          generateSparkline={props.generateSparkline}
         />
         </>
       )}

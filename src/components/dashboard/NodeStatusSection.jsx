@@ -1,18 +1,37 @@
-import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
+import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
+
+const { useState } = React;
 
 export default function NodeStatusSection({
   data,
   collapsedSections, toggleSection,
-  showPredicted, setShowPredicted,
   recommendationData, recommendations,
   nodeGridColumns, setNodeGridColumns,
   chartPeriod, setChartPeriod,
   nodeScores,
-  generateSparkline,
+  migrationHistory,
   embedded = false,
 }) {
+  // Shared crosshair time across all node charts; expanded node for the detail modal.
+  const [hoverTime, setHoverTime] = useState(null);
+  const [expandedNode, setExpandedNode] = useState(null);
+  // Predicted-impact overlay was removed; keep the flag false so the collapsed-card
+  // conditionals simply render live values.
+  const showPredicted = false;
+  // Recommendation thresholds (the lines that trigger migrations) for chart overlays.
+  const thresholds = {
+    cpu: recommendationData?.parameters?.cpu_threshold,
+    mem: recommendationData?.parameters?.mem_threshold,
+    iowait: recommendationData?.parameters?.iowait_threshold,
+  };
+  // Chart overlay toggles (persisted). Envelope defaults off — it's the busiest.
+  const lsBool = (k, dflt) => { try { const v = localStorage.getItem(k); return v == null ? dflt : v === 'true'; } catch { return dflt; } };
+  const [showMarkers, setShowMarkers] = useState(() => lsBool('nodeChartMarkers', true));
+  const [showThresholds, setShowThresholds] = useState(() => lsBool('nodeChartThresholds', true));
+  const [showEnvelope, setShowEnvelope] = useState(() => lsBool('nodeChartEnvelope', false));
+  const overlayToggle = (key, val, setter) => { setter(val); try { localStorage.setItem(key, String(val)); } catch {} };
   // When embedded, the parent owns the section card and header; always render expanded.
   const Wrapper = embedded ? React.Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
@@ -39,21 +58,6 @@ export default function NodeStatusSection({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              {/* B4: Predicted Impact Toggle */}
-              {recommendationData?.summary?.batch_impact && recommendations.length > 0 && (
-                <button
-                  onClick={() => setShowPredicted(!showPredicted)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    showPredicted
-                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-700'
-                      : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600 border border-pb-border dark:border-slate-600'
-                  }`}
-                  title="Show predicted node metrics after all recommended migrations"
-                >
-                  <Eye size={14} />
-                  {showPredicted ? 'Showing Predicted' : 'Show Predicted'}
-                </button>
-              )}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
@@ -89,6 +93,27 @@ export default function NodeStatusSection({
                   <option value="1y">1 Year</option>
                 </select>
               </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
+                <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+                  {[
+                    { k: 'nodeChartMarkers', label: 'Markers', val: showMarkers, set: setShowMarkers },
+                    { k: 'nodeChartThresholds', label: 'Thresholds', val: showThresholds, set: setShowThresholds },
+                    { k: 'nodeChartEnvelope', label: 'Min/Max', val: showEnvelope, set: setShowEnvelope },
+                  ].map(o => (
+                    <button
+                      key={o.k}
+                      onClick={() => overlayToggle(o.k, !o.val, o.set)}
+                      className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+                        o.val ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                      }`}
+                      title={`${o.val ? 'Hide' : 'Show'} ${o.label.toLowerCase()} on the resource charts`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -120,9 +145,9 @@ export default function NodeStatusSection({
                     </div>
                   </div>
                   <div className="space-y-1.5 text-xs">
-                    {/* CPU with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* CPU */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">CPU:
                           {(() => {
                             const trend = node.metrics?.cpu_trend;
@@ -147,20 +172,11 @@ export default function NodeStatusSection({
                           </span>
                         )}
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-blue-500"
-                          points={generateSparkline(node.cpu_percent || 0, 100, 30, 0.3)}
-                        />
-                      </svg>
                     </div>
 
-                    {/* Memory with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* Memory */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">Memory:
                           {(() => {
                             const trend = node.metrics?.mem_trend;
@@ -185,20 +201,11 @@ export default function NodeStatusSection({
                         </span>
                         )}
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-purple-500"
-                          points={generateSparkline(node.mem_percent || 0, 100, 30, 0.25)}
-                        />
-                      </svg>
                     </div>
 
-                    {/* IOWait with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* IOWait */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">IOWait:
                           {(() => {
                             const iowait = node.metrics?.current_iowait || 0;
@@ -222,15 +229,6 @@ export default function NodeStatusSection({
                           {(node.metrics?.current_iowait || 0).toFixed(1)}%
                         </span>
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-orange-500"
-                          points={generateSparkline(node.metrics?.current_iowait || 0, 100, 30, 0.35)}
-                        />
-                      </svg>
                     </div>
 
                     <div className="flex justify-between pt-1 border-t border-pb-border dark:border-slate-600">
@@ -336,7 +334,16 @@ export default function NodeStatusSection({
               <div key={node.name} className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold text-pb-text dark:text-white">{node.name}</h3>
-                  <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
+                    {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
+                      <button
+                        onClick={() => setExpandedNode(node.name)}
+                        title="Expand chart"
+                        className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 text-sm leading-none"
+                      >⤢</button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
@@ -352,18 +359,58 @@ export default function NodeStatusSection({
                 </div>
 
                 {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
-                  <div className="mt-4" style={{height: '200px'}}>
+                  <div
+                    className="mt-4 cursor-pointer"
+                    style={{height: '200px'}}
+                    onClick={() => setExpandedNode(node.name)}
+                    title="Click to expand"
+                  >
                     <NodeChart
                       nodeName={node.name}
                       trendData={node.trend_data}
                       chartPeriod={chartPeriod}
                       nodeScore={nodeScores?.[node.name]}
+                      migrationHistory={migrationHistory}
+                      thresholds={thresholds}
+                      hoverTime={hoverTime}
+                      onHoverTime={setHoverTime}
+                      showMarkers={showMarkers}
+                      showThresholds={showThresholds}
+                      showEnvelope={showEnvelope}
                     />
                   </div>
                 )}
               </div>
             ))}
           </div>
+          )}
+
+          {expandedNode && data.nodes[expandedNode] && (
+            <div className={MODAL_OVERLAY} onClick={() => setExpandedNode(null)}>
+              <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-5xl')} !overflow-visible`} onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-4 border-b border-pb-border dark:border-slate-700">
+                  <h3 className="text-lg font-bold text-pb-text dark:text-white">{expandedNode} — resource trend</h3>
+                  <button onClick={() => setExpandedNode(null)} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={22} /></button>
+                </div>
+                <div className="p-4">
+                  <div style={{ height: '60vh' }}>
+                    <NodeChart
+                      nodeName={expandedNode}
+                      trendData={data.nodes[expandedNode].trend_data}
+                      chartPeriod={chartPeriod}
+                      nodeScore={nodeScores?.[expandedNode]}
+                      migrationHistory={migrationHistory}
+                      thresholds={thresholds}
+                      hoverTime={hoverTime}
+                      onHoverTime={setHoverTime}
+                      showMarkers={showMarkers}
+                      showThresholds={showThresholds}
+                      showEnvelope={showEnvelope}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </Wrapper>
   );

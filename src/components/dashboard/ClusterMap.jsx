@@ -1,8 +1,15 @@
 import {
   Server, ChevronDown, Cpu, MemoryStick, Database, Zap, Globe,
-  RefreshCw, CheckCircle, Folder
+  RefreshCw, CheckCircle, Folder, MoveRight
 } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
+
+const { useState, useRef, useLayoutEffect } = React;
+
+// Suitability rating → color (matches the rest of the app: higher = healthier).
+const scoreHex = (r) => r >= 70 ? '#22c55e' : r >= 50 ? '#eab308' : r >= 30 ? '#f97316' : '#ef4444';
+// Load ratio (0..1) → heat color for the "color by load" mode.
+const heatHex = (ratio) => ratio < 0.4 ? '#22c55e' : ratio < 0.7 ? '#eab308' : ratio < 0.88 ? '#f97316' : '#ef4444';
 
 export default function ClusterMap({
   data,
@@ -18,9 +25,62 @@ export default function ClusterMap({
   guestsMigrating,
   migrationProgress,
   completedMigrations,
+  nodeScores,
+  recommendations,
   embedded = false,
 }) {
   if (!data) return null;
+
+  const [colorMode, setColorMode] = useState(() => {
+    try { return localStorage.getItem('clusterMapColorMode') || 'type'; } catch { return 'type'; }
+  });
+  const setColor = (m) => { setColorMode(m); try { localStorage.setItem('clusterMapColorMode', m); } catch {} };
+
+  const [showPlan, setShowPlanState] = useState(() => {
+    try { return localStorage.getItem('clusterMapShowPlan') === '1'; } catch { return false; }
+  });
+  const setShowPlan = (v) => { setShowPlanState(v); try { localStorage.setItem('clusterMapShowPlan', v ? '1' : '0'); } catch {} };
+
+  const mapAreaRef = useRef(null);
+  const nodeRefs = useRef({});
+  const guestRefs = useRef({});
+  const [arrows, setArrows] = useState([]);
+
+  const recList = Array.isArray(recommendations)
+    ? recommendations.filter(r => r && r.source_node && r.target_node && r.vmid != null)
+    : [];
+  const recByVmid = {};
+  recList.forEach(r => { recByVmid[String(r.vmid)] = r; });
+
+  // Measure recommended guest → target-node positions and draw connector arrows.
+  useLayoutEffect(() => {
+    if (!showPlan || !mapAreaRef.current || recList.length === 0) { setArrows([]); return; }
+    const measure = () => {
+      const c = mapAreaRef.current;
+      if (!c) return;
+      const cRect = c.getBoundingClientRect();
+      const next = [];
+      recList.forEach(r => {
+        const g = guestRefs.current[String(r.vmid)];
+        const n = nodeRefs.current[r.target_node];
+        if (!g || !n || !g.isConnected || !n.isConnected) return;
+        const gr = g.getBoundingClientRect();
+        const nr = n.getBoundingClientRect();
+        next.push({
+          key: `${r.vmid}-${r.target_node}`,
+          x1: gr.left + gr.width / 2 - cRect.left,
+          y1: gr.top + gr.height / 2 - cRect.top,
+          x2: nr.left + nr.width / 2 - cRect.left,
+          y2: nr.bottom - cRect.top,
+        });
+      });
+      setArrows(next);
+    };
+    measure();
+    const t = setTimeout(measure, 80);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, [showPlan, recommendations, clusterMapViewMode, showPoweredOffGuests, colorMode, collapsedSections, data]);
 
   // When embedded, the parent owns the section card and header.
   const Wrapper = embedded ? React.Fragment : 'div';
@@ -124,12 +184,51 @@ export default function ClusterMap({
                 <Globe size={14} /><span className="hidden sm:inline ml-1">Network</span>
               </button>
             </div>
+            <span className="text-sm text-pb-text2 dark:text-gray-400">Color:</span>
+            <div className="flex rounded-lg bg-pb-surface2 dark:bg-slate-700 p-1">
+              {[{ id: 'type', label: 'Type' }, { id: 'load', label: 'Load' }].map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setColor(m.id)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    colorMode === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                  }`}
+                  title={m.id === 'type' ? 'Color circles by guest type (VM/CT)' : 'Color circles by load (green→red)'}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {recList.length > 0 && (
+              <button
+                onClick={() => setShowPlan(!showPlan)}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  showPlan ? 'bg-amber-500 text-white' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                }`}
+                title="Overlay recommended migrations as arrows on the map"
+              >
+                <MoveRight size={14} />{showPlan ? `Plan (${recList.length})` : `Show plan (${recList.length})`}
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {!isCollapsed && (
-        <div className="relative" style={{minHeight: '400px'}}>
+        <div ref={mapAreaRef} className="relative" style={{minHeight: '400px'}}>
+          {showPlan && arrows.length > 0 && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" style={{ overflow: 'visible' }}>
+              <defs>
+                <marker id="recArrowHead" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
+                </marker>
+              </defs>
+              {arrows.map(a => (
+                <line key={a.key} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}
+                  stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,4" strokeOpacity="0.85" markerEnd="url(#recArrowHead)" />
+              ))}
+            </svg>
+          )}
           <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
               const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
@@ -167,15 +266,36 @@ export default function ClusterMap({
                 }
               }), 1);
 
+              const ns = nodeScores && nodeScores[node.name];
+              const rating = ns && typeof ns.suitability_rating === 'number' ? ns.suitability_rating : null;
+              const isMaint = maintenanceNodes.has(node.name);
+              const scored = node.status === 'online' && !isMaint && rating != null;
+              const sc = scored ? scoreHex(rating) : null;
+              const nodeIowait = node.metrics?.current_iowait || 0;
+
               return (
                 <div key={node.name} className="flex flex-col items-center gap-4">
                   {/* Host Node */}
                   <div className="relative group">
+                    {scored && (
+                      <div
+                        className="absolute -top-2 -right-2 z-20 flex items-center gap-1 pl-1.5 pr-1.5 py-0.5 rounded-md bg-white/85 dark:bg-slate-900/85 backdrop-blur-sm border border-pb-border/70 dark:border-slate-700/70 shadow-sm"
+                        title={`Migration rating ${Math.round(rating)}% — ${ns.suitable ? 'suitable target' : 'not a good target'}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
+                        <span className="text-[8px] uppercase tracking-wide font-semibold text-pb-text2 dark:text-gray-400">Rating</span>
+                        <span className="text-[10px] font-bold tabular-nums text-pb-text dark:text-gray-100">{Math.round(rating)}%</span>
+                      </div>
+                    )}
                     <div
+                      ref={el => { if (el) nodeRefs.current[node.name] = el; }}
                       onClick={() => setSelectedNode(node)}
+                      style={scored ? { borderColor: `${sc}55`, boxShadow: `0 0 14px -4px ${sc}66, inset 0 0 26px -12px ${sc}99` } : undefined}
                       className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
-                      maintenanceNodes.has(node.name)
+                      isMaint
                         ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
+                        : scored
+                        ? 'bg-pb-bg dark:bg-gray-900'
                         : node.status === 'online'
                         ? 'bg-pb-bg dark:bg-gray-900 border-blue-600 hover:border-blue-500'
                         : 'bg-white dark:bg-slate-800 border-gray-600'
@@ -229,6 +349,26 @@ export default function ClusterMap({
                                 'bg-blue-500'
                               }`}
                               style={{width: `${Math.min(100, node.mem_percent || 0)}%`}}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* IOWait Bar */}
+                        <div>
+                          <div className="text-[10px] sm:text-xs mb-0.5 flex items-center gap-1">
+                            <span className="text-pb-text2 dark:text-gray-400 font-medium">IO</span>
+                            {node.iowait_exempt && (
+                              <span className="text-amber-600 dark:text-amber-400" title={`IOWait exempt — excluded from scoring (${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'})`}>⊘</span>
+                            )}
+                          </div>
+                          <div className="w-full h-2.5 sm:h-3 bg-pb-surface2 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                nodeIowait > 30 ? 'bg-red-500' :
+                                nodeIowait > 15 ? 'bg-yellow-500' :
+                                'bg-orange-400'
+                              } ${node.iowait_exempt ? 'opacity-40' : ''}`}
+                              style={{width: `${Math.min(100, nodeIowait)}%`}}
                             ></div>
                           </div>
                         </div>
@@ -313,10 +453,12 @@ export default function ClusterMap({
                       const sizeRatio = maxResources > 0 ? (resourceValue / maxResources) : 0.3;
                       const size = Math.max(36, Math.min(80, 36 + (sizeRatio * 44)));
 
+                      const guestType = (guest.type || '').toUpperCase();
+                      const isVM = guestType === 'VM' || guestType === 'QEMU';
+                      const hasRec = showPlan && !!recByVmid[String(guest.vmid)];
                       const getGuestColor = () => {
-                        const guestType = (guest.type || '').toUpperCase();
                         if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-600';
-                        if (guestType === 'VM' || guestType === 'QEMU') return 'bg-purple-600';
+                        if (isVM) return 'bg-purple-600';
                         return 'bg-gray-600';
                       };
 
@@ -329,8 +471,9 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className="relative group">
                           <div
-                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
-                            style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`}}
+                            ref={el => { if (el) guestRefs.current[String(guest.vmid)] = el; }}
+                            className={`rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
+                            style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`, ...(colorMode === 'load' ? { background: heatHex(sizeRatio) } : {})}}
                             onClick={() => {
                               if (!isMigrating) {
                                 setSelectedGuestDetails({...guest, currentNode: node.name});
@@ -354,30 +497,30 @@ export default function ClusterMap({
                             </div>
                           )}
 
-                          {/* Mount Point Indicator - Border Dot (Top Right) */}
+                          {/* Mount Point Indicator - Square Tag (Top Right) */}
                           {guest.mount_points?.has_mount_points && !isMigrating && !isCompleted && (
                             <div
                               className={`absolute -top-0.5 -right-0.5 ${
                                 guest.mount_points.has_unshared_bind_mount
                                   ? 'bg-orange-500'
                                   : 'bg-cyan-400'
-                              } rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800`}
+                              } rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800`}
                               title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
                             />
                           )}
 
-                          {/* Pinned Disk Indicator - Border Dot (Top Left) */}
+                          {/* Pinned Disk Indicator - Square Tag (Top Left) */}
                           {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
+                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
                               title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
                             />
                           )}
 
-                          {/* IOWait-exempt Indicator - Border Dot (Bottom Left) */}
+                          {/* IOWait-exempt Indicator - Square Tag (Bottom Left) */}
                           {guest.io_exempt && !isMigrating && !isCompleted && (
                             <div
-                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-full w-3.5 h-3.5 shadow-lg ring-2 ring-gray-800"
+                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
                               title={`IOWait-exempt (${guest.io_exempt_reason || 'tag'}) — this guest's IOWait is excluded from its node's scoring`}
                             />
                           )}
@@ -483,29 +626,52 @@ export default function ClusterMap({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-pb-text2 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-purple-600"></div>
-              <span>VM</span>
+          <div className="flex flex-col items-center gap-2 mt-6 text-xs text-pb-text2 dark:text-gray-400">
+            <div className="flex items-center justify-center gap-x-6 gap-y-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-purple-600"></div>
+                <span>VM</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-green-600"></div>
+                <span>Container</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ background: '#22c55e' }} />
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#f97316' }} />
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#ef4444' }} />
+                <span className="ml-1">node border/badge = migration rating</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>
+                  {clusterMapViewMode === 'cpu'
+                    ? 'Circle size = CPU usage (%)'
+                    : clusterMapViewMode === 'memory'
+                    ? 'Circle size = Memory usage (%)'
+                    : clusterMapViewMode === 'allocated'
+                    ? 'Circle size = CPU cores + Memory allocated (GB)'
+                    : clusterMapViewMode === 'disk_io'
+                    ? 'Circle size = Disk I/O (Read + Write MB/s)'
+                    : clusterMapViewMode === 'network'
+                    ? 'Circle size = Network I/O (In + Out MB/s)'
+                    : 'Circle size = CPU usage (%)'}
+                </span>
+              </div>
+              {colorMode === 'load' && (
+                <div className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#22c55e' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#eab308' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#f97316' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#ef4444' }} />
+                  <span className="ml-1">circle color = load (low→high)</span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-green-600"></div>
-              <span>Container</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>
-                {clusterMapViewMode === 'cpu'
-                  ? 'Circle size = CPU usage (%)'
-                  : clusterMapViewMode === 'memory'
-                  ? 'Circle size = Memory usage (%)'
-                  : clusterMapViewMode === 'allocated'
-                  ? 'Circle size = CPU cores + Memory allocated (GB)'
-                  : clusterMapViewMode === 'disk_io'
-                  ? 'Circle size = Disk I/O (Read + Write MB/s)'
-                  : clusterMapViewMode === 'network'
-                  ? 'Circle size = Network I/O (In + Out MB/s)'
-                  : 'Circle size = CPU usage (%)'}
-              </span>
+            <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-cyan-400 ring-1 ring-gray-500" />shared mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-orange-500 ring-1 ring-gray-500" />unshared bind mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-red-500 ring-1 ring-gray-500" />pinned — cannot migrate</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-amber-400 ring-1 ring-gray-500" />IOWait-exempt</span>
             </div>
           </div>
         </div>

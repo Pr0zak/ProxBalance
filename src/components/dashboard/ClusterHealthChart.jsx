@@ -3,148 +3,285 @@ import { GLASS_CARD } from '../../utils/designTokens.js';
 const { useState, useEffect, useRef } = React;
 
 // Each period also declares its preferred backend bucket size (minutes).
-// Short ranges request raw ~15-min samples; longer ranges request
-// averaged buckets so the payload stays bounded and the line stays
-// readable across thousands of samples.
 //   bucket=0  → raw rows (no aggregation, server caps via `limit`)
 //   bucket=60 → hourly average
 const PERIODS = [
-  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 200 },
-  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 800 },
+  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 300 },
+  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 30,   limit: 400 },
   { id: '30d',  label: '30d',  ms: 30 * 24 * 60 * 60 * 1000,  bucket: 60,   limit: 800 },
   { id: '90d',  label: '90d',  ms: 90 * 24 * 60 * 60 * 1000,  bucket: 360,  limit: 400 },
   { id: '180d', label: '180d', ms: 180 * 24 * 60 * 60 * 1000, bucket: 720,  limit: 400 },
   { id: '1yr',  label: '1yr',  ms: 365 * 24 * 60 * 60 * 1000, bucket: 1440, limit: 400 },
 ];
 
+const VIEW_MODES = [
+  { id: 'cluster', label: 'Cluster' },
+  { id: 'stacked', label: 'Stacked' },
+  { id: 'lines',   label: 'Per-node' },
+];
+const SMOOTHING = [
+  { id: 'off',   label: 'Off',    window: 1 },
+  { id: 'light', label: 'Light',  window: 3 },
+  { id: 'med',   label: 'Medium', window: 7 },
+  { id: 'heavy', label: 'Heavy',  window: 15 },
+];
+const DETAIL = [
+  { id: 'full', label: 'Full', max: 100000 },
+  { id: 'high', label: 'High', max: 200 },
+  { id: 'med',  label: 'Med',  max: 100 },
+  { id: 'low',  label: 'Low',  max: 40 },
+];
+// Distinct per-node colors (cycled if more nodes than colors).
+const NODE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
+
+// Keep at most maxN points by taking every Nth (always preserving the last).
+function decimate(arr, maxN) {
+  if (arr.length <= maxN) return arr;
+  const step = Math.ceil(arr.length / maxN);
+  const out = [];
+  for (let i = 0; i < arr.length; i += step) out.push(arr[i]);
+  if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]);
+  return out;
+}
+// Centered moving average. Nulls are skipped (so offline-node gaps don't poison neighbours).
+function smooth(vals, window) {
+  if (window <= 1) return vals;
+  const half = Math.floor(window / 2);
+  return vals.map((v, i) => {
+    if (v == null) return null;
+    let s = 0, n = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(vals.length - 1, i + half); j++) {
+      if (vals[j] != null) { s += vals[j]; n++; }
+    }
+    return n ? s / n : null;
+  });
+}
+
+const lsGet = (k, fallback) => { try { return localStorage.getItem(k) || fallback; } catch { return fallback; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+// Health bands (cluster_health / suitability: higher = healthier).
+// Softened/muted tones so the color coding stays a gentle hint, not a loud alarm.
+const HEALTH_BANDS = [
+  { min: 70, color: '#5fae7d', label: 'Healthy' },
+  { min: 50, color: '#cdab52', label: 'Fair' },
+  { min: 30, color: '#dd8b54', label: 'Strained' },
+  { min: -Infinity, color: '#d06b6b', label: 'Critical' },
+];
+const healthColor = (v) => (HEALTH_BANDS.find(b => v >= b.min) || HEALTH_BANDS[HEALTH_BANDS.length - 1]).color;
+// Build vertical-gradient stops so the line/area is colored by absolute health value.
+// Single stop per anchor (band boundaries) → SVG blends smoothly between bands for a
+// soft fade rather than a hard cut. offset 0 = top (max value), offset 1 = bottom (min).
+const healthStops = (vMin, vMax) => {
+  const range = (vMax - vMin) || 1;
+  const off = (v) => Math.min(1, Math.max(0, (vMax - v) / range));
+  const anchors = [vMax, 70, 50, 30, vMin]
+    .filter(v => v >= vMin && v <= vMax)
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort((a, b) => b - a); // high → low (offset 0 → 1)
+  return anchors.map(v => ({ o: off(v), c: healthColor(v) }));
+};
+
+// Migration markers (status-colored). A bin's color is its worst status (fail > other > ok).
+const MARKER_COLORS = { ok: '#22c55e', other: '#eab308', fail: '#ef4444' };
+const statusKeyFor = (s) => {
+  s = (s || '').toLowerCase();
+  if (s === 'completed' || s === 'success') return 'ok';
+  if (s === 'failed' || s === 'error' || s === 'cancelled') return 'fail';
+  return 'other';
+};
+const binColor = (items) => items.some(i => i.statusKey === 'fail') ? MARKER_COLORS.fail
+  : items.some(i => i.statusKey === 'other') ? MARKER_COLORS.other : MARKER_COLORS.ok;
+const binTitle = (items) => {
+  const head = items.length > 1 ? `${items.length} migrations\n` : '';
+  const list = items.slice(0, 6).map(i => i.label).join('\n');
+  const more = items.length > 6 ? `\n…and ${items.length - 6} more` : '';
+  return head + list + more;
+};
+
 /**
- * Cluster-wide cluster_health over time. User-adjustable period selector
- * (1d/7d/30d/90d/180d/1yr, default 30d) drives both the chart window and
- * the backend's downsampling bucket size — short ranges fetch raw samples,
- * longer ranges fetch hourly/daily averages. Migration markers are status-
- * colored triangles per migration in migration_history.
+ * Cluster health over time. Three views:
+ *  - Cluster: the aggregate cluster_health line/area (original).
+ *  - Stacked: each node's suitability as a stacked band — a dip traces to one node.
+ *  - Per-node: one line per node (fixed 0-100 suitability scale) for direct comparison.
+ * Plus Smoothing (moving average) and Detail (point decimation) controls. Migration
+ * markers (status-colored triangles) overlay all views.
  */
 export default function ClusterHealthChart({ scoreHistory, migrationHistory, fetchScoreHistory }) {
-  const [period, setPeriod] = useState(() => {
-    const saved = localStorage.getItem('clusterHealthChartPeriod');
+  const [period, setPeriodState] = useState(() => {
+    const saved = lsGet('clusterHealthChartPeriod', '30d');
     return PERIODS.find(p => p.id === saved) ? saved : '30d';
   });
-  const setPeriodPersisted = (id) => {
-    setPeriod(id);
-    localStorage.setItem('clusterHealthChartPeriod', id);
-  };
-  // hover = { point, pixelX, pixelY, containerW } when cursor is over the chart
+  const [view, setViewState] = useState(() => {
+    const s = lsGet('clusterHealthChartView', 'cluster');
+    return VIEW_MODES.find(v => v.id === s) ? s : 'cluster';
+  });
+  // Locked defaults (their selectors are hidden): Medium smoothing + Full detail read best.
+  const smoothId = 'med';
+  const detailId = 'full';
+  const [showMarkers, setShowMarkersState] = useState(() => lsGet('clusterHealthChartMarkers', '1') !== '0');
+  const setPeriod = (id) => { setPeriodState(id); lsSet('clusterHealthChartPeriod', id); };
+  const setView = (id) => { setViewState(id); lsSet('clusterHealthChartView', id); };
+  const setShowMarkers = (v) => { setShowMarkersState(v); lsSet('clusterHealthChartMarkers', v ? '1' : '0'); };
+
   const [hover, setHover] = useState(null);
   const containerRef = useRef(null);
 
-  // Re-fetch with the appropriate bucket whenever the period changes.
   useEffect(() => {
     if (typeof fetchScoreHistory !== 'function') return;
     const cfg = PERIODS.find(p => p.id === period) || PERIODS[2];
     fetchScoreHistory(cfg.limit, cfg.bucket);
   }, [period, fetchScoreHistory]);
 
-  const allPoints = (scoreHistory || [])
-    .map(e => ({ t: new Date(e.timestamp).getTime(), v: e.cluster_health }))
-    .filter(p => typeof p.v === 'number' && !isNaN(p.t));
+  const periodCfg = PERIODS.find(p => p.id === period) || PERIODS[2];
+  const smWindow = (SMOOTHING.find(s => s.id === smoothId) || SMOOTHING[0]).window;
+  const detailMax = (DETAIL.find(d => d.id === detailId) || DETAIL[0]).max;
 
-  const allMigTs = (migrationHistory || [])
-    .map(m => new Date(m.timestamp).getTime())
-    .filter(t => !isNaN(t));
+  // ---- Window ----
+  const allEntries = (scoreHistory || [])
+    .map(e => ({ t: new Date(e.timestamp).getTime(), cluster: e.cluster_health, nodes: e.nodes || {} }))
+    .filter(e => !isNaN(e.t) && typeof e.cluster === 'number')
+    .sort((a, b) => a.t - b.t);
+  const allMigTs = (migrationHistory || []).map(m => new Date(m.timestamp).getTime()).filter(t => !isNaN(t));
 
-  if (allPoints.length === 0 && allMigTs.length === 0) return null;
+  if (allEntries.length === 0 && allMigTs.length === 0) return null;
 
-  // Anchor the period to the most recent actual data point. Using Date.now()
-  // as a fallback would leave dead space on the right edge whenever the
-  // recommendation timer hasn't fired in a while — that's misleading because
-  // it makes the chart look broken when the data is just stale.
   const latestT = Math.max(
-    allPoints.length ? allPoints[allPoints.length - 1].t : 0,
+    allEntries.length ? allEntries[allEntries.length - 1].t : 0,
     allMigTs.length ? Math.max(...allMigTs) : 0
   ) || Date.now();
-  const earliestT = Math.min(
-    allPoints.length ? allPoints[0].t : Infinity,
-    allMigTs.length ? Math.min(...allMigTs) : Infinity
-  );
-  const periodCfg = PERIODS.find(p => p.id === period) || PERIODS[2];
-
-  // Window covers the chosen period (or the full data range for 'all'). The
-  // cluster_health line draws wherever scoreHistory has data; migration markers
-  // plot anywhere in this window. Mismatched data ranges no longer hide markers.
-  const tStart = periodCfg.ms == null ? earliestT : (latestT - periodCfg.ms);
   const tEnd = latestT;
+  const tStart = latestT - periodCfg.ms;
   const tRange = (tEnd - tStart) || 1;
 
-  const points = allPoints.filter(p => p.t >= tStart && p.t <= tEnd);
+  // ---- Series (windowed → decimated → smoothed) ----
+  const windowed = allEntries.filter(e => e.t >= tStart && e.t <= tEnd);
+  const ent = decimate(windowed, detailMax);
+  const ts = ent.map(e => e.t);
+  const nodeNames = Array.from(new Set(windowed.flatMap(e => Object.keys(e.nodes)))).sort();
+
+  const clusterVals = smooth(ent.map(e => e.cluster), smWindow);
+  const nodeVals = {};
+  nodeNames.forEach(n => {
+    nodeVals[n] = smooth(ent.map(e => {
+      const v = e.nodes[n] && typeof e.nodes[n].suitability === 'number' ? e.nodes[n].suitability : null;
+      return v;
+    }), smWindow);
+  });
 
   const w = 600, h = 80, pad = 4;
-  const min = points.length > 0 ? Math.min(...points.map(p => p.v)) : 0;
-  const max = points.length > 0 ? Math.max(...points.map(p => p.v)) : 100;
-  const range = (max - min) || 1;
-
   const xFor = (t) => pad + ((t - tStart) / tRange) * (w - 2 * pad);
-  const yFor = (v) => h - pad - ((v - min) / range) * (h - 2 * pad);
 
-  const coords = points.map(p => `${xFor(p.t).toFixed(2)},${yFor(p.v).toFixed(2)}`);
-  const linePoints = coords.join(' ');
-  const hasLine = points.length >= 2;
-  const areaPoints = hasLine
-    ? `${xFor(points[0].t).toFixed(2)},${h - pad} ${linePoints} ${xFor(points[points.length-1].t).toFixed(2)},${h - pad}`
-    : '';
-  const latest = points.length > 0 ? points[points.length - 1].v : null;
-  const trend = points.length > 1 ? (latest - points[0].v) : null;
+  // ---- Per-mode geometry ----
+  const colorFor = (i) => NODE_COLORS[i % NODE_COLORS.length];
+  const hasData = ts.length >= 2;
 
-  // Mouse-tracking crosshair: convert cursor pixel-X to viewBox space, snap
-  // to the nearest data point, and stash the pixel offset for the tooltip.
+  // Cluster: dynamic min/max zoom (preserves original behaviour).
+  const cMin = clusterVals.length ? Math.min(...clusterVals.filter(v => v != null)) : 0;
+  const cMax = clusterVals.length ? Math.max(...clusterVals.filter(v => v != null)) : 100;
+  const cRange = (cMax - cMin) || 1;
+  const yCluster = (v) => h - pad - ((v - cMin) / cRange) * (h - 2 * pad);
+
+  // Per-node lines: fixed 0-100 suitability scale so nodes are directly comparable.
+  const yNode = (v) => h - pad - (v / 100) * (h - 2 * pad);
+
+  // Stacked: bands of suitability summed; y-scale 0..maxTotal.
+  const stackTotals = ts.map((_, i) => nodeNames.reduce((s, n) => s + (nodeVals[n][i] ?? 0), 0));
+  const stackMax = Math.max(1, ...stackTotals);
+  const yStack = (v) => h - pad - (v / stackMax) * (h - 2 * pad);
+
+  const clusterStops = (view === 'cluster' && hasData) ? healthStops(cMin, cMax) : [];
+  let clusterLine = '', clusterArea = '';
+  if (view === 'cluster' && hasData) {
+    const pts = ts.map((t, i) => clusterVals[i] != null ? `${xFor(t).toFixed(2)},${yCluster(clusterVals[i]).toFixed(2)}` : null).filter(Boolean);
+    clusterLine = pts.join(' ');
+    clusterArea = `${xFor(ts[0]).toFixed(2)},${h - pad} ${clusterLine} ${xFor(ts[ts.length - 1]).toFixed(2)},${h - pad}`;
+  }
+
+  const nodeLines = (view === 'lines' && hasData) ? nodeNames.map((n, k) => {
+    // Break the polyline into segments across null gaps.
+    const segs = [];
+    let cur = [];
+    ts.forEach((t, i) => {
+      const v = nodeVals[n][i];
+      if (v == null) { if (cur.length) { segs.push(cur); cur = []; } }
+      else cur.push(`${xFor(t).toFixed(2)},${yNode(v).toFixed(2)}`);
+    });
+    if (cur.length) segs.push(cur);
+    return { name: n, color: colorFor(k), segs };
+  }) : [];
+
+  const stackBands = [];
+  if (view === 'stacked' && hasData) {
+    let below = ts.map(() => 0);
+    nodeNames.forEach((n, k) => {
+      const top = ts.map((_, i) => below[i] + (nodeVals[n][i] ?? 0));
+      const topPts = ts.map((t, i) => `${xFor(t).toFixed(2)},${yStack(top[i]).toFixed(2)}`);
+      const botPts = ts.map((t, i) => `${xFor(t).toFixed(2)},${yStack(below[i]).toFixed(2)}`).reverse();
+      stackBands.push({ name: n, color: colorFor(k), poly: [...topPts, ...botPts].join(' ') });
+      below = top;
+    });
+  }
+
+  const latest = clusterVals.length ? clusterVals[clusterVals.length - 1] : null;
+  const trend = clusterVals.length > 1 ? (latest - clusterVals[0]) : null;
+
+  // ---- Hover (snap to nearest decimated index) ----
   const handleMouseMove = (e) => {
-    if (!points.length) return;
+    if (!ts.length) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const pxX = e.clientX - rect.left;
-    const pxY = e.clientY - rect.top;
+    const pxX = e.clientX - rect.left, pxY = e.clientY - rect.top;
     const vbX = (pxX / rect.width) * w;
-    if (vbX < pad - 2 || vbX > w - pad + 2) {
-      setHover(null);
-      return;
+    if (vbX < pad - 2 || vbX > w - pad + 2) { setHover(null); return; }
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < ts.length; i++) {
+      const d = Math.abs(xFor(ts[i]) - vbX);
+      if (d < bd) { bd = d; bi = i; }
     }
-    // Linear scan — points is bounded to ~800 by the period limits.
-    let best = points[0];
-    let bestDist = Math.abs(xFor(best.t) - vbX);
-    for (let i = 1; i < points.length; i++) {
-      const d = Math.abs(xFor(points[i].t) - vbX);
-      if (d < bestDist) { bestDist = d; best = points[i]; }
-    }
-    setHover({ point: best, pixelX: pxX, pixelY: pxY, containerW: rect.width });
+    setHover({ idx: bi, pixelX: pxX, pixelY: pxY, containerW: rect.width });
   };
-  const handleMouseLeave = () => setHover(null);
 
-  // Format timestamp based on bucket size — short ranges show time-of-day,
-  // long ranges show just the date.
   const fmtHoverTime = (t) => {
     const d = new Date(t);
     if (periodCfg.bucket >= 1440) return d.toLocaleDateString();
-    if (periodCfg.bucket >= 60) return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Per-migration markers (from migration_history) within the selected period.
-  const markers = (migrationHistory || [])
+  const rawMarkers = (migrationHistory || [])
     .map(m => {
       const t = new Date(m.timestamp).getTime();
       if (isNaN(t) || t < tStart || t > tEnd) return null;
-      const status = (m.status || '').toLowerCase();
-      let color = 'fill-yellow-500';
-      if (status === 'completed' || status === 'success') color = 'fill-green-500';
-      else if (status === 'failed' || status === 'error' || status === 'cancelled') color = 'fill-red-500';
-      const dur = m.duration_seconds != null
-        ? (m.duration_seconds < 60 ? `${Math.round(m.duration_seconds)}s` : `${Math.floor(m.duration_seconds / 60)}m ${Math.round(m.duration_seconds % 60)}s`)
-        : '';
-      const trigger = m.initiated_by ? ` (${m.initiated_by})` : '';
       const guest = m.name || (m.vmid ? `VM/CT ${m.vmid}` : 'guest');
       const route = (m.source_node && m.target_node) ? `${m.source_node} → ${m.target_node}` : '';
-      const title = `${new Date(t).toLocaleString()} — ${guest}${trigger} ${route} · ${m.status}${dur ? ' · ' + dur : ''}`;
-      return { x: xFor(t), color, title };
+      return { t, x: xFor(t), statusKey: statusKeyFor(m.status), label: `${new Date(t).toLocaleString()} — ${guest} ${route} · ${m.status}` };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => a.x - b.x);
+
+  // Density binning: collapse markers within BIN_PX of each other into one, so dense
+  // periods (30d/1y) don't turn into an unreadable wall of marks.
+  const BIN_PX = 8;
+  const markerBins = [];
+  rawMarkers.forEach(m => {
+    const last = markerBins[markerBins.length - 1];
+    if (last && (m.x - last.x) <= BIN_PX) {
+      last.items.push(m);
+      last.xSum += m.x;
+      last.x = last.xSum / last.items.length;
+    } else {
+      markerBins.push({ x: m.x, xSum: m.x, items: [m] });
+    }
+  });
+  // Cluster view: snap a bin to the nearest sample so its dot sits on the health line.
+  const yOnLine = (binX) => {
+    if (!hasData) return h - pad;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < ts.length; i++) { const d = Math.abs(xFor(ts[i]) - binX); if (d < bd) { bd = d; bi = i; } }
+    const v = clusterVals[bi];
+    return v != null ? yCluster(v) : h - pad;
+  };
+
+  const showLegend = view !== 'cluster' && nodeNames.length > 0;
 
   return (
     <div className={`${GLASS_CARD} mb-3`}>
@@ -153,11 +290,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health Over Time</h3>
           <p className="text-[11px] text-pb-text2 dark:text-gray-500">
             {new Date(tStart).toLocaleDateString()} → {new Date(tEnd).toLocaleDateString()}
-            {markers.length > 0 && ` · ${markers.length} migration${markers.length !== 1 ? 's' : ''} marked`}
+            {rawMarkers.length > 0 && ` · ${rawMarkers.length} migration${rawMarkers.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {latest != null && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {view === 'cluster' && latest != null && (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-bold text-pb-text dark:text-white tabular-nums">{latest.toFixed(1)}</span>
               {trend != null && (
@@ -167,107 +304,208 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
               )}
             </div>
           )}
-          <PeriodPills value={period} onChange={setPeriodPersisted} />
+          <Pills options={PERIODS} value={period} onChange={setPeriod} />
         </div>
       </div>
+
+      {/* View selector (Smoothing=Medium + Detail=Full are locked) */}
+      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mb-2 text-[11px]">
+        <LabeledPills label="View" options={VIEW_MODES} value={view} onChange={setView} />
+        {rawMarkers.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-pb-text2 dark:text-gray-400">Migrations</span>
+            <button
+              type="button"
+              onClick={() => setShowMarkers(!showMarkers)}
+              className={`px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
+                showMarkers
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800/60 text-pb-text2 dark:text-gray-400 border-pb-border dark:border-slate-700/50 hover:text-pb-text dark:hover:text-gray-200'
+              }`}
+              title={`${showMarkers ? 'Hide' : 'Show'} migration markers`}
+            >
+              {showMarkers ? 'Shown' : 'Hidden'}
+            </button>
+          </div>
+        )}
+      </div>
+
       <div ref={containerRef} className="relative">
         <svg
-          viewBox={`0 0 ${w} ${h + 8}`}
-          className="w-full"
-          style={{ height: 88 }}
-          preserveAspectRatio="none"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+          viewBox={`0 0 ${w} ${h + 8}`} className="w-full" style={{ height: 88 }}
+          preserveAspectRatio="none" onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
         >
           <defs>
             <linearGradient id="clusterHealthGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+              {clusterStops.map((s, i) => (
+                <stop key={i} offset={`${(s.o * 100).toFixed(2)}%`} stopColor={s.c} />
+              ))}
             </linearGradient>
           </defs>
-          {hasLine && <polygon points={areaPoints} fill="url(#clusterHealthGrad)" />}
-          {hasLine && <polyline points={linePoints} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />}
-          {!hasLine && (
-            <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No cluster_health samples in this period</text>
+
+          {!hasData && (
+            <text x={w / 2} y={h / 2} textAnchor="middle" className="fill-gray-600" fontSize="10">No samples in this period</text>
           )}
-          {markers.map((m, i) => (
-            <g key={i}>
-              <line x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-slate-600/40" strokeWidth="0.5" strokeDasharray="2,2" />
-              <polygon
-                points={`${m.x - 3},${h + 2} ${m.x + 3},${h + 2} ${m.x},${h - 4}`}
-                className={m.color}
-              >
-                <title>{m.title}</title>
-              </polygon>
-            </g>
+
+          {view === 'cluster' && hasData && (
+            <>
+              {/* Area + line gently tinted by health value (green healthy → red critical). */}
+              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" fillOpacity="0.12" />
+              <polyline points={clusterLine} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2" strokeOpacity="0.9" strokeLinejoin="round" />
+            </>
+          )}
+
+          {view === 'stacked' && stackBands.map((b, i) => (
+            <polygon key={b.name} points={b.poly} fill={b.color} fillOpacity="0.78" stroke={b.color} strokeWidth="0.4">
+              <title>{b.name}</title>
+            </polygon>
           ))}
-          {hover && (
-            <g pointerEvents="none">
-              <line
-                x1={xFor(hover.point.t)} y1={pad}
-                x2={xFor(hover.point.t)} y2={h - pad}
-                stroke="currentColor" className="text-pb-text dark:text-white" strokeOpacity="0.4" strokeWidth="0.6"
-              />
-              <circle
-                cx={xFor(hover.point.t)} cy={yFor(hover.point.v)}
-                r="3.5"
-                fill="#3b82f6" stroke="white" strokeWidth="1"
-              />
-            </g>
+
+          {view === 'lines' && nodeLines.map((nl) => (
+            nl.segs.map((seg, si) => (
+              <polyline key={`${nl.name}-${si}`} points={seg.join(' ')} fill="none" stroke={nl.color} strokeWidth="1.5" strokeLinejoin="round" />
+            ))
+          ))}
+
+          {showMarkers && markerBins.map((b, i) => {
+            const color = binColor(b.items);
+            const count = b.items.length;
+            // Cluster view: dot sits on the health line (ties event to the value at that
+            // moment). Other views have no single line, so a small tick at the baseline.
+            // Downward triangle with its tip on the line (round dots get stretched into
+            // ovals by preserveAspectRatio="none"). Count badges are HTML (below) so the
+            // digits aren't horizontally stretched by that same scaling.
+            if (view === 'cluster' && hasData) {
+              const cy = yOnLine(b.x);
+              return (
+                <polygon key={i} points={`${b.x - 3},${cy - 7} ${b.x + 3},${cy - 7} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth="0.5">
+                  <title>{binTitle(b.items)}</title>
+                </polygon>
+              );
+            }
+            return (
+              <polygon key={i} points={`${b.x - 3},${h + 2} ${b.x + 3},${h + 2} ${b.x},${h - 4}`} fill={color}>
+                <title>{binTitle(b.items)}</title>
+              </polygon>
+            );
+          })}
+
+          {hover && hasData && (
+            <line
+              x1={xFor(ts[hover.idx])} y1={pad} x2={xFor(ts[hover.idx])} y2={h - pad}
+              stroke="currentColor" className="text-pb-text dark:text-white" strokeOpacity="0.4" strokeWidth="0.6" pointerEvents="none"
+            />
           )}
         </svg>
-        {hover && (() => {
-          // Anchor tooltip near the cursor; flip to the left if the cursor is
-          // past the midpoint so the tip doesn't slide off the right edge.
-          const flipLeft = hover.containerW && hover.pixelX > hover.containerW * 0.6;
-          const style = flipLeft
-            ? { right: Math.max(0, hover.containerW - hover.pixelX + 12), top: Math.max(0, hover.pixelY - 44) }
-            : { left: hover.pixelX + 12, top: Math.max(0, hover.pixelY - 44) };
+
+        {/* Count badges as HTML so digits stay crisp (SVG text is stretched by
+            preserveAspectRatio="none"). Vertical viewBox units map 1:1 to px (88/88). */}
+        {showMarkers && markerBins.filter(b => b.items.length > 1).map((b, i) => {
+          const topPx = (view === 'cluster' && hasData) ? yOnLine(b.x) - 8 : h - 6;
           return (
             <div
-              className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px]"
-              style={style}
+              key={i}
+              className="absolute pointer-events-none flex items-center justify-center rounded-full font-bold leading-none"
+              style={{
+                left: `${(b.x / w) * 100}%`, top: `${topPx}px`, transform: 'translate(-50%, -100%)',
+                background: binColor(b.items), color: 'rgba(17,24,39,0.92)', fontSize: '9px',
+                minWidth: '14px', height: '14px', padding: '0 3px', boxShadow: '0 0 0 1px rgba(255,255,255,0.9)',
+              }}
             >
-              <div className="font-semibold text-pb-text dark:text-white tabular-nums">{hover.point.v.toFixed(1)}</div>
-              <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap">{fmtHoverTime(hover.point.t)}</div>
+              {b.items.length}
+            </div>
+          );
+        })}
+
+        {hover && hasData && (() => {
+          const flipLeft = hover.containerW && hover.pixelX > hover.containerW * 0.6;
+          const style = flipLeft
+            ? { right: Math.max(0, hover.containerW - hover.pixelX + 12), top: Math.max(0, hover.pixelY - 50) }
+            : { left: hover.pixelX + 12, top: Math.max(0, hover.pixelY - 50) };
+          const i = hover.idx;
+          return (
+            <div className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px] max-w-[220px]" style={style}>
+              <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap mb-0.5">{fmtHoverTime(ts[i])}</div>
+              {view === 'cluster' ? (
+                <div className="font-semibold text-pb-text dark:text-white tabular-nums">{clusterVals[i] != null ? clusterVals[i].toFixed(1) : '—'} <span className="font-normal text-pb-text2 dark:text-gray-500">cluster</span></div>
+              ) : (
+                <div className="space-y-0.5">
+                  {nodeNames
+                    .map((n, k) => ({ n, k, v: nodeVals[n][i] }))
+                    .sort((a, b) => (a.v ?? -1) - (b.v ?? -1))
+                    .map(({ n, k, v }) => (
+                      <div key={n} className="flex items-center justify-between gap-3 tabular-nums">
+                        <span className="flex items-center gap-1 text-pb-text dark:text-gray-200">
+                          <span className="inline-block w-2 h-2 rounded-sm" style={{ background: colorFor(k) }} />{n}
+                        </span>
+                        <span className="text-pb-text2 dark:text-gray-400">{v != null ? v.toFixed(1) : '—'}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           );
         })()}
       </div>
-      <div className="flex justify-between text-[10px] text-pb-text2 dark:text-gray-500 mt-1">
-        <span>{new Date(tStart).toLocaleDateString()}</span>
-        <span>min {min.toFixed(1)}</span>
-        <span>max {max.toFixed(1)}</span>
-        <span>{new Date(tEnd).toLocaleDateString()}</span>
-      </div>
-      {markers.length > 0 && (
+
+      {showLegend && (
+        <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
+          {nodeNames.map((n, k) => (
+            <span key={n} className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorFor(k) }} />{n}
+            </span>
+          ))}
+          <span className="ml-auto">{view === 'lines' ? 'suitability 0–100 per node' : 'band height = node suitability'}</span>
+        </div>
+      )}
+
+      {view === 'cluster' && hasData && (
+        <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
+          {HEALTH_BANDS.map((b) => (
+            <span key={b.label} className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: b.color }} />
+              {b.label}{b.min > -Infinity ? ` ≥${b.min}` : ' <30'}
+            </span>
+          ))}
+          <span className="ml-auto">line colored by health value</span>
+        </div>
+      )}
+
+      {showMarkers && rawMarkers.length > 0 && (
         <div className="flex items-center gap-3 mt-2 text-[10px] text-pb-text2 dark:text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-green-500" />completed</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-yellow-500" />other</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-red-500" />failed</span>
-          <span className="ml-auto">hover a marker for detail</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
+          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · hover for detail' : 'hover for detail'}</span>
         </div>
       )}
     </div>
   );
 }
 
-function PeriodPills({ value, onChange }) {
+function Pills({ options, value, onChange }) {
   return (
     <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
-      {PERIODS.map(p => (
+      {options.map(o => (
         <button
-          key={p.id}
-          onClick={() => onChange(p.id)}
+          key={o.id}
+          onClick={() => onChange(o.id)}
           className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
-            value === p.id
-              ? 'bg-blue-600 text-white'
-              : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+            value === o.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
           }`}
         >
-          {p.label}
+          {o.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function LabeledPills({ label, options, value, onChange }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-pb-text2 dark:text-gray-500">{label}</span>
+      <Pills options={options} value={value} onChange={onChange} />
     </div>
   );
 }
