@@ -4,6 +4,13 @@ import {
 } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
+const { useState, useRef, useLayoutEffect } = React;
+
+// Suitability rating → color (matches the rest of the app: higher = healthier).
+const scoreHex = (r) => r >= 70 ? '#22c55e' : r >= 50 ? '#eab308' : r >= 30 ? '#f97316' : '#ef4444';
+// Load ratio (0..1) → heat color for the "color by load" mode.
+const heatHex = (ratio) => ratio < 0.4 ? '#22c55e' : ratio < 0.7 ? '#eab308' : ratio < 0.88 ? '#f97316' : '#ef4444';
+
 export default function ClusterMap({
   data,
   collapsedSections,
@@ -18,9 +25,18 @@ export default function ClusterMap({
   guestsMigrating,
   migrationProgress,
   completedMigrations,
+  nodeScores,
+  recommendations,
+  setConfirmMigration,
+  canMigrate,
   embedded = false,
 }) {
   if (!data) return null;
+
+  const [colorMode, setColorMode] = useState(() => {
+    try { return localStorage.getItem('clusterMapColorMode') || 'type'; } catch { return 'type'; }
+  });
+  const setColor = (m) => { setColorMode(m); try { localStorage.setItem('clusterMapColorMode', m); } catch {} };
 
   // When embedded, the parent owns the section card and header.
   const Wrapper = embedded ? React.Fragment : 'div';
@@ -124,6 +140,21 @@ export default function ClusterMap({
                 <Globe size={14} /><span className="hidden sm:inline ml-1">Network</span>
               </button>
             </div>
+            <span className="text-sm text-pb-text2 dark:text-gray-400">Color:</span>
+            <div className="flex rounded-lg bg-pb-surface2 dark:bg-slate-700 p-1">
+              {[{ id: 'type', label: 'Type' }, { id: 'load', label: 'Load' }].map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setColor(m.id)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    colorMode === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                  }`}
+                  title={m.id === 'type' ? 'Color circles by guest type (VM/CT)' : 'Color circles by load (green→red)'}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -167,15 +198,33 @@ export default function ClusterMap({
                 }
               }), 1);
 
+              const ns = nodeScores && nodeScores[node.name];
+              const rating = ns && typeof ns.suitability_rating === 'number' ? ns.suitability_rating : null;
+              const isMaint = maintenanceNodes.has(node.name);
+              const scored = node.status === 'online' && !isMaint && rating != null;
+              const nodeIowait = node.metrics?.current_iowait || 0;
+
               return (
                 <div key={node.name} className="flex flex-col items-center gap-4">
                   {/* Host Node */}
                   <div className="relative group">
+                    {scored && (
+                      <div
+                        className="absolute -top-2 -right-2 z-20 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow ring-2 ring-white dark:ring-slate-900"
+                        style={{ background: scoreHex(rating) }}
+                        title={`Suitability ${rating}% — ${ns.suitable ? 'suitable target' : 'not a good target'}`}
+                      >
+                        {Math.round(rating)}
+                      </div>
+                    )}
                     <div
                       onClick={() => setSelectedNode(node)}
+                      style={scored ? { borderColor: scoreHex(rating) } : undefined}
                       className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
-                      maintenanceNodes.has(node.name)
+                      isMaint
                         ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
+                        : scored
+                        ? 'bg-pb-bg dark:bg-gray-900'
                         : node.status === 'online'
                         ? 'bg-pb-bg dark:bg-gray-900 border-blue-600 hover:border-blue-500'
                         : 'bg-white dark:bg-slate-800 border-gray-600'
@@ -229,6 +278,26 @@ export default function ClusterMap({
                                 'bg-blue-500'
                               }`}
                               style={{width: `${Math.min(100, node.mem_percent || 0)}%`}}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* IOWait Bar */}
+                        <div>
+                          <div className="text-[10px] sm:text-xs mb-0.5 flex items-center gap-1">
+                            <span className="text-pb-text2 dark:text-gray-400 font-medium">IO</span>
+                            {node.iowait_exempt && (
+                              <span className="text-amber-600 dark:text-amber-400" title={`IOWait exempt — excluded from scoring (${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'})`}>⊘</span>
+                            )}
+                          </div>
+                          <div className="w-full h-2.5 sm:h-3 bg-pb-surface2 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                nodeIowait > 30 ? 'bg-red-500' :
+                                nodeIowait > 15 ? 'bg-yellow-500' :
+                                'bg-orange-400'
+                              } ${node.iowait_exempt ? 'opacity-40' : ''}`}
+                              style={{width: `${Math.min(100, nodeIowait)}%`}}
                             ></div>
                           </div>
                         </div>
@@ -313,10 +382,11 @@ export default function ClusterMap({
                       const sizeRatio = maxResources > 0 ? (resourceValue / maxResources) : 0.3;
                       const size = Math.max(36, Math.min(80, 36 + (sizeRatio * 44)));
 
+                      const guestType = (guest.type || '').toUpperCase();
+                      const isVM = guestType === 'VM' || guestType === 'QEMU';
                       const getGuestColor = () => {
-                        const guestType = (guest.type || '').toUpperCase();
                         if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-600';
-                        if (guestType === 'VM' || guestType === 'QEMU') return 'bg-purple-600';
+                        if (isVM) return 'bg-purple-600';
                         return 'bg-gray-600';
                       };
 
@@ -329,8 +399,8 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className="relative group">
                           <div
-                            className={`rounded-full ${getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
-                            style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`}}
+                            className={`rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
+                            style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`, ...(colorMode === 'load' ? { background: heatHex(sizeRatio) } : {})}}
                             onClick={() => {
                               if (!isMigrating) {
                                 setSelectedGuestDetails({...guest, currentNode: node.name});
@@ -483,29 +553,52 @@ export default function ClusterMap({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-6 text-xs text-pb-text2 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-purple-600"></div>
-              <span>VM</span>
+          <div className="flex flex-col items-center gap-2 mt-6 text-xs text-pb-text2 dark:text-gray-400">
+            <div className="flex items-center justify-center gap-x-6 gap-y-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-purple-600"></div>
+                <span>VM</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-green-600"></div>
+                <span>Container</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ background: '#22c55e' }} />
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#f97316' }} />
+                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#ef4444' }} />
+                <span className="ml-1">node border/badge = suitability</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>
+                  {clusterMapViewMode === 'cpu'
+                    ? 'Circle size = CPU usage (%)'
+                    : clusterMapViewMode === 'memory'
+                    ? 'Circle size = Memory usage (%)'
+                    : clusterMapViewMode === 'allocated'
+                    ? 'Circle size = CPU cores + Memory allocated (GB)'
+                    : clusterMapViewMode === 'disk_io'
+                    ? 'Circle size = Disk I/O (Read + Write MB/s)'
+                    : clusterMapViewMode === 'network'
+                    ? 'Circle size = Network I/O (In + Out MB/s)'
+                    : 'Circle size = CPU usage (%)'}
+                </span>
+              </div>
+              {colorMode === 'load' && (
+                <div className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#22c55e' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#eab308' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#f97316' }} />
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#ef4444' }} />
+                  <span className="ml-1">circle color = load (low→high)</span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-green-600"></div>
-              <span>Container</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>
-                {clusterMapViewMode === 'cpu'
-                  ? 'Circle size = CPU usage (%)'
-                  : clusterMapViewMode === 'memory'
-                  ? 'Circle size = Memory usage (%)'
-                  : clusterMapViewMode === 'allocated'
-                  ? 'Circle size = CPU cores + Memory allocated (GB)'
-                  : clusterMapViewMode === 'disk_io'
-                  ? 'Circle size = Disk I/O (Read + Write MB/s)'
-                  : clusterMapViewMode === 'network'
-                  ? 'Circle size = Network I/O (In + Out MB/s)'
-                  : 'Circle size = CPU usage (%)'}
-              </span>
+            <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-cyan-400 ring-1 ring-gray-500" />shared mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500 ring-1 ring-gray-500" />unshared bind mount</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 ring-1 ring-gray-500" />pinned — cannot migrate</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 ring-1 ring-gray-500" />IOWait-exempt</span>
             </div>
           </div>
         </div>
