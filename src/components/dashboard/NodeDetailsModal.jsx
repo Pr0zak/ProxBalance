@@ -1,8 +1,22 @@
 import {
-  Server, X, Activity, CheckCircle, XCircle, AlertTriangle, MoveRight, Loader, Lock
+  Server, X, Activity, CheckCircle, XCircle, AlertTriangle, MoveRight, Loader, Lock, ChevronDown
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
+
+const { useState } = React;
+
+function Section({ title, badge, isOpen, onToggle, children }) {
+  return (
+    <div className="mb-3 rounded-lg border border-pb-border dark:border-slate-700 overflow-hidden">
+      <button onClick={onToggle} className="flex items-center justify-between w-full px-3 py-2 text-left hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors">
+        <span className="flex items-center gap-2 text-sm font-semibold text-pb-text dark:text-white">{title}{badge}</span>
+        <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && <div className="px-3 pb-3 pt-0">{children}</div>}
+    </div>
+  );
+}
 
 export default function NodeDetailsModal({
   selectedNode, setSelectedNode,
@@ -16,6 +30,9 @@ export default function NodeDetailsModal({
   data, recommendations, setSelectedGuestDetails, setConfirmMigration,
   setGuestTargets
 }) {
+  const [open, setOpen] = useState({ history: false, recs: false, suitability: false, guests: false });
+  const toggle = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
+
   if (!selectedNode) return null;
 
   const trend = selectedNode.trend_data || {};
@@ -104,10 +121,7 @@ export default function NodeDetailsModal({
           </div>
 
           {/* History (real trend data) */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-1">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400">History (24h)</h4>
-            </div>
+          <Section title="History (24h)" isOpen={open.history} onToggle={() => toggle('history')}>
             <div className="bg-pb-surface2 dark:bg-slate-800/60 rounded-lg p-2">
               <MiniTrendChart
                 points={trendPoints}
@@ -118,17 +132,16 @@ export default function NodeDetailsModal({
                 ]}
               />
             </div>
-          </div>
+          </Section>
 
           {/* Recommendations involving this node */}
           {(movingOff.length > 0 || movingHere.length > 0) && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/60 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <MoveRight size={14} className="text-amber-600 dark:text-amber-400" />
-                <h4 className="text-sm font-semibold text-pb-text dark:text-white">
-                  Recommendations — {movingOff.length} off / {movingHere.length} here
-                </h4>
-              </div>
+            <Section
+              title={<><MoveRight size={14} className="text-amber-600 dark:text-amber-400" /> Recommendations</>}
+              badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{movingOff.length} off / {movingHere.length} here</span>}
+              isOpen={open.recs}
+              onToggle={() => toggle('recs')}
+            >
               <div className="space-y-1">
                 {[...movingOff.map(r => ({ r, dir: 'off' })), ...movingHere.map(r => ({ r, dir: 'in' }))].map(({ r, dir }) => (
                   <div key={`${dir}-${r.vmid}`} className="flex items-center justify-between gap-2 text-xs">
@@ -145,17 +158,16 @@ export default function NodeDetailsModal({
                   </div>
                 ))}
               </div>
-            </div>
+            </Section>
           )}
 
           {/* Migration Suitability Metrics */}
           {selectedNode.metrics && (
-            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity size={16} className="text-blue-600 dark:text-blue-400" />
-                <h4 className="text-sm font-semibold text-pb-text dark:text-white">Migration Target Suitability</h4>
-              </div>
-
+            <Section
+              title={<><Activity size={16} className="text-blue-600 dark:text-blue-400" /> Migration Target Suitability</>}
+              isOpen={open.suitability}
+              onToggle={() => toggle('suitability')}
+            >
               {/* Overall Score Display */}
               {nodeScores && nodeScores[selectedNode.name] && (
                 <div className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border-2 border-blue-600">
@@ -287,13 +299,17 @@ export default function NodeDetailsModal({
               <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
                 Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor.
               </div>
-            </div>
+            </Section>
           )}
 
           {/* Guests on this node */}
           {nodeGuests.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400 mb-1.5">Guests ({nodeGuests.length})</h4>
+            <Section
+              title="Guests"
+              badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{nodeGuests.length}</span>}
+              isOpen={open.guests}
+              onToggle={() => toggle('guests')}
+            >
               <div className="rounded-lg border border-pb-border dark:border-slate-700 divide-y divide-pb-border dark:divide-slate-700 max-h-52 overflow-y-auto">
                 {nodeGuests
                   .slice()
@@ -320,7 +336,7 @@ export default function NodeDetailsModal({
                     );
                   })}
               </div>
-            </div>
+            </Section>
           )}
 
           {/* Maintenance Mode Info */}
