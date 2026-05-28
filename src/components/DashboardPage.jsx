@@ -344,6 +344,8 @@ export default function DashboardPage({
           setSelectedGuest={setSelectedGuest}
           setMigrationTarget={setMigrationTarget}
           setShowMigrationDialog={setShowMigrationDialog}
+          setConfirmMigration={setConfirmMigration}
+          guestProfiles={guestProfiles}
           API_BASE={API_BASE}
         />
 

@@ -4,8 +4,17 @@ import {
   BarChart2, RefreshCw, MoveRight, TrendingUp, TrendingDown, Minus
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import MiniTrendChart from './MiniTrendChart.jsx';
 
-const { useState } = React;
+const { useState, useEffect } = React;
+
+const BEHAVIOR_META = {
+  steady:    { label: 'Steady',    cls: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' },
+  bursty:    { label: 'Bursty',    cls: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' },
+  growing:   { label: 'Growing',   cls: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' },
+  cyclical:  { label: 'Cyclical',  cls: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' },
+  unknown:   { label: 'Unknown',   cls: 'bg-gray-100 dark:bg-slate-700 text-pb-text2 dark:text-gray-400' },
+};
 
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
@@ -13,15 +22,50 @@ export default function GuestDetailsModal({
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions,
   canMigrate,
   setSelectedGuest, setMigrationTarget, setShowMigrationDialog,
+  setConfirmMigration, guestProfiles,
   API_BASE
 }) {
   const [togglingExempt, setTogglingExempt] = useState(false);
+  const [history, setHistory] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const vmid = selectedGuestDetails?.vmid;
+  useEffect(() => {
+    if (vmid == null) { setHistory(null); return; }
+    let cancelled = false;
+    setLoadingHistory(true); setHistory(null);
+    fetch(`${API_BASE}/guests/${vmid}/history?hours=24`)
+      .then(r => r.json())
+      .then(j => { if (!cancelled && j.success) setHistory(j.points || []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingHistory(false); });
+    return () => { cancelled = true; };
+  }, [vmid, API_BASE]);
 
   if (!selectedGuestDetails) return null;
 
   const allTags = (selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags) || [];
   const hasExemptTag = allTags.includes('io_exempt') || allTags.includes('proxbalance_io_exempt');
   const isPassthroughExempt = selectedGuestDetails.io_exempt_reason === 'passthrough';
+  const isVM = selectedGuestDetails.type === 'qemu' || (selectedGuestDetails.type || '').toUpperCase() === 'VM';
+  const profile = guestProfiles && (guestProfiles[vmid] || guestProfiles[String(vmid)]);
+  const affinityGroups = (selectedGuestDetails.tags && selectedGuestDetails.tags.affinity_groups) || [];
+  const excludeGroups = (selectedGuestDetails.tags && selectedGuestDetails.tags.exclude_groups) || [];
+  const migrateTo = (opt) => {
+    if (!setConfirmMigration) return;
+    setConfirmMigration({
+      vmid: selectedGuestDetails.vmid,
+      name: selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`,
+      type: isVM ? 'VM' : 'CT',
+      source_node: (guestMigrationOptions && guestMigrationOptions.current_node) || selectedGuestDetails.node || selectedGuestDetails.currentNode,
+      target_node: opt.node,
+      mem_gb: selectedGuestDetails.mem_max_gb || 0,
+      suitability_rating: opt.suitability_rating,
+      score_improvement: opt.improvement,
+      reason: opt.reason,
+    });
+    setSelectedGuestDetails(null);
+  };
 
   const toggleIoExempt = async () => {
     if (togglingExempt) return;
@@ -160,6 +204,51 @@ export default function GuestDetailsModal({
               </div>
             </div>
           </div>
+
+          {/* Usage history (real time-series) */}
+          <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
+            <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1">Usage (24h)</div>
+            {loadingHistory ? (
+              <div className="flex items-center justify-center py-6 text-xs text-pb-text2 dark:text-gray-400"><RefreshCw size={14} className="animate-spin mr-2" /> Loading history…</div>
+            ) : (
+              <div className="bg-pb-surface2 dark:bg-slate-800/60 rounded-lg p-2">
+                <MiniTrendChart
+                  points={history || []}
+                  series={[
+                    { key: 'cpu', label: 'CPU', color: '#3b82f6' },
+                    { key: 'mem', label: 'Mem', color: '#a855f7' },
+                  ]}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Workload profile + affinity */}
+          {(profile || affinityGroups.length > 0 || excludeGroups.length > 0) && (
+            <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1.5">Profile & Affinity</div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {profile && (() => {
+                  const meta = BEHAVIOR_META[profile.behavior] || BEHAVIOR_META.unknown;
+                  return (
+                    <span className={`px-2 py-0.5 rounded font-medium ${meta.cls}`} title={`Confidence: ${profile.confidence} · ${profile.data_points} samples · peak ${profile.peak_multiplier?.toFixed(1)}×`}>
+                      {meta.label}{profile.confidence && profile.confidence !== 'low' ? '' : ' (low confidence)'}
+                    </span>
+                  );
+                })()}
+                {profile && profile.peak_multiplier > 1.5 && (
+                  <span className="text-pb-text2 dark:text-gray-400">peak {profile.peak_multiplier.toFixed(1)}× avg</span>
+                )}
+                {affinityGroups.map(g => (
+                  <span key={`a-${g}`} className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" title="Affinity group — keep together">↔ {g}</span>
+                ))}
+                {excludeGroups.map(g => (
+                  <span key={`x-${g}`} className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" title="Anti-affinity group — keep apart">⊗ {g}</span>
+                ))}
+                {!profile && <span className="text-pb-text2 dark:text-gray-500 italic">No behavior profile yet</span>}
+              </div>
+            </div>
+          )}
 
           {/* IOWait scoring exemption */}
           <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
@@ -480,13 +569,24 @@ export default function GuestDetailsModal({
                             </div>
                           </div>
                           {!opt.disqualified && (
-                            <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-600">
-                              <div className={`rounded-full transition-all ${
-                                opt.suitability_rating >= 70 ? 'bg-green-500' :
-                                opt.suitability_rating >= 50 ? 'bg-yellow-500' :
-                                opt.suitability_rating >= 30 ? 'bg-orange-500' :
-                                'bg-red-500'
-                              }`} style={{ width: `${opt.suitability_rating}%` }} />
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-600 flex-1">
+                                <div className={`rounded-full transition-all ${
+                                  opt.suitability_rating >= 70 ? 'bg-green-500' :
+                                  opt.suitability_rating >= 50 ? 'bg-yellow-500' :
+                                  opt.suitability_rating >= 30 ? 'bg-orange-500' :
+                                  'bg-red-500'
+                                }`} style={{ width: `${opt.suitability_rating}%` }} />
+                              </div>
+                              {!opt.is_current && canMigrate && setConfirmMigration && (
+                                <button
+                                  onClick={() => migrateTo(opt)}
+                                  className="shrink-0 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold flex items-center gap-1"
+                                  title={`Migrate to ${opt.node}`}
+                                >
+                                  <MoveRight size={11} />Migrate
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
