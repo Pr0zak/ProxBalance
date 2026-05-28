@@ -1,6 +1,6 @@
 import {
   Server, ChevronDown, Cpu, MemoryStick, Database, Zap, Globe,
-  RefreshCw, CheckCircle, Folder
+  RefreshCw, CheckCircle, Folder, MoveRight
 } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON } from '../../utils/designTokens.js';
 
@@ -37,6 +37,67 @@ export default function ClusterMap({
     try { return localStorage.getItem('clusterMapColorMode') || 'type'; } catch { return 'type'; }
   });
   const setColor = (m) => { setColorMode(m); try { localStorage.setItem('clusterMapColorMode', m); } catch {} };
+
+  const [showPlan, setShowPlanState] = useState(() => {
+    try { return localStorage.getItem('clusterMapShowPlan') === '1'; } catch { return false; }
+  });
+  const setShowPlan = (v) => { setShowPlanState(v); try { localStorage.setItem('clusterMapShowPlan', v ? '1' : '0'); } catch {} };
+
+  const mapAreaRef = useRef(null);
+  const nodeRefs = useRef({});
+  const guestRefs = useRef({});
+  const [arrows, setArrows] = useState([]);
+
+  const [dragMode, setDragMode] = useState(false);
+  const [dragOverNode, setDragOverNode] = useState(null);
+  const draggedGuestRef = useRef(null);
+  const onGuestDrop = (targetNodeName) => {
+    const g = draggedGuestRef.current;
+    setDragOverNode(null);
+    draggedGuestRef.current = null;
+    if (!g || !setConfirmMigration || g.source_node === targetNodeName) return;
+    setConfirmMigration({
+      vmid: g.vmid, name: g.name, type: g.type,
+      source_node: g.source_node, target_node: targetNodeName,
+      mem_gb: g.mem_gb, reason: 'Manual move (drag-to-migrate)',
+    });
+  };
+
+  const recList = Array.isArray(recommendations)
+    ? recommendations.filter(r => r && r.source_node && r.target_node && r.vmid != null)
+    : [];
+  const recByVmid = {};
+  recList.forEach(r => { recByVmid[String(r.vmid)] = r; });
+
+  // Measure recommended guest → target-node positions and draw connector arrows.
+  useLayoutEffect(() => {
+    if (!showPlan || !mapAreaRef.current || recList.length === 0) { setArrows([]); return; }
+    const measure = () => {
+      const c = mapAreaRef.current;
+      if (!c) return;
+      const cRect = c.getBoundingClientRect();
+      const next = [];
+      recList.forEach(r => {
+        const g = guestRefs.current[String(r.vmid)];
+        const n = nodeRefs.current[r.target_node];
+        if (!g || !n || !g.isConnected || !n.isConnected) return;
+        const gr = g.getBoundingClientRect();
+        const nr = n.getBoundingClientRect();
+        next.push({
+          key: `${r.vmid}-${r.target_node}`,
+          x1: gr.left + gr.width / 2 - cRect.left,
+          y1: gr.top + gr.height / 2 - cRect.top,
+          x2: nr.left + nr.width / 2 - cRect.left,
+          y2: nr.bottom - cRect.top,
+        });
+      });
+      setArrows(next);
+    };
+    measure();
+    const t = setTimeout(measure, 80);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, [showPlan, recommendations, clusterMapViewMode, showPoweredOffGuests, colorMode, collapsedSections, data]);
 
   // When embedded, the parent owns the section card and header.
   const Wrapper = embedded ? React.Fragment : 'div';
@@ -155,12 +216,47 @@ export default function ClusterMap({
                 </button>
               ))}
             </div>
+            {recList.length > 0 && (
+              <button
+                onClick={() => setShowPlan(!showPlan)}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  showPlan ? 'bg-amber-500 text-white' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                }`}
+                title="Overlay recommended migrations as arrows on the map"
+              >
+                <MoveRight size={14} />{showPlan ? `Plan (${recList.length})` : `Show plan (${recList.length})`}
+              </button>
+            )}
+            {canMigrate && (
+              <button
+                onClick={() => { setDragMode(v => !v); setDragOverNode(null); }}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                  dragMode ? 'bg-indigo-600 text-white' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                }`}
+                title="Drag a guest onto another node to stage a migration"
+              >
+                {dragMode ? 'Rearranging — drag a guest' : 'Rearrange'}
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {!isCollapsed && (
-        <div className="relative" style={{minHeight: '400px'}}>
+        <div ref={mapAreaRef} className="relative" style={{minHeight: '400px'}}>
+          {showPlan && arrows.length > 0 && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" style={{ overflow: 'visible' }}>
+              <defs>
+                <marker id="recArrowHead" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
+                </marker>
+              </defs>
+              {arrows.map(a => (
+                <line key={a.key} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}
+                  stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,4" strokeOpacity="0.85" markerEnd="url(#recArrowHead)" />
+              ))}
+            </svg>
+          )}
           <div className="flex flex-wrap gap-4 sm:gap-8 justify-center items-start py-8">
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
               const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
@@ -218,7 +314,11 @@ export default function ClusterMap({
                       </div>
                     )}
                     <div
+                      ref={el => { if (el) nodeRefs.current[node.name] = el; }}
                       onClick={() => setSelectedNode(node)}
+                      onDragOver={dragMode ? (e) => { e.preventDefault(); setDragOverNode(node.name); } : undefined}
+                      onDragLeave={dragMode ? () => setDragOverNode(prev => (prev === node.name ? null : prev)) : undefined}
+                      onDrop={dragMode ? (e) => { e.preventDefault(); onGuestDrop(node.name); } : undefined}
                       style={scored ? { borderColor: scoreHex(rating) } : undefined}
                       className={`w-28 sm:w-32 rounded-lg border-4 flex flex-col items-center justify-between p-2 sm:p-2 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                       isMaint
@@ -228,7 +328,7 @@ export default function ClusterMap({
                         : node.status === 'online'
                         ? 'bg-pb-bg dark:bg-gray-900 border-blue-600 hover:border-blue-500'
                         : 'bg-white dark:bg-slate-800 border-gray-600'
-                    }`}>
+                    } ${dragMode && dragOverNode === node.name ? 'ring-4 ring-indigo-400 scale-105' : ''}`}>
                       {/* Node header */}
                       <div className="flex flex-col items-center z-10">
                         <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-500'}`} />
@@ -384,6 +484,9 @@ export default function ClusterMap({
 
                       const guestType = (guest.type || '').toUpperCase();
                       const isVM = guestType === 'VM' || guestType === 'QEMU';
+                      const hasRec = showPlan && !!recByVmid[String(guest.vmid)];
+                      const pinned = guest.local_disks?.is_pinned;
+                      const draggable = dragMode && canMigrate && !pinned && !isMigrating;
                       const getGuestColor = () => {
                         if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-600';
                         if (isVM) return 'bg-purple-600';
@@ -399,7 +502,14 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className="relative group">
                           <div
-                            className={`rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
+                            ref={el => { if (el) guestRefs.current[String(guest.vmid)] = el; }}
+                            draggable={draggable}
+                            onDragStart={draggable ? (e) => {
+                              draggedGuestRef.current = { vmid: guest.vmid, name: guest.name || `Guest ${guest.vmid}`, type: isVM ? 'VM' : 'CT', source_node: node.name, mem_gb: guest.mem_max_gb || 0 };
+                              try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(guest.vmid)); } catch (err) {}
+                            } : undefined}
+                            onDragEnd={draggable ? () => setDragOverNode(null) : undefined}
+                            className={`rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} ${dragMode && pinned ? 'cursor-not-allowed' : ''} ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${isStopped ? 'opacity-40' : ''}`}
                             style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`, ...(colorMode === 'load' ? { background: heatHex(sizeRatio) } : {})}}
                             onClick={() => {
                               if (!isMigrating) {
