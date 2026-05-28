@@ -82,6 +82,23 @@ const healthStops = (vMin, vMax) => {
   return anchors.map(v => ({ o: off(v), c: healthColor(v) }));
 };
 
+// Migration markers (status-colored). A bin's color is its worst status (fail > other > ok).
+const MARKER_COLORS = { ok: '#22c55e', other: '#eab308', fail: '#ef4444' };
+const statusKeyFor = (s) => {
+  s = (s || '').toLowerCase();
+  if (s === 'completed' || s === 'success') return 'ok';
+  if (s === 'failed' || s === 'error' || s === 'cancelled') return 'fail';
+  return 'other';
+};
+const binColor = (items) => items.some(i => i.statusKey === 'fail') ? MARKER_COLORS.fail
+  : items.some(i => i.statusKey === 'other') ? MARKER_COLORS.other : MARKER_COLORS.ok;
+const binTitle = (items) => {
+  const head = items.length > 1 ? `${items.length} migrations\n` : '';
+  const list = items.slice(0, 6).map(i => i.label).join('\n');
+  const more = items.length > 6 ? `\n…and ${items.length - 6} more` : '';
+  return head + list + more;
+};
+
 /**
  * Cluster health over time. Three views:
  *  - Cluster: the aggregate cluster_health line/area (original).
@@ -102,8 +119,10 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   // Locked defaults (their selectors are hidden): Medium smoothing + Full detail read best.
   const smoothId = 'med';
   const detailId = 'full';
+  const [showMarkers, setShowMarkersState] = useState(() => lsGet('clusterHealthChartMarkers', '1') !== '0');
   const setPeriod = (id) => { setPeriodState(id); lsSet('clusterHealthChartPeriod', id); };
   const setView = (id) => { setViewState(id); lsSet('clusterHealthChartView', id); };
+  const setShowMarkers = (v) => { setShowMarkersState(v); lsSet('clusterHealthChartMarkers', v ? '1' : '0'); };
 
   const [hover, setHover] = useState(null);
   const containerRef = useRef(null);
@@ -228,19 +247,39 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const markers = (migrationHistory || [])
+  const rawMarkers = (migrationHistory || [])
     .map(m => {
       const t = new Date(m.timestamp).getTime();
       if (isNaN(t) || t < tStart || t > tEnd) return null;
-      const status = (m.status || '').toLowerCase();
-      let color = 'fill-yellow-500';
-      if (status === 'completed' || status === 'success') color = 'fill-green-500';
-      else if (status === 'failed' || status === 'error' || status === 'cancelled') color = 'fill-red-500';
       const guest = m.name || (m.vmid ? `VM/CT ${m.vmid}` : 'guest');
       const route = (m.source_node && m.target_node) ? `${m.source_node} → ${m.target_node}` : '';
-      return { x: xFor(t), color, title: `${new Date(t).toLocaleString()} — ${guest} ${route} · ${m.status}` };
+      return { t, x: xFor(t), statusKey: statusKeyFor(m.status), label: `${new Date(t).toLocaleString()} — ${guest} ${route} · ${m.status}` };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => a.x - b.x);
+
+  // Density binning: collapse markers within BIN_PX of each other into one, so dense
+  // periods (30d/1y) don't turn into an unreadable wall of marks.
+  const BIN_PX = 8;
+  const markerBins = [];
+  rawMarkers.forEach(m => {
+    const last = markerBins[markerBins.length - 1];
+    if (last && (m.x - last.x) <= BIN_PX) {
+      last.items.push(m);
+      last.xSum += m.x;
+      last.x = last.xSum / last.items.length;
+    } else {
+      markerBins.push({ x: m.x, xSum: m.x, items: [m] });
+    }
+  });
+  // Cluster view: snap a bin to the nearest sample so its dot sits on the health line.
+  const yOnLine = (binX) => {
+    if (!hasData) return h - pad;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < ts.length; i++) { const d = Math.abs(xFor(ts[i]) - binX); if (d < bd) { bd = d; bi = i; } }
+    const v = clusterVals[bi];
+    return v != null ? yCluster(v) : h - pad;
+  };
 
   const showLegend = view !== 'cluster' && nodeNames.length > 0;
 
@@ -251,7 +290,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health Over Time</h3>
           <p className="text-[11px] text-pb-text2 dark:text-gray-500">
             {new Date(tStart).toLocaleDateString()} → {new Date(tEnd).toLocaleDateString()}
-            {markers.length > 0 && ` · ${markers.length} migration${markers.length !== 1 ? 's' : ''}`}
+            {rawMarkers.length > 0 && ` · ${rawMarkers.length} migration${rawMarkers.length !== 1 ? 's' : ''}`}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -272,6 +311,23 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
       {/* View selector (Smoothing=Medium + Detail=Full are locked) */}
       <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mb-2 text-[11px]">
         <LabeledPills label="View" options={VIEW_MODES} value={view} onChange={setView} />
+        {rawMarkers.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-pb-text2 dark:text-gray-400">Migrations</span>
+            <button
+              type="button"
+              onClick={() => setShowMarkers(!showMarkers)}
+              className={`px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
+                showMarkers
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-800/60 text-pb-text2 dark:text-gray-400 border-pb-border dark:border-slate-700/50 hover:text-pb-text dark:hover:text-gray-200'
+              }`}
+              title={`${showMarkers ? 'Hide' : 'Show'} migration markers`}
+            >
+              {showMarkers ? 'Shown' : 'Hidden'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div ref={containerRef} className="relative">
@@ -311,14 +367,35 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             ))
           ))}
 
-          {markers.map((m, i) => (
-            <g key={i}>
-              <line x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-slate-600/40" strokeWidth="0.5" strokeDasharray="2,2" />
-              <polygon points={`${m.x - 3},${h + 2} ${m.x + 3},${h + 2} ${m.x},${h - 4}`} className={m.color}>
-                <title>{m.title}</title>
-              </polygon>
-            </g>
-          ))}
+          {showMarkers && markerBins.map((b, i) => {
+            const color = binColor(b.items);
+            const count = b.items.length;
+            // Cluster view: dot sits on the health line (ties event to the value at that
+            // moment). Other views have no single line, so a small tick at the baseline.
+            if (view === 'cluster' && hasData) {
+              const cy = yOnLine(b.x);
+              return (
+                <g key={i}>
+                  <circle cx={b.x} cy={cy} r={count > 1 ? 3.2 : 2.6} fill={color} stroke="white" strokeWidth="0.7">
+                    <title>{binTitle(b.items)}</title>
+                  </circle>
+                  {count > 1 && (
+                    <text x={b.x} y={cy - 5} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
+                  )}
+                </g>
+              );
+            }
+            return (
+              <g key={i}>
+                <polygon points={`${b.x - 3},${h + 2} ${b.x + 3},${h + 2} ${b.x},${h - 4}`} fill={color}>
+                  <title>{binTitle(b.items)}</title>
+                </polygon>
+                {count > 1 && (
+                  <text x={b.x} y={h - 6} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
+                )}
+              </g>
+            );
+          })}
 
           {hover && hasData && (
             <line
@@ -382,12 +459,12 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
         </div>
       )}
 
-      {markers.length > 0 && (
+      {showMarkers && rawMarkers.length > 0 && (
         <div className="flex items-center gap-3 mt-2 text-[10px] text-pb-text2 dark:text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-green-500" />completed</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-yellow-500" />other</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-b-[6px] border-l-transparent border-r-transparent border-b-red-500" />failed</span>
-          <span className="ml-auto">hover for detail</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.ok }} />completed</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.other }} />other</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{ background: MARKER_COLORS.fail }} />failed</span>
+          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · hover for detail' : 'hover for detail'}</span>
         </div>
       )}
     </div>
