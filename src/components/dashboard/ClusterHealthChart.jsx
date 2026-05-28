@@ -60,6 +60,32 @@ function smooth(vals, window) {
 const lsGet = (k, fallback) => { try { return localStorage.getItem(k) || fallback; } catch { return fallback; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
+// Health bands (cluster_health / suitability: higher = healthier).
+const HEALTH_BANDS = [
+  { min: 70, color: '#22c55e', label: 'Healthy' },
+  { min: 50, color: '#eab308', label: 'Fair' },
+  { min: 30, color: '#f97316', label: 'Strained' },
+  { min: -Infinity, color: '#ef4444', label: 'Critical' },
+];
+const healthColor = (v) => (HEALTH_BANDS.find(b => v >= b.min) || HEALTH_BANDS[HEALTH_BANDS.length - 1]).color;
+// Build vertical-gradient stops so the line/area is colored by absolute health value,
+// with hard transitions at the band boundaries — even though the y-axis is zoomed to
+// the data's [min,max]. offset 0 = top (max value), offset 1 = bottom (min value).
+const healthStops = (vMin, vMax) => {
+  const range = (vMax - vMin) || 1;
+  const off = (v) => Math.min(1, Math.max(0, (vMax - v) / range));
+  const stops = [{ o: 0, c: healthColor(vMax) }];
+  [70, 50, 30].forEach(b => {
+    if (b > vMin && b < vMax) {
+      const o = off(b);
+      stops.push({ o, c: healthColor(b + 0.01) });
+      stops.push({ o, c: healthColor(b - 0.01) });
+    }
+  });
+  stops.push({ o: 1, c: healthColor(vMin) });
+  return stops;
+};
+
 /**
  * Cluster health over time. Three views:
  *  - Cluster: the aggregate cluster_health line/area (original).
@@ -149,6 +175,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const stackMax = Math.max(1, ...stackTotals);
   const yStack = (v) => h - pad - (v / stackMax) * (h - 2 * pad);
 
+  const clusterStops = (view === 'cluster' && hasData) ? healthStops(cMin, cMax) : [];
   let clusterLine = '', clusterArea = '';
   if (view === 'cluster' && hasData) {
     const pts = ts.map((t, i) => clusterVals[i] != null ? `${xFor(t).toFixed(2)},${yCluster(clusterVals[i]).toFixed(2)}` : null).filter(Boolean);
@@ -258,8 +285,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
         >
           <defs>
             <linearGradient id="clusterHealthGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+              {clusterStops.map((s, i) => (
+                <stop key={i} offset={`${(s.o * 100).toFixed(2)}%`} stopColor={s.c} />
+              ))}
             </linearGradient>
           </defs>
 
@@ -269,8 +297,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
           {view === 'cluster' && hasData && (
             <>
-              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" />
-              <polyline points={clusterLine} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" />
+              {/* Area + line colored by health value (green healthy → red critical). */}
+              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" fillOpacity="0.18" />
+              <polyline points={clusterLine} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2.5" strokeLinejoin="round" />
             </>
           )}
 
@@ -342,6 +371,18 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             </span>
           ))}
           <span className="ml-auto">{view === 'lines' ? 'suitability 0–100 per node' : 'band height = node suitability'}</span>
+        </div>
+      )}
+
+      {view === 'cluster' && hasData && (
+        <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
+          {HEALTH_BANDS.map((b) => (
+            <span key={b.label} className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: b.color }} />
+              {b.label}{b.min > -Infinity ? ` ≥${b.min}` : ' <30'}
+            </span>
+          ))}
+          <span className="ml-auto">line colored by health value</span>
         </div>
       )}
 
