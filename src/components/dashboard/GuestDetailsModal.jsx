@@ -1,10 +1,11 @@
 import {
   HardDrive, Package, X, Activity, AlertCircle, Folder,
-  ChevronDown, AlertTriangle, CheckCircle,
+  AlertTriangle, CheckCircle,
   BarChart2, RefreshCw, MoveRight, TrendingUp, TrendingDown, Minus
 } from '../Icons.jsx';
 import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
+import Section from './CollapsibleSection.jsx';
 
 const { useState, useEffect } = React;
 
@@ -18,7 +19,6 @@ const BEHAVIOR_META = {
 
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
-  guestModalCollapsed, setGuestModalCollapsed,
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions,
   canMigrate,
   setSelectedGuest, setMigrationTarget, setShowMigrationDialog,
@@ -28,6 +28,8 @@ export default function GuestDetailsModal({
   const [togglingExempt, setTogglingExempt] = useState(false);
   const [history, setHistory] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [openSec, setOpenSec] = useState({ usage: false, profile: false, iowait: false, tags: false, mounts: false, passthrough: false, migrate: false });
+  const toggleSec = (k) => setOpenSec(o => ({ ...o, [k]: !o[k] }));
 
   const vmid = selectedGuestDetails?.vmid;
   useEffect(() => {
@@ -206,8 +208,7 @@ export default function GuestDetailsModal({
           </div>
 
           {/* Usage history (real time-series) */}
-          <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
-            <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1">Usage (24h)</div>
+          <Section title="Usage (24h)" isOpen={openSec.usage} onToggle={() => toggleSec('usage')}>
             {loadingHistory ? (
               <div className="flex items-center justify-center py-6 text-xs text-pb-text2 dark:text-gray-400"><RefreshCw size={14} className="animate-spin mr-2" /> Loading history…</div>
             ) : (
@@ -221,12 +222,11 @@ export default function GuestDetailsModal({
                 />
               </div>
             )}
-          </div>
+          </Section>
 
           {/* Workload profile + affinity */}
           {(profile || affinityGroups.length > 0 || excludeGroups.length > 0) && (
-            <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
-              <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1.5">Profile & Affinity</div>
+            <Section title="Profile & Affinity" isOpen={openSec.profile} onToggle={() => toggleSec('profile')}>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {profile && (() => {
                   const meta = BEHAVIOR_META[profile.behavior] || BEHAVIOR_META.unknown;
@@ -247,14 +247,13 @@ export default function GuestDetailsModal({
                 ))}
                 {!profile && <span className="text-pb-text2 dark:text-gray-500 italic">No behavior profile yet</span>}
               </div>
-            </div>
+            </Section>
           )}
 
           {/* IOWait scoring exemption */}
-          <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
+          <Section title="IOWait scoring" isOpen={openSec.iowait} onToggle={() => toggleSec('iowait')}>
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-0.5">IOWait scoring</div>
                 {isPassthroughExempt ? (
                   <p className="text-xs text-pb-text2 dark:text-gray-400">
                     Auto-exempt — this guest has passthrough disks, so its host IOWait is excluded from node scoring.
@@ -280,12 +279,11 @@ export default function GuestDetailsModal({
                 {togglingExempt ? '…' : (hasExemptTag || isPassthroughExempt) ? 'IOWait exempt ✓' : 'Exempt from IOWait'}
               </button>
             </div>
-          </div>
+          </Section>
 
           {/* Tags */}
           {selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags && selectedGuestDetails.tags.all_tags.length > 0 && (
-            <div className="border-t border-pb-border dark:border-slate-700 pt-2 mt-2">
-              <div className="text-[10px] uppercase tracking-wide text-pb-text2 dark:text-gray-400 font-medium mb-1.5">Tags</div>
+            <Section title="Tags" badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{selectedGuestDetails.tags.all_tags.length}</span>} isOpen={openSec.tags} onToggle={() => toggleSec('tags')}>
               <div className="flex flex-wrap gap-1.5">
                 {selectedGuestDetails.tags.all_tags.map((tag, idx) => (
                   <span key={idx} className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs">
@@ -293,34 +291,17 @@ export default function GuestDetailsModal({
                   </span>
                 ))}
               </div>
-            </div>
+            </Section>
           )}
 
           {/* Mount Points (Containers only) */}
           {selectedGuestDetails.type === 'CT' && selectedGuestDetails.mount_points && selectedGuestDetails.mount_points.has_mount_points && (
-            <div className="border-t border-pb-border dark:border-slate-700 pt-3">
-              <button
-                onClick={() => setGuestModalCollapsed(prev => ({
-                  ...prev,
-                  mountPoints: !prev.mountPoints
-                }))}
-                className="flex items-center justify-between w-full mb-2 hover:bg-gray-700/50 p-2 rounded transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Folder size={16} className={`${
-                    selectedGuestDetails.mount_points.has_unshared_bind_mount
-                      ? 'text-orange-600 dark:text-orange-400'
-                      : 'text-green-600 dark:text-green-400'
-                  }`} />
-                  <h4 className="text-sm font-semibold text-pb-text dark:text-white">
-                    Mount Points ({selectedGuestDetails.mount_points.mount_count})
-                  </h4>
-                </div>
-                <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.mountPoints ? '' : 'rotate-180'}`} />
-              </button>
-
-              {!guestModalCollapsed.mountPoints && (
-              <>
+            <Section
+              title={<><Folder size={16} className={selectedGuestDetails.mount_points.has_unshared_bind_mount ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'} /> Mount Points</>}
+              badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">{selectedGuestDetails.mount_points.mount_count}</span>}
+              isOpen={openSec.mounts}
+              onToggle={() => toggleSec('mounts')}
+            >
               {/* Mount Points List */}
               <div className="space-y-2">
                 {selectedGuestDetails.mount_points.mount_points && selectedGuestDetails.mount_points.mount_points.map((mp, idx) => (
@@ -396,32 +377,16 @@ export default function GuestDetailsModal({
                   </div>
                 </div>
               ) : null}
-              </>
-              )}
-            </div>
+            </Section>
           )}
 
           {/* Local/Pinned Disks (VMs and CTs) */}
           {selectedGuestDetails.local_disks && selectedGuestDetails.local_disks.is_pinned && (
-            <div className="border-t border-pb-border dark:border-slate-700 pt-3">
-              <button
-                onClick={() => setGuestModalCollapsed(prev => ({
-                  ...prev,
-                  passthroughDisks: !prev.passthroughDisks
-                }))}
-                className="flex items-center justify-between w-full mb-2 hover:bg-gray-700/50 p-2 rounded transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
-                  <h4 className="text-sm font-semibold text-pb-text dark:text-white">
-                    Cannot Migrate - {selectedGuestDetails.local_disks.pinned_reason}
-                  </h4>
-                </div>
-                <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.passthroughDisks ? '' : 'rotate-180'}`} />
-              </button>
-
-              {!guestModalCollapsed.passthroughDisks && (
-              <>
+            <Section
+              title={<><AlertTriangle size={16} className="text-red-600 dark:text-red-400" /> Cannot Migrate — {selectedGuestDetails.local_disks.pinned_reason}</>}
+              isOpen={openSec.passthrough}
+              onToggle={() => toggleSec('passthrough')}
+            >
               {/* Passthrough Disks */}
               {selectedGuestDetails.local_disks.passthrough_disks && selectedGuestDetails.local_disks.passthrough_disks.length > 0 && (
                 <div className="mb-3">
@@ -467,33 +432,23 @@ export default function GuestDetailsModal({
                   </div>
                 </div>
               </div>
-              </>
-              )}
-            </div>
+            </Section>
           )}
 
           {/* Migration Options - Node Score Comparison */}
-          <div className="border-t border-pb-border dark:border-slate-700 pt-3 mt-2">
-            <button
-              onClick={() => {
-                setGuestModalCollapsed(prev => ({ ...prev, migrationOptions: !prev.migrationOptions }));
-                if (!guestMigrationOptions && fetchGuestMigrationOptions) {
-                  fetchGuestMigrationOptions(selectedGuestDetails.vmid);
-                }
-              }}
-              className="flex items-center justify-between w-full mb-2 hover:bg-gray-700/50 p-2 rounded transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <BarChart2 size={16} className="text-blue-600 dark:text-blue-400" />
-                <h4 className="text-sm font-semibold text-pb-text dark:text-white">
-                  Migration Options
-                </h4>
-                <span className="text-xs text-pb-text2 dark:text-gray-400">Score comparison across all nodes</span>
-              </div>
-              <ChevronDown size={16} className={`text-pb-text2 dark:text-gray-500 transition-transform ${guestModalCollapsed.migrationOptions ? 'rotate-180' : ''}`} />
-            </button>
-
-            {guestModalCollapsed.migrationOptions && (
+          <Section
+            title={<><BarChart2 size={16} className="text-blue-600 dark:text-blue-400" /> Migration Options</>}
+            badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">score across all nodes</span>}
+            isOpen={openSec.migrate}
+            onToggle={() => {
+              const willOpen = !openSec.migrate;
+              toggleSec('migrate');
+              if (willOpen && !guestMigrationOptions && fetchGuestMigrationOptions) {
+                fetchGuestMigrationOptions(selectedGuestDetails.vmid);
+              }
+            }}
+          >
+            {(
               <div className="space-y-2">
                 {loadingGuestOptions ? (
                   <div className="flex items-center justify-center p-4 text-pb-text2 dark:text-gray-400">
@@ -598,7 +553,7 @@ export default function GuestDetailsModal({
                 )}
               </div>
             )}
-          </div>
+          </Section>
         </div>
 
         {/* Modal Footer */}
