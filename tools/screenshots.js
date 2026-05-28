@@ -174,9 +174,7 @@ async function shoot(browser, theme, page, clusterTab) {
 
   const filename = clusterTab ? `${page.id}-${clusterTab.file}.png` : `${page.id}-${theme}.png`;
   const outPath = path.join(OUTDIR, filename);
-  // Charts tab needs full-page so the per-node history charts (below the fold) are captured.
-  const fullPage = !!(clusterTab && clusterTab.file === 'charts');
-  await tab.screenshot({ path: outPath, fullPage });
+  await tab.screenshot({ path: outPath, fullPage: false });
   await tab.close();
   console.log(`✓ ${path.relative(process.cwd(), outPath)}`);
 }
