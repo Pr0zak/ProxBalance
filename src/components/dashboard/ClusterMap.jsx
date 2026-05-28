@@ -307,11 +307,12 @@ export default function ClusterMap({
                   <div className="relative group">
                     {scored && (
                       <div
-                        className="absolute -top-2 -right-2 z-20 flex items-center gap-1 pl-1 pr-1.5 py-0.5 rounded-md bg-white/85 dark:bg-slate-900/85 backdrop-blur-sm border border-pb-border/70 dark:border-slate-700/70 shadow-sm"
-                        title={`Suitability ${rating}% — ${ns.suitable ? 'suitable target' : 'not a good target'}`}
+                        className="absolute -top-2 -right-2 z-20 flex items-center gap-1 pl-1.5 pr-1.5 py-0.5 rounded-md bg-white/85 dark:bg-slate-900/85 backdrop-blur-sm border border-pb-border/70 dark:border-slate-700/70 shadow-sm"
+                        title={`Migration rating ${Math.round(rating)}% — ${ns.suitable ? 'suitable target' : 'not a good target'}`}
                       >
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
-                        <span className="text-[10px] font-bold tabular-nums text-pb-text dark:text-gray-100">{Math.round(rating)}</span>
+                        <span className="text-[8px] uppercase tracking-wide font-semibold text-pb-text2 dark:text-gray-400">Rating</span>
+                        <span className="text-[10px] font-bold tabular-nums text-pb-text dark:text-gray-100">{Math.round(rating)}%</span>
                       </div>
                     )}
                     <div
@@ -678,7 +679,7 @@ export default function ClusterMap({
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ background: '#22c55e' }} />
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#f97316' }} />
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#ef4444' }} />
-                <span className="ml-1">node border/badge = suitability</span>
+                <span className="ml-1">node border/badge = migration rating</span>
               </div>
               <div className="flex items-center gap-2">
                 <span>
