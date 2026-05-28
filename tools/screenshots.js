@@ -96,6 +96,16 @@ async function shoot(browser, theme, page, clusterTab) {
   // Activate a Cluster section tab (Nodes/Guests/Map/Charts/Suggestions). These
   // buttons live in the Cluster card, not the TopNav; strip any "(N)" count.
   if (clusterTab) {
+    // The app lazy-loads Chart.js only after the Charts tab mounts, which races
+    // the per-node <canvas> charts (they mount before `Chart` exists and bail).
+    // Pre-inject the local Chart.js + annotation plugin so they render on mount.
+    if (clusterTab.file === 'charts') {
+      for (const f of ['chart.umd.min.js', 'chartjs-plugin-annotation.min.js']) {
+        await tab.addScriptTag({ url: new URL('assets/js/' + f, URL_BASE).href }).catch(() => {});
+      }
+      await sleep(300);
+    }
+
     await tab.evaluate((label) => {
       const btn = [...document.querySelectorAll('button')].find(
         el => !el.closest('nav') && el.textContent.trim().replace(/\s*\(\d+\)$/, '') === label
@@ -103,6 +113,16 @@ async function shoot(browser, theme, page, clusterTab) {
       if (btn) btn.click();
     }, clusterTab.label);
     await sleep(1800);
+
+    // Wait for the per-node line charts to paint, then the capture below switches
+    // to full-page so they're all in frame.
+    if (clusterTab.file === 'charts') {
+      await tab.waitForFunction(
+        () => [...document.querySelectorAll('canvas')].some(c => c.width > 0 && c.height > 0),
+        { timeout: 10000 }
+      ).catch(() => {});
+      await sleep(2500);
+    }
   }
 
   // Blur VM/CT names so screenshots are safe to publish. Pull the live
@@ -148,7 +168,9 @@ async function shoot(browser, theme, page, clusterTab) {
 
   const filename = clusterTab ? `${page.id}-${clusterTab.file}.png` : `${page.id}-${theme}.png`;
   const outPath = path.join(OUTDIR, filename);
-  await tab.screenshot({ path: outPath, fullPage: false });
+  // Charts tab needs full-page so the per-node history charts (below the fold) are captured.
+  const fullPage = !!(clusterTab && clusterTab.file === 'charts');
+  await tab.screenshot({ path: outPath, fullPage });
   await tab.close();
   console.log(`✓ ${path.relative(process.cwd(), outPath)}`);
 }
