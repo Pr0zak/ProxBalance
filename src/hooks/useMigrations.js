@@ -1,9 +1,16 @@
 import { MIGRATION_POLL_INTERVAL } from '../utils/constants.js';
 
-const { useState } = React;
+const { useState, useRef } = React;
 
 export function useMigrations(API_BASE, deps = {}) {
   const { setData, setError, fetchGuestLocations } = deps;
+
+  // Run Plan execution state — lives here (root hook) so it survives the modal
+  // closing and page navigation; the modal is just a view onto planRun.
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planCtx, setPlanCtx] = useState(null);   // {plan, recommendations, maxConcurrent, outsideWindow} for the confirm phase
+  const [planRun, setPlanRun] = useState(null);    // active run: {phase, groups, recByVmid, stepStatus, haltMessage, halted, maxConcurrent}
+  const planHaltedRef = useRef(false);
 
   const [migrationStatus, setMigrationStatus] = useState({});
   const [activeMigrations, setActiveMigrations] = useState({});
@@ -218,6 +225,83 @@ export function useMigrations(API_BASE, deps = {}) {
       setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
       return { vmid: step.vmid, status: 'failed', error: err.message || String(err) };
     }
+  };
+
+  // --- Run Plan orchestration (state lives here so it survives modal close / nav) ---
+  const buildGroups = (steps) => {
+    const map = new Map();
+    for (const s of steps) {
+      const g = s.parallel_group || 1;
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(s);
+    }
+    return [...map.entries()].sort((a, b) => a[0] - b[0]);
+  };
+
+  // Open the Run Plan modal in its confirm phase for the given plan context.
+  const openRunPlan = (ctx) => {
+    setPlanCtx(ctx || null);
+    setPlanModalOpen(true);
+  };
+
+  // Clear a finished/closed run entirely (hides the pill + resets).
+  const dismissPlanRun = () => {
+    setPlanRun(null);
+    setPlanCtx(null);
+    setPlanModalOpen(false);
+  };
+
+  // Execute the plan in planCtx. Runs group-by-group, capping concurrency to
+  // max_concurrent_migrations; halts the run if any migration in a group fails.
+  const startPlanRun = async () => {
+    const ctx = planCtx;
+    const steps = ctx?.plan?.ordered_recommendations || [];
+    if (!steps.length) return;
+
+    const recByVmid = {};
+    (ctx.recommendations || []).forEach(r => { recByVmid[r.vmid] = r; });
+    const groups = buildGroups(steps);
+    const concurrency = Math.max(1, ctx.maxConcurrent || 1);
+    const initStatus = {};
+    for (const s of steps) initStatus[s.vmid] = { status: 'pending' };
+
+    planHaltedRef.current = false;
+    setPlanRun({ phase: 'running', groups, recByVmid, stepStatus: initStatus, haltMessage: null, halted: false, maxConcurrent: concurrency });
+
+    const patch = (vmid, p) => setPlanRun(prev => prev
+      ? { ...prev, stepStatus: { ...prev.stepStatus, [vmid]: { ...prev.stepStatus[vmid], ...p } } }
+      : prev);
+
+    for (const [groupKey, groupSteps] of groups) {
+      if (planHaltedRef.current) break;
+      const groupResults = [];
+      for (let i = 0; i < groupSteps.length; i += concurrency) {
+        if (planHaltedRef.current) break;
+        const chunk = groupSteps.slice(i, i + concurrency);
+        for (const s of chunk) patch(s.vmid, { status: 'running' });
+        const chunkResults = await Promise.all(chunk.map(s => runPlanStep(s, recByVmid)));
+        chunkResults.forEach(r => patch(r.vmid, { status: r.status, error: r.error }));
+        groupResults.push(...chunkResults);
+        if (chunkResults.some(r => r.status !== 'success')) planHaltedRef.current = true;
+      }
+      if (groupResults.some(r => r.status !== 'success')) {
+        planHaltedRef.current = true;
+        const msg = `Halted after group ${groupKey}: at least one migration did not succeed. Remaining steps were not started.`;
+        const groupIdx = groups.findIndex(([k]) => k === groupKey);
+        setPlanRun(prev => {
+          if (!prev) return prev;
+          const ss = { ...prev.stepStatus };
+          for (let gi = groupIdx; gi < groups.length; gi++) {
+            for (const s of groups[gi][1]) {
+              if ((ss[s.vmid]?.status || 'pending') === 'pending') ss[s.vmid] = { status: 'skipped' };
+            }
+          }
+          return { ...prev, stepStatus: ss, haltMessage: msg, halted: true };
+        });
+        break;
+      }
+    }
+    setPlanRun(prev => (prev ? { ...prev, phase: 'done' } : prev));
   };
 
   const executeMigration = async (rec) => {
@@ -534,6 +618,10 @@ export function useMigrations(API_BASE, deps = {}) {
     trackMigration,
     executeMigration,
     runPlanStep,
+    // Run Plan orchestration
+    planModalOpen, setPlanModalOpen,
+    planCtx, planRun,
+    openRunPlan, startPlanRun, dismissPlanRun,
     cancelMigration,
     confirmAndMigrate,
     fetchGuestMigrationOptions,

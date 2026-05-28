@@ -13,7 +13,6 @@ import SkippedGuests from './recommendations/SkippedGuests.jsx';
 import BatchImpact from './recommendations/insights/BatchImpact.jsx';
 import ExecutionPlan from './recommendations/insights/ExecutionPlan.jsx';
 import EngineDiagnostics from './recommendations/insights/EngineDiagnostics.jsx';
-import RunPlanModal from './recommendations/insights/RunPlanModal.jsx';
 import { Info } from '../Icons.jsx';
 
 const { useState } = React;
@@ -36,8 +35,8 @@ export default function MigrationRecommendationsSection({
   // For per-rec auto-eligibility badges
   automationStatus,
   automationConfig,
-  // Run Plan orchestration (migrationProgress already destructured above)
-  runPlanStep,
+  // Run Plan orchestration — opens the root-level run modal (state lives in useMigrations).
+  openRunPlan,
   // When embedded (e.g. inside a tab), suppress the section title block.
   embedded = false,
 }) {
@@ -49,7 +48,17 @@ export default function MigrationRecommendationsSection({
   const [recSortBy, setRecSortBy] = useState('');
   const [recSortDir, setRecSortDir] = useState('desc');
   const [showRecFilters, setShowRecFilters] = useState(false);
-  const [showRunPlanModal, setShowRunPlanModal] = useState(false);
+
+  const handleRunPlan = () => {
+    if (!openRunPlan) return;
+    openRunPlan({
+      plan: recommendationData?.execution_plan,
+      recommendations,
+      maxConcurrent: automationConfig?.rules?.max_concurrent_migrations || 1,
+      outsideWindow: automationStatus?.enabled
+        && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside'),
+    });
+  };
 
 
   // Apply client-side filters and sorting
@@ -241,8 +250,8 @@ export default function MigrationRecommendationsSection({
                 </div>
                 <ExecutionPlan
                   recommendationData={recommendationData}
-                  canMigrate={canMigrate && runPlanStep}
-                  onRunPlan={runPlanStep ? () => setShowRunPlanModal(true) : null}
+                  canMigrate={canMigrate && !!openRunPlan}
+                  onRunPlan={openRunPlan ? handleRunPlan : null}
                 />
               </div>
             </div>
@@ -328,21 +337,6 @@ export default function MigrationRecommendationsSection({
             />
           )}
         </div>
-      )}
-
-      {showRunPlanModal && (
-        <RunPlanModal
-          plan={recommendationData?.execution_plan}
-          recommendations={recommendations}
-          runPlanStep={runPlanStep}
-          migrationProgress={migrationProgress}
-          outsideWindow={
-            automationStatus?.enabled
-            && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside')
-          }
-          maxConcurrent={automationConfig?.rules?.max_concurrent_migrations || 1}
-          onClose={() => setShowRunPlanModal(false)}
-        />
       )}
 
     </Wrapper>

@@ -1,32 +1,35 @@
 import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY } from '../../../../utils/designTokens.js';
 import { X, Play, ArrowRight, CheckCircle, XCircle, RefreshCw, Loader, AlertTriangle, Moon } from '../../../Icons.jsx';
 
-const { useState, useMemo, useRef } = React;
+const { useMemo } = React;
 
 /**
- * Confirm + progress modal for the Run Plan action. Single component, three
- * phases: confirm → running → done. Closing while running is disabled so the
- * user can see the result; cancelling in v1 means waiting for the current
- * group to finish.
+ * View onto the Run Plan execution. The run loop + state live in useMigrations,
+ * so this modal is purely presentational and can be closed any time (the run
+ * keeps going in the background and is reachable again via the running pill).
+ *
+ * Phases: no active run -> confirm (from planCtx); active run -> running | done
+ * (from planRun).
  */
 export default function RunPlanModal({
-  plan,
-  recommendations,
-  runPlanStep,
+  planCtx,
+  planRun,
   migrationProgress,
-  outsideWindow,
-  maxConcurrent = 1,
+  onStart,
   onClose,
+  onDismiss,
 }) {
-  const steps = plan?.ordered_recommendations || [];
-  const recByVmid = useMemo(() => {
-    const m = {};
-    (recommendations || []).forEach(r => { m[r.vmid] = r; });
-    return m;
-  }, [recommendations]);
+  const phase = planRun ? planRun.phase : 'confirm';
+  const running = phase === 'running';
 
-  // Bucket steps by parallel_group, preserving ascending group order
+  // Confirm phase reads the pending plan; running/done read the active run.
+  const steps = useMemo(() => {
+    if (planRun) return planRun.groups.flatMap(([, gs]) => gs);
+    return planCtx?.plan?.ordered_recommendations || [];
+  }, [planRun, planCtx]);
+
   const groups = useMemo(() => {
+    if (planRun) return planRun.groups;
     const map = new Map();
     for (const s of steps) {
       const g = s.parallel_group || 1;
@@ -34,73 +37,16 @@ export default function RunPlanModal({
       map.get(g).push(s);
     }
     return [...map.entries()].sort((a, b) => a[0] - b[0]);
-  }, [steps]);
+  }, [planRun, steps]);
 
-  // Per-step status: 'pending' | 'running' | 'success' | 'failed' | 'cancelled' | 'skipped'
-  const [stepStatus, setStepStatus] = useState(() => {
-    const init = {};
-    for (const s of steps) init[s.vmid] = { status: 'pending' };
-    return init;
-  });
-  const [phase, setPhase] = useState('confirm'); // confirm | running | done
-  const [haltMessage, setHaltMessage] = useState(null);
-  const haltedRef = useRef(false);
-
-  const updateStep = (vmid, patch) => {
-    setStepStatus(prev => ({ ...prev, [vmid]: { ...prev[vmid], ...patch } }));
-  };
-
-  const run = async () => {
-    setPhase('running');
-    haltedRef.current = false;
-    const concurrency = Math.max(1, maxConcurrent || 1);
-    for (const [groupKey, groupSteps] of groups) {
-      if (haltedRef.current) break;
-
-      // Within a parallel-group, cap concurrency to max_concurrent_migrations
-      // from the user's automation config. The plan's parallel_group means
-      // "safe to run together", not "must run together"; users with smaller
-      // clusters want serial execution to limit network/storage pressure.
-      const groupResults = [];
-      for (let i = 0; i < groupSteps.length; i += concurrency) {
-        if (haltedRef.current) break;
-        const chunk = groupSteps.slice(i, i + concurrency);
-        for (const s of chunk) updateStep(s.vmid, { status: 'running' });
-        const chunkResults = await Promise.all(chunk.map(s => runPlanStep(s, recByVmid)));
-        chunkResults.forEach(r => updateStep(r.vmid, { status: r.status, error: r.error }));
-        groupResults.push(...chunkResults);
-        // Halt as soon as any chunk has a failure — don't burn through
-        // remaining steps in this group when we already know we're going to
-        // halt at the group boundary.
-        if (chunkResults.some(r => r.status !== 'success')) {
-          haltedRef.current = true;
-        }
-      }
-
-      if (groupResults.some(r => r.status !== 'success')) {
-        haltedRef.current = true;
-        setHaltMessage(`Halted after group ${groupKey}: at least one migration did not succeed. Remaining steps were not started.`);
-        // Mark any subsequent (still-pending) steps as skipped — both the
-        // rest of this group (if we halted mid-chunk) and all later groups.
-        for (const s of groupSteps) {
-          if ((stepStatus[s.vmid]?.status || 'pending') === 'pending') updateStep(s.vmid, { status: 'skipped' });
-        }
-        const groupIdx = groups.findIndex(([k]) => k === groupKey);
-        for (let i = groupIdx + 1; i < groups.length; i++) {
-          for (const s of groups[i][1]) updateStep(s.vmid, { status: 'skipped' });
-        }
-        break;
-      }
-    }
-    setPhase('done');
-  };
+  const stepStatus = planRun?.stepStatus || {};
+  const maxConcurrent = planRun?.maxConcurrent ?? (planCtx?.maxConcurrent || 1);
+  const outsideWindow = planCtx?.outsideWindow;
 
   const successCount = Object.values(stepStatus).filter(s => s.status === 'success').length;
   const failedCount = Object.values(stepStatus).filter(s => s.status === 'failed' || s.status === 'cancelled').length;
 
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget && phase !== 'running') onClose();
-  };
+  const handleOverlayClick = (e) => { if (e.target === e.currentTarget) onClose(); };
 
   return (
     <div className={MODAL_OVERLAY} onClick={handleOverlayClick}>
@@ -121,10 +67,9 @@ export default function RunPlanModal({
           </div>
           <button
             onClick={onClose}
-            disabled={phase === 'running'}
-            className="p-1 rounded text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-1 rounded text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
             aria-label="Close"
-            title={phase === 'running' ? 'Plan in progress — wait for it to finish' : 'Close'}
+            title={running ? 'Hide — the plan keeps running in the background' : 'Close'}
           >
             <X size={18} />
           </button>
@@ -143,24 +88,24 @@ export default function RunPlanModal({
           <div className="mb-4 p-3 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/40 text-yellow-700 dark:text-yellow-300 text-xs flex items-start gap-2">
             <AlertTriangle size={14} className="shrink-0 mt-0.5" />
             <div>
-              Each step is fired one group at a time. If any migration in a group fails, the run halts and remaining groups are skipped. Already-started migrations cannot be cleanly cancelled.
+              Each step is fired one group at a time. If any migration in a group fails, the run halts and remaining groups are skipped. Already-started migrations cannot be cleanly cancelled. You can close this dialog while it runs — migrations continue in the background and you can reopen it from the “Running plan” button.
             </div>
           </div>
         )}
 
         {phase === 'done' && (
           <div className={`mb-4 p-3 rounded-lg border flex items-start gap-2 text-xs ${
-            haltedRef.current
+            planRun?.halted
               ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300'
               : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300'
           }`}>
-            {haltedRef.current ? <XCircle size={14} className="shrink-0 mt-0.5" /> : <CheckCircle size={14} className="shrink-0 mt-0.5" />}
+            {planRun?.halted ? <XCircle size={14} className="shrink-0 mt-0.5" /> : <CheckCircle size={14} className="shrink-0 mt-0.5" />}
             <div>
               <span className="font-semibold">
                 {successCount} succeeded
                 {failedCount > 0 ? `, ${failedCount} failed` : ''}.
               </span>
-              {haltMessage && <div className="mt-0.5">{haltMessage}</div>}
+              {planRun?.haltMessage && <div className="mt-0.5">{planRun.haltMessage}</div>}
             </div>
           </div>
         )}
@@ -216,19 +161,22 @@ export default function RunPlanModal({
           {phase === 'confirm' && (
             <>
               <button onClick={onClose} className={BTN_SECONDARY}>Cancel</button>
-              <button onClick={run} className={BTN_PRIMARY}>
+              <button onClick={onStart} className={BTN_PRIMARY}>
                 <Play size={14} /> Run {steps.length} migration{steps.length !== 1 ? 's' : ''}
               </button>
             </>
           )}
           {phase === 'running' && (
-            <div className="text-xs text-pb-text2 dark:text-gray-400 flex items-center gap-2">
-              <RefreshCw size={12} className="animate-spin" />
-              Running — close disabled while migrations are in flight.
-            </div>
+            <>
+              <div className="mr-auto text-xs text-pb-text2 dark:text-gray-400 flex items-center gap-2">
+                <RefreshCw size={12} className="animate-spin" />
+                Running — you can close this; it continues in the background.
+              </div>
+              <button onClick={onClose} className={BTN_SECONDARY}>Close</button>
+            </>
           )}
           {phase === 'done' && (
-            <button onClick={onClose} className={BTN_PRIMARY}>Close</button>
+            <button onClick={onDismiss} className={BTN_PRIMARY}>Close</button>
           )}
         </div>
       </div>

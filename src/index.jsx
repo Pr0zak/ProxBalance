@@ -19,8 +19,9 @@ import { useEvacuation } from './hooks/useEvacuation.js';
 import { useUpdates } from './hooks/useUpdates.js';
 import {
   AlertCircle, RefreshCw, Info, Sun, Moon, Settings, X, ProxBalanceLogo,
-  Activity, Clock, HelpCircle
+  Activity, Clock, HelpCircle, CheckCircle, XCircle
 } from './components/Icons.jsx';
+import RunPlanModal from './components/dashboard/recommendations/insights/RunPlanModal.jsx';
 import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
 import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, PAGE_BG } from './utils/designTokens.js';
 import MobileTabBar from './components/MobileTabBar.jsx';
@@ -253,9 +254,43 @@ const ProxmoxBalanceManager = () => {
     />
   );
 
+  // Run Plan modal + a "Running plan" pill — rendered on every page so the run
+  // (state lives in useMigrations) is reachable after closing/navigating away.
+  const runPlanOverlay = (
+    <>
+      {migrations.planModalOpen && (
+        <RunPlanModal
+          planCtx={migrations.planCtx}
+          planRun={migrations.planRun}
+          migrationProgress={migrations.migrationProgress}
+          onStart={migrations.startPlanRun}
+          onClose={() => migrations.setPlanModalOpen(false)}
+          onDismiss={migrations.dismissPlanRun}
+        />
+      )}
+      {migrations.planRun && !migrations.planModalOpen && (() => {
+        const ss = Object.values(migrations.planRun.stepStatus || {});
+        const total = ss.length;
+        const done = ss.filter(s => s.status !== 'pending' && s.status !== 'running').length;
+        const running = migrations.planRun.phase === 'running';
+        return (
+          <button
+            onClick={() => migrations.setPlanModalOpen(true)}
+            className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            title="View the migration plan progress"
+          >
+            {running
+              ? <><RefreshCw size={14} className="animate-spin" /> Running plan… {done}/{total}</>
+              : <>{migrations.planRun.halted ? <XCircle size={14} /> : <CheckCircle size={14} />} Plan finished — view</>}
+          </button>
+        );
+      })()}
+    </>
+  );
+
   // Settings Page
   if (ui.currentPage === 'settings') {
-    return <div className={PAGE_BG}>{topNav}{iconLegendModal}<SettingsPage
+    return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<SettingsPage
       setCurrentPage={ui.setCurrentPage}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
       aiProvider={ai.aiProvider} setAiProvider={ai.setAiProvider}
@@ -299,7 +334,7 @@ const ProxmoxBalanceManager = () => {
 
   // Automation Settings Page
   if (ui.currentPage === 'automation') {
-    return <div className={PAGE_BG}>{topNav}{iconLegendModal}<AutomationPage
+    return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<AutomationPage
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
       automigrateLogs={automation.automigrateLogs}
@@ -417,7 +452,7 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Dashboard Page
-  return <div className={PAGE_BG}>{topNav}{iconLegendModal}<DashboardPage
+  return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<DashboardPage
     data={cluster.data} setData={cluster.setData}
     loading={cluster.loading} error={cluster.error} setError={cluster.setError}
     config={configHook.config}
@@ -460,7 +495,7 @@ const ProxmoxBalanceManager = () => {
     selectedGuest={migrations.selectedGuest} setSelectedGuest={migrations.setSelectedGuest}
     migrationTarget={migrations.migrationTarget} setMigrationTarget={migrations.setMigrationTarget}
     executeMigration={migrations.executeMigration}
-    runPlanStep={migrations.runPlanStep}
+    openRunPlan={migrations.openRunPlan}
     showTagModal={migrations.showTagModal} setShowTagModal={migrations.setShowTagModal}
     tagModalGuest={migrations.tagModalGuest} setTagModalGuest={migrations.setTagModalGuest}
     newTag={migrations.newTag} setNewTag={migrations.setNewTag}
