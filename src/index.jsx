@@ -503,7 +503,6 @@ const ProxmoxBalanceManager = () => {
     guestSortDirection={migrations.guestSortDirection} setGuestSortDirection={migrations.setGuestSortDirection}
     guestModalCollapsed={ui.guestModalCollapsed} setGuestModalCollapsed={ui.setGuestModalCollapsed}
     checkAffinityViolations={wrappedCheckAffinityViolations}
-    generateSparkline={cluster.generateSparkline}
     fetchGuestLocations={cluster.fetchGuestLocations}
     guestMigrationOptions={migrations.guestMigrationOptions}
     loadingGuestOptions={migrations.loadingGuestOptions}

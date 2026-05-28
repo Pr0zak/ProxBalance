@@ -88,7 +88,7 @@ export default function DashboardPage({
   // Chart.js lazy loader
   loadChartJs, chartJsLoaded,
   // Helper functions
-  checkAffinityViolations, generateSparkline, fetchGuestLocations,
+  checkAffinityViolations, fetchGuestLocations,
   // Guest migration options
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions, setGuestMigrationOptions,
   // API base
@@ -191,7 +191,6 @@ export default function DashboardPage({
           recommendations={recommendations}
           chartPeriod={chartPeriod}
           setChartPeriod={setChartPeriod}
-          generateSparkline={generateSparkline}
           setSelectedNode={setSelectedNode}
           setSelectedGuestDetails={setSelectedGuestDetails}
           showPoweredOffGuests={showPoweredOffGuests}
@@ -308,7 +307,6 @@ export default function DashboardPage({
               chartPeriod={chartPeriod}
               setChartPeriod={setChartPeriod}
               nodeScores={nodeScores}
-              generateSparkline={generateSparkline}
             />
           </>
         )}
@@ -327,14 +325,12 @@ export default function DashboardPage({
           setError={setError}
           nodeScores={nodeScores}
           penaltyConfig={penaltyConfig}
-          generateSparkline={generateSparkline}
           API_BASE={API_BASE}
         />
 
         <GuestDetailsModal
           selectedGuestDetails={selectedGuestDetails}
           setSelectedGuestDetails={setSelectedGuestDetails}
-          generateSparkline={generateSparkline}
           guestModalCollapsed={guestModalCollapsed}
           setGuestModalCollapsed={setGuestModalCollapsed}
           guestMigrationOptions={guestMigrationOptions}

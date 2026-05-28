@@ -11,7 +11,6 @@ export default function NodeStatusSection({
   nodeGridColumns, setNodeGridColumns,
   chartPeriod, setChartPeriod,
   nodeScores,
-  generateSparkline,
   migrationHistory,
   embedded = false,
 }) {
@@ -146,9 +145,9 @@ export default function NodeStatusSection({
                     </div>
                   </div>
                   <div className="space-y-1.5 text-xs">
-                    {/* CPU with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* CPU */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">CPU:
                           {(() => {
                             const trend = node.metrics?.cpu_trend;
@@ -173,20 +172,11 @@ export default function NodeStatusSection({
                           </span>
                         )}
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-blue-500"
-                          points={generateSparkline(node.cpu_percent || 0, 100, 30, 0.3)}
-                        />
-                      </svg>
                     </div>
 
-                    {/* Memory with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* Memory */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">Memory:
                           {(() => {
                             const trend = node.metrics?.mem_trend;
@@ -211,20 +201,11 @@ export default function NodeStatusSection({
                         </span>
                         )}
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-purple-500"
-                          points={generateSparkline(node.mem_percent || 0, 100, 30, 0.25)}
-                        />
-                      </svg>
                     </div>
 
-                    {/* IOWait with sparkline and trend arrow */}
-                    <div className="relative">
-                      <div className="flex justify-between items-center relative z-10">
+                    {/* IOWait */}
+                    <div>
+                      <div className="flex justify-between items-center">
                         <span className="text-pb-text2 dark:text-gray-400 flex items-center gap-0.5">IOWait:
                           {(() => {
                             const iowait = node.metrics?.current_iowait || 0;
@@ -248,15 +229,6 @@ export default function NodeStatusSection({
                           {(node.metrics?.current_iowait || 0).toFixed(1)}%
                         </span>
                       </div>
-                      <svg className="absolute inset-0 w-full h-full opacity-25" preserveAspectRatio="none" viewBox="0 0 100 100" style={{top: '-2px', height: 'calc(100% + 4px)'}}>
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          className="text-orange-500"
-                          points={generateSparkline(node.metrics?.current_iowait || 0, 100, 30, 0.35)}
-                        />
-                      </svg>
                     </div>
 
                     <div className="flex justify-between pt-1 border-t border-pb-border dark:border-slate-600">

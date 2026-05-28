@@ -1,4 +1,4 @@
-const { useState, useMemo, useCallback } = React;
+const { useState, useCallback } = React;
 
 export function useClusterData(API_BASE, deps = {}) {
   const { setTokenAuthError, checkPermissions, autoRefreshInterval } = deps;
@@ -182,21 +182,6 @@ export function useClusterData(API_BASE, deps = {}) {
     }
   };
 
-  // Memoized sparkline generator
-  const generateSparkline = useMemo(() => {
-    return (value, maxValue, samples = 40, frequency = 0.3) => {
-      const points = [];
-      for (let i = 0; i < samples; i++) {
-        const variation = (Math.sin(i * frequency) * value * 0.3) + (Math.random() * value * 0.2);
-        const adjustedValue = Math.max(0, value + variation);
-        const x = (i / (samples - 1)) * 100;
-        const y = 100 - ((adjustedValue / maxValue) * 100);
-        points.push(`${x},${y}`);
-      }
-      return points.join(' ');
-    };
-  }, []);
-
   const fetchGuestProfiles = async () => {
     try {
       const response = await fetch(`${API_BASE}/guest-profiles`);
@@ -296,7 +281,6 @@ export function useClusterData(API_BASE, deps = {}) {
     fetchScoreHistory,
     handleRefresh,
     fetchNodeScores,
-    generateSparkline,
     loadChartJs
   };
 }

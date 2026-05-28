@@ -9,7 +9,6 @@ const { useState } = React;
 
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
-  generateSparkline,
   guestModalCollapsed, setGuestModalCollapsed,
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions,
   canMigrate,
@@ -100,47 +99,23 @@ export default function GuestDetailsModal({
             </div>
           </div>
 
-          {/* Resource Usage - Compact 2-Column Grid with Sparklines */}
+          {/* Resource Usage - Compact 2-Column Grid */}
           <div className="grid grid-cols-2 gap-2 mb-3">
             {/* CPU */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-blue-900/20 to-blue-800/20 rounded p-2 border border-blue-200 dark:border-blue-800">
-              {/* Sparkline background */}
-              <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="text-blue-600 dark:text-blue-400"
-                  points={generateSparkline(selectedGuestDetails.cpu_current || 0, 100, 30, 0.3)}
-                />
-              </svg>
-              <div className="relative z-10">
-                <div className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-0.5">CPU</div>
-                <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedGuestDetails.cpu_current || 0).toFixed(1)}%</div>
-                <div className="text-[10px] text-pb-text2 dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores</div>
-              </div>
+            <div className="bg-gradient-to-br from-blue-900/20 to-blue-800/20 rounded p-2 border border-blue-200 dark:border-blue-800">
+              <div className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-0.5">CPU</div>
+              <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedGuestDetails.cpu_current || 0).toFixed(1)}%</div>
+              <div className="text-[10px] text-pb-text2 dark:text-gray-400">{selectedGuestDetails.cpu_cores || 0} cores</div>
             </div>
 
             {/* Memory */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded p-2 border border-purple-200 dark:border-purple-800">
-              {/* Sparkline background */}
-              <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <polyline
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  className="text-purple-600 dark:text-purple-400"
-                  points={generateSparkline(selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100) : 0, 100, 30, 0.25)}
-                />
-              </svg>
-              <div className="relative z-10">
-                <div className="text-[10px] uppercase tracking-wide text-purple-600 dark:text-purple-400 font-medium mb-0.5">Memory</div>
-                <div className="text-xl font-bold text-pb-text dark:text-white">
-                  {selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100).toFixed(1) : 0}%
-                </div>
-                <div className="text-[10px] text-pb-text2 dark:text-gray-400">
-                  {(selectedGuestDetails.mem_used_gb || 0).toFixed(1)} / {(selectedGuestDetails.mem_max_gb || 0).toFixed(1)} GB
-                </div>
+            <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded p-2 border border-purple-200 dark:border-purple-800">
+              <div className="text-[10px] uppercase tracking-wide text-purple-600 dark:text-purple-400 font-medium mb-0.5">Memory</div>
+              <div className="text-xl font-bold text-pb-text dark:text-white">
+                {selectedGuestDetails.mem_max_gb > 0 ? ((selectedGuestDetails.mem_used_gb / selectedGuestDetails.mem_max_gb) * 100).toFixed(1) : 0}%
+              </div>
+              <div className="text-[10px] text-pb-text2 dark:text-gray-400">
+                {(selectedGuestDetails.mem_used_gb || 0).toFixed(1)} / {(selectedGuestDetails.mem_max_gb || 0).toFixed(1)} GB
               </div>
             </div>
           </div>

@@ -184,7 +184,6 @@ export default function ClusterSection(props) {
           chartPeriod={props.chartPeriod}
           setChartPeriod={props.setChartPeriod}
           nodeScores={props.nodeScores}
-          generateSparkline={props.generateSparkline}
         />
         </>
       )}

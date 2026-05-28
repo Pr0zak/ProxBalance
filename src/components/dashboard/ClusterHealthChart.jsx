@@ -372,30 +372,21 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             const count = b.items.length;
             // Cluster view: dot sits on the health line (ties event to the value at that
             // moment). Other views have no single line, so a small tick at the baseline.
+            // Downward triangle with its tip on the line (round dots get stretched into
+            // ovals by preserveAspectRatio="none"). Count badges are HTML (below) so the
+            // digits aren't horizontally stretched by that same scaling.
             if (view === 'cluster' && hasData) {
               const cy = yOnLine(b.x);
-              // Downward triangle with its tip on the line (round dots get stretched into
-              // ovals by preserveAspectRatio="none").
               return (
-                <g key={i}>
-                  <polygon points={`${b.x - 3},${cy - 7} ${b.x + 3},${cy - 7} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth="0.5">
-                    <title>{binTitle(b.items)}</title>
-                  </polygon>
-                  {count > 1 && (
-                    <text x={b.x} y={cy - 9} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
-                  )}
-                </g>
+                <polygon key={i} points={`${b.x - 3},${cy - 7} ${b.x + 3},${cy - 7} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth="0.5">
+                  <title>{binTitle(b.items)}</title>
+                </polygon>
               );
             }
             return (
-              <g key={i}>
-                <polygon points={`${b.x - 3},${h + 2} ${b.x + 3},${h + 2} ${b.x},${h - 4}`} fill={color}>
-                  <title>{binTitle(b.items)}</title>
-                </polygon>
-                {count > 1 && (
-                  <text x={b.x} y={h - 6} textAnchor="middle" fontSize="7" fontWeight="bold" fill={color} pointerEvents="none">{count}</text>
-                )}
-              </g>
+              <polygon key={i} points={`${b.x - 3},${h + 2} ${b.x + 3},${h + 2} ${b.x},${h - 4}`} fill={color}>
+                <title>{binTitle(b.items)}</title>
+              </polygon>
             );
           })}
 
@@ -406,6 +397,24 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             />
           )}
         </svg>
+
+        {/* Count badges as HTML so digits stay crisp (SVG text is stretched by
+            preserveAspectRatio="none"). Vertical viewBox units map 1:1 to px (88/88). */}
+        {showMarkers && markerBins.filter(b => b.items.length > 1).map((b, i) => {
+          const topPx = (view === 'cluster' && hasData) ? yOnLine(b.x) - 8 : h - 6;
+          return (
+            <div
+              key={i}
+              className="absolute pointer-events-none flex items-center justify-center rounded-full text-white font-bold leading-none"
+              style={{
+                left: `${(b.x / w) * 100}%`, top: `${topPx}px`, transform: 'translate(-50%, -100%)',
+                background: binColor(b.items), fontSize: '8px', minWidth: '12px', height: '12px', padding: '0 2px',
+              }}
+            >
+              {b.items.length}
+            </div>
+          );
+        })}
 
         {hover && hasData && (() => {
           const flipLeft = hover.containerW && hover.pixelX > hover.containerW * 0.6;
