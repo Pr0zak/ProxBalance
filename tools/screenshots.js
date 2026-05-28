@@ -30,6 +30,18 @@ const ALL_PAGES = [
 ];
 const ALL_THEMES = ['dark', 'light'];
 
+// The README embeds per-tab Cluster shots (dashboard-<file>.png). When
+// CLUSTER_TABS is set, capture the dashboard once per Cluster tab instead of
+// the plain page-level shot. Labels match the tab buttons in ClusterSection.
+const CLUSTER_TABS = [
+  { label: 'Nodes',       file: 'nodes'  },
+  { label: 'Guests',      file: 'guests' },
+  { label: 'Map',         file: 'map'    },
+  { label: 'Charts',      file: 'charts' },
+  { label: 'Suggestions', file: 'recs'   },
+];
+const USE_CLUSTER_TABS = (process.env.CLUSTER_TABS || '') === '1';
+
 const PAGES  = (process.env.PAGES  || '').trim()
   ? ALL_PAGES.filter(p => process.env.PAGES.split(',').map(s => s.trim()).includes(p.id))
   : ALL_PAGES;
@@ -57,7 +69,7 @@ async function waitForReact(page) {
   await sleep(2000);
 }
 
-async function shoot(browser, theme, page) {
+async function shoot(browser, theme, page, clusterTab) {
   const tab = await browser.newPage();
   await tab.setViewport(VIEWPORT);
 
@@ -79,6 +91,18 @@ async function shoot(browser, theme, page) {
       if (btn) btn.click();
     }, page.navText);
     await sleep(1500);
+  }
+
+  // Activate a Cluster section tab (Nodes/Guests/Map/Charts/Suggestions). These
+  // buttons live in the Cluster card, not the TopNav; strip any "(N)" count.
+  if (clusterTab) {
+    await tab.evaluate((label) => {
+      const btn = [...document.querySelectorAll('button')].find(
+        el => !el.closest('nav') && el.textContent.trim().replace(/\s*\(\d+\)$/, '') === label
+      );
+      if (btn) btn.click();
+    }, clusterTab.label);
+    await sleep(1800);
   }
 
   // Blur VM/CT names so screenshots are safe to publish. Pull the live
@@ -122,7 +146,7 @@ async function shoot(browser, theme, page) {
     await sleep(500);
   }
 
-  const filename = `${page.id}-${theme}.png`;
+  const filename = clusterTab ? `${page.id}-${clusterTab.file}.png` : `${page.id}-${theme}.png`;
   const outPath = path.join(OUTDIR, filename);
   await tab.screenshot({ path: outPath, fullPage: false });
   await tab.close();
@@ -144,7 +168,11 @@ async function shoot(browser, theme, page) {
   try {
     for (const theme of THEMES) {
       for (const page of PAGES) {
-        await shoot(browser, theme, page);
+        if (USE_CLUSTER_TABS && page.id === 'dashboard') {
+          for (const ct of CLUSTER_TABS) await shoot(browser, theme, page, ct);
+        } else {
+          await shoot(browser, theme, page);
+        }
       }
     }
   } finally {
