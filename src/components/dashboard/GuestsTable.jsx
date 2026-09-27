@@ -38,7 +38,7 @@ const STATIC_FACETS = [
   {
     id: 'rules', label: 'Rules', options: [
       { value: 'ignored', label: 'Ignored', test: g => !!g.tags?.has_ignore },
-      { value: 'auto', label: 'Auto-Migrate', test: g => !!g.tags?.all_tags?.includes('auto_migrate_ok') },
+      { value: 'auto', label: 'Auto-Migrate', test: g => !!g.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok') },
       { value: 'affinity', label: 'Affinity', test: g => g.tags?.affinity_groups?.length > 0 },
       { value: 'anti', label: 'Anti-Affinity', test: g => g.tags?.exclude_groups?.length > 0 },
     ],
@@ -145,7 +145,7 @@ function WorkloadBadge({ profile, running }) {
 /** Proxmox tags that ProxBalance doesn't act on (IPs, roles, ...). */
 function plainTags(guest) {
   const t = guest.tags || {};
-  const pb = new Set(['ignore', 'auto_migrate_ok', ...(t.affinity_groups || []), ...(t.exclude_groups || [])]);
+  const pb = new Set(['ignore', 'auto_migrate_ok', 'auto-migrate-ok', ...(t.affinity_groups || []), ...(t.exclude_groups || [])]);
   return (t.all_tags || []).filter(tag => !pb.has(tag));
 }
 
@@ -166,7 +166,7 @@ function PlainTag({ tag, matched }) {
 function TagChips({ guest, canMigrate, handleRemoveTag, hits }) {
   const t = guest.tags || {};
   const hasIgnore = !!t.has_ignore;
-  const hasAuto = t.all_tags?.includes('auto_migrate_ok');
+  const hasAuto = t.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok');
   const exclude = t.exclude_groups || [];
   const affinity = t.affinity_groups || [];
   const plain = plainTags(guest);

@@ -112,7 +112,7 @@ export default function DashboardPage({
   const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
   const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
   const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
-  const autoMigrateOkGuests = Object.values(data.guests || {}).filter(g => g.tags?.all_tags?.includes('auto_migrate_ok'));
+  const autoMigrateOkGuests = Object.values(data.guests || {}).filter(g => g.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok'));
   const violations = checkAffinityViolations();
 
   return (<>

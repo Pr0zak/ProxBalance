@@ -31,7 +31,7 @@ const WORKLOAD_BADGE_COLORS = {
 
 function guestHasAnyTag(guest) {
   return !!(guest.tags?.has_ignore
-    || guest.tags?.all_tags?.includes('auto_migrate_ok')
+    || guest.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok')
     || guest.tags?.exclude_groups?.length > 0
     || guest.tags?.affinity_groups?.length > 0);
 }
@@ -150,7 +150,7 @@ function formatMem(gb) {
 function TagChips({ guest, canMigrate, handleRemoveTag }) {
   const t = guest.tags || {};
   const hasIgnore = !!t.has_ignore;
-  const hasAutoMigrate = t.all_tags?.includes('auto_migrate_ok');
+  const hasAutoMigrate = t.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok');
   const exclude = t.exclude_groups || [];
   const affinity = t.affinity_groups || [];
   if (!hasIgnore && !hasAutoMigrate && exclude.length === 0 && affinity.length === 0) return null;
@@ -472,7 +472,7 @@ export default function NodeSummaryTable({
       if (filter === 'running' && guest.status !== 'running') return;
       if (filter === 'stopped' && guest.status !== 'stopped') return;
       if (filter === 'ignored' && !guest.tags?.has_ignore) return;
-      if (filter === 'auto_migrate' && !guest.tags?.all_tags?.includes('auto_migrate_ok')) return;
+      if (filter === 'auto_migrate' && !guest.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok')) return;
       if (filter === 'affinity' && !(guest.tags?.affinity_groups?.length > 0)) return;
       if (filter === 'anti_affinity' && !(guest.tags?.exclude_groups?.length > 0)) return;
       const nodeName = guest.node || 'unknown';

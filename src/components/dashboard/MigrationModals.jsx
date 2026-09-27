@@ -186,7 +186,7 @@ export default function MigrationModals({
                     + ignore
                   </button>
                 )}
-                {!tagModalGuest.tags.all_tags?.includes('auto_migrate_ok') && (
+                {!tagModalGuest.tags.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok') && (
                   <button
                     onClick={async () => {
                       try {

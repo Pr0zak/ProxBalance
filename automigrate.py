@@ -310,9 +310,10 @@ def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool
         return False, "Has 'no-auto-migrate' tag"
 
     # Check whitelist requirement (new, optional)
+    # The UI tags guests 'auto_migrate_ok'; older docs used 'auto-migrate-ok'. Accept both.
     if rules.get('require_auto_migrate_ok_tag', False):
-        if 'auto-migrate-ok' not in tags:
-            return False, "Missing 'auto-migrate-ok' tag (whitelist mode)"
+        if 'auto-migrate-ok' not in tags and 'auto_migrate_ok' not in tags:
+            return False, "Missing 'auto_migrate_ok' tag (whitelist mode)"
 
     # Check for bind mounts on containers (LXC only)
     # Only block if container has UNSHARED bind mounts
