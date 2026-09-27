@@ -31,6 +31,12 @@ SECRET_NOTIFICATION_FIELDS = frozenset({
     'webhook_url',
     'smtp_password',
     'password',
+    'url',  # generic webhook URL — may embed a token
+})
+
+# Dict-valued fields whose every value is secret (e.g. webhook Authorization headers)
+SECRET_NOTIFICATION_DICT_FIELDS = frozenset({
+    'headers',
 })
 
 
@@ -42,11 +48,18 @@ def _redact_fields(section: Dict, fields: frozenset) -> Dict:
     return out
 
 
-def _redact_providers(providers: Dict, fields: frozenset) -> Dict:
-    return {
-        name: _redact_fields(cfg, fields) if isinstance(cfg, dict) else cfg
-        for name, cfg in providers.items()
-    }
+def _redact_providers(providers: Dict, fields: frozenset, dict_fields: frozenset = frozenset()) -> Dict:
+    out = {}
+    for name, cfg in providers.items():
+        if not isinstance(cfg, dict):
+            out[name] = cfg
+            continue
+        red = _redact_fields(cfg, fields)
+        for field in dict_fields:
+            if isinstance(red.get(field), dict):
+                red[field] = {k: SECRET_PLACEHOLDER if v else v for k, v in red[field].items()}
+        out[name] = red
+    return out
 
 
 def redact_notifications(notifications: Any) -> Any:
@@ -55,7 +68,8 @@ def redact_notifications(notifications: Any) -> Any:
         return notifications
     out = dict(notifications)
     if isinstance(out.get('providers'), dict):
-        out['providers'] = _redact_providers(out['providers'], SECRET_NOTIFICATION_FIELDS)
+        out['providers'] = _redact_providers(
+            out['providers'], SECRET_NOTIFICATION_FIELDS, SECRET_NOTIFICATION_DICT_FIELDS)
     return out
 
 

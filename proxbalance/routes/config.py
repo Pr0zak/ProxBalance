@@ -371,6 +371,11 @@ def import_config():
         config_data = import_data
         metadata = None
 
+    # Exports redact secrets as '***'; importing one back must keep the stored values.
+    existing_config = load_config()
+    if not existing_config.get('error'):
+        config_data = restore_placeholders(config_data, existing_config)
+
     # Validate configuration
     validation_result = validate_config_structure(config_data)
     if not validation_result['valid']:

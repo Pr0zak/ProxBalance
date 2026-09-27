@@ -20,7 +20,10 @@ STORED = {
         "enabled": True,
         "notifications": {
             "enabled": True,
-            "providers": {"pushover": {"enabled": True, "api_token": "po-token", "user_key": "po-user", "priority": 0}},
+            "providers": {
+                "pushover": {"enabled": True, "api_token": "po-token", "user_key": "po-user", "priority": 0},
+                "webhook": {"enabled": True, "url": "https://hook.example/t0ken", "headers": {"Authorization": "Bearer wh-secret"}},
+            },
         },
     },
 }
@@ -28,7 +31,7 @@ STORED = {
 
 def test_redact_config_hides_every_secret():
     out = json.dumps(redact_config(STORED))
-    for secret in ("real-token-secret", "sk-real", "po-token", "po-user"):
+    for secret in ("real-token-secret", "sk-real", "po-token", "po-user", "t0ken", "wh-secret"):
         assert secret not in out
     assert STORED["automated_migrations"]["notifications"]["providers"]["pushover"]["api_token"] == "po-token"
 
@@ -67,7 +70,7 @@ def test_get_endpoints_do_not_leak(client):
     c, _ = client
     for url in ("/api/config", "/api/automigrate/config"):
         body = c.get(url).get_data(as_text=True)
-        for secret in ("real-token-secret", "sk-real", "po-token", "po-user"):
+        for secret in ("real-token-secret", "sk-real", "po-token", "po-user", "t0ken", "wh-secret"):
             assert secret not in body, f"{secret} leaked from {url}"
 
 
@@ -95,3 +98,13 @@ def test_automigrate_post_with_placeholders_keeps_secrets(client):
     assert saved["api_token"] == "po-token"
     assert saved["user_key"] == "po-user"
     assert saved["priority"] == 1
+
+
+def test_webhook_headers_round_trip(client):
+    c, cfg = client
+    notif = c.get("/api/automigrate/config").get_json()["config"]["notifications"]
+    assert notif["providers"]["webhook"]["headers"]["Authorization"] == SECRET_PLACEHOLDER
+    assert c.post("/api/automigrate/config", json={"notifications": notif}).get_json()["success"]
+    saved = json.loads(cfg.read_text())["automated_migrations"]["notifications"]["providers"]["webhook"]
+    assert saved["headers"]["Authorization"] == "Bearer wh-secret"
+    assert saved["url"] == "https://hook.example/t0ken"
