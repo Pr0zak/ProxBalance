@@ -75,7 +75,7 @@ function NodeCard({ name, rating, score, isWorst }) {
   );
 }
 
-export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeScores, healthSource }) {
+export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeScores, healthSource, tightest = null }) {
   if (!open) return null;
   const entries = Object.entries(nodeScores || {})
     .filter(([_, v]) => typeof v?.suitability_rating === 'number')
@@ -83,6 +83,8 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
     .sort((a, b) => a.rating - b.rating); // worst first
 
   const worst = entries[0];
+  // Headline: the tightest node when the caller provides it (KPI card), else the mean.
+  const headline = tightest ? Math.round(tightest.rating) : avgScore;
   const drag = entries.filter(e => e.rating < (avgScore ?? 0));
 
   return (
@@ -95,13 +97,15 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
         <div className="flex items-start justify-between gap-3 mb-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="text-3xl font-bold tabular-nums shrink-0" style={{ lineHeight: 1 }}>
-              <span className={scoreColor(avgScore ?? 0)}>{avgScore ?? '—'}</span>
+              <span className={scoreColor(headline ?? 0)}>{headline ?? '—'}</span>
               <span className="text-base text-pb-text2 dark:text-gray-500">/100</span>
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
               <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5">
-                {healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier
+                {tightest
+                  ? <>Tightest: <span className="font-semibold text-pb-text dark:text-gray-300">{tightest.name}</span> · {tightest.top ? `${tightest.top.label} +${tightest.top.pts}` : 'no penalties'} · mean {avgScore ?? '—'}</>
+                  : <>{healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier</>}
               </p>
             </div>
           </div>

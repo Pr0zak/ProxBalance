@@ -1,19 +1,27 @@
 import { KPI_CARD, scoreColor } from '../../utils/designTokens.js';
 import { Server, Activity, CheckCircle, MoveRight, Tag } from '../Icons.jsx';
 import ClusterHealthBreakdown from './ClusterHealthBreakdown.jsx';
+import InFlightModal, { inFlightMigrations } from './InFlightModal.jsx';
+import { tightestNode } from '../../utils/nodeCondition.js';
 
 const { useState } = React;
 
 /**
  * KPI summary row — 6 stat cards. The "Cluster Health" card is a circular
- * gauge filled to the avg suitability score across all nodes.
+ * gauge filled to the tightest node's headroom (the same /api/node-scores
+ * value the Nodes table shows), with the mean in small text.
  */
 export default function KpiRow({
   data, nodeScores, automationStatus, recommendations, recommendationData,
   ignoredGuests = [], autoMigrateOkGuests = [], affinityGuests = [], excludeGuests = [],
   onNavigate,
+  // Optional: maintenance nodes are left out of "tightest"
+  maintenanceNodes,
+  // Optional: locally tracked migrations + cancel dialog for the In flight list
+  guestsMigrating, migrationProgress, canMigrate, setCancelMigrationModal,
 }) {
   const [showHealthDetail, setShowHealthDetail] = useState(false);
+  const [showInFlight, setShowInFlight] = useState(false);
   if (!data) return null;
 
   const nodesObj = data.nodes || {};
@@ -22,26 +30,28 @@ export default function KpiRow({
   const totalNodes = nodes.length;
   const allGuests = Object.keys(data.guests || {}).length;
 
-  // Cluster health: prefer the backend-computed summary value (matches what
-  // the Recommendations section shows), fall back to averaging per-node
-  // suitability_rating when no recommendation summary is available.
-  let avgScore = null;
+  // Cluster health: the tightest node's headroom, from the same node-scores
+  // values as the Nodes table. The mean is secondary. Fall back to the
+  // backend summary value when node scores haven't loaded yet.
+  const tightest = tightestNode(nodeScores, { nodes: nodesObj, maintenanceNodes });
+  let healthVal = null;
+  let meanScore = null;
   let healthSource = 'unknown';
-  const backendHealth = recommendationData?.summary?.cluster_health;
-  if (typeof backendHealth === 'number') {
-    avgScore = Math.round(backendHealth);
+  if (tightest) {
+    healthVal = Math.round(tightest.rating);
+    meanScore = Math.round(tightest.mean);
+    healthSource = 'tightest';
+  } else if (typeof recommendationData?.summary?.cluster_health === 'number') {
+    healthVal = Math.round(recommendationData.summary.cluster_health);
+    meanScore = healthVal;
     healthSource = 'backend';
-  } else if (nodeScores && Object.keys(nodeScores).length > 0) {
-    const scores = Object.values(nodeScores)
-      .map(s => s.suitability_rating)
-      .filter(v => typeof v === 'number');
-    if (scores.length > 0) {
-      avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-      healthSource = 'avg';
-    }
   }
 
-  const activeMigrations = automationStatus?.active_migrations || 0;
+  // Active migrations: what Proxmox reports running (automigrate status
+  // returns them as in_progress_migrations) plus guests this browser started
+  // that the status poll hasn't picked up yet.
+  const inFlight = inFlightMigrations({ automationStatus, guestsMigrating, migrationProgress, guests: data.guests });
+  const activeMigrations = inFlight.length;
   const pendingRecs = recommendations?.length || 0;
 
   // Tagged guests: union of any tag categories (a guest with multiple tags counts once)
@@ -59,16 +69,16 @@ export default function KpiRow({
   ].filter(Boolean).join(' · ');
 
   // Cluster Health gauge geometry
-  const healthVal = avgScore ?? 0;
   const r = 22;
   const c = 2 * Math.PI * r;
-  const offset = c - (healthVal / 100) * c;
-  const scoreColorClass = avgScore !== null ? scoreColor(avgScore) : 'text-pb-text2 dark:text-gray-500';
+  const offset = c - ((healthVal ?? 0) / 100) * c;
+  const scoreColorClass = healthVal !== null ? scoreColor(healthVal) : 'text-pb-text2 dark:text-gray-500';
+  const tightReason = tightest ? (tightest.top ? tightest.top.label : 'no penalties') : null;
 
   const otherCards = [
     { label: 'Nodes Online', to: 'nodes', value: `${onlineNodes}/${totalNodes}`, icon: <Server size={18} className="text-green-600 dark:text-green-400" />, color: onlineNodes === totalNodes ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400' },
     { label: 'Total Guests', to: 'guests', value: allGuests, icon: <Activity size={18} className="text-blue-600 dark:text-blue-400" />, color: 'text-pb-text dark:text-white' },
-    { label: 'Active Migrations', value: activeMigrations, icon: <MoveRight size={18} className="text-blue-600 dark:text-blue-400" />, color: activeMigrations > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-400' },
+    { label: 'Active Migrations', onClick: () => setShowInFlight(true), clickTitle: activeMigrations > 0 ? 'Show migrations in flight' : 'No migrations running', value: activeMigrations, icon: <MoveRight size={18} className="text-blue-600 dark:text-blue-400" />, color: activeMigrations > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-400' },
     { label: 'Suggestions', to: 'suggestions', value: pendingRecs, icon: <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-600 dark:text-purple-400"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>, color: pendingRecs > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-pb-text2 dark:text-gray-400' },
     { label: 'Tagged', to: 'guests', value: taggedCount, icon: <Tag size={18} className={taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-500'} />, color: taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-400', sublabel: tagBreakdown },
   ];
@@ -80,11 +90,13 @@ export default function KpiRow({
         type="button"
         onClick={() => setShowHealthDetail(true)}
         className={`${KPI_CARD} text-left hover:bg-white dark:hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500`}
-        title="Click for per-node breakdown"
+        title={tightest
+          ? `Tightest node: ${tightest.name} at ${Math.round(tightest.rating)} headroom (${tightReason}). Mean across ${tightest.count} node${tightest.count !== 1 ? 's' : ''}: ${meanScore}. Click for per-node breakdown.`
+          : 'Click for per-node breakdown'}
       >
         <div className="shrink-0 relative" style={{ width: 56, height: 56 }}>
           <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-            <circle cx="28" cy="28" r={r} stroke="currentColor" className="text-slate-700" strokeWidth="5" fill="none" />
+            <circle cx="28" cy="28" r={r} stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="5" fill="none" />
             <circle
               cx="28" cy="28" r={r}
               stroke="currentColor" className={scoreColorClass}
@@ -93,27 +105,55 @@ export default function KpiRow({
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-xs font-bold tabular-nums ${scoreColorClass}`}>{avgScore ?? '—'}</span>
+            <span className={`text-xs font-bold tabular-nums ${scoreColorClass}`}>{healthVal ?? '—'}</span>
           </div>
         </div>
         <div className="min-w-0">
-          <div className="text-xs text-pb-text2 dark:text-gray-500 truncate"><span className="hidden sm:inline">Cluster </span>Health</div>
-          <div className="text-[10px] text-pb-text2 dark:text-gray-600 hidden sm:block">/100 · click for detail</div>
+          {tightest ? (
+            <>
+              <div className="text-xs text-pb-text dark:text-gray-200 truncate">
+                <span className="text-pb-text2 dark:text-gray-500 hidden sm:inline">Tightest: </span>
+                <span className="font-semibold">{tightest.name}</span>
+                <span className={`tabular-nums font-semibold ${scoreColorClass}`}> {healthVal}</span>
+              </div>
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400 truncate">{tightReason}</div>
+              <div className="text-[10px] text-pb-text2 dark:text-gray-600 truncate tabular-nums">mean {meanScore}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-xs text-pb-text2 dark:text-gray-500 truncate"><span className="hidden sm:inline">Cluster </span>Health</div>
+              <div className="text-[10px] text-pb-text2 dark:text-gray-600 hidden sm:block">/100 · click for detail</div>
+            </>
+          )}
         </div>
       </button>
 
       <ClusterHealthBreakdown
         open={showHealthDetail}
         onClose={() => setShowHealthDetail(false)}
-        avgScore={avgScore}
+        avgScore={meanScore}
+        tightest={tightest}
         nodeScores={nodeScores}
         healthSource={healthSource}
       />
 
+      <InFlightModal
+        open={showInFlight}
+        onClose={() => setShowInFlight(false)}
+        migrations={inFlight}
+        canMigrate={canMigrate}
+        setCancelMigrationModal={setCancelMigrationModal}
+      />
+
       {/* Other cards */}
       {otherCards.map((card, i) => {
-        const Tag_ = card.to && onNavigate ? 'button' : 'div';
-        const nav = card.to && onNavigate ? {
+        const clickable = !!card.onClick || !!(card.to && onNavigate);
+        const Tag_ = clickable ? 'button' : 'div';
+        const nav = card.onClick ? {
+          type: 'button',
+          title: card.clickTitle,
+          onClick: card.onClick,
+        } : card.to && onNavigate ? {
           type: 'button',
           title: `Show ${card.to}`,
           onClick: () => {
@@ -122,7 +162,7 @@ export default function KpiRow({
           },
         } : {};
         return (
-        <Tag_ key={i} {...nav} className={`${KPI_CARD} text-left ${card.to && onNavigate ? 'hover:bg-white dark:hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500' : ''}`}>
+        <Tag_ key={i} {...nav} className={`${KPI_CARD} text-left ${clickable ? 'hover:bg-white dark:hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500' : ''}`}>
           <div className="shrink-0">{card.icon}</div>
           <div className="min-w-0">
             <div className={`text-xl font-bold ${card.color} tabular-nums`}>
