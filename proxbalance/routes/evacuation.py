@@ -502,7 +502,8 @@ def evacuate_node():
 
     # Start evacuation in background thread
     def run_evacuation():
-        _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox)
+        _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox,
+                            guest_targets=guest_targets, target_node=target_node)
 
     thread = threading.Thread(target=run_evacuation, daemon=True)
     thread.start()
