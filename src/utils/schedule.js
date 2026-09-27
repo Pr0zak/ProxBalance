@@ -6,9 +6,9 @@
  *  - a window matches when the current weekday (in the window's own time zone,
  *    falling back to schedule.timezone, then UTC) is one of its `days` and the
  *    wall-clock time is within [start_time, end_time], both ends inclusive;
- *  - overnight windows (end < start) only match on a listed day, exactly as
- *    the backend does (so "Sat 22:00-02:00" covers Sat 22:00-24:00 and
- *    Sat 00:00-02:00, not Sunday morning);
+ *  - `days` are the days a window starts on: an overnight window (end < start)
+ *    covers start-24:00 on a listed day and 00:00-end on the following day
+ *    (so "Sat 22:00-02:00" covers Saturday night into Sunday morning);
  *  - windows with `enabled: false` are ignored;
  *  - no migration windows means always allowed, but a list of only disabled
  *    windows blocks every run; any matching blackout wins.
@@ -54,13 +54,15 @@ function windowMatches(win, date, defaultTz) {
   let wc;
   try { wc = wallClock(date, win.timezone || defaultTz); } catch { return false; }
   const days = (win.days || []).map(d => String(d).toLowerCase());
-  if (!days.includes(DAYS[wc.day])) return false;
+  const today = days.includes(DAYS[wc.day]);
+  const yesterday = days.includes(DAYS[(wc.day + 6) % 7]);
   const s = toSec(win.start_time);
   const e = toSec(win.end_time);
   // Backend compares datetime.time (with seconds) against HH:MM, so an end of
   // 06:00 stops matching at 06:00:00.000001; treat the end minute's start as
   // the last matching second.
-  return s <= e ? (wc.sec >= s && wc.sec <= e) : (wc.sec >= s || wc.sec <= e);
+  if (s <= e) return today && wc.sec >= s && wc.sec <= e;
+  return (today && wc.sec >= s) || (yesterday && wc.sec <= e);
 }
 
 /**

@@ -166,6 +166,35 @@ def save_history(history: Dict[str, Any]):
     migration_db.set_automation_state_bulk(state)
 
 
+def _window_matches(window: Dict[str, Any], now: datetime) -> bool:
+    """
+    Whether a schedule window covers the wall-clock time `now`.
+
+    A window's `days` are the days it starts on. A same-day window
+    (start <= end) matches on a listed day between start and end, both
+    inclusive. An overnight window (start > end, e.g. Fri 22:00-06:00)
+    matches from start to midnight on a listed day, and from midnight to
+    end on the day after a listed day, so "Fri 22:00-06:00" covers Friday
+    night into Saturday morning, not Friday morning.
+
+    Args:
+        window: Window dict with 'days', 'start_time' and 'end_time' ("HH:MM")
+        now: Timezone-aware datetime in the window's timezone
+
+    Returns:
+        True when the window covers `now`
+    """
+    window_days = [d.lower() for d in window.get('days', [])]
+    today = now.strftime('%A').lower()
+    yesterday = (now - timedelta(days=1)).strftime('%A').lower()
+    start = datetime.strptime(window['start_time'], '%H:%M').time()
+    end = datetime.strptime(window['end_time'], '%H:%M').time()
+    current = now.time()
+    if start <= end:
+        return today in window_days and start <= current <= end
+    return (today in window_days and current >= start) or (yesterday in window_days and current <= end)
+
+
 def _check_time_window(config, window_key, window_label, default_when_empty):
     """
     Check if current time falls within any of the configured time windows.
@@ -193,18 +222,7 @@ def _check_time_window(config, window_key, window_label, default_when_empty):
         try:
             tz = pytz.timezone(window.get('timezone', global_tz))
             now = datetime.now(tz)
-            current_day = now.strftime('%A').lower()
-            window_days = [d.lower() for d in window.get('days', [])]
-            if current_day not in window_days:
-                continue
-            start = datetime.strptime(window['start_time'], '%H:%M').time()
-            end = datetime.strptime(window['end_time'], '%H:%M').time()
-            current = now.time()
-            if start <= end:
-                in_window = start <= current <= end
-            else:
-                in_window = current >= start or current <= end
-            if in_window:
+            if _window_matches(window, now):
                 logger.info(f"In {window_label}: {window['name']} ({tz} time: {now.strftime('%H:%M')})")
                 return True, f"In {window_label}: {window['name']} ({tz} time: {now.strftime('%H:%M')})"
         except Exception as e:

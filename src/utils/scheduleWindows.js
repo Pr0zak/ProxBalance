@@ -3,9 +3,9 @@
  * (`_check_time_window`, `is_in_migration_window`, `is_in_blackout_window`
  * and the order `main()` applies them):
  *
- *  - a window matches on its listed days only; for a window that wraps past
- *    midnight (start > end) the after-midnight part is also checked against
- *    the *current* day, exactly like the backend does;
+ *  - `days` are the days a window starts on; a window that wraps past
+ *    midnight (start > end) covers start-24:00 on a listed day and 00:00-end
+ *    on the following day, exactly like the backend does;
  *  - start <= end is a same-day range;
  *  - an empty migration_windows list means "always allowed", but a non-empty
  *    list whose windows are all disabled blocks every run (the backend only
@@ -55,18 +55,27 @@ export function zonedParts(date, tz) {
 /** True when the window runs past midnight (e.g. 22:00–02:00). */
 export const isOvernight = (w) => toMinutes(w.start_time) > endMinutes(w.end_time);
 
-/** Visible [start, end) segments of a window on each of its listed days, in minutes. */
-export function windowSegments(w) {
+const prevDay = (day) => WEEK_DAYS[(WEEK_DAYS.findIndex(d => lower(d) === lower(day)) + 6) % 7];
+
+/**
+ * [start, end) minute segments a window covers on `day`. A same-day window
+ * sits on its listed days; an overnight window runs start-24:00 on a listed
+ * day and 00:00-end on the day after it (backend rule).
+ */
+export function windowSegmentsOn(w, day) {
+  const days = (w.days || []).map(lower);
   const s = toMinutes(w.start_time);
   const e = endMinutes(w.end_time);
-  if (s <= e) return [[s, e]];
-  return [[s, 1440], [0, e]];  // wraps: both parts sit on the listed day (backend rule)
+  if (s <= e) return days.includes(lower(day)) ? [[s, e]] : [];
+  const out = [];
+  if (days.includes(lower(prevDay(day)))) out.push([0, e]);
+  if (days.includes(lower(day))) out.push([s, 1440]);
+  return out;
 }
 
 const covers = (w, day, minute) =>
   w.enabled !== false
-  && (w.days || []).map(lower).includes(lower(day))
-  && windowSegments(w).some(([s, e]) => minute >= s && minute < e);
+  && windowSegmentsOn(w, day).some(([s, e]) => minute >= s && minute < e);
 
 /**
  * State at (day, minute) in the schedule's timezone: { allowed, reason, window }.

@@ -413,7 +413,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                               {isOvernight(window) && (
                                 <span
                                   className="ml-1 text-xs"
-                                  title={`Runs past midnight. The runner checks both parts against the listed days, so ${window.start_time}–24:00 and 00:00–${window.end_time} each apply on ${describeDays(window.days)}.`}
+                                  title={`Runs past midnight: starts ${window.start_time} on ${describeDays(window.days)} and ends ${window.end_time} the next morning.`}
                                 >(overnight)</span>
                               )}
                             </div>

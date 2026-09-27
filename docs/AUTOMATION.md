@@ -104,7 +104,7 @@ Define when migrations are allowed:
 - If the `migration_windows` list is empty, migrations are allowed at any time
 - If the list has windows but **every one is disabled**, migrations are blocked at all times. Only an empty list means "unrestricted". The dashboard banner and the Automation page apply the same rule
 - A window matches only on its listed `days`. Start and end times are inclusive
-- Cross-midnight windows are supported (`22:00` to `06:00`). Both parts are checked against the current day, so a window listed for Friday covers Friday 00:00-06:00 and Friday 22:00-24:00, not Saturday morning. List the following day too if you want the whole night
+- Cross-midnight windows are supported (`22:00` to `06:00`). A window's days are the days it starts on: a window listed for Friday covers Friday 22:00 through Saturday 06:00. (Before v2.13.1 both parts were checked against the current day, so the same window covered Friday 00:00-06:00 and Friday 22:00-24:00 instead.)
 - Times are evaluated in the window's `timezone` if set, otherwise in `schedule.timezone` (default `UTC`). The web UI sets `schedule.timezone` for all windows
 
 ### Blackout windows
@@ -335,7 +335,7 @@ Check the run decisions (History & Logs) or the journal for skip reasons:
 
 ### Schedule says blocked although windows are defined
 
-If every migration window is disabled, automation is blocked at all times; only an empty window list means "no restriction". Enable at least one window, or delete them all. Also check that the current day is in the window's `days` (for an overnight window, the after-midnight part only matches on the listed days) and that `schedule.timezone` is what you expect.
+If every migration window is disabled, automation is blocked at all times; only an empty window list means "no restriction". Enable at least one window, or delete them all. Also check that the current day is in the window's `days` (for an overnight window, list the day it starts; the after-midnight part applies to the following day) and that `schedule.timezone` is what you expect.
 
 ### Migrations failing
 

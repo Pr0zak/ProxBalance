@@ -200,7 +200,7 @@ Blackout windows always take priority over migration windows. If the `migration_
 | `timezone` | string | `"UTC"` | IANA timezone used for every window that has no `timezone` of its own. The web UI sets this one value for all windows. Workload pattern analysis also buckets hours in this timezone |
 | `*.name` | string | - | Window name shown in the UI and logs |
 | `*.enabled` | bool | `true` | Disabled windows never match |
-| `*.days` | array | - | Lowercase day names. A window only matches on these days; for an overnight window both parts are checked against the current day |
+| `*.days` | array | - | Lowercase day names. The days a window starts on. An overnight window runs from `start_time` on a listed day to `end_time` the next day |
 | `*.start_time` / `*.end_time` | string | - | `HH:MM`, inclusive. `start_time` later than `end_time` means the window crosses midnight |
 | `*.timezone` | string | schedule `timezone` | Optional per-window override |
 

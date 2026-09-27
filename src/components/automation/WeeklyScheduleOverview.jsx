@@ -1,7 +1,7 @@
 import { Clock } from '../Icons.jsx';
 import { BANNER_SUCCESS, BANNER_WARN, INNER_CARD } from '../../utils/designTokens.js';
 import {
-  WEEK_DAYS, windowSegments, scheduleOutlook, nextCheckInfo,
+  WEEK_DAYS, windowSegmentsOn, scheduleOutlook, nextCheckInfo,
   fmtClock, fmtDuration, reasonPhrase, flipPhrase, useNow,
 } from '../../utils/scheduleWindows.js';
 
@@ -41,13 +41,13 @@ export default function WeeklyScheduleOverview({ schedule, savedConfig, automati
     }, 100);
   };
 
-  const bars = (windows, type) => windows.flatMap((w, i) => {
+  // Bars for one day row; an overnight window's after-midnight part lands on the next day's row.
+  const bars = (windows, type, day) => windows.flatMap((w, i) => {
     if (w.enabled === false) return [];
     const globalIndex = type === 'migration' ? i : migrationWindows.length + i;
-    return windowSegments(w).map(([s, e], k) => ({ key: `${type}-${i}-${k}`, w, s, e, type, globalIndex }));
+    return windowSegmentsOn(w, day).map(([s, e], k) => ({ key: `${type}-${i}-${k}`, w, s, e, type, globalIndex }));
   });
-  const allBars = [...bars(migrationWindows, 'migration'), ...bars(blackoutWindows, 'blackout')];
-  const hasDay = (w, day) => (w.days || []).some(d => String(d).toLowerCase() === day.toLowerCase());
+  const barsOn = (day) => [...bars(migrationWindows, 'migration', day), ...bars(blackoutWindows, 'blackout', day)];
 
   return (
     <div className={`${INNER_CARD} mb-4`}>
@@ -107,7 +107,7 @@ export default function WeeklyScheduleOverview({ schedule, savedConfig, automati
                 {AXIS_HOURS.slice(1, -1).map(h => (
                   <div key={h} className="absolute inset-y-0 border-l border-slate-300/70 dark:border-slate-500/40" style={{ left: `${(h / 24) * 100}%` }} />
                 ))}
-                {allBars.filter(b => hasDay(b.w, day)).map(b => (
+                {barsOn(day).map(b => (
                   <div
                     key={b.key}
                     className={`absolute inset-y-0 cursor-pointer transition-opacity hover:opacity-80 ${b.type === 'blackout' ? 'bg-red-500 dark:bg-red-600 z-20' : 'bg-green-500 dark:bg-green-600 z-10'}`}
