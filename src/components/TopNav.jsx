@@ -3,8 +3,7 @@ import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, CONNECTION_BADGE_IDLE, BTN_ICON
 } from '../utils/designTokens.js';
-
-const { useMemo } = React;
+import { useNow, describeDataAge, DATA_AGE_TONE } from '../utils/dataAge.js';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -16,7 +15,7 @@ const TABS = [
 export default function TopNav({
   currentPage, setCurrentPage,
   darkMode, toggleDarkMode,
-  connected, lastUpdate,
+  connected, collectedAt, collectionIntervalMin,
   onRefresh, refreshing,
   systemInfo, onShowUpdate, onShowBranches,
   automationStatus,
@@ -24,15 +23,9 @@ export default function TopNav({
   const outsideWindow = connected
     && automationStatus?.enabled
     && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
-  const timeAgo = useMemo(() => {
-    if (!lastUpdate) return null;
-    const seconds = Math.floor((Date.now() - new Date(lastUpdate).getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
-  }, [lastUpdate, Math.floor(Date.now() / 30000)]);
+  // Age of the data itself (backend collection time), not of the last fetch.
+  const now = useNow(30000);
+  const dataAge = describeDataAge(collectedAt, collectionIntervalMin, now);
 
   return (
     <nav className={TOP_NAV}>
@@ -119,10 +112,13 @@ export default function TopNav({
               </button>
             )}
 
-            {/* Last update */}
-            {timeAgo && (
-              <span className="hidden xl:inline text-xs text-pb-text2 dark:text-gray-500">
-                {timeAgo}
+            {/* Data age — amber past 2x the collection interval, red past 3x */}
+            {dataAge && (
+              <span
+                className={`${dataAge.tone === 'ok' ? 'hidden xl:inline' : 'hidden md:inline font-medium'} text-xs whitespace-nowrap ${DATA_AGE_TONE[dataAge.tone]}`}
+                title={dataAge.title}
+              >
+                {dataAge.label}
               </span>
             )}
 

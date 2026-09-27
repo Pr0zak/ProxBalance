@@ -3,6 +3,7 @@ import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
+import { useAppStatus } from '../AppStatus.jsx';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -106,6 +107,27 @@ export default function AutoStatusPill({
     : null
   ), [wantsSchedule, schedule, automationStatus?.next_check, automationStatus?.check_interval_minutes, minuteKey]);
 
+  // A failed status fetch must not read as "Auto: Off"; while the first load
+  // is in flight (automationStatus null, no error) render nothing.
+  const { automationStatusError, retryAutomationStatus } = useAppStatus();
+  if (automationStatusError) {
+    const retry = retryAutomationStatus || fetchAutomationStatus;
+    return (
+      <div
+        className={`${size === 'pill' ? 'inline-flex px-2 py-0.5 rounded-full text-xs' : 'flex px-4 py-2 rounded-lg text-sm'} items-center gap-1.5 border bg-red-50 dark:bg-red-900/15 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300`}
+        title={automationStatusError}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        <span className="font-medium">{size === 'pill' ? 'Auto: status unavailable' : 'Auto-migration status unavailable'}</span>
+        {retry && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button onClick={() => retry()} className="font-medium underline-offset-2 hover:underline">Retry</button>
+          </>
+        )}
+      </div>
+    );
+  }
   if (!automationStatus) return null;
   const status = getStatus(automationStatus);
   const nextCheck = getNextCheck(automationStatus);

@@ -24,8 +24,10 @@ import {
 } from './components/Icons.jsx';
 import RunPlanModal from './components/dashboard/recommendations/insights/RunPlanModal.jsx';
 import { API_BASE, RECOMMENDATIONS_REFRESH_INTERVAL, AUTOMATION_STATUS_REFRESH_INTERVAL } from './utils/constants.js';
-import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, PAGE_BG } from './utils/designTokens.js';
+import { GLASS_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, PAGE_BG } from './utils/designTokens.js';
 import MobileTabBar from './components/MobileTabBar.jsx';
+import { Toaster, notifyError } from './components/Toast.jsx';
+import { AppStatusContext } from './components/AppStatus.jsx';
 
 const { useState, useEffect } = React;
 
@@ -36,10 +38,12 @@ const ProxmoxBalanceManager = () => {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const ui = useUIState();
   const auth = useAuth(API_BASE);
-  const automation = useAutomation(API_BASE, { setError: (e) => cluster.setError(e) });
+  // Action errors (saves, restarts, migrations, tag changes) go to toasts.
+  // cluster.error / the Connected badge are reserved for /api/analyze failures.
+  const automation = useAutomation(API_BASE, { setError: notifyError });
   const evacuation = useEvacuation({ saveAutomationConfig: automation.saveAutomationConfig, automationConfig: automation.automationConfig });
-  const configHook = useConfig(API_BASE, { setError: (e) => cluster.setError(e) });
-  const updates = useUpdates(API_BASE, { setError: (e) => cluster.setError(e) });
+  const configHook = useConfig(API_BASE, { setError: notifyError });
+  const updates = useUpdates(API_BASE, { setError: notifyError });
   const cluster = useClusterData(API_BASE, {
     setTokenAuthError: auth.setTokenAuthError,
     checkPermissions: auth.checkPermissions,
@@ -51,11 +55,11 @@ const ProxmoxBalanceManager = () => {
   });
   const ai = useAIRecommendations(API_BASE, {
     data: cluster.data,
-    setError: cluster.setError
+    setError: notifyError
   });
   const migrations = useMigrations(API_BASE, {
     setData: cluster.setData,
-    setError: cluster.setError,
+    setError: notifyError,
     fetchGuestLocations: cluster.fetchGuestLocations
   });
 
@@ -204,11 +208,8 @@ const ProxmoxBalanceManager = () => {
       ...ai.getSettingsPayload()
     });
 
-    if (result.success) {
-      const now = new Date();
-      cluster.setLastUpdate(now);
-      cluster.setNextUpdate(new Date(now.getTime() + result.intervalMs));
-    }
+    // Saving settings doesn't make the cluster data any fresher, so the
+    // data-age label (driven by the backend collection time) is left alone.
     return result.success;
   };
 
@@ -232,6 +233,19 @@ const ProxmoxBalanceManager = () => {
     evacuation.maintenanceNodes
   );
 
+  // Load/error state of the root data hooks for deep consumers (see AppStatus.jsx).
+  const appStatus = {
+    automationStatusError: automation.automationStatusError,
+    retryAutomationStatus: automation.fetchAutomationStatus,
+    automationConfigError: automation.automationConfigError,
+    retryAutomationConfig: automation.fetchAutomationConfig,
+    recommendationsError: recs.recommendationsError,
+    retryRecommendations: recs.fetchCachedRecommendations,
+  };
+  const withShell = (page) => (
+    <AppStatusContext.Provider value={appStatus}>{page}<Toaster /></AppStatusContext.Provider>
+  );
+
   // Shared TopNav across all pages
   const topNav = (
     <TopNav
@@ -240,7 +254,8 @@ const ProxmoxBalanceManager = () => {
       darkMode={darkMode}
       toggleDarkMode={toggleDarkMode}
       connected={!!cluster.data && !cluster.error}
-      lastUpdate={cluster.lastUpdate}
+      collectedAt={cluster.backendCollected}
+      collectionIntervalMin={configHook.config?.collection_interval_minutes}
       onRefresh={handleRefresh}
       refreshing={cluster.loading}
       systemInfo={updates.systemInfo}
@@ -290,7 +305,7 @@ const ProxmoxBalanceManager = () => {
         return (
           <button
             onClick={() => migrations.setPlanModalOpen(true)}
-            className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:bottom-4 right-4 z-[55] flex items-center gap-2 px-3 py-2 rounded-full shadow-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             title="View the migration plan progress"
           >
             {running
@@ -304,7 +319,7 @@ const ProxmoxBalanceManager = () => {
 
   // Settings Page
   if (ui.currentPage === 'settings') {
-    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<SettingsPage
+    return withShell(<div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<SettingsPage
       setCurrentPage={ui.setCurrentPage}
       routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'settings')}
       setNavGuard={ui.setNavGuard}
@@ -328,7 +343,7 @@ const ProxmoxBalanceManager = () => {
       fetchConfig={configHook.fetchConfig}
       savingCollectionSettings={configHook.savingCollectionSettings} setSavingCollectionSettings={configHook.setSavingCollectionSettings}
       collectionSettingsSaved={configHook.collectionSettingsSaved} setCollectionSettingsSaved={configHook.setCollectionSettingsSaved}
-      setError={cluster.setError}
+      setError={notifyError}
       automationConfig={automation.automationConfig}
       saveAutomationConfig={automation.saveAutomationConfig}
       proxmoxTokenId={auth.proxmoxTokenId} setProxmoxTokenId={auth.setProxmoxTokenId}
@@ -343,25 +358,25 @@ const ProxmoxBalanceManager = () => {
       formatLocalTime={formatLocalTime}
       getTimezoneAbbr={getTimezoneAbbr}
     />
-    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-    </div>;
+    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    </div>);
   }
 
   // Insights Page
   if (ui.currentPage === 'insights') {
-    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
+    return withShell(<div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
       <InsightsPage
         cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
         clusterNodes={cluster.data?.nodes}
         automationConfig={automation.automationConfig}
       />
-      {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-    </div>;
+      {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    </div>);
   }
 
   // Automation Settings Page
   if (ui.currentPage === 'automation') {
-    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<AutomationPage
+    return withShell(<div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<AutomationPage
       routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'automation')}
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
@@ -412,7 +427,7 @@ const ProxmoxBalanceManager = () => {
       setConfirmRemoveWindow={automation.setConfirmRemoveWindow}
       setCurrentPage={ui.setCurrentPage}
       setEditingWindowIndex={automation.setEditingWindowIndex}
-      setError={cluster.setError}
+      setError={notifyError}
       setLogRefreshTime={automation.setLogRefreshTime}
       setMigrationHistoryPage={automation.setMigrationHistoryPage}
       setMigrationHistoryPageSize={automation.setMigrationHistoryPageSize}
@@ -425,8 +440,8 @@ const ProxmoxBalanceManager = () => {
       testingAutomation={automation.testingAutomation}
       testResult={automation.testResult}
     />
-    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-    </div>;
+    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    </div>);
   }
 
   // No data - show loading/error
@@ -434,7 +449,8 @@ const ProxmoxBalanceManager = () => {
     return (
       <div className={PAGE_BG}>
         {topNav}
-        
+        <Toaster />
+
         <div className="max-w-screen-2xl mx-auto p-4">
           {cluster.error && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4">
@@ -484,10 +500,10 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Dashboard Page
-  return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<DashboardPage
+  return withShell(<div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<DashboardPage
     routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'dashboard')}
     data={cluster.data} setData={cluster.setData}
-    loading={cluster.loading} error={cluster.error} setError={cluster.setError}
+    loading={cluster.loading} error={cluster.error} setError={notifyError}
     config={configHook.config}
     setCurrentPage={ui.setCurrentPage}
     setScrollToApiConfig={ui.setScrollToApiConfig}
@@ -560,8 +576,8 @@ const ProxmoxBalanceManager = () => {
     setGuestMigrationOptions={migrations.setGuestMigrationOptions}
     API_BASE={API_BASE}
   />
-  {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
-  </div>;
+  {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+  </div>);
 };
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

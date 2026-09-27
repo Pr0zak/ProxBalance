@@ -13,7 +13,8 @@ import SkippedGuests from './recommendations/SkippedGuests.jsx';
 import BatchImpact from './recommendations/insights/BatchImpact.jsx';
 import ExecutionPlan from './recommendations/insights/ExecutionPlan.jsx';
 import EngineDiagnostics from './recommendations/insights/EngineDiagnostics.jsx';
-import { Info } from '../Icons.jsx';
+import { Info, AlertCircle } from '../Icons.jsx';
+import { useAppStatus } from '../AppStatus.jsx';
 
 const { useState } = React;
 
@@ -41,6 +42,10 @@ export default function MigrationRecommendationsSection({
   embedded = false,
 }) {
   const expanded = embedded ? true : !collapsedSections.recommendations;
+  // null = not loaded yet; an error must never read as "Cluster is balanced".
+  const { recommendationsError, retryRecommendations } = useAppStatus();
+  const recsLoaded = Array.isArray(recommendations);
+  if (!recsLoaded) recommendations = [];
   // Local state for filters
   const [recFilterConfidence, setRecFilterConfidence] = useState('');
   const [recFilterTargetNode, setRecFilterTargetNode] = useState('');
@@ -284,6 +289,20 @@ export default function MigrationRecommendationsSection({
               {recommendationData?.ai_enhanced && (
                 <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">AI enhancement in progress</p>
               )}
+            </div>
+          ) : recommendations.length === 0 && recommendationsError ? (
+            <div className="flex items-start gap-2 py-4 text-sm text-red-700 dark:text-red-300">
+              <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+              <span className="min-w-0 break-words">
+                Couldn't load suggestions: {recommendationsError}
+                {retryRecommendations && (
+                  <> · <button onClick={() => retryRecommendations()} className="font-medium underline-offset-2 hover:underline">Retry</button></>
+                )}
+              </span>
+            </div>
+          ) : recommendations.length === 0 && !recsLoaded ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-pb-text2 dark:text-gray-400">
+              <RefreshCw size={16} className="animate-spin" /> Loading suggestions…
             </div>
           ) : recommendations.length === 0 ? (
             <div className="flex items-center gap-3 py-4">

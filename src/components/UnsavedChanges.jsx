@@ -1,5 +1,6 @@
 import { Save, RotateCcw, Loader } from './Icons.jsx';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../utils/designTokens.js';
+import { notify, errorToastCount } from './Toast.jsx';
 
 const { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } = React;
 
@@ -10,8 +11,43 @@ const { createContext, useContext, useState, useRef, useCallback, useEffect, use
  * renders <UnsavedBar> which shows "N unsaved changes · Discard · Save" and
  * runs every registered saver in registration order. Groups never save on
  * their own.
+ *
+ * A saver resolves to { ok, error? }. For older savers, `false` means failed
+ * and `true`/undefined means ok, unless the saver raised an error toast while
+ * it ran (hooks report failures that way). saveAll then shows one toast:
+ * "Saved", or "Couldn't save <group>: <error>" for each group that failed.
  */
 export const UnsavedContext = createContext(null);
+
+// Human names for the save groups, used in "Couldn't save <group>" toasts.
+const GROUP_LABELS = {
+  general: 'general settings',
+  notifications: 'notification settings',
+  collection: 'collection settings',
+  recommendationThresholds: 'recommendation thresholds',
+  automationConfig: 'automation settings',
+  migrationSettings: 'scoring settings',
+  penaltyConfig: 'penalty weights',
+};
+const groupLabel = (key) => GROUP_LABELS[key]
+  || key.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+
+/** Normalise whatever a saver returned (or threw) into { ok, error? }. */
+async function runSaver(save) {
+  const before = errorToastCount();
+  let result;
+  try {
+    result = await save();
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err), reported: false };
+  }
+  const reported = errorToastCount() > before;
+  if (result && typeof result === 'object' && 'ok' in result) {
+    return { ok: !!result.ok, error: result.error, reported };
+  }
+  if (result === false) return { ok: false, reported };
+  return reported ? { ok: false, reported } : { ok: true };
+}
 
 export function useUnsavedRegistry() {
   const saversRef = useRef({});
@@ -41,6 +77,7 @@ export function useUnsavedRegistry() {
 
   const saveAll = useCallback(async () => {
     setSaving(true);
+    const failures = [];
     try {
       const keys = orderRef.current
         .map((k, i) => [k, i])
@@ -50,12 +87,20 @@ export function useUnsavedRegistry() {
       // fresh closures, which would no longer see the user's pending edits.
       const savers = { ...saversRef.current };
       for (const key of keys) {
-        if (!counts[key]) continue;
-        await savers[key]?.save();
+        if (!counts[key] || !savers[key]?.save) continue;
+        const res = await runSaver(savers[key].save);
+        if (!res.ok) failures.push({ key, ...res });
       }
     } finally {
       setSaving(false);
     }
+    // A saver that already raised its own error toast isn't reported twice.
+    for (const f of failures) {
+      if (f.reported) continue;
+      notify({ tone: 'error', message: `Couldn't save ${groupLabel(f.key)}${f.error ? `: ${f.error}` : ''}` });
+    }
+    if (!failures.length) notify({ tone: 'success', message: 'Saved' });
+    return failures.length ? { ok: false, failures } : { ok: true };
   }, [counts]);
 
   const discardAll = useCallback(() => {
@@ -102,7 +147,7 @@ export function useBeforeUnload(active) {
 export function UnsavedBar({ total, saving, onSave, onDiscard }) {
   if (!total && !saving) return null;
   return (
-    <div className="sticky bottom-[84px] sm:bottom-4 z-40 mt-4">
+    <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] sm:bottom-4 z-40 mt-4">
       <div className="mx-auto max-w-3xl flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-white/95 dark:bg-slate-900/95 backdrop-blur shadow-pb-modal">
         <span className="text-sm text-pb-text dark:text-gray-200">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-2 align-middle" />

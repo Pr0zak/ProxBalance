@@ -1,6 +1,7 @@
 import {
-  Clock
+  Clock, AlertCircle, RefreshCw
 } from './Icons.jsx';
+import { useAppStatus } from './AppStatus.jsx';
 import {
   GLASS_CARD, TEXT_HEADING, TEXT_SUBHEADING,
   SUB_TAB, SUB_TAB_ACTIVE, SUB_TAB_INACTIVE
@@ -129,8 +130,32 @@ export default function AutomationPage(props) {
     return () => setNavGuard(null);
   }, [registry.total]);
 
+  // Nothing here renders (so no live toggle can act) until the real config
+  // has loaded; a failed load shows why, with a retry.
+  const { automationConfigError, retryAutomationConfig, automationStatusError, retryAutomationStatus } = useAppStatus();
+  const loadError = automationConfigError || automationStatusError;
+  const errorCard = loadError && (
+    <div className="max-w-screen-2xl mx-auto px-4 pt-4">
+      <div className="flex items-start gap-3 p-4 rounded-xl border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50">
+        <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+        <div className="flex-1 min-w-0 text-sm">
+          <p className="font-semibold text-red-800 dark:text-red-200">
+            {automationConfigError ? "Couldn't load automation settings" : "Couldn't load automation status"}
+          </p>
+          <p className="text-red-700 dark:text-red-300/80 mt-0.5 break-words">{loadError}</p>
+        </div>
+        <button
+          onClick={() => { if (automationConfigError) retryAutomationConfig?.(); if (automationStatusError) retryAutomationStatus?.(); }}
+          className="shrink-0 inline-flex items-center gap-1 text-sm font-medium text-red-700 dark:text-red-300 hover:underline"
+        >
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    </div>
+  );
+
   if (!automationConfig) {
-    return (
+    return errorCard || (
       <div className="flex items-center justify-center p-8">
         <div className="text-pb-text2 dark:text-gray-400">Loading automation settings...</div>
       </div>
@@ -139,7 +164,8 @@ export default function AutomationPage(props) {
 
   return (
     <UnsavedContext.Provider value={registry.context}>
-    <div className="pb-20 sm:pb-0">
+    <div className="pb-4 sm:pb-0">
+      {errorCard}
       <div className="max-w-screen-2xl mx-auto p-4">
         {/* Page header */}
         <div className="mb-4">
@@ -236,7 +262,7 @@ export default function AutomationPage(props) {
 
         <div hidden={activeTab !== 'history'}>{(
           <MigrationLogsSection
-            automationStatus={automationStatus}
+            automationStatus={automationStatus || {}}
             automigrateLogs={automigrateLogs}
             migrationHistoryPage={migrationHistoryPage}
             setMigrationHistoryPage={setMigrationHistoryPage}

@@ -109,7 +109,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="p-4 pb-20 sm:pb-4 overflow-x-hidden">
+    <div className="p-4 overflow-x-hidden">
       <div className="max-w-screen-2xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (

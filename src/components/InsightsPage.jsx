@@ -56,7 +56,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   const thresholds = { cpu: cpuThreshold, memory: memThreshold, iowait: iowaitThreshold };
 
   return (
-    <div className="pb-20 sm:pb-0">
+    <div className="pb-4 sm:pb-0">
       <div className="max-w-screen-2xl mx-auto p-4 space-y-4">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className={`${GLASS_CARD} xl:col-span-2`}>

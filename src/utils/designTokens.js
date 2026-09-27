@@ -163,11 +163,20 @@ export const EMPTY_STATE =
 // Modals
 // ---------------------------------------------------------------------------
 
+// z-[60]: above the phone tab bar (MobileTabBar, z-50) so dialogs are never
+// covered by it and it can't catch their taps. Toasts sit above at z-[80].
 export const MODAL_OVERLAY =
-  'fixed inset-0 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+  'fixed inset-0 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm flex items-center justify-center z-[60] p-4';
 
+// On phones the dialog is capped to the dynamic viewport minus the overlay's
+// padding and scrolls internally, so its buttons stay reachable.
 export const MODAL_CONTAINER =
-  'bg-white dark:bg-pb-surface-dark rounded-xl border border-slate-200 dark:border-pb-border-dark shadow-xl dark:shadow-2xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto modal-enter';
+  'bg-white dark:bg-pb-surface-dark rounded-xl border border-slate-200 dark:border-pb-border-dark shadow-xl dark:shadow-2xl p-4 sm:p-6 max-w-md w-full max-h-[calc(100dvh-2rem)] sm:max-h-[90vh] overflow-y-auto modal-enter';
+
+// Total height of the fixed phone tab bar (data-age line + tabs + safe area).
+// MobileTabBar renders a spacer of this height; anything pinned above the bar
+// (sticky save bar, floating pills) offsets by it.
+export const MOBILE_TABBAR_HEIGHT = 'calc(4rem + env(safe-area-inset-bottom))';
 
 // ---------------------------------------------------------------------------
 // Text

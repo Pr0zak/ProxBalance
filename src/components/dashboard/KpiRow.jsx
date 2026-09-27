@@ -49,10 +49,10 @@ export default function KpiRow({
 
   // Active migrations: what Proxmox reports running (automigrate status
   // returns them as in_progress_migrations) plus guests this browser started
-  // that the status poll hasn't picked up yet.
+  // that the status poll hasn't picked up yet. '—' while not loaded / failed.
   const inFlight = inFlightMigrations({ automationStatus, guestsMigrating, migrationProgress, guests: data.guests });
-  const activeMigrations = inFlight.length;
-  const pendingRecs = recommendations?.length || 0;
+  const activeMigrations = automationStatus ? inFlight.length : '—';
+  const pendingRecs = Array.isArray(recommendations) ? recommendations.length : '—';
 
   // Tagged guests: union of any tag categories (a guest with multiple tags counts once)
   const taggedSet = new Set();
