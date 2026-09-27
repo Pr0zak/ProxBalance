@@ -10,7 +10,11 @@
  *    the backend does (so "Sat 22:00-02:00" covers Sat 22:00-24:00 and
  *    Sat 00:00-02:00, not Sunday morning);
  *  - windows with `enabled: false` are ignored;
- *  - no migration windows means always allowed; any matching blackout wins.
+ *  - no migration windows means always allowed, but a list of only disabled
+ *    windows blocks every run; any matching blackout wins.
+ *
+ * src/utils/scheduleWindows.js (Automation page) implements the same rules on
+ * a day/minute grid; tests/js/schedule-agree.mjs checks the two agree.
  *
  * Every instant is evaluated as a real Date in each window's zone, so DST
  * changes are handled the same way the backend handles them.
@@ -69,10 +73,13 @@ function windowMatches(win, date, defaultTz) {
  */
 export function scheduleStateAt(schedule, date = new Date()) {
   const tz = schedule?.timezone || 'UTC';
-  const mig = (schedule?.migration_windows || []).filter(w => w && w.enabled !== false);
+  // automigrate treats "no migration windows" as unrestricted, but a list whose
+  // windows are all disabled blocks every run (nothing can match).
+  const all = schedule?.migration_windows || [];
+  const mig = all.filter(w => w && w.enabled !== false);
   const blk = schedule?.blackout_windows || [];
   const window = mig.find(w => windowMatches(w, date, tz)) || null;
-  const inWindow = mig.length === 0 || !!window;
+  const inWindow = all.length === 0 || !!window;
   const blackout = blk.find(w => windowMatches(w, date, tz)) || null;
   return { allowed: inWindow && !blackout, inWindow, window, blackout };
 }
