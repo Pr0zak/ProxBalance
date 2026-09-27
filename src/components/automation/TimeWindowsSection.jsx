@@ -380,7 +380,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                           <div className="flex gap-2">
                             <button
                               onClick={() => setEditingWindowIndex(null)}
-                              className="px-3 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold flex items-center justify-center gap-1.5"
                               title="Done"
                             >
                               <Check size={14} />
@@ -422,7 +422,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
+                            className="shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -453,8 +453,8 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                             }}
                             className={`shrink-0 px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
                               confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
-                                ? 'bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700'
-                                : 'bg-red-600 hover:bg-red-100 dark:hover:bg-red-700'
+                                ? 'bg-orange-600 hover:bg-orange-700'
+                                : 'bg-red-600 hover:bg-red-700'
                             }`}
                             title="Remove"
                           >
@@ -686,8 +686,8 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold text-pb-text dark:text-white flex items-center justify-center gap-1.5 ${
                       newWindowData.type === 'migration'
-                        ? 'bg-green-600 hover:bg-green-100 dark:hover:bg-green-700'
-                        : 'bg-red-600 hover:bg-red-100 dark:hover:bg-red-700'
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-red-600 hover:bg-red-700'
                     }`}
                   >
                     <Save size={14} />
@@ -709,7 +709,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
           ) : (
             <button
               onClick={() => setShowTimeWindowForm(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5"
             >
               <Plus size={14} />
               Add Time Window

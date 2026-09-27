@@ -287,7 +287,7 @@ const SystemModals = ({
                         <button
                           onClick={rollbackBranch}
                           disabled={rollingBack || switchingBranch || (systemInfo && systemInfo.update_in_progress)}
-                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-100 dark:hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {rollingBack ? 'Switching...' : (systemInfo && systemInfo.update_in_progress ? 'Busy...' : 'Go Back')}
                         </button>

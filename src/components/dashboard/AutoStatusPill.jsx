@@ -230,7 +230,7 @@ export default function AutoStatusPill({
                 className={`px-2.5 py-1 text-xs rounded border text-white inline-flex items-center gap-1 disabled:bg-gray-600 ${
                   outsideWindow
                     ? 'bg-blue-600/40 border-blue-500/40 hover:bg-blue-600/60'
-                    : 'bg-blue-600 border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-700'
+                    : 'bg-blue-600 border-blue-500 hover:bg-blue-700'
                 }`}
                 title={outsideWindow
                   ? 'Outside migration window — the run will start but exit early. Click anyway to test.'

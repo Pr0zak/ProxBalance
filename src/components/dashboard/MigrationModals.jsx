@@ -300,7 +300,7 @@ export default function MigrationModals({
             <button
               onClick={handleAddTag}
               disabled={!newTag.trim()}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <Plus size={14} /> Add Tag
             </button>
@@ -335,7 +335,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndRemoveTag}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-100 dark:hover:bg-red-700"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
             >
               <Trash size={14} /> Remove Tag
             </button>
@@ -397,7 +397,7 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndMigrate}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-100 dark:hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
             >
               <Play size={16} />
               Start Migration
@@ -478,7 +478,7 @@ export default function MigrationModals({
                 }
               }}
               disabled={cancellingMigration}
-              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-100 dark:bg-red-700 hover:bg-red-100 dark:hover:bg-red-800'} text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
+              className={`px-4 py-2 ${cancellingMigration ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 dark:hover:bg-red-500'} text-white rounded-lg font-semibold transition-colors flex items-center gap-2`}
             >
               {cancellingMigration ? (
                 <>

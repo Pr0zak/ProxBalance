@@ -203,7 +203,7 @@ export default function QuickSetupSection({
                       saveAutomationConfig({ enabled: true });
                       setConfirmEnableAutomation(false);
                     }}
-                    className="px-3 py-1.5 bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
+                    className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium flex items-center justify-center gap-1.5"
                   >
                     <Power size={14} />
                     Enable Automation
@@ -239,7 +239,7 @@ export default function QuickSetupSection({
                       saveAutomationConfig({ dry_run: false });
                       setConfirmDisableDryRun(false);
                     }}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-bold flex items-center justify-center gap-1.5"
                   >
                     <AlertTriangle size={14} />
                     Yes, Disable Dry Run

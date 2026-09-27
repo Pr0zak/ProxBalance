@@ -289,7 +289,7 @@ export function useMigrations(API_BASE, deps = {}) {
       }
       if (groupResults.some(r => r.status !== 'success')) {
         planHaltedRef.current = true;
-        const msg = `Halted after group ${groupKey}: at least one migration did not succeed. Remaining steps were not started.`;
+        const msg = `Halted after wave ${groupKey}: at least one migration did not succeed. Remaining steps were not started.`;
         const groupIdx = groups.findIndex(([k]) => k === groupKey);
         setPlanRun(prev => {
           if (!prev) return prev;
