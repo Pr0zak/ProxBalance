@@ -59,7 +59,8 @@ export default function TopNav({
           </div>
 
           {/* Center tabs */}
-          <div className="flex items-center gap-0 overflow-x-auto">
+          {/* Hidden on phones — MobileTabBar handles navigation there */}
+          <div className="hidden sm:flex items-center gap-0 overflow-x-auto">
             {TABS.map(tab => (
               <button
                 key={tab.id}

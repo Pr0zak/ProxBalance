@@ -76,13 +76,13 @@ export default function ClusterSection(props) {
           </div>
           <h2 className="text-xl font-bold text-pb-text dark:text-white">Cluster</h2>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-1 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0 max-w-full">
+          <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-1 overflow-x-auto min-w-0">
             {TABS.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
                   effectiveTab === t.id
                     ? 'bg-blue-600 text-white shadow'
                     : t.accent

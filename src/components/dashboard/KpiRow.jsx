@@ -96,8 +96,8 @@ export default function KpiRow({
           </div>
         </div>
         <div className="min-w-0">
-          <div className="text-xs text-pb-text2 dark:text-gray-500 truncate">Cluster Health</div>
-          <div className="text-[10px] text-pb-text2 dark:text-gray-600">/100 · click for detail</div>
+          <div className="text-xs text-pb-text2 dark:text-gray-500 truncate"><span className="hidden sm:inline">Cluster </span>Health</div>
+          <div className="text-[10px] text-pb-text2 dark:text-gray-600 hidden sm:block">/100 · click for detail</div>
         </div>
       </button>
 

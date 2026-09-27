@@ -41,7 +41,7 @@ const TOTAL_COLS = 11;
 function MetricBar({ pct, detail }) {
   const clampedPct = Math.min(100, Math.max(0, pct || 0));
   return (
-    <div className="min-w-[120px]">
+    <div className="min-w-[56px] md:min-w-[120px]">
       <div className="flex items-center justify-between mb-0.5">
         <span className={`text-xs font-mono tabular-nums ${metricTextColor(clampedPct)}`}>
           {Math.round(clampedPct)}%
@@ -359,10 +359,10 @@ export default function NodeSummaryTable({
     else { setSortField(field); setSortDir('asc'); }
   };
 
-  const SortHeader = ({ field, children, title }) => (
+  const SortHeader = ({ field, children, title, className = '' }) => (
     <th
       title={title}
-      className={`${TABLE_HEADER} cursor-pointer hover:text-pb-text dark:hover:text-gray-200`}
+      className={`${TABLE_HEADER} ${className} cursor-pointer hover:text-pb-text dark:hover:text-gray-200`}
       onClick={() => handleSort(field)}
     >
       <span className="flex items-center gap-1">
@@ -459,20 +459,20 @@ export default function NodeSummaryTable({
           </div>
 
           <div className="overflow-x-auto -mx-4 sm:-mx-5">
-            <table className="w-full min-w-[700px]">
+            <table className="w-full md:min-w-[700px]">
               <thead>
                 <tr className="border-b border-pb-border dark:border-slate-700/50">
                   <th className={`${TABLE_HEADER} w-8`}></th>
                   <SortHeader field="name">Node</SortHeader>
-                  <th className={TABLE_HEADER}>Status</th>
-                  <th className={TABLE_HEADER}>Uptime</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>Status</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>Uptime</th>
                   <SortHeader field="cpu">CPU</SortHeader>
                   <SortHeader field="mem">Memory</SortHeader>
-                  <SortHeader field="iowait">IOWait</SortHeader>
-                  <th className={TABLE_HEADER}>Disk</th>
-                  <SortHeader field="score" title={HEADROOM_HINT}>Headroom</SortHeader>
-                  <th className={TABLE_HEADER}>VMs</th>
-                  <th className={TABLE_HEADER}>CTs</th>
+                  <SortHeader field="iowait" className="hidden md:table-cell">IOWait</SortHeader>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>Disk</th>
+                  <SortHeader field="score" title={HEADROOM_HINT}><span className="hidden md:inline">Headroom</span><span className="md:hidden">Room</span></SortHeader>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>VMs</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>CTs</th>
                 </tr>
               </thead>
               <tbody>
@@ -500,6 +500,7 @@ export default function NodeSummaryTable({
                         </td>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
+                            <span className={`md:hidden w-2 h-2 rounded-full shrink-0 ${node.online ? 'bg-green-400' : 'bg-red-400'}`} />
                             <span className="text-sm font-medium text-pb-text dark:text-white">{node.name}</span>
                             {recs?.outbound > 0 && (
                               <span
@@ -519,12 +520,12 @@ export default function NodeSummaryTable({
                             )}
                           </div>
                         </td>
-                        <td className="p-3"><StatusDot online={node.online} /></td>
-                        <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
+                        <td className="p-3 hidden md:table-cell"><StatusDot online={node.online} /></td>
+                        <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
                         <td className="p-3"><MetricBar pct={node.cpuPct} detail={node.cpuDetail} /></td>
                         <td className="p-3"><MetricBar pct={node.memPct} detail={node.memDetail} /></td>
-                        <td className="p-3"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} /></td>
-                        <td className="p-3"><MetricBar pct={node.diskPct} /></td>
+                        <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} /></td>
+                        <td className="p-3 hidden md:table-cell"><MetricBar pct={node.diskPct} /></td>
                         <td className="p-3">
                           {node.score != null ? (
                             <span className={`text-sm font-bold font-mono tabular-nums ${scoreColor(node.score)}`}>
@@ -534,8 +535,8 @@ export default function NodeSummaryTable({
                             <span className="text-xs text-pb-text2 dark:text-gray-600">—</span>
                           )}
                         </td>
-                        <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 tabular-nums text-center">{node.vms}</td>
-                        <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 tabular-nums text-center">{node.cts}</td>
+                        <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 tabular-nums text-center">{node.vms}</td>
+                        <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 tabular-nums text-center">{node.cts}</td>
                       </tr>
                       {isExpanded && (
                         <tr className="bg-slate-900/40">

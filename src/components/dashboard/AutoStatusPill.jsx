@@ -138,10 +138,10 @@ export default function AutoStatusPill({
             </button>
           )}
           <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
-          <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>Auto-migration: {status.label}</span>
+          <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}><span className="hidden sm:inline">Auto-migration: </span><span className="sm:hidden">Auto: </span>{status.label}</span>
           {nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>}
           {lastRun && (
-            <span className="text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
+            <span className="hidden sm:inline text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
           )}
         </div>
         {showActions && (

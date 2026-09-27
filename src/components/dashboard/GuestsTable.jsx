@@ -200,18 +200,18 @@ export default function GuestsTable({
       </div>
 
       <div className="overflow-x-auto -mx-4 sm:-mx-5">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full md:min-w-[800px]">
           <thead>
             <tr className="border-b border-pb-border dark:border-slate-700/50">
               <SortHeader field="type">Type</SortHeader>
-              <SortHeader field="vmid">VMID</SortHeader>
+              <SortHeader field="vmid" className="hidden md:table-cell">VMID</SortHeader>
               <SortHeader field="name">Name</SortHeader>
               <SortHeader field="node">Node</SortHeader>
-              <SortHeader field="status">Status</SortHeader>
+              <SortHeader field="status" className="hidden md:table-cell">Status</SortHeader>
               <SortHeader field="cpu">CPU</SortHeader>
               <SortHeader field="mem">Memory</SortHeader>
-              <th className={TABLE_HEADER}>Tags</th>
-              {canMigrate && <th className={TABLE_HEADER + ' w-8'}></th>}
+              <th className={`${TABLE_HEADER} hidden md:table-cell`}>Tags</th>
+              {canMigrate && <th className={TABLE_HEADER + ' w-8 hidden md:table-cell'}></th>}
             </tr>
           </thead>
           <tbody>
@@ -232,7 +232,7 @@ export default function GuestsTable({
                         : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30'
                     }`}>{g.type}</span>
                   </td>
-                  <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{g.vmid}</td>
+                  <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{g.vmid}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-sm text-pb-text dark:text-gray-200">{g.name || `guest-${g.vmid}`}</span>
@@ -256,7 +256,7 @@ export default function GuestsTable({
                     </div>
                   </td>
                   <td className="p-3 text-xs text-pb-text2 dark:text-gray-400">{g.node}</td>
-                  <td className="p-3"><StatusBadge status={g.status} /></td>
+                  <td className="p-3 hidden md:table-cell"><StatusBadge status={g.status} /></td>
                   <td className="p-3 text-xs font-mono tabular-nums">
                     {g.status === 'running' && g.cpu_current != null
                       ? <span className={metricTextColor(g.cpu_current)}>{g.cpu_current.toFixed(0)}%</span>
@@ -270,11 +270,11 @@ export default function GuestsTable({
                       </span>
                     ) : <span className="text-pb-text2 dark:text-gray-600">—</span>}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 hidden md:table-cell">
                     <TagChips guest={g} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} />
                   </td>
                   {canMigrate && (
-                    <td className="p-3">
+                    <td className="p-3 hidden md:table-cell">
                       {openTagModal && (
                         <button
                           onClick={(e) => { e.stopPropagation(); openTagModal(g); }}
