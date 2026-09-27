@@ -1,4 +1,4 @@
-const { useState, useCallback } = React;
+const { useState, useCallback, useRef } = React;
 
 export function useClusterData(API_BASE, deps = {}) {
   const { setTokenAuthError, checkPermissions, autoRefreshInterval } = deps;
@@ -218,46 +218,67 @@ export function useClusterData(API_BASE, deps = {}) {
     }
   }, [API_BASE]);
 
-  // Load a script with CDN primary and local fallback
-  const loadScript = (cdnUrl, localUrl) => {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = cdnUrl;
-      script.onload = resolve;
-      script.onerror = () => {
-        console.warn(`CDN failed for ${cdnUrl}, trying local fallback`);
-        script.remove();
-        const fallback = document.createElement('script');
-        fallback.src = localUrl;
-        fallback.onload = resolve;
-        fallback.onerror = reject;
-        document.head.appendChild(fallback);
-      };
-      document.head.appendChild(script);
-    });
+  // Inject one <script> and resolve once it has run AND `isReady()` holds. The
+  // readiness check matters: an SPA-style server can answer a missing file with
+  // index.html (200), which "loads" but defines nothing.
+  const injectScript = (src, isReady) => new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => {
+      if (isReady()) resolve();
+      else { script.remove(); reject(new Error(`${src} loaded but did not register`)); }
+    };
+    script.onerror = () => { script.remove(); reject(new Error(`failed to load ${src}`)); };
+    document.head.appendChild(script);
+  });
+
+  // Try each URL in order until one loads and registers. The bundled local copy
+  // comes first (same origin, no third-party dependency, works offline); the CDN
+  // is only a fallback for installs whose nginx root lacks assets/js/.
+  const loadScript = async (urls, isReady) => {
+    if (isReady()) return;
+    let lastErr;
+    for (const url of urls) {
+      try { await injectScript(url, isReady); return; } catch (err) {
+        lastErr = err;
+        console.warn(`${err.message}; trying next source`);
+      }
+    }
+    throw lastErr;
   };
 
-  // Lazy load Chart.js library (CDN with local fallback)
-  const loadChartJs = async () => {
-    if (chartJsLoaded || chartJsLoading) return;
-
+  // Lazy load Chart.js and then its annotation plugin, strictly in that order.
+  // chartJsLoaded flips only after BOTH are registered: a chart created in
+  // between has no annotation state and throws "visibleElements" on draw.
+  // The in-flight promise lives in a ref so concurrent callers (the Charts tab
+  // and the Node Status section can both ask on the same render) share one load
+  // instead of injecting Chart.js twice, which would drop the plugin registration.
+  const chartJsPromiseRef = useRef(null);
+  const loadChartJs = () => {
+    if (chartJsLoaded) return Promise.resolve();
+    if (chartJsPromiseRef.current) return chartJsPromiseRef.current;
+    const hasChart = () => typeof window.Chart === 'function';
+    const hasAnnotation = () => hasChart() && !!window.Chart.registry?.plugins?.get?.('annotation');
     setChartJsLoading(true);
-    try {
-      await loadScript(
-        'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-        'assets/js/chart.umd.min.js'
-      );
-      await loadScript(
-        'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js',
-        'assets/js/chartjs-plugin-annotation.min.js'
-      );
-
-      setChartJsLoaded(true);
-    } catch (error) {
-      console.error('Failed to load Chart.js:', error);
-    } finally {
-      setChartJsLoading(false);
-    }
+    chartJsPromiseRef.current = (async () => {
+      try {
+        await loadScript(
+          ['assets/js/chart.umd.min.js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'],
+          hasChart
+        );
+        await loadScript(
+          ['assets/js/chartjs-plugin-annotation.min.js', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js'],
+          hasAnnotation
+        );
+        setChartJsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load Chart.js:', error);
+        chartJsPromiseRef.current = null; // allow a later retry
+      } finally {
+        setChartJsLoading(false);
+      }
+    })();
+    return chartJsPromiseRef.current;
   };
 
   return {

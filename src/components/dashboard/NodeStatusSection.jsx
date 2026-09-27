@@ -1,8 +1,50 @@
 import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
+import MetricCompareCard from './MetricCompareCard.jsx';
+import { NODE_COLORS, RESOURCE_METRICS, hasTrendData } from './nodeSeries.js';
 
-const { useState } = React;
+const { useState, useMemo, useEffect } = React;
+
+const COMPARE_MODES = [
+  { id: 'node',   label: 'By node',   title: 'One chart per node (CPU, memory, IOWait together)' },
+  { id: 'metric', label: 'By metric', title: 'One chart per metric with every node overlaid' },
+];
+
+const headroomTone = (r) => (r >= 70 ? 'green' : r >= 50 ? 'yellow' : r >= 30 ? 'orange' : 'red');
+
+/**
+ * Live value per chart series, doubling as the chart legend. Clicking one hides
+ * or shows that series on every node chart; values at/over their migration
+ * threshold turn red.
+ */
+function MetricChips({ node, hidden, onToggle, thresholds }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {RESOURCE_METRICS.map(m => {
+        const off = hidden.includes(m.key);
+        const v = m.current(node);
+        const over = typeof thresholds[m.key] === 'number' && v >= thresholds[m.key];
+        const exempt = m.key === 'iowait' && node.iowait_exempt;
+        return (
+          <button
+            key={m.key}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggle(m.key); }}
+            aria-pressed={!off}
+            title={`${off ? 'Show' : 'Hide'} ${m.label} on every node chart${typeof thresholds[m.key] === 'number' ? ` · threshold ${thresholds[m.key]}%` : ''}${exempt ? ` · excluded from scoring (io-exempt: ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'})` : ''}`}
+            className={`${FILTER_CHIP} ${FILTER_CHIP_INACTIVE} !px-2.5 !py-1 inline-flex items-center gap-1.5 ${off ? 'opacity-40' : ''}`}
+          >
+            <span className="inline-block w-3 h-[3px] rounded-full" style={{ background: m.color }} />
+            {m.label}
+            <span className={`font-semibold tabular-nums ${over && !exempt ? 'text-red-600 dark:text-red-400' : 'text-pb-text dark:text-white'}`}>{v.toFixed(1)}%</span>
+            {exempt && <span className="text-[9px] font-semibold px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">exempt</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function NodeStatusSection({
   data,
@@ -12,8 +54,13 @@ export default function NodeStatusSection({
   chartPeriod, setChartPeriod,
   nodeScores,
   migrationHistory,
+  chartJsLoaded, loadChartJs,
   embedded = false,
 }) {
+  // Charts build only once Chart.js and its annotation plugin are both loaded.
+  useEffect(() => {
+    if (!chartJsLoaded && typeof loadChartJs === 'function') loadChartJs();
+  }, [chartJsLoaded]);
   // Shared crosshair time across all node charts; expanded node for the detail modal.
   const [hoverTime, setHoverTime] = useState(null);
   const [expandedNode, setExpandedNode] = useState(null);
@@ -32,6 +79,30 @@ export default function NodeStatusSection({
   const [showThresholds, setShowThresholds] = useState(() => lsBool('nodeChartThresholds', true));
   const [showEnvelope, setShowEnvelope] = useState(() => lsBool('nodeChartEnvelope', false));
   const overlayToggle = (key, val, setter) => { setter(val); try { localStorage.setItem(key, String(val)); } catch {} };
+  // Group charts by node (default) or by metric; focusNode highlights one node in metric view.
+  const [compareBy, setCompareBy] = useState(() => { try { return localStorage.getItem('nodeChartCompare') === 'metric' ? 'metric' : 'node'; } catch { return 'node'; } });
+  const setCompare = (id) => { setCompareBy(id); try { localStorage.setItem('nodeChartCompare', id); } catch {} };
+  const [focusNode, setFocusNode] = useState(null);
+  // Colors follow the sorted node order, matching the Cluster Health chart's per-node views.
+  // Memoized so hover re-renders don't rebuild the comparison charts.
+  const compareNodes = useMemo(() => Object.values(data.nodes || {})
+    .slice().sort((a, b) => a.name.localeCompare(b.name))
+    .map((n, i) => ({ node: n, name: n.name, color: NODE_COLORS[i % NODE_COLORS.length], trendData: n.trend_data }))
+    .filter(n => hasTrendData(n.node)), [data.nodes]);
+  const metricNodes = useMemo(() => Object.fromEntries(RESOURCE_METRICS.map(m => [
+    m.key, compareNodes.map(({ node, ...rest }) => ({ ...rest, current: m.current(node), exempt: m.key === 'iowait' && !!node.iowait_exempt })),
+  ])), [compareNodes]);
+  // Drop a focus whose node has gone away (renamed, removed from the cluster).
+  useEffect(() => {
+    if (focusNode && !compareNodes.some(n => n.name === focusNode)) setFocusNode(null);
+  }, [compareNodes, focusNode]);
+  // Series hidden on every node chart (toggled from the metric chips; persisted).
+  const [hiddenMetrics, setHiddenMetrics] = useState(() => { try { return JSON.parse(localStorage.getItem('nodeChartHidden') || '[]'); } catch { return []; } });
+  const toggleMetric = (key) => {
+    const next = hiddenMetrics.includes(key) ? hiddenMetrics.filter(k => k !== key) : [...hiddenMetrics, key];
+    setHiddenMetrics(next);
+    try { localStorage.setItem('nodeChartHidden', JSON.stringify(next)); } catch {}
+  };
   // When embedded, the parent owns the section card and header; always render expanded.
   const Wrapper = embedded ? React.Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
@@ -59,6 +130,23 @@ export default function NodeStatusSection({
             )}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
+                <label className="text-sm text-pb-text2 dark:text-gray-400">Compare:</label>
+                <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+                  {COMPARE_MODES.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setCompare(m.id)}
+                      title={m.title}
+                      className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                        compareBy === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="hidden md:flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4].map(cols => (
@@ -323,6 +411,31 @@ export default function NodeStatusSection({
                 );
               })}
             </div>
+          ) : compareBy === 'metric' ? (
+          <div className={`grid gap-4 ${
+            nodeGridColumns === 1 ? 'grid-cols-1' :
+            nodeGridColumns === 2 ? 'grid-cols-1 lg:grid-cols-2' :
+            'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+          }`}>
+            {RESOURCE_METRICS.map(m => (
+              <MetricCompareCard
+                key={m.key}
+                metric={m}
+                nodes={metricNodes[m.key]}
+                threshold={thresholds[m.key]}
+                focusNode={focusNode}
+                onFocusNode={setFocusNode}
+                chartPeriod={chartPeriod}
+                migrationHistory={migrationHistory}
+                hoverTime={hoverTime}
+                onHoverTime={setHoverTime}
+                showMarkers={showMarkers}
+                showThresholds={showThresholds}
+                showEnvelope={showEnvelope}
+                chartReady={!!chartJsLoaded}
+              />
+            ))}
+          </div>
           ) : (
           <div className={`grid gap-4 transition-all duration-300 ease-in-out ${
             nodeGridColumns === 1 ? 'grid-cols-1' :
@@ -332,35 +445,33 @@ export default function NodeStatusSection({
           }`}>
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => (
               <div key={node.name} className={INNER_CARD}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-pb-text dark:text-white">{node.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium ${node.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{node.status}</span>
-                    {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
-                      <button
-                        onClick={() => setExpandedNode(node.name)}
-                        title="Expand chart"
-                        className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 text-sm leading-none"
-                      >⤢</button>
+                <div className="flex items-start justify-between gap-2 mb-2.5">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-pb-text dark:text-white flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} title={node.status} aria-label={node.status} role="status"></span>
+                      {node.name}
+                    </h3>
+                    <div className="text-xs text-pb-text2 dark:text-gray-400">
+                      {node.cpu_cores || 0} cores · {node.guests?.length || 0} guests{node.status !== 'online' ? ` · ${node.status}` : ''}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {nodeScores?.[node.name] && (
+                      <span className={statusBadge(headroomTone(nodeScores[node.name].suitability_rating))} title="Headroom 0–100 — higher means more room to take guests">
+                        Headroom {Math.round(nodeScores[node.name].suitability_rating)}
+                      </span>
+                    )}
+                    {hasTrendData(node) && (
+                      <button onClick={() => setExpandedNode(node.name)} title="Expand chart" aria-label="Expand chart" className={`${BTN_ICON} !p-1 text-sm leading-none`}>⤢</button>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-sm mb-4">
-                  <div><span className="text-pb-text2 dark:text-gray-400">CPU:</span> <span className="font-semibold text-blue-600 dark:text-blue-400">{(node.cpu_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">Memory:</span> <span className="font-semibold text-purple-600 dark:text-purple-400">{(node.mem_percent || 0).toFixed(1)}%</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">IOWait:</span> <span className="font-semibold text-orange-600 dark:text-orange-400">{(node.metrics?.current_iowait || 0).toFixed(1)}%</span>
-                    {node.iowait_exempt && (
-                      <span className="ml-1 text-[10px] font-semibold px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title={`Excluded from scoring — io-exempt guest(s): ${(node.iowait_exempt_guests || []).map(g => g.name).join(', ') || 'passthrough'}`}>exempt</span>
-                    )}
-                  </div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">Cores:</span> <span className="font-semibold text-pb-text dark:text-white">{node.cpu_cores || 0}</span></div>
-                  <div><span className="text-pb-text2 dark:text-gray-400">Guests:</span> <span className="font-semibold text-pb-text dark:text-white">{node.guests?.length || 0}</span></div>
-                </div>
+                <MetricChips node={node} hidden={hiddenMetrics} onToggle={toggleMetric} thresholds={thresholds} />
 
-                {node.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0 && (
+                {hasTrendData(node) && (
                   <div
-                    className="mt-4 cursor-pointer"
+                    className="mt-3 cursor-pointer"
                     style={{height: '200px'}}
                     onClick={() => setExpandedNode(node.name)}
                     title="Click to expand"
@@ -369,7 +480,6 @@ export default function NodeStatusSection({
                       nodeName={node.name}
                       trendData={node.trend_data}
                       chartPeriod={chartPeriod}
-                      nodeScore={nodeScores?.[node.name]}
                       migrationHistory={migrationHistory}
                       thresholds={thresholds}
                       hoverTime={hoverTime}
@@ -377,6 +487,8 @@ export default function NodeStatusSection({
                       showMarkers={showMarkers}
                       showThresholds={showThresholds}
                       showEnvelope={showEnvelope}
+                      hiddenMetrics={hiddenMetrics}
+                      chartReady={!!chartJsLoaded}
                     />
                   </div>
                 )}
@@ -393,12 +505,12 @@ export default function NodeStatusSection({
                   <button onClick={() => setExpandedNode(null)} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={22} /></button>
                 </div>
                 <div className="p-4">
+                  <div className="mb-3"><MetricChips node={data.nodes[expandedNode]} hidden={hiddenMetrics} onToggle={toggleMetric} thresholds={thresholds} /></div>
                   <div style={{ height: '60vh' }}>
                     <NodeChart
                       nodeName={expandedNode}
                       trendData={data.nodes[expandedNode].trend_data}
                       chartPeriod={chartPeriod}
-                      nodeScore={nodeScores?.[expandedNode]}
                       migrationHistory={migrationHistory}
                       thresholds={thresholds}
                       hoverTime={hoverTime}
@@ -406,6 +518,8 @@ export default function NodeStatusSection({
                       showMarkers={showMarkers}
                       showThresholds={showThresholds}
                       showEnvelope={showEnvelope}
+                      hiddenMetrics={hiddenMetrics}
+                      chartReady={!!chartJsLoaded}
                     />
                   </div>
                 </div>

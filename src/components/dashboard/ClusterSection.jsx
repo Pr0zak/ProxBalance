@@ -193,6 +193,8 @@ export default function ClusterSection(props) {
           chartPeriod={props.chartPeriod}
           setChartPeriod={props.setChartPeriod}
           nodeScores={props.nodeScores}
+          chartJsLoaded={props.chartJsLoaded}
+          loadChartJs={props.loadChartJs}
         />
         </>
       )}

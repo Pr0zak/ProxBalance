@@ -303,6 +303,8 @@ export default function DashboardPage({
               chartPeriod={chartPeriod}
               setChartPeriod={setChartPeriod}
               nodeScores={nodeScores}
+              chartJsLoaded={chartJsLoaded}
+              loadChartJs={loadChartJs}
             />
           </>
         )}
