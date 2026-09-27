@@ -60,7 +60,6 @@ export default function DashboardPage({
   // Migration confirmation
   confirmMigration, setConfirmMigration, confirmAndMigrate,
   // Batch migration
-  showBatchConfirmation, setShowBatchConfirmation, pendingBatchMigrations, confirmBatchMigration,
   // Cancel migration
   cancelMigrationModal, setCancelMigrationModal, cancellingMigration, setCancellingMigration,
   // Section collapse
@@ -80,9 +79,6 @@ export default function DashboardPage({
   guestActions, setGuestActions, guestTargets, setGuestTargets,
   showConfirmModal, setShowConfirmModal,
   // Guest tag management table
-  guestSearchFilter, setGuestSearchFilter, guestCurrentPage, setGuestCurrentPage,
-  guestPageSize, setGuestPageSize, guestSortField, setGuestSortField,
-  guestSortDirection, setGuestSortDirection,
   // Guest modal collapsed state
   guestModalCollapsed, setGuestModalCollapsed,
   // Chart.js lazy loader
@@ -442,10 +438,6 @@ export default function DashboardPage({
       confirmMigration={confirmMigration}
       setConfirmMigration={setConfirmMigration}
       confirmAndMigrate={confirmAndMigrate}
-      showBatchConfirmation={showBatchConfirmation}
-      setShowBatchConfirmation={setShowBatchConfirmation}
-      pendingBatchMigrations={pendingBatchMigrations}
-      confirmBatchMigration={confirmBatchMigration}
       collapsedSections={collapsedSections}
       setCollapsedSections={setCollapsedSections}
       cancelMigrationModal={cancelMigrationModal}

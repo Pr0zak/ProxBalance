@@ -17,8 +17,6 @@ export function useMigrations(API_BASE, deps = {}) {
   const [guestsMigrating, setGuestsMigrating] = useState({});
   const [migrationProgress, setMigrationProgress] = useState({});
   const [completedMigrations, setCompletedMigrations] = useState({});
-  const [showBatchConfirmation, setShowBatchConfirmation] = useState(false);
-  const [pendingBatchMigrations, setPendingBatchMigrations] = useState([]);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [migrationTarget, setMigrationTarget] = useState('');
@@ -37,11 +35,6 @@ export function useMigrations(API_BASE, deps = {}) {
   const [confirmHostChange, setConfirmHostChange] = useState(null);
 
   // Guest list sorting and pagination
-  const [guestSortField, setGuestSortField] = useState('tags');
-  const [guestSortDirection, setGuestSortDirection] = useState('desc');
-  const [guestPageSize, setGuestPageSize] = useState(10);
-  const [guestCurrentPage, setGuestCurrentPage] = useState(1);
-  const [guestSearchFilter, setGuestSearchFilter] = useState('');
 
   // Node/guest selection
   const [selectedNode, setSelectedNode] = useState(null);
@@ -592,8 +585,6 @@ export function useMigrations(API_BASE, deps = {}) {
     activeMigrations,
     guestsMigrating, migrationProgress,
     completedMigrations,
-    showBatchConfirmation, setShowBatchConfirmation,
-    pendingBatchMigrations, setPendingBatchMigrations,
     showMigrationDialog, setShowMigrationDialog,
     selectedGuest, setSelectedGuest,
     migrationTarget, setMigrationTarget,
@@ -608,11 +599,6 @@ export function useMigrations(API_BASE, deps = {}) {
     tagOperation, setTagOperation,
     confirmRemoveTag, setConfirmRemoveTag,
     confirmHostChange, setConfirmHostChange,
-    guestSortField, setGuestSortField,
-    guestSortDirection, setGuestSortDirection,
-    guestPageSize, setGuestPageSize,
-    guestCurrentPage, setGuestCurrentPage,
-    guestSearchFilter, setGuestSearchFilter,
     selectedNode, setSelectedNode,
     selectedGuestDetails, setSelectedGuestDetails,
     trackMigration,

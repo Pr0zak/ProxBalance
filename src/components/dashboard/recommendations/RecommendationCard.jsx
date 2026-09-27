@@ -14,6 +14,8 @@ export default function RecommendationCard({
   collapsedSections, setCollapsedSections,
   automationStatus,
 }) {
+  const [showDetails, setShowDetails] = React.useState(false);
+  const [showCommand, setShowCommand] = React.useState(false);
   const key = `${rec.vmid}-${rec.target_node}`;
   const status = migrationStatus[key];
   const completed = completedMigrations[rec.vmid];
@@ -245,15 +247,14 @@ export default function RecommendationCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const detailsKey = `details-${idx}`;
-                  setCollapsedSections(prev => ({ ...prev, [detailsKey]: !prev[detailsKey] }));
+                  setShowDetails(v => !v);
                 }}
                 className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
               >
                 <Activity size={12} />
-                {collapsedSections[`details-${idx}`] ? 'Hide details' : 'Why this migration?'}
+                {showDetails ? 'Hide details' : 'Why this migration?'}
               </button>
-              {collapsedSections[`details-${idx}`] && (
+              {showDetails && (
                 <div className="mt-2 p-3 bg-gradient-to-r from-indigo-900/20 to-blue-900/20 border border-indigo-300 dark:border-indigo-700 rounded text-xs space-y-3">
                   {/* Source vs Target — Scores, Penalties & Trends */}
                   <div className="grid grid-cols-2 gap-4">
@@ -437,16 +438,15 @@ export default function RecommendationCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const commandKey = `command-${idx}`;
-                  setCollapsedSections(prev => ({ ...prev, [commandKey]: !prev[commandKey] }));
+                  setShowCommand(v => !v);
                 }}
                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 <Terminal size={12} />
-                {collapsedSections[`command-${idx}`] ? 'Hide command' : 'Show command'}
+                {showCommand ? 'Hide command' : 'Show command'}
               </button>
             </div>
-            {collapsedSections[`command-${idx}`] && (
+            {showCommand && (
               <div
                 onClick={(e) => {
                   e.stopPropagation();

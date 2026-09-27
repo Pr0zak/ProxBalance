@@ -4,10 +4,7 @@ export function useUIState() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [showSettings, setShowSettings] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [showIconLegend, setShowIconLegend] = useState(false);
   const [scrollToApiConfig, setScrollToApiConfig] = useState(false);
-  const [countdownTick, setCountdownTick] = useState(0);
-  const [refreshElapsed, setRefreshElapsed] = useState(0);
 
   const [nodeGridColumns, setNodeGridColumns] = useState(() => {
     const saved = localStorage.getItem('nodeGridColumns');
@@ -43,7 +40,12 @@ export function useUIState() {
       notificationSettings: true
     };
     const saved = localStorage.getItem('collapsedSections');
-    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    if (!saved) return defaults;
+    // Drop legacy per-card keys ("details-3", "command-3") older builds stored here.
+    const parsed = Object.fromEntries(
+      Object.entries(JSON.parse(saved)).filter(([k]) => !/^(details|command)-\d+$/.test(k))
+    );
+    return { ...defaults, ...parsed };
   });
 
   const [clusterMapViewMode, setClusterMapViewMode] = useState(() => {
@@ -79,21 +81,6 @@ export function useUIState() {
     localStorage.setItem('showPoweredOffGuests', showPoweredOffGuests.toString());
   }, [showPoweredOffGuests]);
 
-  // Update countdown timer every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdownTick(prev => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Clear confirmation modals when settings are closed
-  useEffect(() => {
-    if (!showSettings) {
-      // Cleared externally by root component if needed
-    }
-  }, [showSettings]);
-
   const toggleSection = (section) => {
     setCollapsedSections(prev => ({
       ...prev,
@@ -105,10 +92,7 @@ export function useUIState() {
     currentPage, setCurrentPage,
     showSettings, setShowSettings,
     showAdvancedSettings, setShowAdvancedSettings,
-    showIconLegend, setShowIconLegend,
     scrollToApiConfig, setScrollToApiConfig,
-    countdownTick,
-    refreshElapsed, setRefreshElapsed,
     nodeGridColumns, setNodeGridColumns,
     collapsedSections, setCollapsedSections,
     clusterMapViewMode, setClusterMapViewMode,

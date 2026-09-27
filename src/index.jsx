@@ -3,7 +3,6 @@ import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
-import IconLegend from './components/IconLegend.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr } from './utils/formatters.js';
 import { useUIState } from './hooks/useUIState.js';
@@ -231,11 +230,6 @@ const ProxmoxBalanceManager = () => {
     evacuation.maintenanceNodes
   );
 
-  // Icon Legend modal - rendered on all pages
-  const iconLegendModal = ui.showIconLegend ? (
-    <IconLegend onClose={() => ui.setShowIconLegend(false)} />
-  ) : null;
-
   // Shared TopNav across all pages
   const topNav = (
     <TopNav
@@ -290,7 +284,7 @@ const ProxmoxBalanceManager = () => {
 
   // Settings Page
   if (ui.currentPage === 'settings') {
-    return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<SettingsPage
+    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<SettingsPage
       setCurrentPage={ui.setCurrentPage}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
       aiProvider={ai.aiProvider} setAiProvider={ai.setAiProvider}
@@ -334,7 +328,7 @@ const ProxmoxBalanceManager = () => {
 
   // Automation Settings Page
   if (ui.currentPage === 'automation') {
-    return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<AutomationPage
+    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<AutomationPage
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
       automigrateLogs={automation.automigrateLogs}
@@ -402,7 +396,7 @@ const ProxmoxBalanceManager = () => {
     return (
       <div className={PAGE_BG}>
         {topNav}
-        {iconLegendModal}
+        
         <div className="max-w-screen-2xl mx-auto p-4">
           {cluster.error && (
             <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4">
@@ -452,7 +446,7 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Dashboard Page
-  return <div className={PAGE_BG}>{topNav}{iconLegendModal}{runPlanOverlay}<DashboardPage
+  return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<DashboardPage
     data={cluster.data} setData={cluster.setData}
     loading={cluster.loading} error={cluster.error} setError={cluster.setError}
     config={configHook.config}
@@ -504,8 +498,6 @@ const ProxmoxBalanceManager = () => {
     confirmAndRemoveTag={wrappedConfirmAndRemoveTag}
     confirmMigration={migrations.confirmMigration} setConfirmMigration={migrations.setConfirmMigration}
     confirmAndMigrate={migrations.confirmAndMigrate}
-    showBatchConfirmation={migrations.showBatchConfirmation} setShowBatchConfirmation={migrations.setShowBatchConfirmation}
-    pendingBatchMigrations={migrations.pendingBatchMigrations}
     cancelMigrationModal={migrations.cancelMigrationModal} setCancelMigrationModal={migrations.setCancelMigrationModal}
     cancellingMigration={migrations.cancellingMigration} setCancellingMigration={migrations.setCancellingMigration}
     collapsedSections={ui.collapsedSections} setCollapsedSections={ui.setCollapsedSections}
@@ -531,11 +523,6 @@ const ProxmoxBalanceManager = () => {
     guestActions={evacuation.guestActions} setGuestActions={evacuation.setGuestActions}
     guestTargets={evacuation.guestTargets} setGuestTargets={evacuation.setGuestTargets}
     showConfirmModal={evacuation.showConfirmModal} setShowConfirmModal={evacuation.setShowConfirmModal}
-    guestSearchFilter={migrations.guestSearchFilter} setGuestSearchFilter={migrations.setGuestSearchFilter}
-    guestCurrentPage={migrations.guestCurrentPage} setGuestCurrentPage={migrations.setGuestCurrentPage}
-    guestPageSize={migrations.guestPageSize} setGuestPageSize={migrations.setGuestPageSize}
-    guestSortField={migrations.guestSortField} setGuestSortField={migrations.setGuestSortField}
-    guestSortDirection={migrations.guestSortDirection} setGuestSortDirection={migrations.setGuestSortDirection}
     guestModalCollapsed={ui.guestModalCollapsed} setGuestModalCollapsed={ui.setGuestModalCollapsed}
     checkAffinityViolations={wrappedCheckAffinityViolations}
     fetchGuestLocations={cluster.fetchGuestLocations}
