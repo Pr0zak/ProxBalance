@@ -100,7 +100,9 @@ export default function NodeDetailsModal({
             <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/20 rounded-lg px-3 py-2">
               <div className="text-[11px] text-pb-text dark:text-gray-300">Memory</div>
               <div className="text-xl font-bold text-pb-text dark:text-white">{(selectedNode.mem_percent || 0).toFixed(1)}%</div>
-              <div className="text-[11px] text-pb-text2 dark:text-gray-400">{((selectedNode.mem_used || 0) / 1073741824).toFixed(1)} / {((selectedNode.mem_total || 0) / 1073741824).toFixed(1)} GB</div>
+              <div className="text-[11px] text-pb-text2 dark:text-gray-400">{selectedNode.total_mem_gb
+                ? `${(selectedNode.total_mem_gb * (selectedNode.mem_percent || 0) / 100).toFixed(1)} / ${selectedNode.total_mem_gb.toFixed(0)} GB`
+                : '—'}</div>
             </div>
             <div className="bg-gradient-to-br from-orange-900/20 to-orange-800/20 rounded-lg px-3 py-2">
               <div className="text-[11px] text-pb-text dark:text-gray-300">IOWait</div>

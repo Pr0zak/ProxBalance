@@ -3,6 +3,7 @@ import {
   Terminal, Folder, RotateCcw, Play, Lock, RefreshCw,
   TrendingUp, TrendingDown, Minus, Zap, Activity
 } from '../../Icons.jsx';
+import { fetchRollbackInfo, executeRollback } from '../../../api/client.js';
 import { INNER_CARD } from '../../../utils/designTokens.js';
 import AutoEligibilityBadge from './AutoEligibilityBadge.jsx';
 
@@ -453,10 +454,10 @@ export default function RecommendationCard({
                   const btn = e.currentTarget;
                   const originalText = btn.textContent;
                   btn.textContent = 'Copied!';
-                  btn.classList.add('bg-green-50 dark:bg-green-900');
+                  btn.classList.add('bg-green-50', 'dark:bg-green-900');
                   setTimeout(() => {
                     btn.textContent = originalText;
-                    btn.classList.remove('bg-green-50 dark:bg-green-900');
+                    btn.classList.remove('bg-green-50', 'dark:bg-green-900');
                   }, 1000);
                 }}
                 className={`text-xs font-mono p-2 rounded mt-1 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all ${
@@ -484,7 +485,6 @@ export default function RecommendationCard({
                     <button
                       onClick={async () => {
                         try {
-                          const { fetchRollbackInfo, executeRollback } = await import('../../api/client.js');
                           const infoRes = await fetchRollbackInfo(rec.vmid);
                           if (infoRes.error || !infoRes.success) {
                             setMigrationStatus(prev => ({ ...prev, [`rollback-${rec.vmid}`]: 'unavailable' }));

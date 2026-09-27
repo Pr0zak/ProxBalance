@@ -39,6 +39,9 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
   const imConfig = automationConfig.rules?.intelligent_migrations;
   const currentLevel = inferIntelligenceLevel(imConfig);
   const suggestedLevel = automationStatus?.intelligent_tracking?.suggested_level;
+  // Only nudge upward — never suggest "upgrading" to a level below the current one.
+  const LEVEL_RANK = { basic: 0, standard: 1, full: 2 };
+  const isUpgrade = suggestedLevel && (LEVEL_RANK[suggestedLevel] ?? -1) > (LEVEL_RANK[currentLevel] ?? -1);
   const minDataHours = imConfig?.minimum_data_collection_hours !== undefined ? imConfig.minimum_data_collection_hours : 24;
   const obsPeriods = imConfig?.observation_periods || 3;
 
@@ -80,7 +83,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
           {imConfig?.enabled !== false && (
             <div className="space-y-4">
               {/* Level Suggestion Banner */}
-              {suggestedLevel && suggestedLevel !== currentLevel && !dismissedSuggestion && (
+              {isUpgrade && !dismissedSuggestion && (
                 <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-600 rounded-lg p-3 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2 flex-1">
                     <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />

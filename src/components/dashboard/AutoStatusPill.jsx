@@ -1,6 +1,7 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
 import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
+import { parseTimestamp } from '../../utils/formatters.js';
 
 const { useState, useEffect } = React;
 
@@ -29,8 +30,9 @@ function getNextCheck(automationStatus) {
     if (automationStatus?.check_interval_minutes) return `every ${automationStatus.check_interval_minutes}m`;
     return null;
   }
-  const ts = automationStatus.next_check.endsWith?.('Z') ? automationStatus.next_check : automationStatus.next_check + 'Z';
-  const diffMins = Math.floor((new Date(ts) - new Date()) / 60000);
+  const next = parseTimestamp(automationStatus.next_check);
+  if (!next) return null;
+  const diffMins = Math.floor((next - new Date()) / 60000);
   if (diffMins > 0) return `${diffMins}m`;
   return 'now';
 }

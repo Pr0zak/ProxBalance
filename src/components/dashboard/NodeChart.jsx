@@ -28,6 +28,15 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
   const chartRef = useRef(null);
   const timesRef = useRef([]);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  // Chart.js is lazy-loaded; if it isn't on window yet, wait for it so the
+  // chart builds once the script lands instead of staying blank.
+  const [chartReady, setChartReady] = useState(() => typeof Chart !== 'undefined');
+
+  useEffect(() => {
+    if (chartReady) return;
+    const id = setInterval(() => { if (typeof Chart !== 'undefined') setChartReady(true); }, 200);
+    return () => clearInterval(id);
+  }, [chartReady]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
@@ -156,7 +165,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
     }
 
     return () => { if (chartRef.current) { try { chartRef.current.destroy(); } catch (e) {} chartRef.current = null; } };
-  }, [trendData, chartPeriod, nodeScore?.suitability_rating, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait, showMarkers, showThresholds, showEnvelope]);
+  }, [chartReady, trendData, chartPeriod, nodeScore?.suitability_rating, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait, showMarkers, showThresholds, showEnvelope]);
 
   // Synced crosshair: draw/update a vertical line at the time hovered on any sibling
   // chart, without rebuilding the whole chart.

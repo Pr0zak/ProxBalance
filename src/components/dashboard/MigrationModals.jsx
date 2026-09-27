@@ -537,10 +537,10 @@ export default function MigrationModals({
                                 const btn = e.currentTarget;
                                 const originalText = btn.textContent;
                                 btn.textContent = 'Copied!';
-                                btn.classList.add('bg-green-50 dark:bg-green-900');
+                                btn.classList.add('bg-green-50', 'dark:bg-green-900');
                                 setTimeout(() => {
                                   btn.textContent = originalText;
-                                  btn.classList.remove('bg-green-50 dark:bg-green-900');
+                                  btn.classList.remove('bg-green-50', 'dark:bg-green-900');
                                 }, 1000);
                               }}
                               className="text-xs font-mono bg-pb-surface2 dark:bg-gray-700 p-2 rounded mt-1 text-pb-text dark:text-gray-300 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"

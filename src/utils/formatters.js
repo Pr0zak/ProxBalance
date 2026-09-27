@@ -66,13 +66,24 @@ export function runStatusLabel(run) {
   };
 }
 
+/**
+ * Parse a backend timestamp into a Date. Naive ISO strings are treated as
+ * UTC; strings that already carry an offset ("Z" or "+00:00") are left alone.
+ * Appending "Z" to an offset string yields "Invalid Date".
+ */
+export function parseTimestamp(timestamp) {
+  if (timestamp == null || timestamp === '') return null;
+  if (typeof timestamp !== 'string') return new Date(timestamp);
+  const hasOffset = /(Z|[+-]\d{2}:?\d{2})$/.test(timestamp);
+  const d = new Date(hasOffset ? timestamp : timestamp + 'Z');
+  return isNaN(d) ? null : d;
+}
+
 export function formatRelativeTime(timestamp) {
   if (!timestamp) return '';
   try {
-    const ts = typeof timestamp === 'string'
-      ? (timestamp.endsWith('Z') || timestamp.includes('+') ? timestamp : timestamp + 'Z')
-      : timestamp;
-    const date = new Date(ts);
+    const date = parseTimestamp(timestamp);
+    if (!date) return '';
     const diffMs = Date.now() - date;
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Just now';

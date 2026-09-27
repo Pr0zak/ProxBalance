@@ -93,8 +93,8 @@ export default function GuestSelectionSection({
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Guest Rules</h3>
             <div className="space-y-3">
               <ToggleRow
-                label="Skip Ignored Guests (pb-ignore tag)"
-                description="Skip VMs tagged with 'pb-ignore' or 'ignore' during automated migrations."
+                label="Skip Ignored Guests ('ignore' tag)"
+                description="Skip guests tagged 'ignore' during automated migrations."
                 checked={automationConfig.rules?.respect_ignore_tags !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
               />

@@ -4,6 +4,7 @@ import {
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
+import TextField from '../TextField.jsx';
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
   return (
@@ -143,22 +144,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">API Token</label>
-                                <input type="password" placeholder="Application API token"
+                                <TextField type="password" placeholder="Application API token"
                                   value={automationConfig.notifications?.providers?.pushover?.api_token || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.pushover = { ...(providers.pushover || {}), api_token: e.target.value };
+                                    providers.pushover = { ...(providers.pushover || {}), api_token: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">User Key</label>
-                                <input type="password" placeholder="Your user/group key"
+                                <TextField type="password" placeholder="Your user/group key"
                                   value={automationConfig.notifications?.providers?.pushover?.user_key || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.pushover = { ...(providers.pushover || {}), user_key: e.target.value };
+                                    providers.pushover = { ...(providers.pushover || {}), user_key: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
@@ -243,11 +244,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">SMTP Host</label>
-                                <input type="text" placeholder="smtp.gmail.com"
+                                <TextField type="text" placeholder="smtp.gmail.com"
                                   value={automationConfig.notifications?.providers?.email?.smtp_host || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), smtp_host: e.target.value };
+                                    providers.email = { ...(providers.email || {}), smtp_host: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
@@ -267,22 +268,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Username</label>
-                                <input type="text" placeholder="user@example.com"
+                                <TextField type="text" placeholder="user@example.com"
                                   value={automationConfig.notifications?.providers?.email?.smtp_username || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), smtp_username: e.target.value };
+                                    providers.email = { ...(providers.email || {}), smtp_username: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Password</label>
-                                <input type="password" placeholder="App password"
+                                <TextField type="password" placeholder="App password"
                                   value={automationConfig.notifications?.providers?.email?.smtp_password || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), smtp_password: e.target.value };
+                                    providers.email = { ...(providers.email || {}), smtp_password: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
@@ -291,22 +292,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">From Address</label>
-                                <input type="email" placeholder="proxbalance@example.com"
+                                <TextField type="email" placeholder="proxbalance@example.com"
                                   value={automationConfig.notifications?.providers?.email?.from_address || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), from_address: e.target.value };
+                                    providers.email = { ...(providers.email || {}), from_address: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">To Addresses</label>
-                                <input type="text" placeholder="admin@example.com, ops@example.com"
+                                <TextField type="text" placeholder="admin@example.com, ops@example.com"
                                   value={Array.isArray(automationConfig.notifications?.providers?.email?.to_addresses) ? automationConfig.notifications.providers.email.to_addresses.join(', ') : (automationConfig.notifications?.providers?.email?.to_addresses || '')}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.email = { ...(providers.email || {}), to_addresses: e.target.value.split(',').map(a => a.trim()).filter(a => a) };
+                                    providers.email = { ...(providers.email || {}), to_addresses: v.split(',').map(a => a.trim()).filter(a => a) };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
@@ -349,22 +350,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Bot Token</label>
-                                <input type="password" placeholder="123456:ABC-DEF..."
+                                <TextField type="password" placeholder="123456:ABC-DEF..."
                                   value={automationConfig.notifications?.providers?.telegram?.bot_token || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.telegram = { ...(providers.telegram || {}), bot_token: e.target.value };
+                                    providers.telegram = { ...(providers.telegram || {}), bot_token: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Chat ID</label>
-                                <input type="text" placeholder="-1001234567890"
+                                <TextField type="text" placeholder="-1001234567890"
                                   value={automationConfig.notifications?.providers?.telegram?.chat_id || ''}
-                                  onChange={(e) => {
+                                  onCommit={(v) => {
                                     const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                    providers.telegram = { ...(providers.telegram || {}), chat_id: e.target.value };
+                                    providers.telegram = { ...(providers.telegram || {}), chat_id: v };
                                     saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                   }}
                                   className={INPUT_FIELD} />
@@ -397,11 +398,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           <div id="settings-notif-discord" className="hidden p-3 pt-0 space-y-3">
                             <div>
                               <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Webhook URL</label>
-                              <input type="url" placeholder="https://discord.com/api/webhooks/..."
+                              <TextField type="url" placeholder="https://discord.com/api/webhooks/..."
                                 value={automationConfig.notifications?.providers?.discord?.webhook_url || ''}
-                                onChange={(e) => {
+                                onCommit={(v) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                  providers.discord = { ...(providers.discord || {}), webhook_url: e.target.value };
+                                  providers.discord = { ...(providers.discord || {}), webhook_url: v };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
                                 className={INPUT_FIELD} />
@@ -433,11 +434,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           <div id="settings-notif-slack" className="hidden p-3 pt-0 space-y-3">
                             <div>
                               <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Webhook URL</label>
-                              <input type="url" placeholder="https://hooks.slack.com/services/T.../B.../..."
+                              <TextField type="url" placeholder="https://hooks.slack.com/services/T.../B.../..."
                                 value={automationConfig.notifications?.providers?.slack?.webhook_url || ''}
-                                onChange={(e) => {
+                                onCommit={(v) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                  providers.slack = { ...(providers.slack || {}), webhook_url: e.target.value };
+                                  providers.slack = { ...(providers.slack || {}), webhook_url: v };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
                                 className={INPUT_FIELD} />
@@ -469,11 +470,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           <div id="settings-notif-webhook" className="hidden p-3 pt-0 space-y-3">
                             <div>
                               <label className="block text-xs font-medium text-pb-text dark:text-gray-300 mb-1">Webhook URL</label>
-                              <input type="url" placeholder="https://your-server.com/webhook"
+                              <TextField type="url" placeholder="https://your-server.com/webhook"
                                 value={automationConfig.notifications?.providers?.webhook?.url || ''}
-                                onChange={(e) => {
+                                onCommit={(v) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
-                                  providers.webhook = { ...(providers.webhook || {}), url: e.target.value };
+                                  providers.webhook = { ...(providers.webhook || {}), url: v };
                                   saveAutomationConfig({ notifications: { ...automationConfig.notifications, providers } });
                                 }}
                                 className={INPUT_FIELD} />

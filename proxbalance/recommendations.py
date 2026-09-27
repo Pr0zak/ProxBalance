@@ -445,7 +445,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
                     "name": guest_name, "type": guest_type, "node": src_node_name,
                     "reason": "has_ignore_tag",
-                    "detail": "Guest has the 'proxbalance_ignore' tag and will not be considered for migration."
+                    "detail": "Guest has the 'ignore' tag and will not be considered for migration."
                 })
                 continue
 

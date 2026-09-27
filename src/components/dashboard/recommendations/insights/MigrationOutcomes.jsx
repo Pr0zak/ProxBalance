@@ -1,4 +1,5 @@
 import { ArrowRight, RefreshCw } from '../../../Icons.jsx';
+import { fetchMigrationOutcomes, refreshMigrationOutcomes } from '../../../../api/client.js';
 
 const { useState, useEffect } = React;
 
@@ -11,7 +12,6 @@ export default function MigrationOutcomes({ API_BASE, active }) {
     setLoading(true);
     (async () => {
       try {
-        const { fetchMigrationOutcomes, refreshMigrationOutcomes } = await import('../../../api/client.js');
         await refreshMigrationOutcomes();
         const res = await fetchMigrationOutcomes(null, 10);
         if (res.success) setOutcomes(res.outcomes || []);

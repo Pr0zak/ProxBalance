@@ -4,6 +4,7 @@ import {
 } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
+import { parseTimestamp } from '../../utils/formatters.js';
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,
@@ -135,9 +136,8 @@ export default function MigrationLogsSection({
                         let timeDisplay = '';
                         if (migration.timestamp) {
                           try {
-                            const timestamp = migration.timestamp.endsWith('Z') ? migration.timestamp : migration.timestamp + 'Z';
-                            const migrationDate = new Date(timestamp);
-                            timeDisplay = migrationDate.toLocaleString();
+                            const migrationDate = parseTimestamp(migration.timestamp);
+                            timeDisplay = migrationDate ? migrationDate.toLocaleString() : migration.timestamp;
                           } catch (e) {
                             timeDisplay = migration.timestamp;
                           }
