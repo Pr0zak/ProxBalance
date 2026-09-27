@@ -286,6 +286,8 @@ export default function DashboardPage({
             guestsMigrating={guestsMigrating}
             migrationProgress={migrationProgress}
             completedMigrations={completedMigrations}
+            canMigrate={canMigrate}
+            setConfirmMigration={setConfirmMigration}
           />
         )}
         {promotedSections.charts && (
