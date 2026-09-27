@@ -110,7 +110,7 @@ export function useUnsavedRegistry() {
   }, [counts]);
 
   const context = useMemo(() => ({ register, unregister }), [register, unregister]);
-  return { context, total, saving, saveAll, discardAll };
+  return { context, counts, total, saving, saveAll, discardAll };
 }
 
 /** Register an editable group with the nearest UnsavedContext. */

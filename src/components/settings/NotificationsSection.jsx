@@ -1,12 +1,134 @@
 import {
-  Bell, CheckCircle
+  Bell, CheckCircle, AlertCircle, AlertTriangle, RefreshCw
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, statusBadge } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
+const { useState, useEffect } = React;
+
+const timeOf = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+const SUMMARY_TONE = {
+  ok: 'text-emerald-600 dark:text-emerald-400',
+  warn: 'text-amber-600 dark:text-amber-400',
+  error: 'text-red-600 dark:text-red-400',
+};
+
+/**
+ * One channel's state. `ready` comes from the server's validate_config() on
+ * the saved settings ({ ready, reason }); `result` is this channel's last test.
+ */
+function ChannelStatus({ conf, ready, result, dirty }) {
+  if (!conf?.enabled) return null;
+  if (result?.skipped || (!dirty && ready && ready.ready === false)) {
+    const reason = result?.skipped ? result.reason : ready.reason;
+    return (
+      <span className={`${statusBadge('yellow')} max-w-full sm:max-w-md !rounded-lg`} title="ProxBalance skips a channel whose settings are incomplete, so it gets no alerts and no test messages">
+        <AlertTriangle size={12} className="shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere] sm:truncate">{reason || 'Incomplete settings'} · skipped</span>
+      </span>
+    );
+  }
+  if (result?.success) return <span className={statusBadge('green')}><CheckCircle size={12} /> Test sent · {timeOf(result.at)}</span>;
+  if (result) {
+    return (
+      <span className={`${statusBadge('red')} max-w-full sm:max-w-md !rounded-lg`} title={result.error}>
+        <AlertCircle size={12} className="shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere] sm:truncate">Failed: {result.error || 'unknown error'}</span>
+      </span>
+    );
+  }
+  if (dirty) return <span className={statusBadge('gray')}>Save to test</span>;
+  return <span className={statusBadge('gray')}>Not tested yet</span>;
+}
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, testDisabledReason }) {
+  const [tests, setTests] = useState({});        // channel -> { success, error, skipped, reason, at }
+  const [readiness, setReadiness] = useState({}); // channel -> { ready, reason } for the saved settings
+  const [testing, setTesting] = useState(null);   // channel name, 'all', or null
+  const [summary, setSummary] = useState(null);   // last "test all": { text, tone, at, perChannel }
+  const providers = automationConfig.notifications?.providers || {};
+  const enabledChannels = Object.keys(providers).filter(k => providers[k]?.enabled);
+  const dirty = !!testDisabledReason;
+
+  // Ask the server which enabled channels it would skip, and why. Only when
+  // there are no pending edits: the check runs against the saved settings.
+  const savedKey = dirty ? null : JSON.stringify([automationConfig.notifications?.enabled, providers]);
+  useEffect(() => {
+    if (savedKey == null) return undefined;
+    let cancelled = false;
+    fetch(`${API_BASE}/notifications/providers`)
+      .then(r => r.json())
+      .then(body => { if (!cancelled && body?.channels) setReadiness(body.channels); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [savedKey]);
+
+  // Test one channel, or every enabled one. Results land on each channel row.
+  const runTest = async (channel) => {
+    setTesting(channel || 'all');
+    if (!channel) setSummary(null);
+    const at = new Date();
+    const fail = (error) => {
+      if (channel) setTests(prev => ({ ...prev, [channel]: { success: false, error, at } }));
+      else setSummary({ text: error, tone: 'error', at, perChannel: false });
+    };
+    try {
+      const response = await fetch(`${API_BASE}/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(channel ? { provider: channel } : {}),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!result.results) {
+        fail(result.error || `The test could not be sent (HTTP ${response.status})`);
+        return;
+      }
+      const skipped = result.skipped || {};
+      setTests(prev => {
+        const next = { ...prev };
+        for (const [k, r] of Object.entries(result.results)) next[k] = { ...r, at };
+        for (const [k, reason] of Object.entries(skipped)) next[k] = { skipped: true, reason, at };
+        return next;
+      });
+      if (Object.keys(skipped).length) {
+        setReadiness(prev => {
+          const next = { ...prev };
+          for (const [k, reason] of Object.entries(skipped)) next[k] = { ready: false, reason };
+          return next;
+        });
+      }
+      if (!channel) {
+        const failed = Object.values(result.results).some(r => !r.success);
+        setSummary({
+          text: result.message || (result.success ? 'All sent' : 'Some channels need attention'),
+          tone: failed ? 'error' : Object.keys(skipped).length ? 'warn' : 'ok',
+          at,
+          perChannel: true,
+        });
+      }
+    } catch (err) {
+      fail(`The test could not be sent: ${err.message}`);
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const testButton = (channel) => providers[channel]?.enabled ? (
+    <button
+      onClick={(e) => { e.stopPropagation(); runTest(channel); }}
+      disabled={!!testing || dirty || readiness[channel]?.ready === false}
+      title={testDisabledReason || (readiness[channel]?.ready === false ? readiness[channel].reason : 'Send a test message to this channel only')}
+      className={`${BTN_SECONDARY} !px-2.5 !py-1 !gap-1.5 text-xs`}
+    >
+      {testing === channel ? <RefreshCw size={12} className="animate-spin" /> : <Bell size={12} />}
+      Test
+    </button>
+  ) : null;
+
+  const status = (channel) => (
+    <ChannelStatus conf={providers[channel]} ready={readiness[channel]} result={tests[channel]} dirty={dirty} />
+  );
+
   return (
                     <div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
@@ -122,15 +244,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Pushover */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Pushover</span>
-                              {automationConfig.notifications?.providers?.pushover?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('pushover')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('pushover')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.pushover?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -139,6 +261,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-pushover" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -222,15 +345,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Email (SMTP) */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Email (SMTP)</span>
-                              {automationConfig.notifications?.providers?.email?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('email')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('email')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.email?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -239,6 +362,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-email" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -328,15 +452,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Telegram */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Telegram</span>
-                              {automationConfig.notifications?.providers?.telegram?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('telegram')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('telegram')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.telegram?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -345,6 +469,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-telegram" className="hidden p-3 pt-0 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -377,15 +502,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Discord */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Discord</span>
-                              {automationConfig.notifications?.providers?.discord?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('discord')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('discord')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.discord?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -394,6 +519,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-discord" className="hidden p-3 pt-0 space-y-3">
                             <div>
@@ -413,15 +539,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Slack */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Slack</span>
-                              {automationConfig.notifications?.providers?.slack?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('slack')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('slack')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.slack?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -430,6 +556,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-slack" className="hidden p-3 pt-0 space-y-3">
                             <div>
@@ -449,15 +576,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Generic Webhook */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Generic Webhook</span>
-                              {automationConfig.notifications?.providers?.webhook?.enabled && (
-                                <span className="inline-flex items-center text-xs bg-green-50 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full" title="Active"><CheckCircle size={12} /></span>
-                              )}
+                              {status('webhook')}
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {testButton('webhook')}
+                              <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={automationConfig.notifications?.providers?.webhook?.enabled || false}
                                 onChange={(e) => {
                                   const providers = { ...(automationConfig.notifications?.providers || {}) };
@@ -466,6 +593,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 }} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all border-pb-border dark:border-slate-600 peer-checked:bg-blue-600"></div>
                             </label>
+                            </div>
                           </div>
                           <div id="settings-notif-webhook" className="hidden p-3 pt-0 space-y-3">
                             <div>
@@ -483,37 +611,30 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           </div>
                         </div>
 
-                        {/* Test Notification Button */}
-                        <div className="pt-2">
+                        {/* Test all enabled channels */}
+                        <div className="pt-2 flex items-center gap-3 flex-wrap">
                           <button
-                            onClick={async () => {
-                              try {
-                                const response = await fetch(`${API_BASE}/notifications/test`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' }
-                                });
-                                const result = await response.json();
-                                if (result.success) {
-                                  alert('Test notifications sent successfully to all enabled providers.');
-                                } else {
-                                  const details = result.results ? Object.entries(result.results).map(([k, v]) => `${k}: ${v.success ? 'OK' : v.error}`).join('\n') : result.error;
-                                  alert(`Notification test results:\n${details}`);
-                                }
-                              } catch (err) {
-                                alert(`Failed to send test: ${err.message}`);
-                              }
-                            }}
-                            disabled={!!testDisabledReason}
-                            title={testDisabledReason || ''}
-                            className="px-4 py-2 bg-pb-accent hover:bg-pb-accent-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => runTest(null)}
+                            disabled={!!testing || dirty || enabledChannels.length === 0}
+                            title={testDisabledReason || (enabledChannels.length === 0 ? 'Enable a channel first' : '')}
+                            className={BTN_PRIMARY}
                           >
-                            <Bell size={14} />
-                            Send Test Notification
+                            {testing === 'all' ? <RefreshCw size={14} className="animate-spin" /> : <Bell size={14} />}
+                            Test all enabled channels
                           </button>
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-2">
-                            {testDisabledReason || 'Sends a test message to all enabled providers to verify your configuration'}
-                          </p>
+                          {summary && (
+                            <span className={`text-sm flex items-center gap-1.5 ${SUMMARY_TONE[summary.tone]}`} role="status">
+                              {summary.tone === 'ok' ? <CheckCircle size={14} className="shrink-0" /> : summary.tone === 'warn' ? <AlertTriangle size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                              <span>
+                                <span className="font-medium">{summary.text}</span>
+                                <span className="text-pb-text2 dark:text-gray-400"> · {timeOf(summary.at)}{summary.perChannel ? ' · details on each channel' : ''}</span>
+                              </span>
+                            </span>
+                          )}
                         </div>
+                        <p className="text-xs text-pb-text2 dark:text-gray-400 -mt-2">
+                          {testDisabledReason || 'Tests use the saved settings. Each channel shows whether its test went through.'}
+                        </p>
                       </div>
                       )}
                     </div>

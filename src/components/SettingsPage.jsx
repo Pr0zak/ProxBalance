@@ -1,5 +1,6 @@
 import { Cpu, HardDrive, Bell, Server, Settings } from './Icons.jsx';
-import { GLASS_CARD, INPUT_FIELD } from '../utils/designTokens.js';
+import { GLASS_CARD, INPUT_FIELD, statusBadge } from '../utils/designTokens.js';
+import { parseTimestamp, formatRelativeTime } from '../utils/formatters.js';
 
 import AIProviderSection from './settings/AIProviderSection.jsx';
 import DataCollectionSection from './settings/DataCollectionSection.jsx';
@@ -9,6 +10,70 @@ import SectionHeader from './SectionHeader.jsx';
 import { UnsavedContext, useUnsavedRegistry, UnsavedBar, countChanges, useBeforeUnload } from './UnsavedChanges.jsx';
 
 const { useState, useEffect, useRef } = React;
+
+const DOT = { green: 'bg-emerald-500', amber: 'bg-amber-400', red: 'bg-red-500', gray: 'bg-slate-400 dark:bg-slate-500' };
+const AI_LABELS = { openai: 'OpenAI', anthropic: 'Anthropic', local: 'Ollama' };
+// Notification events and whether each is on when the key is absent.
+const NOTIF_EVENTS = {
+  on_start: true, on_complete: true, on_action: true, on_failure: true, on_node_status: true,
+  on_evacuation: true, on_update_available: true,
+  on_resource_threshold: false, on_recommendations: false, on_collector_status: false,
+};
+const CONNECTION_KEYS = ['proxmox_api_token_id', 'proxmox_api_token_secret'];
+const pick = (obj, keys) => Object.fromEntries(keys.map(k => [k, obj?.[k]]));
+const omit = (obj, keys) => Object.fromEntries(Object.entries(obj || {}).filter(([k]) => !keys.includes(k)));
+
+/** One-line live state for each section, shown under its name in the nav. */
+function sectionStatus({ config, data, backendCollected, automationConfig, aiEnabled, aiProvider, systemInfo, proxmoxTokenId, aiModel }) {
+  const out = {};
+
+  const health = data?.cluster_health;
+  if (!proxmoxTokenId) out.connection = { tone: 'amber', text: 'No API token set' };
+  else if (!health) out.connection = { tone: 'gray', text: config?.proxmox_host || 'Not connected yet' };
+  else {
+    const allUp = health.online_nodes === health.nodes;
+    out.connection = {
+      tone: allUp ? 'green' : 'red',
+      text: `${config?.proxmox_host || 'host'} · ${health.online_nodes}/${health.nodes} nodes online`,
+    };
+  }
+
+  const interval = config?.collection_interval_minutes;
+  const last = parseTimestamp(backendCollected || data?.collected_at);
+  if (!last) out.collection = { tone: 'gray', text: interval ? `Every ${interval} min · never run` : 'Never run' };
+  else {
+    const ageMin = (Date.now() - last) / 60000;
+    // Stale once two runs in a row were missed (plus a little slack).
+    const stale = interval && ageMin > interval * 2 + 5;
+    const rel = formatRelativeTime(last.toISOString()).replace('Just now', 'just now');
+    out.collection = {
+      tone: stale ? 'amber' : 'green',
+      text: `${interval ? `Every ${interval} min · ` : ''}${rel}${stale ? ' · overdue' : ''}`,
+    };
+  }
+
+  const n = automationConfig?.notifications;
+  if (!n?.enabled) out.notifications = { tone: 'gray', text: 'Off' };
+  else {
+    const channels = Object.entries(n.providers || {}).filter(([, p]) => p?.enabled).map(([k]) => k);
+    const events = Object.entries(NOTIF_EVENTS).filter(([k, dflt]) => (dflt ? n[k] !== false : n[k] === true)).length;
+    const name = (k) => ({ email: 'Email', webhook: 'Webhook' }[k] || k.charAt(0).toUpperCase() + k.slice(1));
+    out.notifications = channels.length
+      ? { tone: 'green', text: `${channels.length === 1 ? name(channels[0]) : `${channels.length} channels`} · ${events} event${events !== 1 ? 's' : ''}` }
+      : { tone: 'amber', text: 'On, but no channel enabled' };
+  }
+
+  out.ai = aiEnabled && aiProvider && aiProvider !== 'none'
+    ? { tone: 'green', text: [AI_LABELS[aiProvider] || aiProvider, aiModel].filter(Boolean).join(' · ') }
+    : { tone: 'gray', text: 'Off' };
+
+  if (systemInfo?.version) {
+    out.system = systemInfo.updates_available
+      ? { tone: 'amber', text: `${systemInfo.version} · update available` }
+      : { tone: 'green', text: `${systemInfo.version}${systemInfo.branch ? ` · ${systemInfo.branch}` : ''}` };
+  }
+  return out;
+}
 
 const SECTIONS = [
   { id: 'connection', label: 'Connection', icon: Server, accent: ['cyan', 'blue'], blurb: 'Proxmox API token and host' },
@@ -51,6 +116,7 @@ export default function SettingsPage(props) {
     confirmAndChangeHost,
     routeTab, onRouteTab,
     setNavGuard,
+    systemInfo,
   } = props;
 
   const active = SECTIONS.some(s => s.id === routeTab) ? routeTab : 'connection';
@@ -130,29 +196,73 @@ export default function SettingsPage(props) {
 
   const draftAutomationConfig = automationConfig ? { ...automationConfig, notifications } : automationConfig;
 
+  // Where the pending edits are, so the nav can point at them.
+  const unsavedBySection = generalBaseline ? {
+    connection: countChanges(pick(generalNow, CONNECTION_KEYS), pick(generalBaseline, CONNECTION_KEYS)),
+    collection: (registry.counts.collection || 0) + countChanges(generalNow.ui_refresh_interval_minutes, generalBaseline.ui_refresh_interval_minutes),
+    notifications: notifCount,
+    ai: countChanges(omit(generalNow, [...CONNECTION_KEYS, 'ui_refresh_interval_minutes']), omit(generalBaseline, [...CONNECTION_KEYS, 'ui_refresh_interval_minutes'])),
+  } : { collection: registry.counts.collection || 0, notifications: notifCount };
+
+  const aiModel = { openai: openaiModel, anthropic: anthropicModel, local: localModel }[aiProvider];
+  // Phones show the nav as a scrolling row; keep the active pill in view.
+  const navRef = useRef(null);
+  useEffect(() => {
+    const row = navRef.current;
+    const el = row?.querySelector('[data-active="true"]');
+    if (!row || !el || row.scrollWidth <= row.clientWidth) return;
+    const offset = el.getBoundingClientRect().left - row.getBoundingClientRect().left;
+    row.scrollLeft += offset - (row.clientWidth - el.offsetWidth) / 2;
+  }, [active]);
+
+  const status = sectionStatus({
+    config, data, backendCollected, automationConfig: draftAutomationConfig,
+    aiEnabled, aiProvider, aiModel, systemInfo, proxmoxTokenId,
+  });
+
   return (
     <UnsavedContext.Provider value={registry.context}>
     <div className="pb-4 sm:pb-0">
       <div className="max-w-screen-2xl mx-auto p-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Section nav: vertical on desktop, scrolling pills on phones */}
-          <nav className="md:w-56 shrink-0">
-            <div className="flex md:flex-col gap-1 overflow-x-auto md:sticky md:top-20">
+          <nav className="md:w-64 shrink-0">
+            <div ref={navRef} className="flex md:flex-col gap-1 overflow-x-auto md:sticky md:top-20">
               {SECTIONS.map(s => {
                 const Icon = s.icon;
                 const isActive = s.id === active;
+                const st = status[s.id];
+                const pending = unsavedBySection[s.id] || 0;
                 return (
                   <button
                     key={s.id}
+                    data-active={isActive}
                     onClick={() => onRouteTab?.(s.id)}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
+                    title={st ? `${s.label}: ${st.text}` : s.label}
+                    className={`flex items-start gap-2.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-left transition-colors ${
                       isActive
                         ? 'bg-blue-600 text-white shadow'
                         : 'text-pb-text2 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-slate-800/60 hover:text-pb-text dark:hover:text-gray-200'
                     }`}
                   >
-                    <Icon size={16} />
-                    {s.label}
+                    <Icon size={16} className="mt-0.5 shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        {s.label}
+                        {st && <span className={`md:hidden w-1.5 h-1.5 rounded-full ${DOT[st.tone]}`} />}
+                        {pending > 0 && (
+                          <span className={`${statusBadge('yellow')} ml-auto !px-1.5 !py-0 text-[10px]`} title={`${pending} unsaved change${pending !== 1 ? 's' : ''} here`}>
+                            {pending}<span className="hidden md:inline">unsaved</span>
+                          </span>
+                        )}
+                      </span>
+                      {st && (
+                        <span className={`hidden md:flex items-center gap-1.5 mt-0.5 text-xs font-normal truncate ${isActive ? 'text-blue-100' : 'text-pb-text3 dark:text-gray-500'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT[st.tone]}`} />
+                          <span className="truncate">{st.text}</span>
+                        </span>
+                      )}
+                    </span>
                   </button>
                 );
               })}
