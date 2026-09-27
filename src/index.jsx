@@ -308,6 +308,7 @@ const ProxmoxBalanceManager = () => {
       setCurrentPage={ui.setCurrentPage}
       routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'settings')}
       setNavGuard={ui.setNavGuard}
+      systemInfo={updates.systemInfo}
       getAiSettingsPayload={ai.getSettingsPayload} resetAiFromConfig={ai.initFromConfig}
       tempUiInterval={configHook.tempUiInterval} setTempUiInterval={configHook.setTempUiInterval}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
