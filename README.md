@@ -35,24 +35,34 @@ ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE
 ## Features
 
 **Monitoring**
-- Live CPU, memory, IOWait, and load metrics with sparkline visualizations
-- Interactive cluster map with 5 view modes (CPU, Memory, Allocated, Disk I/O, Network)
-- Multi-timeframe historical charts (1 hour to 1 year), with migration markers overlaid on the cluster-health line
-- Light and dark modes (per-browser, persisted)
+- Live CPU, memory, IOWait and disk metrics, with one **Headroom** score per node (0–100, higher means more room) and a single colour scale everywhere
+- A *Needs attention* strip that names the node and resource under pressure
+- Interactive cluster map with 5 view modes (CPU, Memory, Allocated, Disk I/O, Network), a find bar, and drag-a-guest-to-preview-the-move
+- Cluster health over time (1 day to 1 year) with migration markers that snap on hover; click to pin a moment and step between migrations with ←/→
+- Guests tab that answers "can ProxBalance move it?" for every guest (movable, suggested, manual only, pinned, HA/CRS, ignored)
+- Light and dark modes, and a layout that works on phones
+
+**Insights**
+- Per-node trends with sparklines against the recommendation thresholds (24 h to 90 d)
+- Forecasts of which node will cross a threshold, and when
+- Workload rhythm heatmap showing the quietest hours and whether they fall inside your migration window
+- Measured outcomes of past migrations (before and after)
 
 **Migration**
 - One-click migrations with real-time progress tracking and transfer speed
-- Penalty-based scoring with suitability ratings (0-100%)
-- Node maintenance mode with automatic evacuation
+- Suggestions as one run-ordered list in waves, with batch impact per node, subset selection and conflict what-ifs
+- Penalty-based scoring (see [Scoring Algorithm](docs/SCORING_ALGORITHM.md))
+- Node maintenance mode with an evacuation plan that shows where each guest will land
 - Anti-affinity rules via VM/CT tags
 - Storage compatibility validation
 
 **Automation**
-- Scheduled migrations with configurable time windows and blackout periods (wall-clock `OnCalendar` schedule, resilient to crashes)
+- Scheduled migrations with configurable time windows and blackout periods (wall-clock `OnCalendar` schedule, resilient to crashes), with a live "migrations allowed now" status
+- Quick Setup: on/off, dry run and sensitivity in one place; every page saves through one unsaved-changes bar
 - Intelligent observation gating — only migrate when a recommendation persists across multiple cycles
 - Safety checks: cluster health, quorum, resource limits, rollback detection
 - Distribution balancing for even guest counts
-- Dry-run mode for testing
+- Dry-run mode for testing; the automation test endpoint (`POST /api/automigrate/test`) always runs as a dry run
 
 **AI Analysis** (optional)
 - OpenAI, Anthropic, or Ollama (local LLM) integration
@@ -62,6 +72,7 @@ ProxBalance is a web-based cluster analyzer and migration manager for Proxmox VE
 **Notifications**
 - Pushover, Email (SMTP), Telegram, Discord, Slack, and custom webhooks
 - Configurable triggers for migration start, completion, and failure
+- Test each channel on its own and see a per-channel result
 
 See the [complete feature list](docs/FEATURES.md) for details.
 
@@ -87,39 +98,56 @@ Open `http://<container-ip>` in your browser.
 
 ## Screenshots
 
-The Cluster section is split across five tabs — Nodes, Guests, Map, Charts, and Recs — each showing a different view of the same data.
+The dashboard's Cluster section has five tabs (Nodes, Guests, Map, Charts and Suggestions), each a different view of the same data. Every view has its own link, for example `#/dashboard/map` or `#/automation/filters`. Guest names in these screenshots are blurred.
 
 <div align="center">
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="docs/images/dashboard-nodes.png" alt="Nodes — node table with sparklines" width="450"/>
+        <img src="docs/images/dashboard-nodes.png" alt="Nodes — node table with headroom and condition" width="450"/>
         <br/>
-        <b>Nodes</b> — guest browser grouped by node
+        <b>Nodes</b> — headroom, condition and top consumers per node
       </td>
       <td align="center" width="50%">
         <img src="docs/images/dashboard-guests.png" alt="Guests — flat guest list" width="450"/>
         <br/>
-        <b>Guests</b> — flat searchable guest table
+        <b>Guests</b> — filters and a balancer verdict for every guest
       </td>
     </tr>
     <tr>
       <td align="center" width="50%">
         <img src="docs/images/dashboard-map.png" alt="Map — bubble cluster map" width="450"/>
         <br/>
-        <b>Map</b> — bubble cluster map (5 view modes)
+        <b>Map</b> — cluster map with move preview (5 view modes)
       </td>
       <td align="center" width="50%">
         <img src="docs/images/dashboard-charts.png" alt="Charts — cluster health and per-node history" width="450"/>
         <br/>
-        <b>Charts</b> — cluster health + per-node history
+        <b>Charts</b> — cluster health with migration markers, per-node history
       </td>
     </tr>
     <tr>
-      <td align="center" colspan="2">
-        <img src="docs/images/dashboard-recs.png" alt="Recs — migration recommendations" width="900"/>
+      <td align="center" width="50%">
+        <img src="docs/images/dashboard-recs.png" alt="Suggestions — run-ordered migration list" width="450"/>
         <br/>
-        <b>Recs</b> — migration recommendations with batch impact and execution plan
+        <b>Suggestions</b> — run order, batch impact per node, conflict what-ifs
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/insights.png" alt="Insights — trends, forecasts and workload rhythm" width="450"/>
+        <br/>
+        <b>Insights</b> — trends, forecasts, workload rhythm and outcomes
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/automation.png" alt="Automation — quick setup and schedule" width="450"/>
+        <br/>
+        <b>Automation</b> — quick setup, live schedule status, filters
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/settings.png" alt="Settings — side navigation with live status" width="450"/>
+        <br/>
+        <b>Settings</b> — sections with live status; secrets are never shown
       </td>
     </tr>
   </table>
@@ -158,6 +186,7 @@ The Cluster section is split across five tabs — Nodes, Guests, Map, Charts, an
 ## Security
 
 - API token authentication (no passwords stored)
+- Secrets (Proxmox token secret, AI keys, notification credentials) are never returned by the API; the UI shows a masked placeholder, and saving the placeholder keeps the stored value
 - Runs in an unprivileged LXC container
 - Designed for local network operation
 - Optional SSL/TLS support

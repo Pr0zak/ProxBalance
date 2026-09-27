@@ -29,14 +29,15 @@ pct exec <ctid> -- jq '.collected_at' /opt/proxmox-balance-manager/cluster_cache
 pct exec <ctid> -- journalctl -u proxmox-balance -n 50
 ```
 
-### Web UI Settings panel
+### Web UI Settings page
 
-The Settings panel provides service management without SSH:
-- Restart API and collector services
-- View service status
-- Test API connectivity
-- View logs
-- Update Proxmox host and API tokens
+The Settings page (`#/settings/<section>`) provides management without SSH:
+- **Connection**: Proxmox host and API token, dashboard auto-refresh
+- **Collection**: collection interval and optimization, with the age of the last run
+- **Notifications**: per-channel status and tests
+- **System**: each service with **View log** (the last 1000 journal lines, with a warnings-and-errors filter and Download) and **Restart**, data export, and configuration backup/import
+
+Restarting the API service from the page drops its own request; the page reports this as expected.
 
 ---
 
@@ -47,7 +48,8 @@ The Settings panel provides service management without SSH:
 | 502 Bad Gateway | `pct exec <ctid> -- systemctl restart proxmox-balance` |
 | No data showing | `pct exec <ctid> -- systemctl start proxmox-collector.service` |
 | API connection fails | Verify token: `pveum user token permissions proxbalance@pam!proxbalance` |
-| Settings not saving | Use web UI Settings > Save Settings |
+| Settings not saving | Save from the "N unsaved changes · Save changes" bar; a failed save shows "Couldn't save <group>: <error>" |
+| UI stale or unstyled after an update | Hard refresh; see [UI looks stale after an update](#ui-looks-stale-or-styles-broken-after-an-update) |
 | Migrations failing | Check Proxmox tasks: `pvesh get /cluster/tasks` |
 | Tags not working | Trigger refresh: `curl -X POST http://<container-ip>/api/refresh` |
 | Services won't start | Check syntax: `pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 -m py_compile /opt/proxmox-balance-manager/app.py` |
@@ -158,6 +160,38 @@ pct exec <ctid> -- journalctl -u proxmox-collector -f
 
 Wait for the collector to complete (typically 30-90 seconds), then refresh the dashboard.
 
+### UI looks stale or styles broken after an update
+
+Symptoms: a new feature is missing, colours look wrong (for example pale light-mode panels on a dark page), or the layout is broken right after an update or branch switch.
+
+Each frontend deploy stamps a build id into the `app.js?v=` and `tailwind.css?v=` URLs in `/var/www/html/index.html`, so browsers should fetch the new files. First do a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on macOS). If that does not help, check the stamp:
+
+```bash
+pct exec <ctid> -- grep -o '?v=[^"]*' /var/www/html/index.html
+pct exec <ctid> -- git -C /opt/proxmox-balance-manager rev-parse --short HEAD
+```
+
+Both URLs should carry the same `<commit>-<timestamp>` id, starting with the current commit. If they still show the fixed value from the repository's `index.html` (for example `?v=20260207-0001`), or an older commit, the frontend was not redeployed; see the next entry.
+
+### Branch switch or in-app update didn't update the UI
+
+The branch manager and the in-app updater run `post_update.sh`, which calls `deploy-frontend.sh` to build the frontend and copy it to `/var/www/html`, and installs the systemd unit files. They run inside `proxmox-balance.service`, which uses `ProtectSystem=strict`, so the unit must allow writes to those paths:
+
+```bash
+pct exec <ctid> -- systemctl cat proxmox-balance | grep ReadWritePaths
+# Expected:
+# ReadWritePaths=/opt/proxmox-balance-manager /var/www/html /etc/systemd/system
+```
+
+Installs from before this change only list `/opt/proxmox-balance-manager`: the code is checked out and built, but the copy to the web root and the unit install are refused, so the browser keeps getting the old frontend. The installed unit cannot update itself from inside the service, so run the post-update step once as root in the container:
+
+```bash
+pct exec <ctid> -- bash -c 'cd /opt/proxmox-balance-manager && bash post_update.sh'
+pct exec <ctid> -- systemctl restart proxmox-balance
+```
+
+This builds and deploys the frontend, installs the current unit files (with the wider `ReadWritePaths`) and reloads systemd. Later updates and branch switches from the UI then deploy the frontend on their own.
+
 ---
 
 ## Data Collection Issues
@@ -267,7 +301,19 @@ pct exec <ctid> -- systemctl restart proxmox-balance
 pct exec <ctid> -- systemctl restart proxmox-collector.timer
 ```
 
-The web UI Settings panel handles restarts automatically when you click Save.
+Saving collection settings from the web UI updates the collector timer for you.
+
+### Secrets show as `***`
+
+This is expected. The API never returns the Proxmox token secret, AI API keys, ProxBalance's `api_key` or notification credentials; it shows `***` instead. Saving a form with `***` left in place keeps the stored value. To change a secret, type the new value. Exports and server backups are redacted the same way, so restoring one on a fresh install requires entering the secrets again. See [Configuration - Sensitive Fields](CONFIGURATION.md#sensitive-fields).
+
+### Node keeps returning to (or leaving) maintenance mode
+
+Maintenance mode is stored on the server in `automated_migrations.maintenance_nodes`. Older builds also kept a copy in each browser's local storage and could push a remembered node back into maintenance on load; current builds only read the server list and drop the local copy. Check the server value:
+
+```bash
+pct exec <ctid> -- jq '.automated_migrations.maintenance_nodes' /opt/proxmox-balance-manager/config.json
+```
 
 ### Config file corrupted
 

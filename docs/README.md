@@ -7,7 +7,7 @@ Complete documentation for ProxBalance - cluster monitoring and automated load b
 ## Getting Started
 
 - **[Installation Guide](INSTALL.md)** - Quick install, manual setup, and post-installation steps
-- **[Usage Guide](USAGE.md)** - Cluster map, migrations, tagging, and dashboard workflows
+- **[Usage Guide](USAGE.md)** - Dashboard, Insights, Automation and Settings pages, migrations, tagging and maintenance
 
 ## Reference
 
@@ -60,9 +60,13 @@ ProxBalance/
 ├── notifications.py             # Multi-provider notification system
 ├── update_manager.py            # Update/version management
 │
-├── proxbalance/                 # Core backend package (16 domain modules)
+├── deploy-frontend.sh           # Build the frontend and copy it to the nginx root (cache-busted)
+│
+├── proxbalance/                 # Core backend package (24 domain modules)
 │   ├── config_manager.py        # Config loading, Proxmox client
 │   ├── constants.py             # Shared path constants, tuning values
+│   ├── db.py                    # SQLite connections, schema, JSON migration
+│   ├── secret_fields.py         # Redacts secrets on GET, keeps them on save
 │   ├── cache.py                 # In-memory cache with 60s TTL
 │   ├── error_handlers.py        # @api_route decorator, response helpers
 │   ├── scoring.py               # Penalty-based scoring algorithm
@@ -75,6 +79,11 @@ ProxBalance/
 │   ├── forecasting.py           # Trend projection
 │   ├── patterns.py              # Workload pattern detection
 │   ├── outcomes.py              # Migration outcome tracking
+│   ├── metrics_store.py         # Node/guest metrics time series
+│   ├── guest_profiles.py        # Guest behaviour profiling
+│   ├── trend_analysis.py        # Node/guest trend analysis
+│   ├── migration_db.py          # Migration history, automation state
+│   ├── settings_mapper.py       # Simplified settings ↔ penalty config
 │   ├── execution_planner.py     # Topological execution ordering
 │   ├── reporting.py             # Summaries, capacity advisories
 │   └── routes/                  # Flask Blueprints (all API endpoints, @api_route)
@@ -90,18 +99,22 @@ ProxBalance/
 │       └── system.py            # /api/update/*, /api/health, /api/version
 │
 ├── src/                         # Frontend source (React JSX)
-│   ├── index.jsx                # Root component + hook composition (~658 lines)
+│   ├── index.jsx                # Root component, hook composition, hash routing
 │   ├── hooks/                   # 11 custom React hooks (state management)
 │   ├── components/
-│   │   ├── DashboardPage.jsx    # Dashboard wrapper + 13 sub-components
-│   │   ├── AutomationPage.jsx   # Automation wrapper + 6 sub-components
-│   │   ├── SettingsPage.jsx     # Settings wrapper + 5 sub-components
+│   │   ├── DashboardPage.jsx    # Dashboard wrapper + dashboard/ sub-components
+│   │   ├── InsightsPage.jsx     # Trends, forecasts, workload rhythm, outcomes
+│   │   ├── AutomationPage.jsx   # Automation wrapper + automation/ sub-components
+│   │   ├── SettingsPage.jsx     # Settings wrapper + settings/ sub-components
+│   │   ├── UnsavedChanges.jsx   # Shared unsaved-changes bar
 │   │   ├── Icons.jsx            # SVG icon components
 │   │   └── Skeletons.jsx        # Loading skeleton components
 │   ├── api/
 │   │   └── client.js            # API client with error handling
 │   └── utils/
 │       ├── constants.js         # Shared frontend constants
+│       ├── designTokens.js      # Glassmorphism tokens, headroom colour scale
+│       ├── schedule.js          # Dashboard schedule status (matches automigrate)
 │       ├── formatters.js        # Utility formatting functions
 │       └── useIsMobile.js       # Mobile responsiveness hook
 │
@@ -110,9 +123,10 @@ ProxBalance/
 ├── config.example.json          # Configuration template
 ├── requirements.txt             # Python dependencies
 ├── install.sh                   # Automated LXC installer
+├── tests/                       # pytest suites + tests/js schedule agreement check
 ├── systemd/                     # Systemd service and timer files
 ├── nginx/                       # Nginx reverse proxy config
-└── docs/                        # Documentation (17 markdown files)
+└── docs/                        # Documentation and screenshots
 ```
 
 ---

@@ -217,7 +217,7 @@ ProxBalance reads tags from VMs and containers via the Proxmox API:
 - **`no-auto-migrate`** - Exclude the guest from automated migration (alternative to `ignore`)
 - **`exclude_<group>`** - Anti-affinity: guests sharing the same `exclude_` tag are kept on separate nodes
 - **`affinity_<group>`** - Pro-affinity: guests sharing the same `affinity_` tag are kept together on the same node
-- **`auto-migrate-ok`** - Whitelist mode opt-in (when enabled in config)
+- **`auto_migrate_ok`** - Whitelist mode opt-in (when enabled in config; `auto-migrate-ok` also works)
 
 ```bash
 # Set tags via Proxmox CLI
@@ -253,7 +253,7 @@ Configure notification providers in Settings under **Automated Migrations > Noti
 
 ```bash
 pct exec $CTID -- apt-get install -y ufw
-pct exec $CTID -- ufw allow from 10.0.0.0/24 to any port 80
+pct exec $CTID -- ufw allow from 192.168.1.0/24 to any port 80
 pct exec $CTID -- ufw --force enable
 ```
 
