@@ -177,6 +177,8 @@ export default function ClusterSection(props) {
           completedMigrations={props.completedMigrations}
           nodeScores={props.nodeScores}
           recommendations={props.recommendations}
+          canMigrate={props.canMigrate}
+          setConfirmMigration={props.setConfirmMigration}
         />
       )}
       {effectiveTab === 'charts' && (
