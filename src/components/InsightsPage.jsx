@@ -116,15 +116,20 @@ function Forecasts() {
   }
   return (
     <div className="space-y-2">
-      {list.map((f, i) => (
-        <div key={i} className={`${INNER_CARD} p-3 text-sm`}>
-          <div className="font-medium text-pb-text dark:text-white">
-            {f.node || f.source_node}{f.metric ? ` · ${f.metric}` : ''}
-            {f.hours_to_threshold != null && <span className="ml-2 text-orange-600 dark:text-orange-400">in {formatHorizon(f.hours_to_threshold)}</span>}
+      {list.map((f, i) => {
+        const hours = f.estimated_hours_to_crossing ?? f.hours_to_threshold;
+        return (
+          <div key={i} className={`${INNER_CARD} p-3 text-sm`}>
+            <div className="font-medium text-pb-text dark:text-white">
+              {f.node || f.source_node}{f.metric ? ` · ${f.metric}` : ''}
+              {hours != null && <span className="ml-2 text-orange-600 dark:text-orange-400">crosses {f.threshold != null ? `${f.threshold}% ` : ''}in {formatHorizon(hours)}</span>}
+              {f.severity && <span className="ml-2 text-xs uppercase text-pb-text3 dark:text-gray-500">{f.severity}</span>}
+            </div>
+            <div className="text-pb-text2 dark:text-gray-400">{f.message || f.reason || ''}</div>
+            {f.confidence && <div className="text-xs text-pb-text3 dark:text-gray-500">{f.confidence} confidence</div>}
           </div>
-          <div className="text-pb-text2 dark:text-gray-400">{f.reason || f.message || f.recommendation || ''}</div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -149,7 +154,7 @@ function WorkloadPatterns() {
             <div className="text-xs text-pb-text2 dark:text-gray-400">
               {p.daily_pattern ? 'Daily cycle detected' : 'No daily cycle'}
               {' · '}{p.weekly_pattern ? 'weekly cycle detected' : 'no weekly cycle'}
-              {' · '}{p.burst_detection?.detected ? `recurring bursts at ${p.burst_detection.burst_hours.join(', ')}:00` : 'no recurring bursts'}
+              {' · '}{p.burst_detection?.detected ? `recurring bursts at ${p.burst_detection.burst_hours.map(h => `${String(h).padStart(2, '0')}:00`).join(', ')}` : 'no recurring bursts'}
             </div>
           </div>
         </div>

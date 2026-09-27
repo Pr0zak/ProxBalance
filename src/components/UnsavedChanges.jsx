@@ -46,9 +46,12 @@ export function useUnsavedRegistry() {
         .map((k, i) => [k, i])
         .sort((a, b) => (saversRef.current[a[0]]?.order ?? 0) - (saversRef.current[b[0]]?.order ?? 0) || a[1] - b[1])
         .map(([k]) => k);
+      // Snapshot the savers now: earlier saves update state and re-register
+      // fresh closures, which would no longer see the user's pending edits.
+      const savers = { ...saversRef.current };
       for (const key of keys) {
         if (!counts[key]) continue;
-        await saversRef.current[key]?.save();
+        await savers[key]?.save();
       }
     } finally {
       setSaving(false);

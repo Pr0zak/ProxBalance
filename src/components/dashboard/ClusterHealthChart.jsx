@@ -488,7 +488,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
               <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorFor(k) }} />{n}
             </span>
           ))}
-          <span className="ml-auto">{view === 'lines' ? 'suitability 0–100 per node' : 'band height = node suitability'}</span>
+          <span className="ml-auto">{view === 'lines' ? 'headroom 0–100 per node' : 'band height = node headroom'}</span>
         </div>
       )}
 

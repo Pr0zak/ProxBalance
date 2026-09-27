@@ -68,7 +68,8 @@ export default function MigrationOutcomes({ active, limit = 10 }) {
     );
   }
 
-  const pending = outcomes.filter(o => o.status?.startsWith('pending_'));
+  // A pending record past its first window must still have a timely 5-min snapshot.
+  const pending = outcomes.filter(o => o.status?.startsWith('pending_') && (o.status === 'pending_5min' || isReliableOutcome(o)));
   const reliable = outcomes.filter(o => !o.status?.startsWith('pending_') && isReliableOutcome(o));
   const excluded = outcomes.length - pending.length - reliable.length;
   const shown = [...pending, ...reliable].slice(0, limit);
@@ -77,7 +78,7 @@ export default function MigrationOutcomes({ active, limit = 10 }) {
     <div className="space-y-2">
       {shown.length === 0 && (
         <div className="text-xs text-pb-text2 dark:text-gray-500 py-2">
-          No measured outcomes yet. Each live migration is snapshotted before the move and again after 5 minutes, 1 hour and 24 hours.
+          No measured outcomes yet. Each live migration is snapshotted before the move and compared at 5 minutes and 24 hours after.
         </div>
       )}
       {shown.map(o => {

@@ -76,7 +76,7 @@ export default function RecommendationCard({
                   <span>{rec.source_node}</span>
                   {rec.score_details?.source?.metrics && (
                     <span className="text-[10px] font-normal opacity-75 ml-0.5">
-                      ({(rec.score_details.source.metrics.current_cpu ?? rec.score_details.source.metrics.immediate_cpu)?.toFixed(0) ?? '—'}% CPU)
+                      ({(() => { const v = rec.score_details.source.metrics.current_cpu ?? rec.score_details.source.metrics.immediate_cpu; return v != null ? `${v.toFixed(0)}% CPU` : '— CPU'; })()})
                     </span>
                   )}
                   {rec.trend_evidence?.available && (() => {

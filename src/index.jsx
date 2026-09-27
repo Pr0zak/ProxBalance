@@ -347,7 +347,7 @@ const ProxmoxBalanceManager = () => {
     </div>;
   }
 
-  // Automation Settings Page
+  // Insights Page
   if (ui.currentPage === 'insights') {
     return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
       <InsightsPage cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} />
@@ -355,6 +355,7 @@ const ProxmoxBalanceManager = () => {
     </div>;
   }
 
+  // Automation Settings Page
   if (ui.currentPage === 'automation') {
     return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<AutomationPage
       routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'automation')}

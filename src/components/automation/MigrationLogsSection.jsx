@@ -184,7 +184,7 @@ export default function MigrationLogsSection({
                                     suitabilityPercent >= 30 ? 'text-orange-600 dark:text-orange-400' :
                                     'text-red-600 dark:text-red-400'
                                   }`}>
-                                    {suitabilityPercent}%
+                                    {suitabilityPercent}<span className="text-[10px] opacity-70">/100</span>
                                   </span>
                                   <span className="relative group inline-block">
                                     <Info size={12} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />

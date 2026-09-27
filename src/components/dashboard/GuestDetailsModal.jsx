@@ -519,7 +519,7 @@ export default function GuestDetailsModal({
                                   opt.suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
                                   opt.suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
                                   'text-red-600 dark:text-red-400'
-                                }`}>{opt.suitability_rating}%</span>
+                                }`} title="Target headroom (0–100, higher = more room)">{opt.suitability_rating}<span className="text-[10px] opacity-70">/100</span></span>
                               )}
                             </div>
                           </div>

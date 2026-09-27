@@ -288,7 +288,7 @@ export default function NodeDetailsModal({
                 </div>
               </div>
               <div className="mt-3 text-xs text-pb-text2 dark:text-gray-400 italic">
-                Suitability Rating: 0-100% score showing how well the target node fits this VM (higher is better). Based on current load, sustained averages, and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor.
+                Headroom: 0–100, how much room this node has to take on guests (higher is better). Based on current load, sustained averages and historical trends. <span className="text-green-600 dark:text-green-400 font-semibold">70+</span> = plenty, <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50–69</span> = good, <span className="text-orange-600 dark:text-orange-400 font-semibold">30–49</span> = tight, <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30</span> = under pressure.
               </div>
             </Section>
           )}
