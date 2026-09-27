@@ -2,9 +2,10 @@ import { useUnsaved } from '../UnsavedChanges.jsx';
 import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { GLASS_CARD, ICON } from '../../utils/designTokens.js';
+import ThresholdSlider from './ThresholdSlider.jsx';
 const { useState, useEffect } = React;
 
-export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded }) {
+export default function RecommendationThresholdsSection({ config, fetchConfig, collapsedSections, setCollapsedSections, embedded, nodes }) {
   const [cpuThreshold, setCpuThreshold] = useState(60);
   const [memThreshold, setMemThreshold] = useState(70);
   const [iowaitThreshold, setIowaitThreshold] = useState(30);
@@ -102,80 +103,21 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
           </p>
         </div>
 
-        {/* CPU Threshold */}
-        <div>
-          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            CPU Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{cpuThreshold}%</span>
-          </label>
-          <input
-            type="range"
-            min="10"
-            max="95"
-            step="5"
-            value={cpuThreshold}
-            onChange={(e) => setCpuThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-xs text-pb-text2 dark:text-gray-500 mt-1">
-            <span>10%</span>
-            <span>Aggressive</span>
-            <span>Relaxed</span>
-            <span>95%</span>
-          </div>
-          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-            Recommend moving guests when a node's CPU exceeds this level
-          </p>
-        </div>
-
-        {/* Memory Threshold */}
-        <div>
-          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            Memory Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{memThreshold}%</span>
-          </label>
-          <input
-            type="range"
-            min="10"
-            max="95"
-            step="5"
-            value={memThreshold}
-            onChange={(e) => setMemThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-xs text-pb-text2 dark:text-gray-500 mt-1">
-            <span>10%</span>
-            <span>Aggressive</span>
-            <span>Relaxed</span>
-            <span>95%</span>
-          </div>
-          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-            Recommend moving guests when a node's memory exceeds this level
-          </p>
-        </div>
-
-        {/* IOWait Threshold */}
-        <div>
-          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-            IOWait Threshold: <span className="font-bold text-blue-600 dark:text-blue-400">{iowaitThreshold}%</span>
-          </label>
-          <input
-            type="range"
-            min="5"
-            max="60"
-            step="5"
-            value={iowaitThreshold}
-            onChange={(e) => setIowaitThreshold(Number(e.target.value))}
-            className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-xs text-pb-text2 dark:text-gray-500 mt-1">
-            <span>5%</span>
-            <span>Aggressive</span>
-            <span>Relaxed</span>
-            <span>60%</span>
-          </div>
-          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-            Recommend moving guests when a node's IOWait exceeds this level
-          </p>
-        </div>
+        <ThresholdSlider
+          label="CPU Threshold" metric="cpu" nodes={nodes}
+          value={cpuThreshold} onChange={setCpuThreshold} min={10} max={95}
+          description="Recommend moving guests when a node's CPU exceeds this level"
+        />
+        <ThresholdSlider
+          label="Memory Threshold" metric="mem" nodes={nodes}
+          value={memThreshold} onChange={setMemThreshold} min={10} max={95}
+          description="Recommend moving guests when a node's memory exceeds this level"
+        />
+        <ThresholdSlider
+          label="IOWait Threshold" metric="iowait" nodes={nodes}
+          value={iowaitThreshold} onChange={setIowaitThreshold} min={5} max={60}
+          description="Recommend moving guests when a node's IOWait exceeds this level"
+        />
 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-3">

@@ -150,6 +150,7 @@ export default function AutomationPage(props) {
         {/* Quick Setup — always visible above tabs */}
         <QuickSetupSection
           automationConfig={automationConfig}
+          automationStatus={automationStatus}
           saveAutomationConfig={saveAutomationConfig}
           migrationSettings={migrationSettings}
           setMigrationSettings={setMigrationSettings}
@@ -177,7 +178,9 @@ export default function AutomationPage(props) {
         <div hidden={activeTab !== 'schedule'}>{(
           <ScheduleSection
             automationConfig={draftConfig}
+            savedConfig={automationConfig}
             saveAutomationConfig={stageAutomationConfig}
+            automationStatus={automationStatus}
             collapsedSections={collapsedSections}
             setCollapsedSections={setCollapsedSections}
             setError={setError}
@@ -187,6 +190,7 @@ export default function AutomationPage(props) {
         <div hidden={activeTab !== 'filters'}>{(
           <GuestSelectionSection
             automationConfig={draftConfig}
+            nodes={props.clusterData?.nodes}
             saveAutomationConfig={stageAutomationConfig}
             config={config}
             fetchConfig={fetchConfig}

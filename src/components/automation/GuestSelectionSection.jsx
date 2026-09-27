@@ -14,6 +14,7 @@ export default function GuestSelectionSection({
   automationConfig, saveAutomationConfig,
   config, fetchConfig, setConfig,
   collapsedSections, setCollapsedSections,
+  nodes,
 }) {
   const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
 
@@ -33,6 +34,7 @@ export default function GuestSelectionSection({
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Triggers</h3>
             <RecommendationThresholdsSection
               embedded
+              nodes={nodes}
               config={config}
               fetchConfig={fetchConfig}
               collapsedSections={collapsedSections}
