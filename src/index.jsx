@@ -158,7 +158,7 @@ const ProxmoxBalanceManager = () => {
   // Scroll to Proxmox API Configuration when navigating from error banner
   useEffect(() => {
     if (ui.scrollToApiConfig && ui.currentPage === 'settings') {
-      ui.setShowAdvancedSettings(true);
+      ui.setSubPage('connection', 'settings');
       setTimeout(() => {
         const element = document.getElementById('proxmox-api-config');
         if (element) {
@@ -189,13 +189,13 @@ const ProxmoxBalanceManager = () => {
 
   // Composite handleRefresh that refreshes all domains
   const handleRefresh = async () => {
-    await cluster.handleRefresh({ setRefreshElapsed: ui.setRefreshElapsed });
+    await cluster.handleRefresh();
   };
 
   // Composite saveSettings that gathers state from multiple hooks
   const saveSettings = async () => {
+    // Collection interval is owned by Settings → Collection (its own endpoint).
     const result = await configHook.saveSettings({
-      collection_interval_minutes: configHook.tempBackendInterval,
       ui_refresh_interval_minutes: configHook.tempUiInterval,
       proxmox_auth_method: 'api_token',
       proxmox_api_token_id: auth.proxmoxTokenId,
@@ -204,11 +204,11 @@ const ProxmoxBalanceManager = () => {
     });
 
     if (result.success) {
-      ui.setShowSettings(false);
       const now = new Date();
       cluster.setLastUpdate(now);
       cluster.setNextUpdate(new Date(now.getTime() + result.intervalMs));
     }
+    return result.success;
   };
 
   // Wrapper functions that pass current data
@@ -305,6 +305,10 @@ const ProxmoxBalanceManager = () => {
   if (ui.currentPage === 'settings') {
     return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<SettingsPage
       setCurrentPage={ui.setCurrentPage}
+      routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'settings')}
+      setNavGuard={ui.setNavGuard}
+      getAiSettingsPayload={ai.getSettingsPayload} resetAiFromConfig={ai.initFromConfig}
+      tempUiInterval={configHook.tempUiInterval} setTempUiInterval={configHook.setTempUiInterval}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
       aiProvider={ai.aiProvider} setAiProvider={ai.setAiProvider}
       openaiKey={ai.openaiKey} setOpenaiKey={ai.setOpenaiKey}
@@ -326,9 +330,6 @@ const ProxmoxBalanceManager = () => {
       setError={cluster.setError}
       automationConfig={automation.automationConfig}
       saveAutomationConfig={automation.saveAutomationConfig}
-      showAdvancedSettings={ui.showAdvancedSettings} setShowAdvancedSettings={ui.setShowAdvancedSettings}
-      logLevel={configHook.logLevel} setLogLevel={configHook.setLogLevel}
-      verboseLogging={configHook.verboseLogging} setVerboseLogging={configHook.setVerboseLogging}
       proxmoxTokenId={auth.proxmoxTokenId} setProxmoxTokenId={auth.setProxmoxTokenId}
       proxmoxTokenSecret={auth.proxmoxTokenSecret} setProxmoxTokenSecret={auth.setProxmoxTokenSecret}
       validatingToken={auth.validatingToken}

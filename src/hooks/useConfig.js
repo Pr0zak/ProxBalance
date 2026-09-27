@@ -10,8 +10,6 @@ export function useConfig(API_BASE, deps = {}) {
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingCollectionSettings, setSavingCollectionSettings] = useState(false);
   const [collectionSettingsSaved, setCollectionSettingsSaved] = useState(false);
-  const [logLevel, setLogLevel] = useState('INFO');
-  const [verboseLogging, setVerboseLogging] = useState(false);
 
   // Penalty Configuration state
   const [penaltyConfig, setPenaltyConfig] = useState(null);
@@ -245,8 +243,6 @@ export function useConfig(API_BASE, deps = {}) {
     savingSettings,
     savingCollectionSettings, setSavingCollectionSettings,
     collectionSettingsSaved, setCollectionSettingsSaved,
-    logLevel, setLogLevel,
-    verboseLogging, setVerboseLogging,
     penaltyConfig, setPenaltyConfig,
     penaltyDefaults,
     savingPenaltyConfig,

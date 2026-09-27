@@ -1,6 +1,7 @@
 import { RefreshCw } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
+import { ToggleRow } from '../Toggle.jsx';
 
 export default function AIProviderSection({
   aiEnabled, setAiEnabled, aiProvider, setAiProvider,
@@ -12,21 +13,13 @@ export default function AIProviderSection({
   setError
 }) {
   return (<>
-                    <div>
-                      <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                        AI-Powered Recommendations
-                      </label>
-                      <div className="flex items-center mb-4">
-                        <input
-                          type="checkbox"
-                          checked={aiEnabled}
-                          onChange={(e) => setAiEnabled(e.target.checked)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-pb-text dark:text-gray-300">
-                          Enable AI-Enhanced Migration Recommendations
-                        </label>
-                      </div>
+                    <div className="mb-4">
+                      <ToggleRow
+                        label="AI-enhanced recommendations"
+                        description="Ask an LLM to review and annotate migration suggestions"
+                        checked={aiEnabled}
+                        onChange={(e) => setAiEnabled(e.target.checked)}
+                      />
                     </div>
 
                     {aiEnabled && (

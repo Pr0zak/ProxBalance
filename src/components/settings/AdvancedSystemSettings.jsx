@@ -7,136 +7,23 @@ import { GLASS_CARD, INPUT_FIELD, ICON } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
 const { useState } = React;
 
+/**
+ * Settings → Connection ("connection") and Settings → System ("system").
+ * Connection holds the Proxmox API token and host; System holds data export,
+ * config backup/restore and service restarts. All actions here are immediate.
+ */
 export default function AdvancedSystemSettings({
-  showAdvancedSettings, setShowAdvancedSettings,
+  part,
   data, config,
-  logLevel, setLogLevel, verboseLogging, setVerboseLogging,
   proxmoxTokenId, setProxmoxTokenId, proxmoxTokenSecret, setProxmoxTokenSecret,
   validatingToken, tokenValidationResult,
   confirmHostChange, setConfirmHostChange,
   validateToken, confirmAndChangeHost,
   error, setError
 }) {
-  return (<>
-                    {/* Advanced System Settings - Collapsible */}
-                    <div className={`${GLASS_CARD} border-red-600/50`}>
-                      <SectionHeader
-                        title="Advanced System Settings"
-                        icon={AlertTriangle}
-                        accent={['red', 'rose']}
-                        collapsed={!showAdvancedSettings}
-                        onToggle={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                      />
-
-                      {showAdvancedSettings && (
-                        <div className="mt-4 space-y-6">
-                          <hr className="border-pb-border dark:border-slate-600" />
-
-                          {/* Data Management */}
-                          <div>
-                            <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Data Management</h3>
-                      <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                        <button
-                          onClick={() => {
-                            const dataStr = JSON.stringify(data, null, 2);
-                            const blob = new Blob([dataStr], { type: 'application/json' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `proxbalance-data-${new Date().toISOString()}.json`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
-                        >
-                          <Download size={16} />
-                          Export Cluster Data (JSON)
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!data || !data.guests) return;
-
-                            // Create CSV header
-                            let csv = 'VMID,Name,Type,Node,Status,CPU Usage (%),Memory Used (GB),Memory Max (GB),CPU Cores\n';
-
-                            // Add data rows
-                            Object.values(data.guests).forEach(guest => {
-                              csv += `${guest.vmid},"${guest.name}",${guest.type},${guest.node},${guest.status},${guest.cpu_current.toFixed(2)},${guest.mem_used_gb.toFixed(2)},${guest.mem_max_gb.toFixed(2)},${guest.cpu_cores || 0}\n`;
-                            });
-
-                            const blob = new Blob([csv], { type: 'text/csv' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `proxbalance-guests-${new Date().toISOString()}.csv`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
-                        >
-                          <Download size={16} />
-                          Export Guest List (CSV)
-                        </button>
-                      </div>
-                    </div>
-
-                    <hr className="border-pb-border dark:border-slate-600" />
-
-                    {/* Debug & Logging */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Debug & Logging</h3>
-                      <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                            Log Level
-                          </label>
-                          <select
-                            value={logLevel}
-                            onChange={(e) => setLogLevel(e.target.value)}
-                            className={INPUT_FIELD}
-                          >
-                            <option value="ERROR">ERROR - Only critical errors</option>
-                            <option value="WARN">WARN - Warnings and errors</option>
-                            <option value="INFO">INFO - General information</option>
-                            <option value="DEBUG">DEBUG - Detailed debugging</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={verboseLogging}
-                            onChange={(e) => setVerboseLogging(e.target.checked)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <label className="ml-2 text-sm text-pb-text dark:text-gray-300">
-                            Enable Verbose Logging (includes API calls and data processing)
-                          </label>
-                        </div>
-                        <div className="space-y-2">
-                          <button
-                            onClick={() => {
-                              window.open('/api/logs/download?service=proxmox-balance', '_blank');
-                            }}
-                            className="w-full px-4 py-2 bg-gray-500 text-pb-text dark:text-white rounded hover:bg-slate-600 font-medium flex items-center justify-center gap-2"
-                          >
-                            <Download size={16} />
-                            Download API Logs
-                          </button>
-                          <button
-                            onClick={() => {
-                              window.open('/api/logs/download?service=proxmox-collector', '_blank');
-                            }}
-                            className="w-full px-4 py-2 bg-gray-500 text-pb-text dark:text-white rounded hover:bg-slate-600 font-medium flex items-center justify-center gap-2"
-                          >
-                            <Download size={16} />
-                            Download Collector Logs
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr className="border-pb-border dark:border-slate-600" />
-
+  if (part === 'connection') {
+    return (
+      <div className="space-y-6">
                     <div id="proxmox-api-config">
                       <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Proxmox API Configuration</h3>
                       <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
@@ -245,8 +132,6 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-pb-border dark:border-slate-600" />
-
                     <div>
                       <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Proxmox Host Configuration</h3>
                       <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
@@ -298,7 +183,59 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-pb-border dark:border-slate-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+                          {/* Data Management */}
+                          <div>
+                            <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Data Management</h3>
+                      <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
+                        <button
+                          onClick={() => {
+                            const dataStr = JSON.stringify(data, null, 2);
+                            const blob = new Blob([dataStr], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `proxbalance-data-${new Date().toISOString()}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <Download size={16} />
+                          Export Cluster Data (JSON)
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!data || !data.guests) return;
+
+                            // Create CSV header
+                            let csv = 'VMID,Name,Type,Node,Status,CPU Usage (%),Memory Used (GB),Memory Max (GB),CPU Cores\n';
+
+                            // Add data rows
+                            Object.values(data.guests).forEach(guest => {
+                              csv += `${guest.vmid},"${guest.name}",${guest.type},${guest.node},${guest.status},${guest.cpu_current.toFixed(2)},${guest.mem_used_gb.toFixed(2)},${guest.mem_max_gb.toFixed(2)},${guest.cpu_cores || 0}\n`;
+                            });
+
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `proxbalance-guests-${new Date().toISOString()}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                        >
+                          <Download size={16} />
+                          Export Guest List (CSV)
+                        </button>
+                      </div>
+                    </div>
 
                     {/* Configuration Export/Import */}
                     <div>
@@ -430,8 +367,6 @@ export default function AdvancedSystemSettings({
                       </div>
                     </div>
 
-                    <hr className="border-pb-border dark:border-slate-600" />
-
                     <div>
                       <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Service Management</h3>
                       <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
@@ -485,8 +420,6 @@ export default function AdvancedSystemSettings({
                         </button>
                       </div>
                     </div>
-                        </div>
-                      )}
-                    </div>
-  </>);
+    </div>
+  );
 }

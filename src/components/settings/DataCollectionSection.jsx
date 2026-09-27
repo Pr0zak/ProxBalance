@@ -1,279 +1,156 @@
-import { RefreshCw, Save, CheckCircle, Server } from '../Icons.jsx';
+import { RefreshCw, Server } from '../Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
-const { useState } = React;
+import { INPUT_FIELD, SELECT_FIELD, INNER_CARD } from '../../utils/designTokens.js';
+import { ToggleRow } from '../Toggle.jsx';
+import { useUnsaved, countChanges } from '../UnsavedChanges.jsx';
+const { useState, useEffect, useMemo } = React;
+
+const PRESETS = {
+  small: { collection_interval_minutes: 5, max_parallel_workers: 3, node_rrd_timeframe: 'day', guest_rrd_timeframe: 'hour' },
+  medium: { collection_interval_minutes: 15, max_parallel_workers: 5, node_rrd_timeframe: 'day', guest_rrd_timeframe: 'hour' },
+  large: { collection_interval_minutes: 30, max_parallel_workers: 8, node_rrd_timeframe: 'hour', guest_rrd_timeframe: 'hour' },
+};
+
+/** Flatten the collection-related config into one editable form object. */
+function fromConfig(config) {
+  const co = config?.collection_optimization || {};
+  return {
+    cluster_size: co.cluster_size || 'medium',
+    collection_interval_minutes: config?.collection_interval_minutes || 15,
+    parallel_collection_enabled: co.parallel_collection_enabled !== false,
+    max_parallel_workers: co.max_parallel_workers || 5,
+    skip_stopped_guest_rrd: co.skip_stopped_guest_rrd !== false,
+    node_rrd_timeframe: co.node_rrd_timeframe || 'day',
+    guest_rrd_timeframe: co.guest_rrd_timeframe || 'hour',
+  };
+}
 
 export default function DataCollectionSection({
   backendCollected, loading, data, config, handleRefresh, fetchConfig, setError
 }) {
-  const [savingCollectionSettings, setSavingCollectionSettings] = useState(false);
-  const [collectionSettingsSaved, setCollectionSettingsSaved] = useState(false);
+  const saved = useMemo(() => fromConfig(config), [config]);
+  const [form, setForm] = useState(saved);
+  useEffect(() => { setForm(saved); }, [saved]);
+
+  const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const applyPreset = (size) => setForm(prev => ({ ...prev, cluster_size: size, ...(PRESETS[size] || {}) }));
+
+  const save = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/settings/collection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection_interval_minutes: form.collection_interval_minutes,
+          collection_optimization: {
+            cluster_size: form.cluster_size,
+            parallel_collection_enabled: form.parallel_collection_enabled,
+            max_parallel_workers: form.max_parallel_workers,
+            skip_stopped_guest_rrd: form.skip_stopped_guest_rrd,
+            node_rrd_timeframe: form.node_rrd_timeframe,
+            guest_rrd_timeframe: form.guest_rrd_timeframe,
+          },
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) setError?.('Failed to update collection settings: ' + (result.error || 'Unknown error'));
+      else fetchConfig?.();
+    } catch (err) {
+      setError?.('Error saving collection settings: ' + err.message);
+    }
+  };
+
+  useUnsaved('collection', config ? countChanges(form, saved) : 0, save, () => setForm(saved));
+
+  const perf = data?.performance;
 
   return (
-                    <div>
-                      {/* Last Collection Status */}
-                      <div className="mb-6">
-                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Status</h4>
-                        <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                          {backendCollected && (
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Server size={16} className="text-green-600 dark:text-green-400" />
-                                <span className="text-sm text-pb-text dark:text-gray-300">
-                                  Last collected: <span className="font-semibold text-green-600 dark:text-green-400">{formatLocalTime(backendCollected)} {getTimezoneAbbr()}</span>
-                                </span>
-                              </div>
-                              <button
-                                onClick={handleRefresh}
-                                disabled={loading}
-                                className="p-1.5 rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Refresh data collection now"
-                              >
-                                <RefreshCw size={14} className={`${loading ? 'animate-spin' : ''} text-pb-text2 dark:text-gray-400`} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+    <div className="space-y-6">
+      {/* Status + last-run performance */}
+      <div className={`${INNER_CARD} p-4`}>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300">
+            <Server size={16} className="text-green-600 dark:text-green-400" />
+            Last collected:{' '}
+            <span className="font-semibold text-green-600 dark:text-green-400">
+              {backendCollected ? `${formatLocalTime(backendCollected)} ${getTimezoneAbbr()}` : '—'}
+            </span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-pb-hover dark:hover:bg-slate-600 text-pb-text2 dark:text-gray-400 disabled:opacity-50"
+            title="Collect now"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Collect now
+          </button>
+        </div>
+        {perf && (
+          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            {[
+              ['Total time', `${perf.total_time}s`],
+              ['Node processing', `${perf.node_processing_time}s`, perf.parallel_enabled ? 'parallel' : 'sequential'],
+              ['Guest processing', `${perf.guest_processing_time}s`],
+              ['Workers', perf.max_workers, `${perf.node_count} nodes · ${perf.guest_count} guests`],
+            ].map(([label, value, sub]) => (
+              <div key={label}>
+                <div className="text-xs text-pb-text2 dark:text-gray-400">{label}</div>
+                <div className="font-semibold tabular-nums text-pb-text dark:text-white">{value}</div>
+                {sub && <div className="text-xs text-pb-text3 dark:text-pb-text3-dark">{sub}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-                    {/* Collection Performance Stats */}
-                    {data?.performance && (
-                      <div className="mb-6">
-                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Performance Metrics</h4>
-                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/15 border border-emerald-200 dark:border-emerald-800/40 rounded-lg">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Total Time</div>
-                              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.performance.total_time}s</div>
-                            </div>
-                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Node Processing</div>
-                              <div className="text-2xl font-bold text-pb-accent dark:text-pb-accent-dark">{data.performance.node_processing_time}s</div>
-                              <div className="text-xs text-pb-text3 dark:text-pb-text3-dark mt-1">{data.performance.parallel_enabled ? 'Parallel' : 'Sequential'}</div>
-                            </div>
-                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Guest Processing</div>
-                              <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{data.performance.guest_processing_time}s</div>
-                            </div>
-                            <div className="bg-white dark:bg-pb-surface-dark border border-pb-border dark:border-pb-border-dark rounded p-3">
-                              <div className="text-xs text-pb-text2 dark:text-pb-text2-dark mb-1">Workers Used</div>
-                              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{data.performance.max_workers}</div>
-                              <div className="text-xs text-pb-text3 dark:text-pb-text3-dark mt-1">{data.performance.node_count} nodes, {data.performance.guest_count} guests</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+      {/* Settings */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Cluster size preset</label>
+          <select value={form.cluster_size} onChange={(e) => (e.target.value === 'custom' ? set('cluster_size', 'custom') : applyPreset(e.target.value))} className={`${SELECT_FIELD} w-full`}>
+            <option value="small">Small (&lt; 30 VMs/CTs) — 5 min interval</option>
+            <option value="medium">Medium (30–100 VMs/CTs) — 15 min interval</option>
+            <option value="large">Large (100+ VMs/CTs) — 30 min interval</option>
+            <option value="custom">Custom</option>
+          </select>
+          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">Choosing a preset fills in the fields below; editing a field switches to Custom.</p>
+        </div>
 
-                      {/* Collection Optimization Settings */}
-                      <div>
-                        <h4 className="text-md font-semibold text-pb-text dark:text-gray-200 mb-3">Optimization Settings</h4>
-                        <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
-                              <strong>Collection Performance:</strong> Optimize data collection speed based on cluster size. Parallel collection can reduce collection time by 3-5x.
-                            </p>
-                          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Collection interval (minutes)</label>
+            <input type="number" min="1" max="240" value={form.collection_interval_minutes}
+              onChange={(e) => { set('collection_interval_minutes', parseInt(e.target.value, 10) || 1); set('cluster_size', 'custom'); }}
+              className={INPUT_FIELD} />
+            <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">How often the collector gathers full cluster metrics</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Max parallel workers</label>
+            <input type="number" min="1" max="10" value={form.max_parallel_workers}
+              onChange={(e) => { set('max_parallel_workers', parseInt(e.target.value, 10) || 1); set('cluster_size', 'custom'); }}
+              className={INPUT_FIELD} disabled={!form.parallel_collection_enabled} />
+            <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">Nodes processed concurrently</p>
+          </div>
+        </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                            Cluster Size Preset
-                          </label>
-                          <select
-                            id="clusterSizePreset"
-                            defaultValue={config?.collection_optimization?.cluster_size || 'medium'}
-                            onChange={(e) => {
-                              const presets = {
-                                small: { interval: 5, workers: 3, node_tf: 'day', guest_tf: 'hour' },
-                                medium: { interval: 15, workers: 5, node_tf: 'day', guest_tf: 'hour' },
-                                large: { interval: 30, workers: 8, node_tf: 'hour', guest_tf: 'hour' },
-                                custom: {}
-                              };
-                              const preset = presets[e.target.value];
-                              if (preset && e.target.value !== 'custom') {
-                                // Update the form fields
-                                const intervalInput = document.getElementById('collectionInterval');
-                                const workersInput = document.getElementById('maxWorkers');
-                                const nodeTimeframeSelect = document.getElementById('nodeTimeframe');
-                                const guestTimeframeSelect = document.getElementById('guestTimeframe');
+        <ToggleRow label="Parallel collection" description="Process multiple nodes at once (3–5× faster)"
+          checked={form.parallel_collection_enabled} onChange={(e) => set('parallel_collection_enabled', e.target.checked)} />
+        <ToggleRow label="Skip RRD for stopped guests" description="Don't fetch performance history for stopped VMs/CTs (faster)"
+          checked={form.skip_stopped_guest_rrd} onChange={(e) => set('skip_stopped_guest_rrd', e.target.checked)} />
 
-                                if (intervalInput) intervalInput.value = preset.interval;
-                                if (workersInput) workersInput.value = preset.workers;
-                                if (nodeTimeframeSelect) nodeTimeframeSelect.value = preset.node_tf;
-                                if (guestTimeframeSelect) guestTimeframeSelect.value = preset.guest_tf;
-                              }
-                            }}
-                            className={`${SELECT_FIELD} w-full`}
-                          >
-                            <option value="small">Small (&lt; 30 VMs/CTs) - 5 min intervals</option>
-                            <option value="medium">Medium (30-100 VMs/CTs) - 15 min intervals</option>
-                            <option value="large">Large (100+ VMs/CTs) - 30 min intervals</option>
-                            <option value="custom">Custom</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                            Collection Interval (minutes)
-                          </label>
-                          <input
-                            type="number"
-                            id="collectionInterval"
-                            defaultValue={config?.collection_interval_minutes || 15}
-                            min="1"
-                            max="240"
-                            className={INPUT_FIELD}
-                          />
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                            How often to collect full cluster metrics
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              id="parallelEnabled"
-                              defaultChecked={config?.collection_optimization?.parallel_collection_enabled !== false}
-                              className="rounded border-pb-border dark:border-slate-600"
-                            />
-                            <span className="text-sm text-pb-text dark:text-gray-300">Enable Parallel Collection</span>
-                          </label>
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1 ml-6">
-                            Process multiple nodes simultaneously (3-5x faster)
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                            Max Parallel Workers
-                          </label>
-                          <input
-                            type="number"
-                            id="maxWorkers"
-                            defaultValue={config?.collection_optimization?.max_parallel_workers || 5}
-                            min="1"
-                            max="10"
-                            className={INPUT_FIELD}
-                          />
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                            Number of nodes to process concurrently
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              id="skipStoppedRRD"
-                              defaultChecked={config?.collection_optimization?.skip_stopped_guest_rrd !== false}
-                              className="rounded border-pb-border dark:border-slate-600"
-                            />
-                            <span className="text-sm text-pb-text dark:text-gray-300">Skip RRD for Stopped Guests</span>
-                          </label>
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1 ml-6">
-                            Don't collect performance metrics for stopped VMs/CTs (faster collection)
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                              Node RRD Timeframe
-                            </label>
-                            <select
-                              id="nodeTimeframe"
-                              defaultValue={config?.collection_optimization?.node_rrd_timeframe || 'day'}
-                              className={`${SELECT_FIELD} w-full`}
-                            >
-                              <option value="hour">Hour (~60 points)</option>
-                              <option value="day">Day (~1440 points)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                              Guest RRD Timeframe
-                            </label>
-                            <select
-                              id="guestTimeframe"
-                              defaultValue={config?.collection_optimization?.guest_rrd_timeframe || 'hour'}
-                              className={`${SELECT_FIELD} w-full`}
-                            >
-                              <option value="hour">Hour (~60 points)</option>
-                              <option value="day">Day (~1440 points)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="sticky bottom-0 bg-pb-surface2 dark:bg-slate-700/50 -mx-4 -mb-4 px-4 py-4 mt-4 border-t border-pb-border dark:border-slate-600">
-                          <button
-                            onClick={() => {
-                              setSavingCollectionSettings(true);
-                              setCollectionSettingsSaved(false);
-
-                              const collectionConfig = {
-                                collection_interval_minutes: parseInt(document.getElementById('collectionInterval').value),
-                                collection_optimization: {
-                                  cluster_size: document.getElementById('clusterSizePreset').value,
-                                  parallel_collection_enabled: document.getElementById('parallelEnabled').checked,
-                                  max_parallel_workers: parseInt(document.getElementById('maxWorkers').value),
-                                  skip_stopped_guest_rrd: document.getElementById('skipStoppedRRD').checked,
-                                  node_rrd_timeframe: document.getElementById('nodeTimeframe').value,
-                                  guest_rrd_timeframe: document.getElementById('guestTimeframe').value
-                                }
-                              };
-
-                              fetch(`${API_BASE}/settings/collection`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(collectionConfig)
-                              })
-                              .then(response => response.json())
-                              .then(result => {
-                                setSavingCollectionSettings(false);
-                                if (result.success) {
-                                  setCollectionSettingsSaved(true);
-                                  setTimeout(() => setCollectionSettingsSaved(false), 3000);
-                                  fetchConfig();
-                                } else {
-                                  setError('Failed to update settings: ' + (result.error || 'Unknown error'));
-                                }
-                              })
-                              .catch(error => {
-                                setSavingCollectionSettings(false);
-                                setError('Error: ' + error.message);
-                              });
-                            }}
-                            disabled={savingCollectionSettings}
-                            className={`w-full px-4 py-2 text-pb-text dark:text-white rounded font-medium flex items-center justify-center gap-2 shadow-lg transition-colors ${
-                              collectionSettingsSaved
-                                ? 'bg-emerald-600'
-                                : savingCollectionSettings
-                                  ? 'bg-gray-600 cursor-not-allowed'
-                                  : 'bg-green-500 hover:bg-green-600'
-                            }`}
-                          >
-                            {savingCollectionSettings ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                                Saving...
-                              </>
-                            ) : collectionSettingsSaved ? (
-                              <>
-                                <CheckCircle size={16} />
-                                Settings Saved!
-                              </>
-                            ) : (
-                              <>
-                                <Save size={16} />
-                                Apply Collection Settings
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[['node_rrd_timeframe', 'Node RRD timeframe'], ['guest_rrd_timeframe', 'Guest RRD timeframe']].map(([key, label]) => (
+            <div key={key}>
+              <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">{label}</label>
+              <select value={form[key]} onChange={(e) => { set(key, e.target.value); set('cluster_size', 'custom'); }} className={`${SELECT_FIELD} w-full`}>
+                <option value="hour">Hour (~60 points)</option>
+                <option value="day">Day (~1440 points)</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

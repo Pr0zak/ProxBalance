@@ -6,7 +6,7 @@ import { API_BASE } from '../../utils/constants.js';
 import { INPUT_FIELD, SELECT_FIELD, ICON } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
 
-export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections }) {
+export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, testDisabledReason }) {
   return (
                     <div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
@@ -503,13 +503,15 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 alert(`Failed to send test: ${err.message}`);
                               }
                             }}
-                            className="px-4 py-2 bg-pb-accent hover:bg-pb-accent-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                            disabled={!!testDisabledReason}
+                            title={testDisabledReason || ''}
+                            className="px-4 py-2 bg-pb-accent hover:bg-pb-accent-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Bell size={14} />
                             Send Test Notification
                           </button>
                           <p className="text-xs text-pb-text2 dark:text-gray-400 mt-2">
-                            Sends a test message to all enabled providers to verify your configuration
+                            {testDisabledReason || 'Sends a test message to all enabled providers to verify your configuration'}
                           </p>
                         </div>
                       </div>
