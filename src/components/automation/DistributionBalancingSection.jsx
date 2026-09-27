@@ -7,27 +7,21 @@ export default function DistributionBalancingSection({
   config, automationConfig, collapsedSections, setCollapsedSections,
   setConfig, saveAutomationConfig, embedded
 }) {
+  if (!config) return null;
   const outerClass = embedded
     ? ''
     : GLASS_CARD + ' overflow-hidden';
 
   return (
         <div className={outerClass}>
-          <button
-            onClick={() => setCollapsedSections(prev => ({ ...prev, distributionBalancing: !prev.distributionBalancing }))}
-            className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-          >
+          <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-y-3">
             {embedded
               ? <h3 className="text-base font-bold text-pb-text dark:text-white">Distribution Balancing</h3>
               : <h2 className="text-xl font-bold text-pb-text dark:text-white">Distribution Balancing</h2>
             }
-            <ChevronDown
-              size={embedded ? 20 : ICON.section}
-              className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.distributionBalancing ? 'rotate-180' : ''}`}
-            />
-          </button>
+          </div>
 
-          {!collapsedSections.distributionBalancing && (
+          {(
           <div className="space-y-4">
             {/* Enable Distribution Balancing */}
             <ToggleRow

@@ -12,8 +12,11 @@ import GuestSelectionSection from './automation/GuestSelectionSection.jsx';
 import MigrationBehaviorSection from './automation/MigrationBehaviorSection.jsx';
 import MigrationLogsSection from './automation/MigrationLogsSection.jsx';
 import DecisionTreeFlowchart from './automation/DecisionTreeFlowchart.jsx';
+import { UnsavedContext, useUnsavedRegistry, UnsavedBar, countChanges, useBeforeUnload } from './UnsavedChanges.jsx';
 
-const { useState } = React;
+const { useState, useMemo, useEffect } = React;
+
+const pick = (obj, keys) => Object.fromEntries(keys.map(k => [k, obj?.[k]]));
 
 const TABS = [
   { id: 'schedule', label: 'Schedule' },
@@ -57,11 +60,67 @@ export default function AutomationPage(props) {
     setMigrationHistoryPage,
     setMigrationHistoryPageSize,
     setMigrationLogsTab,
+    savedMigrationSettings, savedPenaltyConfig,
+    setNavGuard,
   } = props;
 
   // Sub-tab lives in the URL (#/automation/<tab>) so reload and Back keep it.
   const activeTab = TABS.some(t => t.id === props.routeTab) ? props.routeTab : 'schedule';
   const setActiveTab = (id) => props.onRouteTab?.(id);
+
+  // ── One save model ────────────────────────────────────────────────────────
+  // Everything on this page is staged and saved together from the bar at the
+  // bottom. The only exceptions are the master Enable / Dry-run switches in
+  // Quick Setup, which act immediately (they have their own confirmations).
+  const registry = useUnsavedRegistry();
+  const { register, unregister } = registry.context;
+
+  // Automation config: stage top-level partial updates over the live config.
+  const [draftUpdates, setDraftUpdates] = useState({});
+  const draftConfig = useMemo(
+    () => (automationConfig ? { ...automationConfig, ...draftUpdates } : automationConfig),
+    [automationConfig, draftUpdates]
+  );
+  const stageAutomationConfig = (updates) => setDraftUpdates(prev => ({ ...prev, ...updates }));
+  const draftKeys = Object.keys(draftUpdates);
+  const configChangeCount = countChanges(pick(draftConfig, draftKeys), pick(automationConfig, draftKeys));
+
+  useEffect(() => {
+    register('automationConfig', configChangeCount, async () => {
+      const ok = await saveAutomationConfig(draftUpdates);
+      if (ok !== false) setDraftUpdates({});
+    }, () => {
+      // Distribution balancing edits also optimistically update the app config.
+      if ('distribution_balancing' in draftUpdates) fetchConfig?.();
+      setDraftUpdates({});
+    });
+  });
+
+  // Simplified scoring settings (sensitivity, trend weight, lookback).
+  const migrationChangeCount = savedMigrationSettings ? countChanges(migrationSettings, savedMigrationSettings) : 0;
+  useEffect(() => {
+    register('migrationSettings', migrationChangeCount, saveMigrationSettingsAction,
+      () => setMigrationSettings(savedMigrationSettings));
+  });
+
+  // Expert penalty overrides — saved after the simplified settings.
+  const penaltyChangeCount = savedPenaltyConfig ? countChanges(penaltyConfig, savedPenaltyConfig) : 0;
+  useEffect(() => {
+    register('penaltyConfig', penaltyChangeCount, savePenaltyConfig,
+      () => setPenaltyConfig(savedPenaltyConfig));
+  });
+
+  useEffect(() => () => ['automationConfig', 'migrationSettings', 'penaltyConfig'].forEach(unregister), []);
+
+  useBeforeUnload(registry.total > 0);
+  // Ask before leaving the page with staged edits (they'd be lost).
+  useEffect(() => {
+    if (!setNavGuard) return;
+    setNavGuard(registry.total > 0
+      ? () => window.confirm(`Discard ${registry.total} unsaved change${registry.total !== 1 ? 's' : ''} on Automation?`)
+      : null);
+    return () => setNavGuard(null);
+  }, [registry.total]);
 
   if (!automationConfig) {
     return (
@@ -72,6 +131,7 @@ export default function AutomationPage(props) {
   }
 
   return (
+    <UnsavedContext.Provider value={registry.context}>
     <div className="pb-20 sm:pb-0">
       <div className="max-w-screen-2xl mx-auto p-4">
         {/* Page header */}
@@ -107,32 +167,32 @@ export default function AutomationPage(props) {
         </div>
 
         {/* Tab content — every section spans full width to match Quick Setup */}
-        {activeTab === 'schedule' && (
+        <div hidden={activeTab !== 'schedule'}>{(
           <ScheduleSection
-            automationConfig={automationConfig}
-            saveAutomationConfig={saveAutomationConfig}
+            automationConfig={draftConfig}
+            saveAutomationConfig={stageAutomationConfig}
             collapsedSections={collapsedSections}
             setCollapsedSections={setCollapsedSections}
             setError={setError}
           />
-        )}
+        )}</div>
 
-        {activeTab === 'filters' && (
+        <div hidden={activeTab !== 'filters'}>{(
           <GuestSelectionSection
-            automationConfig={automationConfig}
-            saveAutomationConfig={saveAutomationConfig}
+            automationConfig={draftConfig}
+            saveAutomationConfig={stageAutomationConfig}
             config={config}
             fetchConfig={fetchConfig}
             setConfig={setConfig}
             collapsedSections={collapsedSections}
             setCollapsedSections={setCollapsedSections}
           />
-        )}
+        )}</div>
 
-        {activeTab === 'behavior' && (
+        <div hidden={activeTab !== 'behavior'}>{(
           <MigrationBehaviorSection
-            automationConfig={automationConfig}
-            saveAutomationConfig={saveAutomationConfig}
+            automationConfig={draftConfig}
+            saveAutomationConfig={stageAutomationConfig}
             automationStatus={automationStatus}
             collapsedSections={collapsedSections}
             setCollapsedSections={setCollapsedSections}
@@ -161,9 +221,9 @@ export default function AutomationPage(props) {
             resetMigrationSettingsAction={resetMigrationSettingsAction}
             fetchMigrationSettingsAction={fetchMigrationSettingsAction}
           />
-        )}
+        )}</div>
 
-        {activeTab === 'history' && (
+        <div hidden={activeTab !== 'history'}>{(
           <MigrationLogsSection
             automationStatus={automationStatus}
             automigrateLogs={automigrateLogs}
@@ -178,15 +238,18 @@ export default function AutomationPage(props) {
             setLogRefreshTime={setLogRefreshTime}
             fetchAutomationStatus={fetchAutomationStatus}
           />
-        )}
+        )}</div>
 
-        {activeTab === 'reference' && (
+        <div hidden={activeTab !== 'reference'}>{(
           <DecisionTreeFlowchart
             collapsedSections={collapsedSections}
             setCollapsedSections={setCollapsedSections}
           />
-        )}
+        )}</div>
+
+        <UnsavedBar total={registry.total} saving={registry.saving} onSave={registry.saveAll} onDiscard={registry.discardAll} />
       </div>
     </div>
+    </UnsavedContext.Provider>
   );
 }

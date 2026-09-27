@@ -385,6 +385,8 @@ const ProxmoxBalanceManager = () => {
       savingMigrationSettings={configHook.savingMigrationSettings}
       migrationSettingsSaved={configHook.migrationSettingsSaved}
       saveMigrationSettingsAction={configHook.saveMigrationSettingsAction}
+      savedMigrationSettings={configHook.savedMigrationSettings} savedPenaltyConfig={configHook.savedPenaltyConfig}
+      setNavGuard={ui.setNavGuard}
       resetMigrationSettingsAction={configHook.resetMigrationSettingsAction}
       fetchMigrationSettingsAction={configHook.fetchMigrationSettings}
       saveAutomationConfig={automation.saveAutomationConfig}

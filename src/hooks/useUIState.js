@@ -19,17 +19,32 @@ function writeHash(page, sub) {
 
 export function useUIState() {
   const [route, setRoute] = useState(parseHash);
+  // A page with unsaved edits can install a guard: () => boolean (true = leave).
+  const navGuardRef = React.useRef(null);
+  const setNavGuard = useCallback((fn) => { navGuardRef.current = fn; }, []);
+  const allowLeave = (nextPage) => nextPage === route.page || !navGuardRef.current || navGuardRef.current();
+  const routeRef = React.useRef(route);
+  routeRef.current = route;
   const currentPage = route.page;
   const subPage = route.sub;
 
   useEffect(() => {
-    const onHash = () => setRoute(parseHash());
+    const onHash = () => {
+      const next = parseHash();
+      // Back/Forward away from a guarded page: undo the hash change if declined.
+      if (navGuardRef.current && next.page !== routeRef.current.page && !navGuardRef.current()) {
+        writeHash(routeRef.current.page, routeRef.current.sub);
+        return;
+      }
+      setRoute(next);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
   const setCurrentPage = useCallback((page) => {
     if (page === route.page && !route.sub) return;
+    if (!allowLeave(page)) return;
     setRoute({ page, sub: null });
     writeHash(page, null);
     window.scrollTo(0, 0);
@@ -37,6 +52,7 @@ export function useUIState() {
 
   // Navigate to a sub-view; optional page switch in the same step.
   const setSubPage = useCallback((sub, page = route.page) => {
+    if (!allowLeave(page)) return;
     setRoute({ page, sub });
     writeHash(page, sub);
     if (page !== route.page) window.scrollTo(0, 0);
@@ -130,6 +146,7 @@ export function useUIState() {
   return {
     currentPage, setCurrentPage,
     subPage, setSubPage,
+    setNavGuard,
     showSettings, setShowSettings,
     showAdvancedSettings, setShowAdvancedSettings,
     scrollToApiConfig, setScrollToApiConfig,

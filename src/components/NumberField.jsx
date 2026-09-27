@@ -33,8 +33,11 @@ export default function NumberField({ value, onCommit, isFloat, className = INPU
       onBlur={() => {
         const parsed = isFloat ? parseFloat(localVal) : parseInt(localVal, 10);
         if (!isNaN(parsed)) {
-          committedRef.current = parsed;
-          onCommit(parsed);
+          // Only commit real changes — tabbing through a field shouldn't save.
+          if (parsed !== value) {
+            committedRef.current = parsed;
+            onCommit(parsed);
+          }
         } else {
           setLocalVal(String(value ?? ''));
         }

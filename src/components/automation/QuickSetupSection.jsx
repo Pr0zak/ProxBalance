@@ -172,27 +172,6 @@ export default function QuickSetupSection({
             })}
           </div>
 
-          {/* Save/Reset for sensitivity */}
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={saveMigrationSettingsAction}
-              disabled={savingMigrationSettings}
-              className={`px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 text-sm ${
-                migrationSettingsSaved
-                  ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-pb-accent hover:bg-pb-accent-hover'
-              }`}
-            >
-              {savingMigrationSettings ? 'Saving...' : migrationSettingsSaved ? (<><CheckCircle size={14} /> Saved!</>) : (<><Save size={14} /> Save Sensitivity</>)}
-            </button>
-            <button
-              onClick={resetMigrationSettingsAction}
-              disabled={savingMigrationSettings}
-              className="px-4 py-2 bg-white dark:bg-pb-surface2-dark hover:bg-slate-50 dark:hover:bg-pb-hover-dark border border-slate-300 dark:border-pb-border-dark text-slate-700 dark:text-pb-text-dark rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
-            >
-              <RotateCcw size={14} /> Reset
-            </button>
-          </div>
         </div>
       </div>
     </div>

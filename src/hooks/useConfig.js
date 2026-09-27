@@ -24,6 +24,9 @@ export function useConfig(API_BASE, deps = {}) {
 
   // Simplified Migration Settings state
   const [migrationSettings, setMigrationSettings] = useState(null);
+  // Last values confirmed by the server — lets pages show unsaved edits.
+  const [savedMigrationSettings, setSavedMigrationSettings] = useState(null);
+  const [savedPenaltyConfig, setSavedPenaltyConfig] = useState(null);
   const [migrationSettingsDefaults, setMigrationSettingsDefaults] = useState(null);
   const [migrationSettingsDescriptions, setMigrationSettingsDescriptions] = useState(null);
   const [effectivePenaltyConfig, setEffectivePenaltyConfig] = useState(null);
@@ -55,6 +58,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setPenaltyConfig(result.config);
+        setSavedPenaltyConfig(result.config);
         setPenaltyDefaults(result.defaults);
         if (result.presets) setPenaltyPresets(result.presets);
         if (result.active_preset) setActivePreset(result.active_preset);
@@ -71,6 +75,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setPenaltyConfig(result.config);
+        setSavedPenaltyConfig(result.config);
         setActivePreset(result.active_preset || presetName);
         setPenaltyConfigSaved(true);
         setTimeout(() => setPenaltyConfigSaved(false), 3000);
@@ -121,6 +126,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setPenaltyConfig(result.config);
+        setSavedPenaltyConfig(result.config);
         setPenaltyConfigSaved(true);
         setTimeout(() => setPenaltyConfigSaved(false), 3000);
       } else {
@@ -143,6 +149,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setPenaltyConfig(result.config);
+        setSavedPenaltyConfig(result.config);
       } else {
         if (setError) setError(`Failed to reset penalty config: ${result.error}`);
       }
@@ -164,6 +171,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setMigrationSettings(result.settings);
+        setSavedMigrationSettings(result.settings);
         setMigrationSettingsDefaults(result.defaults);
         setMigrationSettingsDescriptions(result.descriptions);
         setEffectivePenaltyConfig(result.effective_penalty_config);
@@ -187,6 +195,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setMigrationSettings(result.settings);
+        setSavedMigrationSettings(result.settings);
         setEffectivePenaltyConfig(result.effective_penalty_config);
         setMigrationSettingsSaved(true);
         setTimeout(() => setMigrationSettingsSaved(false), 3000);
@@ -212,6 +221,7 @@ export function useConfig(API_BASE, deps = {}) {
       const result = await response.json();
       if (result.success) {
         setMigrationSettings(result.settings);
+        setSavedMigrationSettings(result.settings);
         setEffectivePenaltyConfig(result.effective_penalty_config);
         setMigrationSettingsSaved(true);
         setTimeout(() => setMigrationSettingsSaved(false), 3000);
@@ -252,6 +262,7 @@ export function useConfig(API_BASE, deps = {}) {
     resetPenaltyConfig,
     // Migration settings
     migrationSettings, setMigrationSettings,
+    savedMigrationSettings, savedPenaltyConfig,
     migrationSettingsDefaults,
     migrationSettingsDescriptions,
     effectivePenaltyConfig,

@@ -51,10 +51,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
 
   return (
     <div className={outerClass}>
-      <button
-        onClick={() => setCollapsedSections(prev => ({ ...prev, smartMigrations: !prev.smartMigrations }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
+      <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-y-3">
         <div>
           {embedded
             ? <h3 className="text-base font-bold text-pb-text dark:text-white">Smart Migrations</h3>
@@ -64,13 +61,9 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
             Track recommendations over time and only act on persistent imbalances
           </p>
         </div>
-        <ChevronDown
-          size={embedded ? 20 : ICON.section}
-          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.smartMigrations ? 'rotate-180' : ''}`}
-        />
-      </button>
+      </div>
 
-      {!collapsedSections.smartMigrations && (
+      {(
         <div className="space-y-4">
           {/* Enable/Disable Toggle */}
           <ToggleRow

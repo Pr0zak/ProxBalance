@@ -124,12 +124,14 @@ export function useAutomation(API_BASE, deps = {}) {
       if (result.success) {
         setAutomationConfig(result.config);
         fetchAutomationStatus();
-      } else {
-        if (setError) setError(`Failed to save settings: ${result.error}`);
+        return true;
       }
+      if (setError) setError(`Failed to save settings: ${result.error}`);
+      return false;
     } catch (err) {
       console.error('Failed to save automation config:', err);
       if (setError) setError(`Error saving settings: ${err.message}`);
+      return false;
     } finally {
       setSavingAutomationConfig(false);
     }

@@ -23,11 +23,9 @@ export default function GuestSelectionSection({
         title="What to Migrate"
         icon={Filter}
         accent={['teal', 'cyan']}
-        collapsed={collapsedSections.guestSelectionSection}
-        onToggle={() => setCollapsedSections(prev => ({ ...prev, guestSelectionSection: !prev.guestSelectionSection }))}
       />
 
-      {!collapsedSections.guestSelectionSection && (
+      {(
         <div className="space-y-6">
 
           {/* ── Triggers ── */}

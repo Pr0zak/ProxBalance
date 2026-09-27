@@ -13,11 +13,9 @@ export default function DecisionTreeFlowchart({
             title="Migration Decision Flowchart"
             icon={Info}
             accent={['amber', 'orange']}
-            collapsed={collapsedSections.decisionTree}
-            onToggle={() => setCollapsedSections(prev => ({...prev, decisionTree: !prev.decisionTree}))}
           />
 
-          {!collapsedSections.decisionTree && (
+          {(
             <div className="mt-4">
               <p className="text-sm text-pb-text2 dark:text-gray-400 mb-4">
                 This decision tree shows all possible paths through the automated migration process:

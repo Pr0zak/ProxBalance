@@ -1,3 +1,4 @@
+import { useUnsaved } from '../UnsavedChanges.jsx';
 import { Save, CheckCircle, ChevronDown } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { GLASS_CARD, ICON } from '../../utils/designTokens.js';
@@ -11,6 +12,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [savedValues, setSavedValues] = useState(null);
 
   // Load thresholds from backend config on mount
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
           setCpuThreshold(result.thresholds.cpu_threshold);
           setMemThreshold(result.thresholds.mem_threshold);
           setIowaitThreshold(result.thresholds.iowait_threshold);
+          setSavedValues({ cpu: result.thresholds.cpu_threshold, mem: result.thresholds.mem_threshold, iowait: result.thresholds.iowait_threshold });
         }
         setLoaded(true);
       })
@@ -32,7 +35,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
     setSaved(false);
     setError(null);
 
-    fetch(`${API_BASE}/settings/recommendation-thresholds`, {
+    return fetch(`${API_BASE}/settings/recommendation-thresholds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -45,8 +48,7 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
       .then(result => {
         setSaving(false);
         if (result.success) {
-          setSaved(true);
-          setTimeout(() => setSaved(false), 3000);
+          setSavedValues({ cpu: cpuThreshold, mem: memThreshold, iowait: iowaitThreshold });
           // Sync localStorage so the dashboard picks up the new values immediately
           localStorage.setItem('proxbalance_cpu_threshold', cpuThreshold.toString());
           localStorage.setItem('proxbalance_mem_threshold', memThreshold.toString());
@@ -62,6 +64,17 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
       });
   };
 
+  // Edits are staged; the page's unsaved-changes bar saves or discards them.
+  const pendingCount = savedValues
+    ? [cpuThreshold !== savedValues.cpu, memThreshold !== savedValues.mem, iowaitThreshold !== savedValues.iowait].filter(Boolean).length
+    : 0;
+  useUnsaved('recommendationThresholds', pendingCount, handleSave, () => {
+    if (!savedValues) return;
+    setCpuThreshold(savedValues.cpu);
+    setMemThreshold(savedValues.mem);
+    setIowaitThreshold(savedValues.iowait);
+  });
+
   if (!loaded) return null;
 
   const isCollapsed = collapsedSections?.recommendationThresholds;
@@ -72,23 +85,14 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
 
   return (
     <div className={outerClass}>
-      <button
-        onClick={() => setCollapsedSections && setCollapsedSections(prev => ({ ...prev, recommendationThresholds: !prev.recommendationThresholds }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
+      <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-y-3">
         {embedded
           ? <h3 className="text-base font-bold text-pb-text dark:text-white">Recommendation Thresholds</h3>
           : <h2 className="text-xl font-bold text-pb-text dark:text-white">Recommendation Thresholds</h2>
         }
-        {setCollapsedSections && (
-          <ChevronDown
-            size={embedded ? 20 : ICON.section}
-            className={`text-pb-text2 dark:text-gray-400 transition-transform shrink-0 ${isCollapsed ? '' : '-rotate-180'}`}
-          />
-        )}
-      </button>
+      </div>
 
-      {!isCollapsed && (
+      {(
       <div className="space-y-4">
         <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -179,34 +183,6 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
           </div>
         )}
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`w-full px-4 py-2 text-pb-text dark:text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
-            saved
-              ? 'bg-emerald-600'
-              : saving
-                ? 'bg-gray-600 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600'
-          }`}
-        >
-          {saving ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              Saving...
-            </>
-          ) : saved ? (
-            <>
-              <CheckCircle size={16} />
-              Thresholds Saved!
-            </>
-          ) : (
-            <>
-              <Save size={16} />
-              Apply Recommendation Thresholds
-            </>
-          )}
-        </button>
       </div>
       )}
     </div>

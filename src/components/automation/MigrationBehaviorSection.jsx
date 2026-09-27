@@ -29,11 +29,9 @@ export default function MigrationBehaviorSection({
         title="How to Migrate"
         icon={Settings}
         accent={['violet', 'purple']}
-        collapsed={collapsedSections.migrationBehaviorSection}
-        onToggle={() => setCollapsedSections(prev => ({ ...prev, migrationBehaviorSection: !prev.migrationBehaviorSection }))}
       />
 
-      {!collapsedSections.migrationBehaviorSection && (
+      {(
         <div className="space-y-6">
 
           {/* ── Smart Migrations ── */}

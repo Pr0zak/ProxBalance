@@ -107,18 +107,11 @@ export default function PenaltyScoringSection({
 
   return (<>
     <div id="penalty-config-section" className={outerClass}>
-      <button
-        onClick={() => setCollapsedSections(prev => ({ ...prev, penaltyScoring: !prev.penaltyScoring }))}
-        className="w-full flex items-center justify-between text-left mb-4 hover:opacity-80 transition-opacity flex-wrap gap-y-3"
-      >
+      <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-y-3">
         <HeadingTag className={headingClass}>Scoring & Sensitivity</HeadingTag>
-        <ChevronDown
-          size={embedded ? 20 : ICON.section}
-          className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${!collapsedSections.penaltyScoring ? 'rotate-180' : ''}`}
-        />
-      </button>
+      </div>
 
-      {!collapsedSections.penaltyScoring && (
+      {(
         <div className="space-y-4">
           <p className="text-sm text-pb-text2 dark:text-gray-400">
             Configure how ProxBalance analyzes performance trends and decides when to recommend migrations.
@@ -526,21 +519,14 @@ export default function PenaltyScoringSection({
                     </div>
                   </div>
 
-                  {/* Expert Save / Reset Buttons */}
-                  <div className="flex gap-2 pt-2">
+                  {/* Expert reset — edits are saved from the page's unsaved-changes bar */}
+                  <div className="flex pt-2">
                     <button
-                      onClick={savePenaltyConfig}
+                      onClick={() => { if (confirm('Reset all expert penalty overrides to defaults? This takes effect immediately.')) resetPenaltyConfig(); }}
                       disabled={savingPenaltyConfig}
-                      className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 text-sm"
+                      className={`${BTN_SECONDARY} text-sm`}
                     >
-                      {savingPenaltyConfig ? 'Saving...' : <><Save size={14} /> Save Expert Overrides</>}
-                    </button>
-                    <button
-                      onClick={resetPenaltyConfig}
-                      disabled={savingPenaltyConfig}
-                      className="px-4 py-2 bg-gray-500 text-pb-text dark:text-white rounded-lg hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5 text-sm"
-                    >
-                      <RotateCcw size={14} /> Reset Expert
+                      <RotateCcw size={14} /> Reset expert overrides
                     </button>
                   </div>
                 </>
@@ -548,32 +534,13 @@ export default function PenaltyScoringSection({
             </div>
           </details>
 
-          {/* Success Message */}
-          {isSaved && (
-            <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-500 rounded-lg text-green-700 dark:text-green-300 text-sm">
-              Settings saved successfully!
-            </div>
-          )}
-
-          {/* Main Action Buttons */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex pt-2">
             <button
-              onClick={saveMigrationSettingsAction}
+              onClick={() => { if (confirm('Reset sensitivity, trend weight and lookback to defaults? This takes effect immediately.')) resetMigrationSettingsAction(); }}
               disabled={isSaving}
-              className={`flex-1 px-4 py-2 text-pb-text dark:text-white rounded-lg font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5 ${
-                migrationSettingsSaved
-                  ? 'bg-green-500 hover:bg-green-600'
-                  : 'bg-blue-500 hover:bg-blue-600'
-              }`}
+              className={`${BTN_SECONDARY} text-sm`}
             >
-              {isSaving ? 'Saving...' : migrationSettingsSaved ? (<><CheckCircle size={14} /> Saved!</>) : (<><Save size={14} /> Save Settings</>)}
-            </button>
-            <button
-              onClick={resetMigrationSettingsAction}
-              disabled={isSaving}
-              className="flex-1 px-4 py-2 bg-gray-500 text-pb-text dark:text-white rounded-lg hover:bg-gray-600 font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw size={14} /> Reset to Defaults
+              <RotateCcw size={14} /> Reset scoring to defaults
             </button>
           </div>
         </div>

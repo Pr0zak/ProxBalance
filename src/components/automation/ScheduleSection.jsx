@@ -15,11 +15,9 @@ export default function ScheduleSection({
         title="When to Migrate"
         icon={Clock}
         accent={['indigo', 'violet']}
-        collapsed={collapsedSections.scheduleSection}
-        onToggle={() => setCollapsedSections(prev => ({ ...prev, scheduleSection: !prev.scheduleSection }))}
       />
 
-      {!collapsedSections.scheduleSection && (
+      {(
         <div className="space-y-4">
           {/* Timing Controls */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
