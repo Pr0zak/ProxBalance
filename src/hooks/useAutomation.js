@@ -3,34 +3,17 @@ const { useState } = React;
 export function useAutomation(API_BASE, deps = {}) {
   const { setError } = deps;
 
-  const [automationStatus, setAutomationStatus] = useState({
-    enabled: false,
-    timer_active: false,
-    check_interval_minutes: 0,
-    dry_run: false,
-    state: {}
-  });
+  // null until the first successful load — never a made-up "Off" placeholder.
+  // A failed load sets the matching *Error; consumers show "unavailable".
+  const [automationStatus, setAutomationStatus] = useState(null);
+  const [automationStatusError, setAutomationStatusError] = useState(null);
   const [loadingAutomationStatus, setLoadingAutomationStatus] = useState(false);
   const [runHistory, setRunHistory] = useState([]);
   const [migrationHistory, setMigrationHistory] = useState([]);
   const [loadingRunHistory, setLoadingRunHistory] = useState(false);
   const [expandedRun, setExpandedRun] = useState(null);
-  const [automationConfig, setAutomationConfig] = useState({
-    enabled: false,
-    dry_run: false,
-    check_interval_minutes: 5,
-    maintenance_nodes: [],
-    rules: {
-      min_confidence_score: 75,
-      max_migrations_per_run: 3
-    },
-    safety_checks: {
-      max_node_cpu_percent: 85,
-      max_node_memory_percent: 85,
-      min_free_disk_gb: 20
-    },
-    time_windows: []
-  });
+  const [automationConfig, setAutomationConfig] = useState(null);
+  const [automationConfigError, setAutomationConfigError] = useState(null);
   const [savingAutomationConfig, setSavingAutomationConfig] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [testingAutomation, setTestingAutomation] = useState(false);
@@ -62,12 +45,16 @@ export function useAutomation(API_BASE, deps = {}) {
     setLoadingAutomationStatus(true);
     try {
       const response = await fetch(`${API_BASE}/automigrate/status`);
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (result.success) {
         setAutomationStatus(result);
+        setAutomationStatusError(null);
+      } else {
+        setAutomationStatusError(result.error || result.message || `HTTP ${response.status}`);
       }
     } catch (err) {
       console.error('Failed to fetch automation status:', err);
+      setAutomationStatusError(err.message || 'Network error');
     } finally {
       setLoadingAutomationStatus(false);
     }
@@ -103,12 +90,16 @@ export function useAutomation(API_BASE, deps = {}) {
   const fetchAutomationConfig = async () => {
     try {
       const response = await fetch(`${API_BASE}/automigrate/config`);
-      const result = await response.json();
-      if (result.success) {
+      const result = await response.json().catch(() => ({}));
+      if (result.success && result.config) {
         setAutomationConfig(result.config);
+        setAutomationConfigError(null);
+      } else {
+        setAutomationConfigError(result.error || result.message || `HTTP ${response.status}`);
       }
     } catch (err) {
       console.error('Failed to fetch automation config:', err);
+      setAutomationConfigError(err.message || 'Network error');
     }
   };
 
@@ -126,11 +117,11 @@ export function useAutomation(API_BASE, deps = {}) {
         fetchAutomationStatus();
         return true;
       }
-      if (setError) setError(`Failed to save settings: ${result.error}`);
+      if (setError) setError(`Couldn't save automation settings: ${result.error || 'unknown error'}`);
       return false;
     } catch (err) {
       console.error('Failed to save automation config:', err);
-      if (setError) setError(`Error saving settings: ${err.message}`);
+      if (setError) setError(`Couldn't save automation settings: ${err.message}`);
       return false;
     } finally {
       setSavingAutomationConfig(false);
@@ -237,10 +228,12 @@ export function useAutomation(API_BASE, deps = {}) {
 
   return {
     automationStatus, setAutomationStatus,
+    automationStatusError,
     loadingAutomationStatus,
     runHistory, expandedRun, setExpandedRun,
     migrationHistory, fetchMigrationHistory,
     automationConfig, setAutomationConfig,
+    automationConfigError,
     savingAutomationConfig,
     testResult, setTestResult,
     testingAutomation,

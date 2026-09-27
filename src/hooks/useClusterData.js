@@ -51,9 +51,9 @@ export function useClusterData(API_BASE, deps = {}) {
         setLastUpdate(now);
         const interval = autoRefreshInterval || 60 * 60 * 1000;
         setNextUpdate(new Date(now.getTime() + interval));
-        if (result.data.collected_at) {
-          setBackendCollected(new Date(result.data.collected_at));
-        }
+        // Backend collection time drives the "collected Xm ago" labels; a
+        // snapshot without one clears it rather than keeping an older time.
+        setBackendCollected(result.data.collected_at ? new Date(result.data.collected_at) : null);
         if (result.data.cluster_health) {
           setClusterHealth(result.data.cluster_health);
         }

@@ -54,13 +54,15 @@ export default function RecommendationThresholdsSection({ config, fetchConfig, c
           localStorage.setItem('proxbalance_mem_threshold', memThreshold.toString());
           localStorage.setItem('proxbalance_iowait_threshold', iowaitThreshold.toString());
           if (fetchConfig) fetchConfig();
-        } else {
-          setError(result.error || 'Failed to save');
+          return { ok: true };
         }
+        setError(result.error || 'Failed to save');
+        return { ok: false, error: result.error || 'Failed to save' };
       })
       .catch(err => {
         setSaving(false);
         setError(err.message);
+        return { ok: false, error: err.message };
       });
   };
 

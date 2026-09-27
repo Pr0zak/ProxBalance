@@ -5,7 +5,9 @@ const { useState, useEffect } = React;
 export function useRecommendations(API_BASE, deps = {}) {
   const { data, maintenanceNodes } = deps;
 
-  const [recommendations, setRecommendations] = useState([]);
+  // null = not loaded yet (distinct from [] = "nothing to recommend").
+  const [recommendations, setRecommendations] = useState(null);
+  const [recommendationsError, setRecommendationsError] = useState(null);
   const [recommendationData, setRecommendationData] = useState(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState({});
@@ -59,15 +61,19 @@ export function useRecommendations(API_BASE, deps = {}) {
     if (!data) return;
     try {
       const response = await fetch(`${API_BASE}/recommendations`);
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (result.success) {
-        setRecommendations(result.recommendations);
+        setRecommendations(result.recommendations || []);
         setRecommendationData(result);
+        setRecommendationsError(null);
       } else if (result.cache_missing) {
         generateRecommendations();
+      } else {
+        setRecommendationsError(result.error || result.message || `HTTP ${response.status}`);
       }
     } catch (err) {
       console.error('Error fetching cached recommendations:', err);
+      setRecommendationsError(err.message || 'Network error');
     }
   };
 
@@ -86,13 +92,17 @@ export function useRecommendations(API_BASE, deps = {}) {
           maintenance_nodes: maintenanceNodes ? Array.from(maintenanceNodes) : []
         })
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (result.success) {
-        setRecommendations(result.recommendations);
+        setRecommendations(result.recommendations || []);
         setRecommendationData(result);
+        setRecommendationsError(null);
+      } else {
+        setRecommendationsError(result.error || result.message || `HTTP ${response.status}`);
       }
     } catch (err) {
       console.error('Error generating recommendations:', err);
+      setRecommendationsError(err.message || 'Network error');
     } finally {
       setLoadingRecommendations(false);
     }
@@ -126,6 +136,7 @@ export function useRecommendations(API_BASE, deps = {}) {
 
   return {
     recommendations, setRecommendations,
+    recommendationsError,
     recommendationData,
     loadingRecommendations,
     feedbackGiven,

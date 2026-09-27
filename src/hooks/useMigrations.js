@@ -1,4 +1,10 @@
 import { MIGRATION_POLL_INTERVAL } from '../utils/constants.js';
+import { notify } from '../components/Toast.jsx';
+
+// Give up following a migration task after this many consecutive failed
+// status checks, or after this long in total; the outcome is then unknown.
+const MAX_POLL_ERRORS = 5;
+const MAX_TRACK_MS = 30 * 60 * 1000;
 
 const { useState, useRef } = React;
 
@@ -40,147 +46,151 @@ export function useMigrations(API_BASE, deps = {}) {
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedGuestDetails, setSelectedGuestDetails] = useState(null);
 
-  const trackMigration = async (vmid, sourceNode, targetNode, taskId, guestType) => {
+  // Keys (`${vmid}-${target}`) whose task the user stopped from the UI, so the
+  // tracker reports them as cancelled rather than failed.
+  const cancelledKeysRef = useRef(new Set());
+
+  const dropKey = (setter, k) => setter(prev => {
+    if (!(k in prev)) return prev;
+    const next = { ...prev };
+    delete next[k];
+    return next;
+  });
+
+  // Follow one Proxmox migration task until it ends. Success is counted only
+  // when the task stops with exitstatus 'OK'; any other exit text is a failure
+  // carrying that text. Polling gives up after MAX_POLL_ERRORS consecutive
+  // errors or MAX_TRACK_MS in total and reports the outcome as unknown.
+  //
+  // Returns a Promise resolving to {vmid, status, error?, newNode?} with
+  // status 'success' | 'failed' | 'cancelled'. Fire-and-forget callers ignore
+  // it; the plan orchestrator awaits it to decide whether to continue.
+  const trackMigration = (vmid, sourceNode, targetNode, taskId, guestType) => {
     const key = `${vmid}-${targetNode}`;
+    const label = `${guestType === 'lxc' ? 'CT' : guestType === 'qemu' ? 'VM' : 'Guest'} ${vmid}`;
 
     setActiveMigrations(prev => ({
       ...prev,
       [key]: { vmid, sourceNode, targetNode, taskId, type: guestType }
     }));
-
     setGuestsMigrating(prev => ({ ...prev, [vmid]: true }));
 
-    // Returns a Promise resolving to {vmid, status, error?} when the migration
-    // ends. Existing fire-and-forget callers just ignore the Promise; the plan
-    // orchestrator awaits it to know when to advance to the next group.
     return new Promise((resolvePoll) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const migrationStatusResponse = await fetch(`${API_BASE}/guests/${vmid}/migration-status`);
-        const migStatus = await migrationStatusResponse.json();
+      const startedAt = Date.now();
+      let pollErrors = 0;
+      let inFlight = false;
+      let done = false;
+      let pollInterval = null;
 
-        const taskStatusResponse = await fetch(`${API_BASE}/tasks/${sourceNode}/${taskId}`);
-        const taskStatus = await taskStatusResponse.json();
+      const finish = (status, extra = {}) => {
+        if (done) return;
+        done = true;
+        clearInterval(pollInterval);
+        cancelledKeysRef.current.delete(key);
+        dropKey(setMigrationProgress, vmid);
+        dropKey(setActiveMigrations, key);
+        dropKey(setGuestsMigrating, vmid);
+        setMigrationStatus(prev => ({
+          ...prev,
+          [key]: status === 'success' || status === 'cancelled' ? status : 'failed'
+        }));
+        // Success/cancel badges fade; a failure stays until the next attempt.
+        if (status !== 'failed') setTimeout(() => dropKey(setMigrationStatus, key), 5000);
+        if (fetchGuestLocations) fetchGuestLocations();
+        resolvePoll({ vmid, status, ...extra });
+      };
 
-        if (taskStatus.success && taskStatus.progress) {
-          setMigrationProgress(prev => ({
-            ...prev,
-            [vmid]: taskStatus.progress
-          }));
-        }
+      const finishUnknown = (reason) => {
+        const error = `unknown — check Proxmox (${reason})`;
+        notify({ tone: 'warn', message: `${label} → ${targetNode}: outcome ${error}`, duration: 0 });
+        finish('failed', { error, unknown: true });
+      };
 
-        if (migStatus.success) {
-          setGuestsMigrating(prev => ({ ...prev, [vmid]: migStatus.is_migrating }));
-
-          if (!migStatus.is_migrating) {
-            clearInterval(pollInterval);
-
-            setMigrationProgress(prev => {
-              const updated = { ...prev };
-              delete updated[vmid];
-              return updated;
-            });
-
-            const wasCanceled = taskStatus.status === 'stopped' &&
-                              (taskStatus.exitstatus === 'unexpected status' ||
-                               taskStatus.exitstatus === 'migration aborted');
-
-            if (wasCanceled) {
-              setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
-              setActiveMigrations(prev => {
-                const newMigrations = { ...prev };
-                delete newMigrations[key];
-                return newMigrations;
-              });
-              setGuestsMigrating(prev => {
-                const updated = { ...prev };
-                delete updated[vmid];
-                return updated;
-              });
-              resolvePoll({ vmid, status: 'cancelled' });
-              return;
-            }
-
-            // Migration completed successfully
-            const locationResponse = await fetch(`${API_BASE}/guests/${vmid}/location`);
-            const locationResult = await locationResponse.json();
-
-            if (locationResult.success) {
-              if (setData) {
-                setData(prevData => {
-                  if (!prevData) return prevData;
-
-                  const guest = prevData.guests[vmid];
-                  const oldNode = guest.node;
-                  const newNode = locationResult.node;
-
-                  const newData = { ...prevData };
-                  newData.guests = {
-                    ...prevData.guests,
-                    [vmid]: {
-                      ...guest,
-                      node: newNode,
-                      status: locationResult.status
-                    }
+      const onSuccess = async () => {
+        let newNode = targetNode;
+        try {
+          const locationResponse = await fetch(`${API_BASE}/guests/${vmid}/location`);
+          const locationResult = await locationResponse.json();
+          if (locationResult.success) {
+            newNode = locationResult.node;
+            if (setData) {
+              setData(prevData => {
+                if (!prevData || !prevData.guests?.[vmid]) return prevData;
+                const guest = prevData.guests[vmid];
+                const oldNode = guest.node;
+                const newData = { ...prevData };
+                newData.guests = {
+                  ...prevData.guests,
+                  [vmid]: { ...guest, node: newNode, status: locationResult.status }
+                };
+                newData.nodes = { ...prevData.nodes };
+                if (newData.nodes[oldNode]) {
+                  newData.nodes[oldNode] = {
+                    ...newData.nodes[oldNode],
+                    guests: (newData.nodes[oldNode].guests || []).filter(gid => gid !== vmid)
                   };
-
-                  newData.nodes = { ...prevData.nodes };
-                  if (newData.nodes[oldNode]) {
-                    newData.nodes[oldNode] = {
-                      ...newData.nodes[oldNode],
-                      guests: (newData.nodes[oldNode].guests || []).filter(gid => gid !== vmid)
-                    };
-                  }
-                  if (newData.nodes[newNode]) {
-                    newData.nodes[newNode] = {
-                      ...newData.nodes[newNode],
-                      guests: [...(newData.nodes[newNode].guests || []), vmid]
-                    };
-                  }
-
-                  return newData;
-                });
-              }
-
-              setCompletedMigrations(prev => ({
-                ...prev,
-                [vmid]: {
-                  targetNode: targetNode,
-                  newNode: locationResult.node,
-                  timestamp: Date.now()
                 }
-              }));
-
-              setMigrationStatus(prev => ({ ...prev, [key]: 'success' }));
-
-              setActiveMigrations(prev => {
-                const newMigrations = { ...prev };
-                delete newMigrations[key];
-                return newMigrations;
+                if (newData.nodes[newNode] && oldNode !== newNode) {
+                  newData.nodes[newNode] = {
+                    ...newData.nodes[newNode],
+                    guests: [...(newData.nodes[newNode].guests || []), vmid]
+                  };
+                }
+                return newData;
               });
-
-              setTimeout(() => {
-                setMigrationStatus(prev => {
-                  const newStatus = { ...prev };
-                  delete newStatus[key];
-                  return newStatus;
-                });
-              }, 5000);
-
-              if (fetchGuestLocations) fetchGuestLocations();
-              resolvePoll({ vmid, status: 'success', newNode: locationResult.node });
-            } else {
-              resolvePoll({ vmid, status: 'failed', error: 'Could not fetch new location' });
             }
           }
+        } catch (err) {
+          // The task itself reported OK; a failed location lookup doesn't undo that.
+          console.error('Could not fetch new guest location:', err);
         }
-      } catch (err) {
-        console.error('Error polling migration task:', err);
-      }
-    }, MIGRATION_POLL_INTERVAL);
+        setCompletedMigrations(prev => ({
+          ...prev,
+          [vmid]: { targetNode, newNode, timestamp: Date.now() }
+        }));
+        finish('success', { newNode });
+      };
+
+      pollInterval = setInterval(async () => {
+        if (inFlight || done) return;
+        inFlight = true;
+        try {
+          if (Date.now() - startedAt > MAX_TRACK_MS) {
+            finishUnknown(`not finished after ${Math.round(MAX_TRACK_MS / 60000)} min`);
+            return;
+          }
+          const taskStatusResponse = await fetch(`${API_BASE}/tasks/${sourceNode}/${taskId}`);
+          const taskStatus = await taskStatusResponse.json().catch(() => ({}));
+          if (!taskStatusResponse.ok || !taskStatus.success) {
+            throw new Error(taskStatus.error || taskStatus.message || `HTTP ${taskStatusResponse.status}`);
+          }
+          pollErrors = 0;
+
+          if (taskStatus.progress) {
+            setMigrationProgress(prev => ({ ...prev, [vmid]: taskStatus.progress }));
+          }
+          if (taskStatus.status !== 'stopped') return; // still running
+
+          if (taskStatus.exitstatus === 'OK') {
+            await onSuccess();
+          } else if (cancelledKeysRef.current.has(key)) {
+            finish('cancelled');
+          } else {
+            const exitText = taskStatus.exitstatus || 'unknown exit status';
+            notify({ tone: 'error', message: `${label} → ${targetNode} failed: ${exitText}` });
+            finish('failed', { error: exitText });
+          }
+        } catch (err) {
+          pollErrors += 1;
+          console.error('Error polling migration task:', err);
+          if (pollErrors >= MAX_POLL_ERRORS) {
+            finishUnknown(`lost contact after ${pollErrors} failed status checks: ${err.message || err}`);
+          }
+        } finally {
+          inFlight = false;
+        }
+      }, MIGRATION_POLL_INTERVAL);
     });
-    // No timeout — polling self-terminates when migration completes or is cancelled.
-    // Interval is also cleaned up when the component detects !is_migrating.
   };
 
   // Used by the Run Plan orchestrator. POSTs /api/migrate for one step and
@@ -319,9 +329,11 @@ export function useMigrations(API_BASE, deps = {}) {
         trackMigration(rec.vmid, result.source_node, result.target_node, result.task_id, rec.type);
       } else {
         setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+        notify({ tone: 'error', message: `Couldn't start migration of ${rec.name || rec.vmid}: ${result.error || result.message || 'unknown error'}` });
       }
     } catch (err) {
       setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+      notify({ tone: 'error', message: `Couldn't start migration of ${rec.name || rec.vmid}: ${err.message}` });
     }
   };
 
@@ -350,6 +362,7 @@ export function useMigrations(API_BASE, deps = {}) {
           const result = await response.json();
 
           if (result.success) {
+            cancelledKeysRef.current.add(key);
             setActiveMigrations(prev => {
               const newMigrations = { ...prev };
               delete newMigrations[key];

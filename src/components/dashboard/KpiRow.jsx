@@ -41,8 +41,9 @@ export default function KpiRow({
     }
   }
 
-  const activeMigrations = automationStatus?.active_migrations || 0;
-  const pendingRecs = recommendations?.length || 0;
+  // '—' while not loaded / failed, never a made-up 0.
+  const activeMigrations = automationStatus ? (automationStatus.active_migrations || 0) : '—';
+  const pendingRecs = Array.isArray(recommendations) ? recommendations.length : '—';
 
   // Tagged guests: union of any tag categories (a guest with multiple tags counts once)
   const taggedSet = new Set();

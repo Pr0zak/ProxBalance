@@ -132,7 +132,7 @@ export default function SettingsPage(props) {
 
   return (
     <UnsavedContext.Provider value={registry.context}>
-    <div className="pb-20 sm:pb-0">
+    <div className="pb-4 sm:pb-0">
       <div className="max-w-screen-2xl mx-auto p-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Section nav: vertical on desktop, scrolling pills on phones */}
