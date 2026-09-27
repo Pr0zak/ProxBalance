@@ -16,6 +16,7 @@ SECRET_PLACEHOLDER = '***'
 SECRET_ROOT_FIELDS = frozenset({
     'proxmox_api_token_secret',
     'proxmox_password',
+    'api_key',  # ProxBalance's own API key (app.py _check_api_key)
 })
 
 # Fields inside ai_config.<provider>
@@ -66,7 +67,9 @@ def redact_notifications(notifications: Any) -> Any:
     """Return a copy of a notifications block with provider secrets hidden."""
     if not isinstance(notifications, dict):
         return notifications
-    out = dict(notifications)
+    # Legacy top-level keys (e.g. notifications.webhook_url) are still read by
+    # NotificationManager when no providers are configured.
+    out = _redact_fields(notifications, SECRET_NOTIFICATION_FIELDS)
     if isinstance(out.get('providers'), dict):
         out['providers'] = _redact_providers(
             out['providers'], SECRET_NOTIFICATION_FIELDS, SECRET_NOTIFICATION_DICT_FIELDS)

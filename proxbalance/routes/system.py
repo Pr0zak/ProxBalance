@@ -31,8 +31,17 @@ def get_ai_models():
 
     if provider == 'openai':
         # Fetch OpenAI models
-        api_key = data.get('api_key') or config.get('ai_config', {}).get('openai', {}).get('api_key', '')
-        base_url = data.get('base_url') or config.get('ai_config', {}).get('openai', {}).get('base_url', 'https://api.openai.com/v1')
+        stored = config.get('ai_config', {}).get('openai', {})
+        stored_base = stored.get('base_url', 'https://api.openai.com/v1')
+        base_url = data.get('base_url') or stored_base
+        sent_key = data.get('api_key')
+        if sent_key and sent_key != '***':
+            api_key = sent_key
+        elif base_url == stored_base:
+            api_key = stored.get('api_key', '')
+        else:
+            # Don't hand the stored key to a URL the caller chose.
+            api_key = ''
 
         if not api_key:
             return jsonify({

@@ -46,11 +46,15 @@ def execute_migration():
         proxmox, vmid, target_node, source_node, guest_type,
     )
 
-    # NOTE: Outcome tracking is NOT recorded here. A "success" response from
-    # execute_migration means the migration task was *started*, not *completed*.
-    # Outcome recording happens asynchronously — either via the automigrate
-    # service (which polls task status) or via the /api/migrate/outcomes/refresh
-    # endpoint which captures post-migration metrics once the task finishes.
+    # Record the outcome for manual migrations. "success" here means the task
+    # started; the post-migration snapshots (5 min / 1 h / 24 h) are captured
+    # later by /api/migrate/outcomes/refresh. automigrate.py passes
+    # record_outcome=False because it records after polling the task to completion.
+    if status == 200 and result.get("success") and data.get("record_outcome", True) and pre_snapshot:
+        try:
+            _record_outcome(vmid, source_node, target_node, guest_type, pre_snapshot)
+        except Exception as e:
+            print(f"Warning: could not record migration outcome for {vmid}: {e}", file=sys.stderr)
 
     return jsonify(result), status
 

@@ -625,7 +625,9 @@ def execute_migration(
                 'vmid': vmid,
                 'target_node': target_node,
                 'source_node': source_node,
-                'type': guest_type
+                'type': guest_type,
+                # automigrate records the outcome itself once the task completes
+                'record_outcome': False,
             },
             timeout=300
         )
@@ -1252,6 +1254,8 @@ def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, A
         event_type: Type of event (start, complete, failure)
         data: Event data
     """
+    if os.environ.get('PROXBALANCE_FORCE_DRY_RUN') == '1':
+        return  # a /api/automigrate/test run must not notify anyone
     try:
         from notifications import NotificationManager
         manager = NotificationManager(config)
@@ -1437,7 +1441,10 @@ def main():
                     tracking, ready_recs, observing_recs = update_recommendation_tracking(
                         tracking, non_maint_recs, intelligent_config
                     )
-                    save_tracking(tracking)
+                    # A forced dry-run (/api/automigrate/test) must not count as an
+                    # observation, or repeated tests would make guests eligible sooner.
+                    if os.environ.get('PROXBALANCE_FORCE_DRY_RUN') != '1':
+                        save_tracking(tracking)
 
                     # Log observing items
                     obs_periods = intelligent_config.get('observation_periods') or 3
@@ -2033,7 +2040,21 @@ def main():
                             }
                             last_run_summary['decisions'].append(comp_decision)
 
+                            comp_pre = None
+                            if not dry_run:
+                                try:
+                                    comp_pre = capture_pre_migration_snapshot(comp_vmid, comp_source, target)
+                                except Exception as e:
+                                    logger.warning(f"Could not capture pre-migration snapshot for {comp_vmid}: {e}")
+
                             comp_result = execute_migration(comp_vmid, target, comp_source, comp_type, config, dry_run=dry_run)
+
+                            if not dry_run and comp_result.get('success') and comp_pre:
+                                try:
+                                    record_migration_outcome(comp_vmid, comp_source, target, comp_type, comp_pre)
+                                except Exception as e:
+                                    logger.warning(f"Could not record migration outcome for {comp_vmid}: {e}")
+
                             migrations_attempted += 1
                             last_run_summary['migrations_executed'] = migrations_attempted
 

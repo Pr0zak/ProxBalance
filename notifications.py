@@ -466,9 +466,32 @@ class NotificationManager:
                 provider.send(title, message, "normal")
                 results[name] = {"success": True}
             except Exception as e:
-                results[name] = {"success": False, "error": str(e)}
+                results[name] = {"success": False, "error": self._scrub(str(e))}
 
         return results
+
+    def _scrub(self, text: str) -> str:
+        """Remove configured credentials from an error message.
+
+        HTTP errors from requests include the full URL, and Telegram puts the
+        bot token in the URL path, so raw exception text can leak secrets.
+        """
+        secrets = []
+        providers_config = self.notifications_config.get("providers", {}) or {}
+        for conf in providers_config.values():
+            if not isinstance(conf, dict):
+                continue
+            for value in conf.values():
+                if isinstance(value, str) and len(value) >= 6:
+                    secrets.append(value)
+                elif isinstance(value, dict):
+                    secrets.extend(v for v in value.values() if isinstance(v, str) and len(v) >= 6)
+        legacy = self.notifications_config.get("webhook_url")
+        if isinstance(legacy, str) and legacy:
+            secrets.append(legacy)
+        for secret in sorted(set(secrets), key=len, reverse=True):
+            text = text.replace(secret, "***")
+        return text
 
     @staticmethod
     def _format_event(event_type: str, data: Dict[str, Any]) -> tuple:

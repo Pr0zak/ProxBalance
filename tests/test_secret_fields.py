@@ -108,3 +108,49 @@ def test_webhook_headers_round_trip(client):
     saved = json.loads(cfg.read_text())["automated_migrations"]["notifications"]["providers"]["webhook"]
     assert saved["headers"]["Authorization"] == "Bearer wh-secret"
     assert saved["url"] == "https://hook.example/t0ken"
+
+
+def test_root_api_key_and_legacy_webhook_redacted():
+    cfg = {**STORED, "api_key": "pb-api-key",
+           "automated_migrations": {**STORED["automated_migrations"],
+                                    "notifications": {**STORED["automated_migrations"]["notifications"],
+                                                      "webhook_url": "https://legacy.example/abc123"}}}
+    out = json.dumps(redact_config(cfg))
+    assert "pb-api-key" not in out
+    assert "abc123" not in out
+
+
+def test_ai_models_never_sends_stored_key_to_caller_url(tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(STORED))
+    monkeypatch.setattr(config_manager, "CONFIG_FILE", str(cfg))
+    sent = {}
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return {"data": []}
+
+    def fake_get(url, headers=None, timeout=None):
+        sent["url"], sent["headers"] = url, headers
+        return Resp()
+
+    import requests
+    monkeypatch.setattr(requests, "get", fake_get)
+    from proxbalance.routes.system import system_bp
+    app = Flask(__name__)
+    app.register_blueprint(system_bp)
+    c = app.test_client()
+    r = c.post("/api/ai-models", json={"provider": "openai", "api_key": "***", "base_url": "https://evil.example/v1"})
+    assert r.status_code == 400  # no key available for a foreign URL
+    assert "headers" not in sent
+    c.post("/api/ai-models", json={"provider": "openai", "api_key": "***"})
+    assert sent["headers"]["Authorization"] == "Bearer sk-real"  # stored key only to the stored URL
+
+
+def test_notification_test_errors_are_scrubbed():
+    from notifications import NotificationManager
+    nm = NotificationManager.__new__(NotificationManager)
+    nm.notifications_config = {"providers": {"telegram": {"bot_token": "123456:SECRETTOKEN", "chat_id": "42"}}}
+    msg = "404 Client Error for url: https://api.telegram.org/bot123456:SECRETTOKEN/sendMessage"
+    assert "SECRETTOKEN" not in nm._scrub(msg)

@@ -44,3 +44,30 @@ def test_capture_weeks_later_is_flagged_late(tmp_db):
     outcomes.update_post_migration_metrics()
     row = outcomes.get_migration_outcomes()[0]
     assert row["post_5min"]["late"] is True
+
+
+def _migrate_client(monkeypatch):
+    from flask import Flask
+    from proxbalance.routes import migrations as mroute
+    monkeypatch.setattr(mroute, "load_config", lambda: {})
+    monkeypatch.setattr(mroute, "get_proxmox_client", lambda cfg: object())
+    monkeypatch.setattr(mroute, "_execute_migration",
+                        lambda *a, **k: ({"success": True, "task_id": "UPID:x"}, 200))
+    app = Flask(__name__)
+    app.register_blueprint(mroute.migrations_bp)
+    return app.test_client()
+
+
+def test_manual_migration_records_outcome(tmp_db, monkeypatch):
+    c = _migrate_client(monkeypatch)
+    r = c.post("/api/migrate", json={"vmid": 101, "source_node": "pve3", "target_node": "pve4", "type": "CT"})
+    assert r.status_code == 200
+    rows = outcomes.get_migration_outcomes()
+    assert len(rows) == 1 and rows[0]["status"] == "pending_5min"
+
+
+def test_automigrate_call_does_not_double_record(tmp_db, monkeypatch):
+    c = _migrate_client(monkeypatch)
+    c.post("/api/migrate", json={"vmid": 101, "source_node": "pve3", "target_node": "pve4",
+                                 "type": "CT", "record_outcome": False})
+    assert outcomes.get_migration_outcomes() == []
