@@ -22,7 +22,11 @@ RestartSec=3
 NoNewPrivileges=true
 ProtectSystem=strict
 PrivateTmp=true
-ReadWritePaths=/opt/proxmox-balance-manager
+# The in-app updater and branch manager run post_update.sh from this service:
+# it builds under /opt, copies the frontend to nginx's web root and installs
+# unit files, so those paths must be writable too (otherwise the build lands
+# in /opt but the browser keeps getting the old frontend).
+ReadWritePaths=/opt/proxmox-balance-manager /var/www/html /etc/systemd/system
 
 [Install]
 WantedBy=multi-user.target
