@@ -125,15 +125,17 @@ export function simulateImpact(summary, included, fallbackLimits = null) {
  *
  * @param conflict  an entry of recommendationData.conflicts
  * @param summary   recommendationData.summary (for before + per-move deltas)
- * @param excluded  Set of vmid strings left out of this run
+ * @param excluded  Set of vmid strings left out of this run (deferred)
+ * @param scope     optional Set of vmid strings that will run (the selection);
+ *                  moves outside it neither land nor free capacity
  */
-export function conflictState(conflict, summary, excluded) {
+export function conflictState(conflict, summary, excluded, scope = null) {
   const metric = conflict.exceeds_mem || !conflict.exceeds_cpu ? 'mem' : 'cpu';
   const limit = metric === 'mem' ? conflict.mem_threshold : conflict.cpu_threshold;
   const bi = summary?.batch_impact;
   const moveBy = {};
   for (const m of bi?.moves || []) moveBy[vkey(m.vmid)] = m;
-  const isOut = (vmid) => excluded.has(vkey(vmid));
+  const isOut = (vmid) => excluded.has(vkey(vmid)) || (scope ? !scope.has(vkey(vmid)) : false);
 
   const incoming = (conflict.incoming_guests || []).map(g => {
     const m = moveBy[vkey(g.vmid)];

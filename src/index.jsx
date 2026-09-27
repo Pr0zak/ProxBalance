@@ -114,16 +114,19 @@ const ProxmoxBalanceManager = () => {
     return () => clearInterval(interval);
   }, [configHook.autoRefreshInterval]);
 
-  // Auto-fetch recommendations when data or thresholds change
+  // Auto-fetch recommendations when data or thresholds change. Wait until the
+  // automation config has loaded (or failed): maintenance nodes come from it, and
+  // a cache miss would otherwise generate recommendations that ignore maintenance.
+  const automationConfigSettled = !!(automation.automationConfig || automation.automationConfigError);
   useEffect(() => {
-    if (cluster.data && !recs.loadingRecommendations) {
+    if (cluster.data && automationConfigSettled && !recs.loadingRecommendations) {
       recs.fetchCachedRecommendations();
       cluster.fetchNodeScores(
         { cpu: recs.cpuThreshold, mem: recs.memThreshold, iowait: recs.iowaitThreshold },
         evacuation.maintenanceNodes
       );
     }
-  }, [cluster.data, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]);
+  }, [cluster.data, automationConfigSettled, recs.cpuThreshold, recs.memThreshold, recs.iowaitThreshold, evacuation.maintenanceNodes]);
 
   // Auto-refresh recommendations on fixed 2-minute interval
   useEffect(() => {

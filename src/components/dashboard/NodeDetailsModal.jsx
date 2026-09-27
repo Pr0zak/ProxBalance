@@ -126,13 +126,16 @@ export default function NodeDetailsModal({
   const canPlan = canMigrate && guestCount > 0 && !isPlanning && !isEvacuating;
 
   // What automation will do with a node in maintenance. The automigrate run
-  // turns every guest on a maintenance node into an evacuation recommendation,
+  // turns every guest on a maintenance node, running or stopped (see
+  // recommendations.py: stopped guests are only skipped off maintenance nodes),
+  // into an evacuation recommendation,
   // bypassing observation and cooldown, capped by max_migrations_per_run.
   const auto = { ...(automationConfig || {}), ...(automationStatus || {}) };
   const autoLive = !!auto.enabled && !auto.dry_run;
   const autoInterval = auto.check_interval_minutes;
   const maxPerRun = automationConfig && automationConfig.rules && automationConfig.rules.max_migrations_per_run;
-  const hasWindows = !!(automationConfig && Array.isArray(automationConfig.time_windows) && automationConfig.time_windows.length);
+  const hasWindows = !!(automationConfig?.schedule?.migration_windows || []).some(w => w && w.enabled !== false)
+    || !!(automationConfig?.schedule?.blackout_windows || []).length;
   const savingMaint = maintenanceSaving === selectedNode.name;
 
   const applyMaintenance = async (enter) => {
@@ -378,9 +381,7 @@ export default function NodeDetailsModal({
                     {guestCount === 0
                       ? 'The node is empty.'
                       : autoLive
-                        ? (runningCount > 0
-                          ? `Live automation is moving its ${plural(runningCount, 'running guest')} off${maxPerRun ? `, up to ${maxPerRun} per run` : ''}.${stoppedCount > 0 ? ` ${plural(stoppedCount, 'stopped guest')} stay until you use Plan evacuation.` : ''}`
-                          : `Automation only moves running guests, so the ${plural(stoppedCount, 'stopped guest')} stay until you use Plan evacuation.`)
+                        ? `Live automation is moving its ${plural(guestCount, 'guest')} off${stoppedCount > 0 ? ` (including ${stoppedCount} stopped)` : ''}${maxPerRun ? `, up to ${maxPerRun} per run` : ''}.`
                         : `Automation is ${auto.enabled ? 'in dry-run' : 'off'}, so its guests stay until you use Plan evacuation.`}
                   </p>
                 </div>
@@ -399,17 +400,15 @@ export default function NodeDetailsModal({
               <li>No guests will be placed here: recommendations, automation and evacuation plans skip it as a target.</li>
               {guestCount === 0 ? (
                 <li>The node has no guests, so nothing needs to move.</li>
-              ) : autoLive && runningCount > 0 ? (
+              ) : autoLive ? (
                 <li className="text-amber-800 dark:text-amber-200 font-medium">
                   Automation is live{autoInterval ? ` (runs every ${autoInterval} min)` : ''}: its next run starts moving
-                  {' '}{runningCount === 1 ? 'the 1 running guest' : `all ${runningCount} running guests`} on this node to other nodes
+                  {' '}{guestCount === 1 ? 'the 1 guest' : `all ${guestCount} guests`} on this node to other nodes
+                  {stoppedCount > 0 ? `, stopped ones included` : ''}
                   {maxPerRun ? `, up to ${maxPerRun} per run` : ''}{hasWindows ? ', inside its migration windows' : ''},
                   skipping the usual observation, cooldown and ignore-tag checks, and keeps going every run until none are left.
-                  Containers restart when they move.
-                  {stoppedCount > 0 ? ` ${plural(stoppedCount, 'stopped guest')} stay put unless you plan an evacuation.` : ''}
+                  {runningCount > 0 ? ' Running containers restart when they move.' : ''}
                 </li>
-              ) : autoLive ? (
-                <li>Automation only moves running guests, and this node has none running, so nothing moves on its own.</li>
               ) : auto.enabled ? (
                 <li>Automation is in dry-run, so nothing moves on its own; its runs only log the evacuation moves they would make.</li>
               ) : (
@@ -422,7 +421,7 @@ export default function NodeDetailsModal({
               <button onClick={() => { setConfirmMaint(false); setMaintError(null); }} disabled={savingMaint} className={`${BTN_SECONDARY} flex-1 sm:flex-none justify-center`}>
                 Cancel
               </button>
-              <button onClick={() => applyMaintenance(true)} disabled={savingMaint} className={`${autoLive && runningCount > 0 ? BTN_DANGER : BTN_PRIMARY} flex-1 sm:flex-none justify-center whitespace-nowrap`}>
+              <button onClick={() => applyMaintenance(true)} disabled={savingMaint} className={`${autoLive && guestCount > 0 ? BTN_DANGER : BTN_PRIMARY} flex-1 sm:flex-none justify-center whitespace-nowrap`}>
                 {savingMaint ? <><Loader className="animate-spin" size={16} /> Saving…</> : 'Enter maintenance'}
               </button>
             </div>

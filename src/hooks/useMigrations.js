@@ -4,7 +4,9 @@ import { notify } from '../components/Toast.jsx';
 // Give up following a migration task after this many consecutive failed
 // status checks, or after this long in total; the outcome is then unknown.
 const MAX_POLL_ERRORS = 5;
-const MAX_TRACK_MS = 30 * 60 * 1000;
+// No wall-clock cap: a large-disk migration can run for hours, and giving up
+// while Proxmox still reports it running would mark it failed and halt Run Plan.
+// Tracking stops only on a finished task or MAX_POLL_ERRORS failed checks in a row.
 
 const { useState, useRef } = React;
 
@@ -60,7 +62,7 @@ export function useMigrations(API_BASE, deps = {}) {
   // Follow one Proxmox migration task until it ends. Success is counted only
   // when the task stops with exitstatus 'OK'; any other exit text is a failure
   // carrying that text. Polling gives up after MAX_POLL_ERRORS consecutive
-  // errors or MAX_TRACK_MS in total and reports the outcome as unknown.
+  // errors in a row and reports the outcome as unknown.
   //
   // Returns a Promise resolving to {vmid, status, error?, newNode?} with
   // status 'success' | 'failed' | 'cancelled'. Fire-and-forget callers ignore
@@ -76,7 +78,6 @@ export function useMigrations(API_BASE, deps = {}) {
     setGuestsMigrating(prev => ({ ...prev, [vmid]: true }));
 
     return new Promise((resolvePoll) => {
-      const startedAt = Date.now();
       let pollErrors = 0;
       let inFlight = false;
       let done = false;
@@ -155,10 +156,6 @@ export function useMigrations(API_BASE, deps = {}) {
         if (inFlight || done) return;
         inFlight = true;
         try {
-          if (Date.now() - startedAt > MAX_TRACK_MS) {
-            finishUnknown(`not finished after ${Math.round(MAX_TRACK_MS / 60000)} min`);
-            return;
-          }
           const taskStatusResponse = await fetch(`${API_BASE}/tasks/${sourceNode}/${taskId}`);
           const taskStatus = await taskStatusResponse.json().catch(() => ({}));
           if (!taskStatusResponse.ok || !taskStatus.success) {

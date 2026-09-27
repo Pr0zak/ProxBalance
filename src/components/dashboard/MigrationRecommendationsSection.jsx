@@ -118,7 +118,7 @@ export default function MigrationRecommendationsSection({
 
   // Conflicts that the current deferrals have not resolved yet.
   const unresolvedTargets = new Set(
-    conflicts.filter(c => !conflictState(c, summary, deferred).fits).map(c => c.target_node),
+    conflicts.filter(c => !conflictState(c, summary, deferred, selectedRecs.length ? selectedVmids : null).fits).map(c => c.target_node),
   );
   const isConflicting = (r) => !!r.has_conflict && unresolvedTargets.has(r.conflict_target || r.target_node);
 
@@ -427,6 +427,7 @@ export default function MigrationRecommendationsSection({
               summary={summary}
               recommendations={recommendations}
               deferred={deferred}
+              scope={selectedRecs.length ? selectedVmids : null}
               onToggleDefer={toggleDefer}
               onDeferMany={setDeferredMany}
               onSendElsewhere={handleSendElsewhere}

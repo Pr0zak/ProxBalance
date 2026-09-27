@@ -100,16 +100,17 @@ def test_conflict_without_alternative_is_a_defer():
     assert c["resolution_vmid"] is not None
 
 
-def test_conflict_counts_guests_leaving_the_target_first():
-    # pve4 receives three guests (~51.6% allocated) but also sends away a
-    # guest using 9.3 GB (30%); the planner runs that move first.
+def test_conflict_does_not_net_outgoing_moves():
+    # pve4 receives three guests (~51.6% allocated) and is also recommended to
+    # send away a guest using 9.3 GB. automigrate may never run that outgoing
+    # move (filters, per-run cap, no planner ordering), so it must not hide the
+    # conflict; it is only listed as a possible resolution.
     guests = dict(GUESTS, **{"150": {"cpu_current": 10.0, "cpu_cores": 2, "mem_used_gb": 9.3, "mem_max_gb": 12.0}})
     recs = RECS + [_rec(150, "pve4", "pve5", 12.0, improvement=5.0)]
-    assert detect_migration_conflicts(recs, NODES, guests, cpu_threshold=85, mem_threshold=70, penalty_cfg={}) == []
-    c = detect_migration_conflicts(recs, NODES, guests, cpu_threshold=85, mem_threshold=50, penalty_cfg={})
+    c = detect_migration_conflicts(recs, NODES, guests, cpu_threshold=85, mem_threshold=70, penalty_cfg={})
     assert len(c) == 1 and c[0]["target_node"] == "pve4"
     assert [g["vmid"] for g in c[0]["outgoing_guests"]] == [150]
-    assert c[0]["combined_predicted_mem"] == pytest.approx(31.2 - 30.0 + 16.0 / 31 * 100, abs=0.2)
+    assert c[0]["combined_predicted_mem"] == pytest.approx(31.2 + 16.0 / 31 * 100, abs=0.2)
 
 
 def test_conflict_and_batch_impact_agree_on_incoming_impact():

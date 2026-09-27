@@ -400,10 +400,12 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
         else:
             batch_recs = recs_by_priority
 
-        # Guests the batch moves *off* this node free what they use today.
-        # The execution planner runs those moves first ("frees capacity"), so
-        # they count before the incoming ones land. Same estimator as the
-        # summary's batch impact, so the UI's numbers and these agree.
+        # Guests recommended to move *off* this node are listed (with what they
+        # would free) so the UI can offer them as a resolution, but they are NOT
+        # netted off here: automigrate filters recommendations independently
+        # (confidence, cooldown, risk, per-run cap) and does not follow the
+        # planner's "free capacity first" order, so an outgoing move may never
+        # run. has_conflict gates automated moves, so it must stay conservative.
         outgoing: List[Dict[str, Any]] = []
         freed_cpu = 0.0
         freed_mem = 0.0
@@ -422,8 +424,8 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
             })
 
         # Simulate combined post-migration load for the batch
-        combined_cpu = max(0.0, current_cpu - freed_cpu)
-        combined_mem = max(0.0, current_mem - freed_mem)
+        combined_cpu = float(current_cpu)
+        combined_mem = float(current_mem)
         incoming: List[Dict[str, Any]] = []
 
         for rec in batch_recs:

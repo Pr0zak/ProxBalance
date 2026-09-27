@@ -12,9 +12,9 @@ import { conflictState, vkey } from './planMath.js';
  * one, its alternative target as a one-click migrate dialog.
  */
 export default function ConflictResolver({
-  conflict, summary, recommendations, deferred, onToggleDefer, onDeferMany, onSendElsewhere, canMigrate,
+  conflict, summary, recommendations, deferred, scope = null, onToggleDefer, onDeferMany, onSendElsewhere, canMigrate,
 }) {
-  const st = conflictState(conflict, summary, deferred);
+  const st = conflictState(conflict, summary, deferred, scope);
   const label = st.metric === 'mem' ? 'memory' : 'CPU';
   const deferredHere = st.incoming.filter(g => g.deferred);
 
