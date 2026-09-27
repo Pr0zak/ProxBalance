@@ -130,10 +130,18 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   // A period change clears it (the pinned time may not exist in the new window).
   const [pinnedT, setPinnedT] = useState(null);
   const lastPointerRef = useRef('mouse');
+  // Latest prev/next migration times, read by the key handler without re-binding it.
+  const migStepRef = useRef({ prev: undefined, next: undefined });
   useEffect(() => { setPinnedT(null); setHover(null); }, [period]);
   useEffect(() => {
     if (pinnedT == null) return;
-    const onKey = (e) => { if (e.key === 'Escape') setPinnedT(null); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setPinnedT(null); return; }
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const target = e.key === 'ArrowLeft' ? migStepRef.current.prev : e.key === 'ArrowRight' ? migStepRef.current.next : undefined;
+      if (target != null) { e.preventDefault(); setPinnedT(target); }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [pinnedT]);
@@ -251,19 +259,35 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const latest = clusterVals.length ? clusterVals[clusterVals.length - 1] : null;
   const trend = clusterVals.length > 1 ? (latest - clusterVals[0]) : null;
 
-  // ---- Hover (snap to nearest decimated index) ----
+  // ---- Hover (snap to a nearby migration marker, else the nearest decimated index) ----
+  // Markers are magnetic: within SNAP_PX screen pixels (wider for touch) the cursor
+  // locks onto the marker, so an event can be hit without pixel-perfect aim.
+  const SNAP_PX = { mouse: 14, touch: 24 };
+  const findSnapBin = (pxX, rectW, pointerType) => {
+    if (!showMarkers || !markerBins.length) return null;
+    const limit = pointerType === 'mouse' ? SNAP_PX.mouse : SNAP_PX.touch;
+    let bi = null, bd = Infinity;
+    markerBins.forEach((b, i) => {
+      const d = Math.abs((b.x / w) * rectW - pxX);
+      if (d < bd) { bd = d; bi = i; }
+    });
+    return bd <= limit ? bi : null;
+  };
   const handleMouseMove = (e) => {
     if (!ts.length) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pxX = e.clientX - rect.left, pxY = e.clientY - rect.top;
     const vbX = (pxX / rect.width) * w;
     if (vbX < pad - 2 || vbX > w - pad + 2) { setHover(null); return; }
+    const snapBin = findSnapBin(pxX, rect.width, lastPointerRef.current);
+    const targetX = snapBin != null ? markerBins[snapBin].x : vbX;
     let bi = 0, bd = Infinity;
     for (let i = 0; i < ts.length; i++) {
-      const d = Math.abs(xFor(ts[i]) - vbX);
+      const d = Math.abs(xFor(ts[i]) - targetX);
       if (d < bd) { bd = d; bi = i; }
     }
-    setHover({ idx: bi, pixelX: pxX, pixelY: pxY, containerW: rect.width });
+    const pixelX = snapBin != null ? (targetX / w) * rect.width : pxX;
+    setHover({ idx: bi, snapBin, pixelX, pixelY: pxY, containerW: rect.width });
   };
 
   // Hover index can outlive the data it was computed against (period switch,
@@ -282,10 +306,18 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const handleClick = (e) => {
     if (!hasData) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const vbX = ((e.clientX - rect.left) / rect.width) * w;
-    const t = Math.min(tEnd, Math.max(tStart, tStart + ((vbX - pad) / (w - 2 * pad)) * tRange));
-    const idx = nearestIdx(t);
-    setPinnedT(pinIdx === idx ? null : ts[idx]);
+    const pxX = e.clientX - rect.left;
+    const snapBin = findSnapBin(pxX, rect.width, lastPointerRef.current);
+    if (snapBin != null) {
+      // Pin the migration's own time so the panel lists it and prev/next step from it.
+      const mt = markerBins[snapBin].items[0].t;
+      setPinnedT(pinnedT === mt ? null : mt);
+    } else {
+      const vbX = (pxX / rect.width) * w;
+      const t = Math.min(tEnd, Math.max(tStart, tStart + ((vbX - pad) / (w - 2 * pad)) * tRange));
+      const idx = nearestIdx(t);
+      setPinnedT(pinIdx === idx ? null : ts[idx]);
+    }
     // A tap also fires an emulated mousemove; drop that tooltip so it doesn't
     // linger over the chart once the pinned panel opens.
     if (lastPointerRef.current !== 'mouse') setHover(null);
@@ -303,7 +335,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
       if (isNaN(t) || t < tStart || t > tEnd) return null;
       const guest = m.name || (m.vmid ? `VM/CT ${m.vmid}` : 'guest');
       const route = (m.source_node && m.target_node) ? `${m.source_node} → ${m.target_node}` : '';
-      return { t, x: xFor(t), statusKey: statusKeyFor(m.status), label: `${new Date(t).toLocaleString()} — ${guest} ${route} · ${m.status}` };
+      return { t, x: xFor(t), guest, route, status: m.status, statusKey: statusKeyFor(m.status), label: `${new Date(t).toLocaleString()} — ${guest} ${route} · ${m.status}` };
     })
     .filter(Boolean)
     .sort((a, b) => a.x - b.x);
@@ -322,6 +354,8 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
       markerBins.push({ x: m.x, xSum: m.x, items: [m] });
     }
   });
+  // The marker the cursor has locked onto (see findSnapBin), if any.
+  const hoverBin = hoverOk && hover.snapBin != null ? markerBins[hover.snapBin] || null : null;
   // Cluster view: snap a bin to the nearest sample so its dot sits on the health line.
   const yOnLine = (binX) => {
     if (!hasData) return h - pad;
@@ -338,6 +372,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const migTimes = Array.from(new Set(rawMarkers.map(m => m.t))).sort((a, b) => a - b);
   const prevMigT = pinInWindow ? [...migTimes].reverse().find(t => t < pinnedT) : undefined;
   const nextMigT = pinInWindow ? migTimes.find(t => t > pinnedT) : undefined;
+  migStepRef.current = { prev: prevMigT, next: nextMigT };
   let pin = null;
   if (pinIdx != null) {
     const e = ent[pinIdx];
@@ -415,7 +450,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
       <div ref={containerRef} className="relative">
         <svg
-          viewBox={`0 0 ${w} ${h + 8}`} className="w-full cursor-crosshair" style={{ height: 88 }}
+          viewBox={`0 0 ${w} ${h + 8}`} className={`w-full ${hoverBin ? 'cursor-pointer' : 'cursor-crosshair'}`} style={{ height: 88 }}
           preserveAspectRatio="none" onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
           onPointerDown={(e) => { lastPointerRef.current = e.pointerType || 'mouse'; }} onClick={handleClick}
           aria-label="Cluster health chart — click or tap to pin a moment"
@@ -465,16 +500,19 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             // Downward triangle with its tip on the line (round dots get stretched into
             // ovals by preserveAspectRatio="none"). Count badges are HTML (below) so the
             // digits aren't horizontally stretched by that same scaling.
+            // The marker under a snapped cursor grows so the lock-on is visible.
+            const hot = hoverBin === b;
+            const hw = hot ? 5 : 3, hh = hot ? 11 : 7;
             if (view === 'cluster' && hasData) {
               const cy = yOnLine(b.x);
               return (
-                <polygon key={i} points={`${b.x - 3},${cy - 7} ${b.x + 3},${cy - 7} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth="0.5">
+                <polygon key={i} points={`${b.x - hw},${cy - hh} ${b.x + hw},${cy - hh} ${b.x},${cy}`} fill={color} stroke="white" strokeWidth={hot ? 1 : 0.5}>
                   <title>{binTitle(b.items)}</title>
                 </polygon>
               );
             }
             return (
-              <polygon key={i} points={`${b.x - 3},${h + 2} ${b.x + 3},${h + 2} ${b.x},${h - 4}`} fill={color}>
+              <polygon key={i} points={`${b.x - hw},${h + 2} ${b.x + hw},${h + 2} ${b.x},${h + 2 - (hot ? 10 : 6)}`} fill={color}>
                 <title>{binTitle(b.items)}</title>
               </polygon>
             );
@@ -486,8 +524,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
           {hoverOk && (
             <line
-              x1={xFor(ts[hover.idx])} y1={pad} x2={xFor(ts[hover.idx])} y2={h - pad}
-              stroke="currentColor" className="text-pb-text dark:text-white" strokeOpacity="0.4" strokeWidth="0.6" pointerEvents="none"
+              x1={hoverBin ? hoverBin.x : xFor(ts[hover.idx])} y1={pad} x2={hoverBin ? hoverBin.x : xFor(ts[hover.idx])} y2={h - pad}
+              stroke={hoverBin ? binColor(hoverBin.items) : 'currentColor'} className="text-pb-text dark:text-white"
+              strokeOpacity={hoverBin ? 0.9 : 0.4} strokeWidth={hoverBin ? 1.2 : 0.6} pointerEvents="none"
             />
           )}
         </svg>
@@ -533,8 +572,26 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             : { left: hover.pixelX + 12, top: Math.max(0, hover.pixelY - 50) };
           const i = hover.idx;
           return (
-            <div className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px] max-w-[220px]" style={style}>
-              <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap mb-0.5">{fmtHoverTime(ts[i])}</div>
+            <div className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px] max-w-[260px]" style={style}>
+              <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap mb-0.5">{fmtHoverTime(hoverBin ? hoverBin.items[0].t : ts[i])}</div>
+              {hoverBin && (
+                <div className="mb-1 pb-1 border-b border-pb-border dark:border-slate-700 space-y-0.5">
+                  {hoverBin.items.slice(0, 4).map((m, k) => (
+                    <div key={k} className="flex items-start gap-1.5">
+                      <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ background: MARKER_COLORS[m.statusKey] }} />
+                      <span className="min-w-0">
+                        <span className="font-semibold text-pb-text dark:text-white">{m.guest}</span>
+                        {m.route && <span className="text-pb-text2 dark:text-gray-400"> {m.route}</span>}
+                        {m.statusKey !== 'ok' && <span className="text-pb-text2 dark:text-gray-400"> · {m.status}</span>}
+                      </span>
+                    </div>
+                  ))}
+                  {hoverBin.items.length > 4 && (
+                    <div className="text-pb-text2 dark:text-gray-400">+{hoverBin.items.length - 4} more</div>
+                  )}
+                  <div className="text-[10px] text-pb-text2 dark:text-gray-500">Click to pin · ←/→ steps between migrations</div>
+                </div>
+              )}
               {view === 'cluster' ? (
                 <div className="font-semibold text-pb-text dark:text-white tabular-nums">{clusterVals[i] != null ? clusterVals[i].toFixed(1) : '—'} <span className="font-normal text-pb-text2 dark:text-gray-500">cluster</span></div>
               ) : (
@@ -666,7 +723,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
-          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · click to pin details' : 'click the chart to pin details'}</span>
+          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · markers snap on hover · click to pin, ←/→ to step' : 'markers snap on hover · click to pin, ←/→ to step'}</span>
         </div>
       )}
     </div>
