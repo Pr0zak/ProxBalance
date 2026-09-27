@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from proxbalance.config_manager import load_config, save_config, CONFIG_FILE, BASE_PATH
 from proxbalance.error_handlers import api_route
+from proxbalance.secret_fields import redact_automation_config, restore_placeholders
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -770,7 +771,7 @@ def automigrate_config():
             auto_config = config.get('automated_migrations', {})
             return jsonify({
                 "success": True,
-                "config": auto_config
+                "config": redact_automation_config(auto_config)
             })
 
         except Exception as e:
@@ -788,6 +789,9 @@ def automigrate_config():
 
             if 'automated_migrations' not in config:
                 config['automated_migrations'] = {}
+
+            # Secrets arrive as '***' when the client never saw them; keep stored values.
+            updates = restore_placeholders(updates, config['automated_migrations'])
 
             # Keys that belong at the root config level, not under automated_migrations
             root_level_keys = {'distribution_balancing'}
@@ -881,7 +885,7 @@ OnUnitActiveSec={interval_minutes}min
             return jsonify({
                 "success": True,
                 "message": "Configuration updated successfully",
-                "config": config['automated_migrations']
+                "config": redact_automation_config(config['automated_migrations'])
             })
 
         except Exception as e:

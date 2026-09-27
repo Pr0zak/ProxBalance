@@ -8,6 +8,7 @@ from proxbalance.config_manager import (
     load_config, save_config, get_proxmox_client, validate_config_structure,
     CONFIG_FILE, BASE_PATH,
 )
+from proxbalance.secret_fields import redact_config, restore_placeholders
 
 config_bp = Blueprint("config", __name__, url_prefix=None)
 
@@ -114,56 +115,9 @@ def check_permissions():
             })
 
 
-# Fields that must never be exposed via GET
-_SECRET_FIELDS = frozenset({
-    'proxmox_api_token_secret',
-    'proxmox_password',
-})
-
-_SECRET_AI_FIELDS = frozenset({
-    'api_key',
-})
-
-_SECRET_NOTIFICATION_FIELDS = frozenset({
-    'api_token',
-    'user_key',
-    'bot_token',
-    'webhook_url',
-    'smtp_password',
-})
-
-
 def _redact_config(config: dict) -> dict:
     """Return a copy of config with secret fields replaced by '***'."""
-    redacted = dict(config)
-
-    for field in _SECRET_FIELDS:
-        if redacted.get(field):
-            redacted[field] = '***'
-
-    # Redact AI provider keys
-    if 'ai_config' in redacted:
-        redacted['ai_config'] = dict(redacted['ai_config'])
-        for provider, provider_config in redacted['ai_config'].items():
-            if isinstance(provider_config, dict):
-                redacted['ai_config'][provider] = dict(provider_config)
-                for field in _SECRET_AI_FIELDS:
-                    if redacted['ai_config'][provider].get(field):
-                        redacted['ai_config'][provider][field] = '***'
-
-    # Redact notification provider secrets
-    if 'notifications' in redacted:
-        redacted['notifications'] = dict(redacted['notifications'])
-        if 'providers' in redacted['notifications']:
-            redacted['notifications']['providers'] = dict(redacted['notifications']['providers'])
-            for provider, provider_config in redacted['notifications']['providers'].items():
-                if isinstance(provider_config, dict):
-                    redacted['notifications']['providers'][provider] = dict(provider_config)
-                    for field in _SECRET_NOTIFICATION_FIELDS:
-                        if redacted['notifications']['providers'][provider].get(field):
-                            redacted['notifications']['providers'][provider][field] = '***'
-
-    return redacted
+    return redact_config(config)
 
 
 @config_bp.route("/api/config", methods=["GET"])
@@ -195,6 +149,16 @@ def update_config():
             "success": False,
             "error": config.get('message')
         }), 500
+
+    # The UI echoes '***' for secrets it never saw; keep the stored values.
+    data = restore_placeholders(data, config)
+    # Unchanged credentials shouldn't count as a change (that restarts the collector),
+    # and an empty secret must never wipe a stored one.
+    for key in ("proxmox_auth_method", "proxmox_api_token_id", "proxmox_api_token_secret"):
+        if key in data and data[key] == config.get(key):
+            del data[key]
+    if data.get("proxmox_api_token_secret") == "" and config.get("proxmox_api_token_secret"):
+        del data["proxmox_api_token_secret"]
 
     # Update basic settings
     if "collection_interval_minutes" in data:
