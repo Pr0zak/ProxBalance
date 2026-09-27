@@ -8,7 +8,49 @@ workload patterns, burst detection, and optimal migration timing.
 from typing import Any, Dict, List, Optional
 
 
-def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: str) -> Dict[str, Any]:
+QUIET_STRETCH_HOURS = 3
+
+
+def _resolve_tz(tz_name: Optional[str]):
+    """Return a tzinfo for ``tz_name``, falling back to UTC when unset or unknown."""
+    from datetime import timezone
+
+    if not tz_name:
+        return timezone.utc
+    try:
+        from zoneinfo import ZoneInfo
+
+        return ZoneInfo(tz_name)
+    except Exception:
+        return timezone.utc
+
+
+def quietest_stretch(hourly_avgs: Dict[int, float], length: int = QUIET_STRETCH_HOURS) -> Optional[Dict[str, float]]:
+    """Find the contiguous ``length``-hour stretch with the lowest mean load.
+
+    The search wraps midnight (22:00-01:00 is a valid stretch). Stretches
+    containing an hour with no samples are skipped.
+
+    Args:
+        hourly_avgs: Mapping of hour-of-day (0-23) to average load.
+        length: Stretch length in hours.
+
+    Returns:
+        ``{"start": int, "end": int, "avg": float}`` (``end`` is exclusive and
+        taken modulo 24), or None when no complete stretch has data.
+    """
+    best = None
+    for start in range(24):
+        hours = [(start + i) % 24 for i in range(length)]
+        if any(h not in hourly_avgs for h in hours):
+            continue
+        avg = sum(hourly_avgs[h] for h in hours) / length
+        if best is None or avg < best["avg"]:
+            best = {"start": start, "end": (start + length) % 24, "avg": avg}
+    return best
+
+
+def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: str, tz_name: Optional[str] = None) -> Dict[str, Any]:
     """Analyze historical score data to detect recurring workload patterns.
 
     Identifies daily cycles (business-hours vs off-hours), weekly patterns,
@@ -19,6 +61,8 @@ def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: st
         score_history: List of score snapshot dicts from score_history.json,
             each with 'timestamp' and 'nodes' dict.
         node_name: The node to analyze.
+        tz_name: IANA timezone (e.g. the automation schedule's) used for
+            hour-of-day and day-of-week bucketing. Defaults to UTC.
 
     Returns:
         A dict describing detected patterns::
@@ -34,6 +78,7 @@ def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: st
     """
     from datetime import datetime, timezone
 
+    tzinfo = _resolve_tz(tz_name)
     result: Dict = {
         "node": node_name,
         "data_points": 0,
@@ -68,6 +113,9 @@ def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: st
             ts = datetime.fromisoformat(ts_str)
         except (ValueError, TypeError):
             continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.astimezone(tzinfo)
 
         result["data_points"] += 1
         hourly_buckets[ts.hour].append(cpu)
@@ -158,14 +206,19 @@ def analyze_workload_patterns(score_history: List[Dict[str, Any]], node_name: st
             "threshold_used": round(burst_threshold, 1),
         }
 
-    # Recommendation timing: suggest best window for migrations
-    if hourly_avgs:
-        best_hours = sorted(hourly_avgs.keys(), key=lambda h: hourly_avgs[h])[:4]
-        best_start = min(best_hours)
-        best_end = max(best_hours) + 1
+    # Recommendation timing: the quietest contiguous stretch (wrapping
+    # midnight). Picking the N lowest hours independently and reporting
+    # min..max produced spans like "04:00-23:00" that were mostly busy.
+    quiet = quietest_stretch(hourly_avgs)
+    if quiet:
+        result["quiet_window"] = {
+            "start_hour": quiet["start"],
+            "end_hour": quiet["end"],
+            "avg_cpu": round(quiet["avg"], 1),
+        }
         result["recommendation_timing"] = (
-            f"Migrate during {best_start:02d}:00-{best_end:02d}:00 "
-            f"when load is minimal (avg {hourly_avgs[best_hours[0]]:.0f}%)"
+            f"Migrate during {quiet['start']:02d}:00-{quiet['end']:02d}:00 "
+            f"when load is minimal (avg {quiet['avg']:.0f}%)"
         )
 
     return result

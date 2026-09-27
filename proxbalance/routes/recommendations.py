@@ -1213,9 +1213,16 @@ def get_workload_patterns():
                 })
             node_names = {target_node}
 
+        # Bucket hours in the automation schedule's timezone so quiet windows
+        # and burst hours line up with the migration windows users configure.
+        try:
+            schedule_tz = load_config().get("automated_migrations", {}).get("schedule", {}).get("timezone") or "UTC"
+        except Exception:
+            schedule_tz = "UTC"
+
         patterns = []
         for node_name in sorted(node_names):
-            pattern = analyze_workload_patterns(filtered_history, node_name)
+            pattern = analyze_workload_patterns(filtered_history, node_name, tz_name=schedule_tz)
             if pattern.get("data_points", 0) > 0:
                 patterns.append(pattern)
 
@@ -1224,6 +1231,7 @@ def get_workload_patterns():
             "patterns": patterns,
             "history_entries": len(filtered_history),
             "hours_analyzed": hours,
+            "timezone": schedule_tz,
         })
 
     except Exception as e:
