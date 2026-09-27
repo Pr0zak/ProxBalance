@@ -1,4 +1,6 @@
-import { GLASS_CARD } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { X, ChevronLeft, ChevronRight } from '../Icons.jsx';
+import { NODE_COLORS } from './nodeSeries.js';
 
 const { useState, useEffect, useRef } = React;
 
@@ -31,8 +33,6 @@ const DETAIL = [
   { id: 'med',  label: 'Med',  max: 100 },
   { id: 'low',  label: 'Low',  max: 40 },
 ];
-// Distinct per-node colors (cycled if more nodes than colors).
-const NODE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
 // Keep at most maxN points by taking every Nth (always preserving the last).
 function decimate(arr, maxN) {
@@ -125,6 +125,17 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const setShowMarkers = (v) => { setShowMarkersState(v); lsSet('clusterHealthChartMarkers', v ? '1' : '0'); };
 
   const [hover, setHover] = useState(null);
+  // Pinned moment (ms timestamp): click/tap the chart to keep a detail panel open.
+  // A period change clears it (the pinned time may not exist in the new window).
+  const [pinnedT, setPinnedT] = useState(null);
+  const lastPointerRef = useRef('mouse');
+  useEffect(() => { setPinnedT(null); setHover(null); }, [period]);
+  useEffect(() => {
+    if (pinnedT == null) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPinnedT(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pinnedT]);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -254,6 +265,31 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     setHover({ idx: bi, pixelX: pxX, pixelY: pxY, containerW: rect.width });
   };
 
+  // Hover index can outlive the data it was computed against (period switch,
+  // refetch); only draw it while it still points at a sample.
+  const hoverOk = !!hover && hasData && hover.idx < ts.length;
+
+  // ---- Pin (click / tap) ----
+  const nearestIdx = (t) => {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < ts.length; i++) { const d = Math.abs(ts[i] - t); if (d < bd) { bd = d; bi = i; } }
+    return bi;
+  };
+  const pinInWindow = pinnedT != null && hasData && pinnedT >= tStart && pinnedT <= tEnd;
+  const pinIdx = pinInWindow ? nearestIdx(pinnedT) : null;
+  // Click / tap pins the nearest sample; clicking the pinned sample again unpins.
+  const handleClick = (e) => {
+    if (!hasData) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const vbX = ((e.clientX - rect.left) / rect.width) * w;
+    const t = Math.min(tEnd, Math.max(tStart, tStart + ((vbX - pad) / (w - 2 * pad)) * tRange));
+    const idx = nearestIdx(t);
+    setPinnedT(pinIdx === idx ? null : ts[idx]);
+    // A tap also fires an emulated mousemove; drop that tooltip so it doesn't
+    // linger over the chart once the pinned panel opens.
+    if (lastPointerRef.current !== 'mouse') setHover(null);
+  };
+
   const fmtHoverTime = (t) => {
     const d = new Date(t);
     if (periodCfg.bucket >= 1440) return d.toLocaleDateString();
@@ -295,6 +331,39 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   };
 
   const showLegend = view !== 'cluster' && nodeNames.length > 0;
+
+  // ---- Pinned moment: sample at the pin, change vs ~24h earlier, nearby migrations ----
+  // prev/next step through every migration in the window (even with markers hidden).
+  const migTimes = Array.from(new Set(rawMarkers.map(m => m.t))).sort((a, b) => a - b);
+  const prevMigT = pinInWindow ? [...migTimes].reverse().find(t => t < pinnedT) : undefined;
+  const nextMigT = pinInWindow ? migTimes.find(t => t > pinnedT) : undefined;
+  let pin = null;
+  if (pinIdx != null) {
+    const e = ent[pinIdx];
+    // Migrations are gathered around the pinned time itself (which is the exact
+    // migration time after a prev/next jump), node values from the nearest sample.
+    const nearMs = Math.max(periodCfg.ms / 40, 3600000);
+    // Accept a "24h earlier" sample within ±2h (or ±1.5 buckets on coarse periods).
+    const tol = Math.max(periodCfg.bucket * 90000, 2 * 3600000);
+    let dayAgo = null, bd = Infinity;
+    allEntries.forEach(x => { const d = Math.abs(x.t - (e.t - 86400000)); if (d < bd) { bd = d; dayAgo = x; } });
+    if (bd > tol) dayAgo = null;
+    const nodes = nodeNames.map((n, k) => {
+      const cur = e.nodes[n] || {};
+      const prev = dayAgo?.nodes?.[n];
+      const hr = typeof cur.suitability === 'number' ? cur.suitability : null;
+      return {
+        name: n, color: colorFor(k), headroom: hr, cpu: cur.cpu, mem: cur.mem,
+        delta: hr != null && typeof prev?.suitability === 'number' ? hr - prev.suitability : null,
+      };
+    });
+    const lowest = nodes.filter(n => n.headroom != null).sort((a, b) => a.headroom - b.headroom)[0]?.name;
+    const migs = (migrationHistory || [])
+      .map(m => ({ m, t: new Date(m.timestamp).getTime() }))
+      .filter(x => !isNaN(x.t) && Math.abs(x.t - pinnedT) <= nearMs)
+      .sort((a, b) => a.t - b.t);
+    pin = { e, nodes, lowest, migs, nearMs, hasDayAgo: !!dayAgo, clusterDelta: dayAgo ? e.cluster - dayAgo.cluster : null };
+  }
 
   return (
     <div className={`${GLASS_CARD} mb-3`}>
@@ -345,8 +414,10 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
       <div ref={containerRef} className="relative">
         <svg
-          viewBox={`0 0 ${w} ${h + 8}`} className="w-full" style={{ height: 88 }}
+          viewBox={`0 0 ${w} ${h + 8}`} className="w-full cursor-crosshair" style={{ height: 88 }}
           preserveAspectRatio="none" onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
+          onPointerDown={(e) => { lastPointerRef.current = e.pointerType || 'mouse'; }} onClick={handleClick}
+          aria-label="Cluster health chart — click or tap to pin a moment"
         >
           <defs>
             <linearGradient id="clusterHealthGrad" x1="0" y1="0" x2="0" y2="1">
@@ -408,7 +479,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             );
           })}
 
-          {hover && hasData && (
+          {pinIdx != null && (
+            <line x1={xFor(pinnedT)} y1={0} x2={xFor(pinnedT)} y2={h} stroke="#3b82f6" strokeWidth="1.5" pointerEvents="none" />
+          )}
+
+          {hoverOk && (
             <line
               x1={xFor(ts[hover.idx])} y1={pad} x2={xFor(ts[hover.idx])} y2={h - pad}
               stroke="currentColor" className="text-pb-text dark:text-white" strokeOpacity="0.4" strokeWidth="0.6" pointerEvents="none"
@@ -450,7 +525,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           );
         })}
 
-        {hover && hasData && (() => {
+        {hoverOk && (() => {
           const flipLeft = hover.containerW && hover.pixelX > hover.containerW * 0.6;
           const style = flipLeft
             ? { right: Math.max(0, hover.containerW - hover.pixelX + 12), top: Math.max(0, hover.pixelY - 50) }
@@ -481,6 +556,87 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
         })()}
       </div>
 
+      {pin && (
+        <div className={`${INNER_CARD} mt-2 text-xs`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <div className="flex items-baseline gap-x-2 gap-y-0.5 flex-wrap min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Pinned</span>
+              <span className="font-semibold text-pb-text dark:text-white">{fmtHoverTime(pin.e.t)}</span>
+              <span className="text-pb-text2 dark:text-gray-400">
+                cluster <span className="font-semibold tabular-nums text-pb-text dark:text-white">{pin.e.cluster.toFixed(1)}</span>
+                {pin.clusterDelta != null && <Delta v={pin.clusterDelta} />}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button type="button" className={`${BTN_ICON} !p-1 disabled:opacity-40`} disabled={prevMigT == null} onClick={() => setPinnedT(prevMigT)} title="Jump to the previous migration" aria-label="Previous migration">
+                <ChevronLeft size={ICON.inline} />
+              </button>
+              <span className="text-[10px] text-pb-text2 dark:text-gray-500 px-0.5">migration</span>
+              <button type="button" className={`${BTN_ICON} !p-1 disabled:opacity-40`} disabled={nextMigT == null} onClick={() => setPinnedT(nextMigT)} title="Jump to the next migration" aria-label="Next migration">
+                <ChevronRight size={ICON.inline} />
+              </button>
+              <button type="button" className={`${BTN_ICON} !p-1 ml-1`} onClick={() => setPinnedT(null)} title="Unpin (Esc)" aria-label="Unpin">
+                <X size={ICON.inline} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+            {pin.nodes.map(n => (
+              <div key={n.name} className="rounded-md border border-pb-border dark:border-slate-700/60 bg-white/60 dark:bg-slate-900/30 px-2 py-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="flex items-center gap-1 font-medium text-pb-text dark:text-gray-200">
+                    <span className="inline-block w-2 h-2 rounded-sm" style={{ background: n.color }} />{n.name}
+                  </span>
+                  {n.name === pin.lowest && <span className="text-[9px] font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400">lowest</span>}
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-1.5 mt-0.5">
+                  <span className="text-base font-bold tabular-nums" style={{ color: n.headroom != null ? healthColor(n.headroom) : undefined }}>
+                    {n.headroom != null ? n.headroom.toFixed(1) : '—'}
+                  </span>
+                  <span className="hidden sm:inline text-[10px] text-pb-text2 dark:text-gray-500">headroom</span>
+                  {n.delta != null && <Delta v={n.delta} />}
+                </div>
+                {(typeof n.cpu === 'number' || typeof n.mem === 'number') && (
+                  <div className="text-[10px] text-pb-text2 dark:text-gray-500 tabular-nums">
+                    CPU {typeof n.cpu === 'number' ? `${n.cpu.toFixed(0)}%` : '—'} · Mem {typeof n.mem === 'number' ? `${n.mem.toFixed(0)}%` : '—'}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="text-[10px] font-medium text-pb-text2 dark:text-gray-400 mb-1">
+            Migrations within ±{pin.nearMs >= 2 * 86400000 ? `${Math.round(pin.nearMs / 86400000)}d` : `${Math.round(pin.nearMs / 3600000)}h`}
+          </div>
+          {pin.migs.length === 0 ? (
+            <div className="text-pb-text2 dark:text-gray-500">No migrations near this point.</div>
+          ) : (
+            <ul className="space-y-1">
+              {pin.migs.slice(0, 8).map(({ m, t }) => (
+                <li key={m.id || t} className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full shrink-0" style={{ background: MARKER_COLORS[statusKeyFor(m.status)] }} />
+                  <div className="min-w-0">
+                    <div className="text-pb-text dark:text-gray-200">
+                      <span className="tabular-nums text-pb-text2 dark:text-gray-400">{new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      {' '}<span className="font-semibold">{m.name || `VM/CT ${m.vmid}`}</span>
+                      {m.source_node && m.target_node && <span> {m.source_node} → {m.target_node}</span>}
+                      <span className="text-pb-text2 dark:text-gray-500"> · {m.status}</span>
+                    </div>
+                    {m.reason && <div className="text-[10px] text-pb-text2 dark:text-gray-500 truncate" title={m.reason}>{m.reason}</div>}
+                  </div>
+                </li>
+              ))}
+              {pin.migs.length > 8 && <li className="text-pb-text2 dark:text-gray-500">…and {pin.migs.length - 8} more</li>}
+            </ul>
+          )}
+          <div className="text-[10px] text-pb-text2 dark:text-gray-500 mt-1.5">
+            {periodCfg.bucket > 0 ? `${periodCfg.bucket >= 60 ? `${periodCfg.bucket / 60}h` : `${periodCfg.bucket}-min`} average` : 'Raw sample'} at this time (the chart line is smoothed)
+            {' · '}{pin.hasDayAgo ? 'arrows = change vs ~24h earlier' : 'no sample ~24h earlier to compare'}
+          </div>
+        </div>
+      )}
+
       {showLegend && (
         <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
           {nodeNames.map((n, k) => (
@@ -509,10 +665,20 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
           <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
-          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · hover for detail' : 'hover for detail'}</span>
+          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · click to pin details' : 'click the chart to pin details'}</span>
         </div>
       )}
     </div>
+  );
+}
+
+// Signed change; for headroom/health higher is better, so up is green.
+function Delta({ v }) {
+  if (Math.abs(v) < 0.05) return <span className="ml-1 text-[10px] text-pb-text2 dark:text-gray-500 tabular-nums">±0</span>;
+  return (
+    <span className={`ml-1 text-[10px] font-semibold tabular-nums ${v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+      {v > 0 ? '↑' : '↓'}{Math.abs(v).toFixed(1)}
+    </span>
   );
 }
 
