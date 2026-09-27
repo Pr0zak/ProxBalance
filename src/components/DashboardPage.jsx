@@ -72,7 +72,7 @@ export default function DashboardPage({
   // Guest profiles & score history
   guestProfiles, scoreHistory, fetchScoreHistory,
   // Maintenance & evacuation
-  maintenanceNodes, setMaintenanceNodes, evacuatingNodes, setEvacuatingNodes, planningNodes, setPlanningNodes,
+  maintenanceNodes, setMaintenanceNodes, setNodeMaintenance, maintenanceSaving, evacuatingNodes, setEvacuatingNodes, planningNodes, setPlanningNodes,
   evacuationPlan, setEvacuationPlan, planNode, setPlanNode,
   guestActions, setGuestActions, guestTargets, setGuestTargets,
   showConfirmModal, setShowConfirmModal,
@@ -94,6 +94,13 @@ export default function DashboardPage({
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
   const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
+
+  // Every path that opens the guest window goes through here, so the window (and
+  // the Migrate dialog it opens) always knows which node the guest is on. Rows from
+  // the Guests/Nodes tables carry `node`; the map and node window set `currentNode`.
+  const openGuestDetails = (guest) => setSelectedGuestDetails(
+    guest && typeof guest === 'object' ? { ...guest, currentNode: guest.currentNode || guest.node } : guest
+  );
 
   // Section layout — user can promote tabs out of ClusterSection into standalone sections
   const [promotedSections, setPromotedSections] = useState(() => {
@@ -204,7 +211,7 @@ export default function DashboardPage({
           chartPeriod={chartPeriod}
           setChartPeriod={setChartPeriod}
           setSelectedNode={setSelectedNode}
-          setSelectedGuestDetails={setSelectedGuestDetails}
+          setSelectedGuestDetails={openGuestDetails}
           showPoweredOffGuests={showPoweredOffGuests}
           setShowPoweredOffGuests={setShowPoweredOffGuests}
           clusterMapViewMode={clusterMapViewMode}
@@ -298,7 +305,7 @@ export default function DashboardPage({
             setClusterMapViewMode={setClusterMapViewMode}
             maintenanceNodes={maintenanceNodes}
             setSelectedNode={setSelectedNode}
-            setSelectedGuestDetails={setSelectedGuestDetails}
+            setSelectedGuestDetails={openGuestDetails}
             guestsMigrating={guestsMigrating}
             migrationProgress={migrationProgress}
             completedMigrations={completedMigrations}
@@ -342,8 +349,12 @@ export default function DashboardPage({
           API_BASE={API_BASE}
           data={data}
           recommendations={recommendations}
-          setSelectedGuestDetails={setSelectedGuestDetails}
+          setSelectedGuestDetails={openGuestDetails}
           setConfirmMigration={setConfirmMigration}
+          setNodeMaintenance={setNodeMaintenance}
+          maintenanceSaving={maintenanceSaving}
+          automationStatus={automationStatus}
+          automationConfig={automationConfig}
         />
 
         <GuestDetailsModal
@@ -360,6 +371,7 @@ export default function DashboardPage({
           setShowMigrationDialog={setShowMigrationDialog}
           setConfirmMigration={setConfirmMigration}
           guestProfiles={guestProfiles}
+          setError={setError}
           API_BASE={API_BASE}
         />
 
@@ -378,6 +390,7 @@ export default function DashboardPage({
           maintenanceNodes={maintenanceNodes}
           fetchGuestLocations={fetchGuestLocations}
           setError={setError}
+          data={data}
           API_BASE={API_BASE}
         />
 

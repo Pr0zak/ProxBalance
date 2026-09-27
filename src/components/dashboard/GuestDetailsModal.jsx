@@ -1,9 +1,11 @@
 import {
   HardDrive, Package, X, Activity, AlertCircle, Folder,
-  AlertTriangle, CheckCircle,
-  BarChart2, RefreshCw, MoveRight, TrendingUp, TrendingDown, Minus
+  AlertTriangle, CheckCircle, XCircle,
+  RefreshCw, MoveRight, TrendingUp
 } from '../Icons.jsx';
-import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import {
+  MODAL_OVERLAY, MODAL_CONTAINER, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, statusBadge
+} from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 
@@ -17,18 +19,124 @@ const BEHAVIOR_META = {
   unknown:   { label: 'Unknown',   cls: 'bg-gray-100 dark:bg-slate-700 text-pb-text2 dark:text-gray-400' },
 };
 
+const ratingTone = (r) =>
+  r >= 70 ? 'text-green-600 dark:text-green-400'
+  : r >= 50 ? 'text-yellow-600 dark:text-yellow-400'
+  : r >= 30 ? 'text-orange-600 dark:text-orange-400'
+  : 'text-red-600 dark:text-red-400';
+
+// Ranked target nodes for this guest (from /api/guest/<vmid>/migration-options),
+// shown as soon as the window opens so picking a destination is one click.
+function MoveToTargets({ opts, loading, failed, onRetry, canMigrate, hostNode, onMove }) {
+  if (loading) {
+    return (
+      <div className={`${INNER_CARD} !p-3 mb-3 flex items-center gap-2 text-xs text-pb-text2 dark:text-gray-400`}>
+        <RefreshCw size={14} className="animate-spin" /> Scoring every node for this guest…
+      </div>
+    );
+  }
+  if (failed) {
+    return (
+      <div className={`${INNER_CARD} !p-3 mb-3 flex items-center justify-between gap-2 text-xs text-red-600 dark:text-red-400`}>
+        <span className="flex items-center gap-1.5"><AlertCircle size={14} /> Couldn't score the other nodes for this guest.</span>
+        {onRetry && <button onClick={onRetry} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}><RefreshCw size={12} /> Retry</button>}
+      </div>
+    );
+  }
+  if (!opts || !opts.options) return null;
+  const current = opts.options.find(o => o.is_current);
+  const candidates = opts.options.filter(o => !o.is_current && !o.disqualified);
+  const blocked = opts.options.filter(o => !o.is_current && o.disqualified);
+  const best = candidates[0];
+
+  return (
+    <div className="mb-3">
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <h4 className="text-sm font-semibold text-pb-text dark:text-white flex items-center gap-1.5">
+          <MoveRight size={14} className="text-blue-600 dark:text-blue-400" /> Move to
+        </h4>
+        {current && (
+          <span className="text-[11px] text-pb-text2 dark:text-gray-400">
+            staying on {hostNode}: <span className={`font-semibold ${ratingTone(current.suitability_rating)}`}>{Math.round(current.suitability_rating)}</span>/100 headroom
+          </span>
+        )}
+      </div>
+      {candidates.length === 0 ? (
+        <div className={`${INNER_CARD} !p-3 text-xs text-pb-text2 dark:text-gray-400`}>No node can take this guest right now.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {candidates.map(opt => {
+            const isBest = opt === best;
+            const gain = opt.improvement || 0;
+            const mt = opt.metrics || {};
+            const oc = opt.overcommit_ratio || 0;
+            const dir = opt.trend_analysis && opt.trend_analysis.cpu_direction;
+            return (
+              <div
+                key={opt.node}
+                className={`${INNER_CARD} !p-3 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 items-center sm:flex sm:flex-col sm:items-stretch ${isBest ? 'ring-1 ring-pb-accent/60 dark:ring-pb-accent-dark/60' : ''}`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-sm text-pb-text dark:text-white">{opt.node}</span>
+                    {isBest && <span className={statusBadge('blue')}>Best</span>}
+                    {(dir === 'rising' || dir === 'sustained_increase') && <TrendingUp size={12} className="text-orange-500" />}
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className={`text-lg font-bold tabular-nums ${ratingTone(opt.suitability_rating)}`} title="Headroom this node would have with the guest on it">
+                      {Math.round(opt.suitability_rating)}<span className="text-[10px] font-medium text-pb-text2 dark:text-gray-500">/100</span>
+                    </span>
+                    <span className={`text-[11px] font-medium ${gain >= 1 ? 'text-green-600 dark:text-green-400' : 'text-pb-text2 dark:text-gray-500'}`}>
+                      {gain >= 1 ? `+${gain.toFixed(0)} vs staying` : 'no gain'}
+                    </span>
+                  </div>
+                </div>
+                {canMigrate && onMove && (
+                  <button
+                    onClick={() => onMove(opt)}
+                    className={`${isBest ? BTN_PRIMARY : BTN_SECONDARY} !px-2.5 !py-1 !text-xs justify-center sm:order-last sm:mt-auto`}
+                  >
+                    Move here
+                  </button>
+                )}
+                <div className="col-span-2 sm:col-span-1 text-[11px] text-pb-text2 dark:text-gray-400 tabular-nums">
+                  after move: CPU {Math.round(mt.predicted_cpu || 0)}% · RAM {Math.round(mt.predicted_mem || 0)}%
+                  {oc > 1.0 && <span className="ml-1 text-orange-600 dark:text-orange-400" title={`Memory committed: ${(oc * 100).toFixed(0)}% of physical`}>· OC {(oc * 100).toFixed(0)}%</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {blocked.length > 0 && (
+        <div className="mt-1.5 space-y-0.5">
+          {blocked.map(opt => (
+            <div key={opt.node} className="flex items-center gap-1.5 text-[11px] text-pb-text2 dark:text-gray-400">
+              <XCircle size={12} className="text-pb-text3 dark:text-gray-500 shrink-0" />
+              <span className="font-medium text-pb-text dark:text-gray-300">{opt.node}</span> — {opt.reason}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function GuestDetailsModal({
   selectedGuestDetails, setSelectedGuestDetails,
   guestMigrationOptions, loadingGuestOptions, fetchGuestMigrationOptions,
   canMigrate,
   setSelectedGuest, setMigrationTarget, setShowMigrationDialog,
   setConfirmMigration, guestProfiles,
+  setError,
   API_BASE
 }) {
   const [togglingExempt, setTogglingExempt] = useState(false);
+  const [exemptError, setExemptError] = useState(null);
+  const [optsDoneFor, setOptsDoneFor] = useState(null);
   const [history, setHistory] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [openSec, setOpenSec] = useState({ usage: false, profile: false, iowait: false, tags: false, mounts: false, passthrough: false, migrate: false });
+  const [openSec, setOpenSec] = useState({ usage: false, profile: false, iowait: false, tags: false, mounts: false, passthrough: false });
   const toggleSec = (k) => setOpenSec(o => ({ ...o, [k]: !o[k] }));
 
   const vmid = selectedGuestDetails?.vmid;
@@ -44,12 +152,32 @@ export default function GuestDetailsModal({
     return () => { cancelled = true; };
   }, [vmid, API_BASE]);
 
+  // Score every node for this guest as soon as it opens, and again for each new
+  // guest. The fetcher passed down already sends the thresholds and the current
+  // maintenance nodes. Results are matched to this vmid below, so a slow answer
+  // for the previous guest is never shown as this one's.
+  const loadOptions = () => {
+    if (vmid == null || !fetchGuestMigrationOptions) return () => {};
+    let cancelled = false;
+    setOptsDoneFor(null);
+    Promise.resolve(fetchGuestMigrationOptions(vmid))
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setOptsDoneFor(vmid); });
+    return () => { cancelled = true; };
+  };
+  useEffect(() => { setExemptError(null); return loadOptions(); }, [vmid]);
+
   if (!selectedGuestDetails) return null;
 
   const allTags = (selectedGuestDetails.tags && selectedGuestDetails.tags.all_tags) || [];
   const hasExemptTag = allTags.includes('io_exempt') || allTags.includes('proxbalance_io_exempt');
   const isPassthroughExempt = selectedGuestDetails.io_exempt_reason === 'passthrough';
   const isVM = selectedGuestDetails.type === 'qemu' || (selectedGuestDetails.type || '').toUpperCase() === 'VM';
+  // Rows from the Guests tab carry `node`; rows from a node window carry `currentNode`.
+  const hostNode = selectedGuestDetails.currentNode || selectedGuestDetails.node;
+  const moveOpts = guestMigrationOptions && String(guestMigrationOptions.vmid) === String(vmid) ? guestMigrationOptions : null;
+  const optsFailed = optsDoneFor === vmid && !loadingGuestOptions && !moveOpts;
+  const bestTarget = moveOpts && moveOpts.options ? moveOpts.options.find(o => !o.is_current && !o.disqualified) : null;
   const profile = guestProfiles && (guestProfiles[vmid] || guestProfiles[String(vmid)]);
   const affinityGroups = (selectedGuestDetails.tags && selectedGuestDetails.tags.affinity_groups) || [];
   const excludeGroups = (selectedGuestDetails.tags && selectedGuestDetails.tags.exclude_groups) || [];
@@ -59,7 +187,7 @@ export default function GuestDetailsModal({
       vmid: selectedGuestDetails.vmid,
       name: selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`,
       type: isVM ? 'VM' : 'CT',
-      source_node: (guestMigrationOptions && guestMigrationOptions.current_node) || selectedGuestDetails.node || selectedGuestDetails.currentNode,
+      source_node: (moveOpts && moveOpts.current_node) || hostNode,
       target_node: opt.node,
       mem_gb: selectedGuestDetails.mem_max_gb || 0,
       suitability_rating: opt.suitability_rating,
@@ -72,19 +200,28 @@ export default function GuestDetailsModal({
   const toggleIoExempt = async () => {
     if (togglingExempt) return;
     setTogglingExempt(true);
+    setExemptError(null);
     const vmid = selectedGuestDetails.vmid;
+    // Read a JSON reply and turn any failure into an Error with the server's message.
+    const expectOk = async (res, what) => {
+      let body = null;
+      try { body = await res.json(); } catch (e) { /* non-JSON error page */ }
+      if (!res.ok || (body && body.success === false)) {
+        throw new Error(`${what}: ${(body && (body.error || body.message)) || `HTTP ${res.status}`}`);
+      }
+      return body || {};
+    };
     try {
       if (hasExemptTag) {
-        await fetch(`${API_BASE}/guests/${vmid}/tags/io_exempt`, { method: 'DELETE' });
+        await expectOk(await fetch(`${API_BASE}/guests/${vmid}/tags/io_exempt`, { method: 'DELETE' }), 'Removing the io_exempt tag failed');
       } else {
-        await fetch(`${API_BASE}/guests/${vmid}/tags`, {
+        await expectOk(await fetch(`${API_BASE}/guests/${vmid}/tags`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tag: 'io_exempt' })
-        });
+        }), 'Adding the io_exempt tag failed');
       }
-      const r = await fetch(`${API_BASE}/guests/${vmid}/tags/refresh`, { method: 'POST' });
-      const rj = await r.json();
-      if (rj.success && rj.tags) {
+      const rj = await expectOk(await fetch(`${API_BASE}/guests/${vmid}/tags/refresh`, { method: 'POST' }), 'Tag saved, but re-reading the tags failed');
+      if (rj.tags) {
         const nowExempt = (rj.tags.all_tags || []).includes('io_exempt');
         setSelectedGuestDetails(prev => prev ? {
           ...prev,
@@ -96,26 +233,27 @@ export default function GuestDetailsModal({
         fetch(`${API_BASE}/refresh`, { method: 'POST' }).catch(() => {});
       }
     } catch (e) {
-      /* best-effort; dashboard refresh will reconcile */
+      setExemptError(e.message);
+      if (setError) setError(e.message);
     }
     setTogglingExempt(false);
   };
 
   return (
     <div className={`${MODAL_OVERLAY} !items-end sm:!items-center z-[60]`} onClick={() => setSelectedGuestDetails(null)}>
-      <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-3xl')} !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+      <div className={`${MODAL_CONTAINER.replace('max-w-md', 'max-w-3xl')} !p-0 !rounded-t-xl sm:!rounded-2xl !max-h-[85vh] sm:!max-h-[90vh] flex flex-col !overflow-hidden`} onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b border-pb-border dark:border-slate-700 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className={`p-1.5 rounded-lg shrink-0 ${selectedGuestDetails.type === 'qemu' ? 'bg-purple-500' : 'bg-green-500'}`}>
-              {selectedGuestDetails.type === 'qemu' ? <HardDrive size={20} className="text-pb-text dark:text-white" /> : <Package size={20} className="text-pb-text dark:text-white" />}
+            <div className={`p-1.5 rounded-lg shrink-0 ${isVM ? 'bg-purple-500' : 'bg-green-500'}`}>
+              {isVM ? <HardDrive size={20} className="text-white" /> : <Package size={20} className="text-white" />}
             </div>
             <div className="min-w-0">
               <h3 className="text-base sm:text-lg font-bold text-pb-text dark:text-white truncate">
                 {selectedGuestDetails.name || `Guest ${selectedGuestDetails.vmid}`}
               </h3>
               <p className="text-xs text-pb-text2 dark:text-gray-400">
-                {selectedGuestDetails.type === 'qemu' ? 'VM' : 'CT'} #{selectedGuestDetails.vmid}
+                {isVM ? 'VM' : 'CT'} #{selectedGuestDetails.vmid}
               </p>
             </div>
           </div>
@@ -141,7 +279,7 @@ export default function GuestDetailsModal({
                 {selectedGuestDetails.status}
               </div>
               <span className="text-xs text-pb-text2 dark:text-gray-400">on</span>
-              <span className="text-xs font-medium text-pb-text dark:text-white">{selectedGuestDetails.currentNode}</span>
+              <span className="text-xs font-medium text-pb-text dark:text-white">{hostNode}</span>
             </div>
           </div>
 
@@ -206,6 +344,17 @@ export default function GuestDetailsModal({
               </div>
             </div>
           </div>
+
+          {/* Where this guest could go, ranked (auto-loaded) */}
+          <MoveToTargets
+            opts={moveOpts}
+            loading={loadingGuestOptions}
+            failed={optsFailed}
+            onRetry={loadOptions}
+            canMigrate={canMigrate && !!setConfirmMigration}
+            hostNode={hostNode}
+            onMove={migrateTo}
+          />
 
           {/* Usage history (real time-series) */}
           <Section title="Usage (24h)" isOpen={openSec.usage} onToggle={() => toggleSec('usage')}>
@@ -279,6 +428,7 @@ export default function GuestDetailsModal({
                 {togglingExempt ? '…' : (hasExemptTag || isPassthroughExempt) ? 'IOWait exempt ✓' : 'Exempt from IOWait'}
               </button>
             </div>
+            {exemptError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{exemptError}</p>}
           </Section>
 
           {/* Tags */}
@@ -428,154 +578,38 @@ export default function GuestDetailsModal({
                   <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <div className="text-xs text-red-800 dark:text-red-200">
                     <p className="font-semibold mb-1">Migration Blocked</p>
-                    <p>This {selectedGuestDetails.type} has {selectedGuestDetails.local_disks.total_pinned_disks} disk(s) that prevent automatic migration. Manual intervention required.</p>
+                    <p>This {isVM ? 'VM' : 'container'} has {selectedGuestDetails.local_disks.total_pinned_disks} disk(s) that prevent automatic migration. Manual intervention required.</p>
                   </div>
                 </div>
               </div>
             </Section>
           )}
 
-          {/* Migration Options - Node Score Comparison */}
-          <Section
-            title={<><BarChart2 size={16} className="text-blue-600 dark:text-blue-400" /> Migration Options</>}
-            badge={<span className="text-xs font-normal text-pb-text2 dark:text-gray-400">score across all nodes</span>}
-            isOpen={openSec.migrate}
-            onToggle={() => {
-              const willOpen = !openSec.migrate;
-              toggleSec('migrate');
-              if (willOpen && !guestMigrationOptions && fetchGuestMigrationOptions) {
-                fetchGuestMigrationOptions(selectedGuestDetails.vmid);
-              }
-            }}
-          >
-            {(
-              <div className="space-y-2">
-                {loadingGuestOptions ? (
-                  <div className="flex items-center justify-center p-4 text-pb-text2 dark:text-gray-400">
-                    <RefreshCw size={16} className="animate-spin mr-2" /> Loading migration options...
-                  </div>
-                ) : guestMigrationOptions?.options ? (
-                  <>
-                    {guestMigrationOptions.options.map((opt) => {
-                      const maxScore = Math.max(...guestMigrationOptions.options.filter(o => !o.disqualified).map(o => o.score), 1);
-                      const barWidth = opt.disqualified ? 100 : Math.min(100, (opt.score / maxScore) * 100);
-                      return (
-                        <div key={opt.node} className={`p-2 rounded border text-xs ${
-                          opt.is_current
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                            : opt.disqualified
-                            ? 'border-pb-border dark:border-slate-700 bg-gray-800/50 opacity-60'
-                            : opt.suitable
-                            ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
-                            : 'border-pb-border dark:border-slate-700'
-                        }`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-pb-text dark:text-white flex items-center gap-1">
-                                {opt.node}
-                                {/* CPU trend arrow */}
-                                {!opt.disqualified && opt.trend_analysis && (() => {
-                                  const dir = opt.trend_analysis.cpu_direction;
-                                  if (dir === 'sustained_increase') return <TrendingUp size={10} className="text-red-500" title={`CPU ${opt.trend_analysis.cpu_rate_per_day > 0 ? '+' : ''}${opt.trend_analysis.cpu_rate_per_day?.toFixed(1)}%/day`} />;
-                                  if (dir === 'rising') return <TrendingUp size={10} className="text-orange-600 dark:text-orange-400" title="CPU rising" />;
-                                  if (dir === 'falling' || dir === 'sustained_decrease') return <TrendingDown size={10} className="text-green-500" title="CPU falling" />;
-                                  return <Minus size={10} className="text-pb-text2 dark:text-gray-400" title="CPU stable" />;
-                                })()}
-                              </span>
-                              {opt.is_current && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded">CURRENT</span>}
-                              {opt.disqualified && <span className="px-1.5 py-0.5 bg-gray-400 text-pb-text dark:text-white text-[9px] font-bold rounded">DISQUALIFIED</span>}
-                              {!opt.is_current && !opt.disqualified && opt.improvement > 0 && (
-                                <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded ${
-                                  opt.improvement >= 30 ? 'bg-green-500 text-white' :
-                                  opt.improvement >= 15 ? 'bg-yellow-500 text-white' :
-                                  'bg-gray-600 text-pb-text dark:text-gray-300'
-                                }`}>+{opt.improvement.toFixed(0)} pts</span>
-                              )}
-                              {/* Stability badge */}
-                              {!opt.disqualified && opt.trend_analysis?.stability_score != null && (() => {
-                                const s = opt.trend_analysis.stability_score;
-                                const label = s >= 80 ? 'Stable' : s >= 60 ? 'Moderate' : s >= 40 ? 'Variable' : 'Volatile';
-                                const color = s >= 80 ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                                  : s >= 60 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                                  : s >= 40 ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
-                                  : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300';
-                                return <span className={`px-1 py-0 rounded text-[9px] font-medium ${color}`} title={`Stability: ${s}/100`}>{label}</span>;
-                              })()}
-                              {/* Overcommit badge */}
-                              {!opt.disqualified && opt.overcommit_ratio > 0.85 && (() => {
-                                const oc = opt.overcommit_ratio;
-                                const color = oc > 1.2 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                                  : oc > 1.0 ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                                  : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300';
-                                return <span className={`px-1 py-0 rounded text-[9px] font-medium ${color}`} title={`Memory overcommit: ${(oc * 100).toFixed(0)}% (${opt.committed_mem_gb?.toFixed(1) || '?'}GB committed)`}>OC {(oc * 100).toFixed(0)}%</span>;
-                              })()}
-                            </div>
-                            <div className="text-right">
-                              {opt.disqualified ? (
-                                <span className="text-pb-text2 dark:text-gray-400">{opt.reason}</span>
-                              ) : (
-                                <span className={`font-semibold ${
-                                  opt.suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
-                                  opt.suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                  opt.suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
-                                  'text-red-600 dark:text-red-400'
-                                }`} title="Target headroom (0–100, higher = more room)">{opt.suitability_rating}<span className="text-[10px] opacity-70">/100</span></span>
-                              )}
-                            </div>
-                          </div>
-                          {!opt.disqualified && (
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-1.5 rounded-full overflow-hidden bg-gray-600 flex-1">
-                                <div className={`rounded-full transition-all ${
-                                  opt.suitability_rating >= 70 ? 'bg-green-500' :
-                                  opt.suitability_rating >= 50 ? 'bg-yellow-500' :
-                                  opt.suitability_rating >= 30 ? 'bg-orange-500' :
-                                  'bg-red-500'
-                                }`} style={{ width: `${opt.suitability_rating}%` }} />
-                              </div>
-                              {!opt.is_current && canMigrate && setConfirmMigration && (
-                                <button
-                                  onClick={() => migrateTo(opt)}
-                                  className="shrink-0 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold flex items-center gap-1"
-                                  title={`Migrate to ${opt.node}`}
-                                >
-                                  <MoveRight size={11} />Migrate
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <div className="text-xs text-pb-text2 dark:text-gray-400 p-2">No migration data available</div>
-                )}
-              </div>
-            )}
-          </Section>
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-pb-border dark:border-slate-700">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-pb-border dark:border-slate-700 shrink-0">
           <button
             onClick={() => setSelectedGuestDetails(null)}
-            className="px-4 py-2 text-pb-text dark:text-gray-300 bg-pb-surface2 dark:bg-gray-700 hover:bg-gray-600 rounded font-medium flex items-center justify-center gap-1.5"
+            className={BTN_SECONDARY}
           >
             <X size={14} /> Close
           </button>
-          {canMigrate && selectedGuestDetails.status === 'running' && (
+          {canMigrate && bestTarget && setConfirmMigration ? (
+            <button onClick={() => migrateTo(bestTarget)} className={BTN_PRIMARY}>
+              <MoveRight size={16} /> Move to {bestTarget.node}
+            </button>
+          ) : canMigrate && !loadingGuestOptions && (
             <button
               onClick={() => {
-                setSelectedGuest(selectedGuestDetails);
+                setSelectedGuest({ ...selectedGuestDetails, currentNode: hostNode });
                 setMigrationTarget('');
                 setShowMigrationDialog(true);
                 setSelectedGuestDetails(null);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded font-medium flex items-center gap-2"
+              className={BTN_SECONDARY}
             >
-              <MoveRight size={16} />
-              Migrate
+              <MoveRight size={16} /> Migrate…
             </button>
           )}
         </div>

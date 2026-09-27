@@ -428,7 +428,8 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
 
         # Start evacuation in background thread
         def run_evacuation():
-            _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox)
+            _execute_evacuation(session_id, source_node, guest_vmids, available_nodes, guest_actions, proxmox,
+                                guest_targets=guest_targets, target_node=target_node)
 
         thread = threading.Thread(target=run_evacuation, daemon=True)
         thread.start()
@@ -450,7 +451,62 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
 # Background evacuation execution
 # ---------------------------------------------------------------------------
 
-def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int], available_nodes: List[Dict[str, Any]], guest_actions: Dict[str, str], proxmox: Any) -> None:
+def _pick_evacuation_target(
+    vmid: Any,
+    storage_volumes: Set[str],
+    available_nodes: List[Dict[str, Any]],
+    target_storage_map: Dict[str, Set[str]],
+    pending_counts: Dict[str, int],
+    guest_targets: Optional[Dict[str, str]] = None,
+    target_node: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    """Choose the node a guest migrates to during an evacuation.
+
+    Priority is the operator's per-guest pick (*guest_targets*), then a forced
+    *target_node* for the whole evacuation, then the least-loaded node that has
+    every storage the guest uses. An explicit pick is never silently replaced:
+    if it is unavailable or lacks the guest's storage, an error is returned so
+    the caller records a per-guest failure instead of moving the guest
+    somewhere the operator did not choose.
+
+    Args:
+        vmid: Guest ID (int or str).
+        storage_volumes: Storage IDs the guest's disks live on.
+        available_nodes: Dicts with 'node', 'cpu', 'mem' keys.
+        target_storage_map: Node name -> set of active storage IDs.
+        pending_counts: Node name -> guests already assigned this run.
+        guest_targets: Optional vmid (str) -> chosen target node.
+        target_node: Optional forced target for every guest.
+
+    Returns:
+        Tuple of (target node or None, error message or None).
+    """
+    picked = (guest_targets or {}).get(str(vmid))
+    requested = picked or target_node
+    if requested:
+        label = "Selected target" if picked else "Target node"
+        if requested not in [n['node'] for n in available_nodes]:
+            return None, f"{label} '{requested}' is not available (offline, in maintenance, or the source node)"
+        missing = storage_volumes - target_storage_map.get(requested, set())
+        if missing:
+            return None, f"{label} '{requested}' missing required storage: {', '.join(sorted(missing))}"
+        return requested, None
+
+    compatible = [n for n in available_nodes
+                  if not (storage_volumes - target_storage_map.get(n['node'], set()))]
+    if not compatible:
+        if available_nodes:
+            common = set.intersection(*[target_storage_map.get(n['node'], set()) for n in available_nodes])
+            missing_on_all = storage_volumes - common
+        else:
+            missing_on_all = storage_volumes
+        return None, f"Storage not available on any target node: {', '.join(sorted(missing_on_all))}"
+    best = min(compatible, key=lambda n: n['cpu'] + n['mem'] + (pending_counts.get(n['node'], 0) * 10))
+    return best['node'], None
+
+
+def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int], available_nodes: List[Dict[str, Any]], guest_actions: Dict[str, str], proxmox: Any,
+                        guest_targets: Optional[Dict[str, str]] = None, target_node: Optional[str] = None) -> None:
     """Execute evacuation in background thread.
 
     Iterates over all guests on the source node, determines their type and
@@ -465,7 +521,12 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
         available_nodes: List of dicts with 'node', 'cpu', 'mem' keys.
         guest_actions: Dict mapping vmid (str) to action string.
         proxmox: ProxmoxAPI client instance.
+        guest_targets: Optional dict mapping vmid (str) to the target node the
+            operator picked in the plan. Honoured exactly; a pick that cannot
+            take the guest is recorded as that guest's failure.
+        target_node: Optional forced target node for every guest.
     """
+    guest_targets = {str(k): v for k, v in (guest_targets or {}).items() if v}
     try:
         print(f"[{session_id}] Executing evacuation of {len(guest_vmids)} guests from {source_node}", file=sys.stderr)
         results = []
@@ -616,47 +677,35 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                             storage_id = value.split(':')[0]
                             storage_volumes.add(storage_id)
 
-                # Filter available nodes to only those with compatible storage
-                compatible_nodes = []
-                for node_info in available_nodes:
-                    node = node_info['node']
-                    node_storage = target_storage_map.get(node, set())
-                    missing_storage = storage_volumes - node_storage
-
-                    if not missing_storage:
-                        compatible_nodes.append(node_info)
-
-                # Check if any compatible nodes exist
-                if not compatible_nodes:
-                    # No compatible targets - fail this migration
-                    missing_on_all = storage_volumes - set.intersection(*[target_storage_map.get(n['node'], set()) for n in available_nodes]) if available_nodes else storage_volumes
-                    error_msg = f"Storage not available on any target node: {', '.join(sorted(missing_on_all))}"
-                    print(f"  \u2717 {error_msg}", file=sys.stderr)
+                # Pick the target: operator's per-guest choice > forced node > least loaded
+                target_node_for_guest, pick_error = _pick_evacuation_target(
+                    vmid, storage_volumes, available_nodes, target_storage_map,
+                    execution_pending_counts, guest_targets, target_node,
+                )
+                if pick_error:
+                    print(f"  \u2717 {pick_error}", file=sys.stderr)
                     result = {
                         "vmid": vmid,
                         "success": False,
-                        "error": error_msg
+                        "error": pick_error
                     }
                     results.append(result)
                     failed += 1
                     _update_evacuation_progress(session_id, idx + 1, successful, failed, result)
                     continue
+                execution_pending_counts[target_node_for_guest] = execution_pending_counts.get(target_node_for_guest, 0) + 1
 
-                # Find best target node from compatible nodes only
-                target_node = min(compatible_nodes, key=lambda n: n['cpu'] + n['mem'] + (execution_pending_counts[n['node']] * 10))['node']
-                execution_pending_counts[target_node] += 1
-
-                print(f"  \u2192 Migrating {guest_type.upper()} {vmid} to {target_node} (storage: {', '.join(sorted(storage_volumes)) if storage_volumes else 'none'})", file=sys.stderr)
+                print(f"  \u2192 Migrating {guest_type.upper()} {vmid} to {target_node_for_guest} (storage: {', '.join(sorted(storage_volumes)) if storage_volumes else 'none'})", file=sys.stderr)
 
                 # Execute migration
                 if guest_type == "qemu":
                     task_id = proxmox.nodes(source_node).qemu(vmid).migrate.post(
-                        target=target_node,
+                        target=target_node_for_guest,
                         online=1
                     )
                 else:  # lxc
                     task_id = proxmox.nodes(source_node).lxc(vmid).migrate.post(
-                        target=target_node,
+                        target=target_node_for_guest,
                         restart=1
                     )
 
@@ -735,7 +784,7 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                 if migration_success:
                     result = {
                         "vmid": vmid,
-                        "target": target_node,
+                        "target": target_node_for_guest,
                         "success": True,
                         "task_id": task_id
                     }
