@@ -59,10 +59,10 @@ export default function RunPlanModal({
               {phase === 'done' && 'Plan finished'}
             </h3>
             <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">
-              {steps.length} step{steps.length !== 1 ? 's' : ''} across {groups.length} group{groups.length !== 1 ? 's' : ''}.
+              {steps.length} step{steps.length !== 1 ? 's' : ''} across {groups.length} wave{groups.length !== 1 ? 's' : ''}.
               {maxConcurrent === 1
                 ? ' Running 1 at a time (max_concurrent_migrations).'
-                : ` Up to ${maxConcurrent} at a time within each group, groups run sequentially.`}
+                : ` Up to ${maxConcurrent} at a time within each wave; waves run in order.`}
             </p>
           </div>
           <button
@@ -88,7 +88,7 @@ export default function RunPlanModal({
           <div className="mb-4 p-3 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/40 text-yellow-700 dark:text-yellow-300 text-xs flex items-start gap-2">
             <AlertTriangle size={14} className="shrink-0 mt-0.5" />
             <div>
-              Each step is fired one group at a time. If any migration in a group fails, the run halts and remaining groups are skipped. Already-started migrations cannot be cleanly cancelled. You can close this dialog while it runs — migrations continue in the background and you can reopen it from the “Running plan” button.
+              Waves run one after another. If any migration in a wave fails, the run halts and the remaining waves are skipped. Already-started migrations cannot be cleanly cancelled. You can close this dialog while it runs — migrations continue in the background and you can reopen it from the “Running plan” button.
             </div>
           </div>
         )}
@@ -114,7 +114,7 @@ export default function RunPlanModal({
           {groups.map(([groupKey, groupSteps]) => (
             <div key={groupKey}>
               <div className="text-[10px] uppercase tracking-wider text-pb-text2 dark:text-gray-500 px-1 py-1">
-                Group {groupKey} {groupSteps.length > 1 && <span className="text-pb-text3 dark:text-gray-600">· {groupSteps.length} in parallel</span>}
+                Wave {groupKey} {groupSteps.length > 1 && <span className="text-pb-text3 dark:text-gray-600">· {groupSteps.length} in parallel</span>}
               </div>
               {groupSteps.map(step => {
                 const st = stepStatus[step.vmid] || { status: 'pending' };

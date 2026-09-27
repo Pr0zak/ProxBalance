@@ -7,10 +7,10 @@ export default function AlertsBanner({
   recommendationData, collapsedSections, setCollapsedSections
 }) {
   const hasAdvisories = recommendationData?.capacity_advisories?.length > 0;
-  const hasConflicts = recommendationData?.conflicts?.length > 0;
   const hasForecasts = recommendationData?.forecasts?.length > 0;
 
-  if (!hasAdvisories && !hasConflicts && !hasForecasts) return null;
+  // Target-node conflicts are rendered as ConflictResolver panels by the section.
+  if (!hasAdvisories && !hasForecasts) return null;
 
   return (
     <>
@@ -45,32 +45,6 @@ export default function AlertsBanner({
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Migration Conflicts */}
-      {hasConflicts && (
-        <div className="mb-4 rounded-xl border border-orange-300 dark:border-orange-700/50 bg-orange-50 dark:bg-orange-900/20 p-3 text-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400" />
-            <span className="font-semibold text-orange-800 dark:text-orange-200">
-              Migration Conflicts Detected ({recommendationData.conflicts.length})
-            </span>
-          </div>
-          <div className="space-y-2 text-xs text-orange-700 dark:text-orange-300">
-            {recommendationData.conflicts.map((c, i) => (
-              <div key={i} className="p-2 bg-white dark:bg-gray-800/50 rounded border border-orange-200 dark:border-orange-800">
-                <div className="font-medium mb-1">
-                  Target: {c.target_node} — {c.incoming_guests.length} incoming migrations
-                </div>
-                <div className="flex flex-wrap gap-2 mb-1">
-                  {c.exceeds_cpu && <span className="text-red-600 dark:text-red-400">Combined CPU: {c.combined_predicted_cpu}% (threshold: {c.cpu_threshold}%)</span>}
-                  {c.exceeds_mem && <span className="text-red-600 dark:text-red-400">Combined Memory: {c.combined_predicted_mem}% (threshold: {c.mem_threshold}%)</span>}
-                </div>
-                <div className="italic">{c.resolution}</div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 

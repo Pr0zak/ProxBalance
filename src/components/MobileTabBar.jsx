@@ -22,6 +22,7 @@ export default function MobileTabBar({ activePage, onNavigate, collectedAt, coll
     <>
       <div aria-hidden="true" className="sm:hidden" style={{ height: MOBILE_TABBAR_HEIGHT }} />
       <nav
+        data-mobile-tabbar
         className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-pb-border dark:border-slate-700/50"
         style={{ height: MOBILE_TABBAR_HEIGHT, paddingBottom: 'env(safe-area-inset-bottom)' }}
       >

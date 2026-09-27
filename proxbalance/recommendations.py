@@ -1115,7 +1115,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     advisories = _generate_capacity_advisories(nodes, recommendations, penalty_cfg)
 
     # Build recommendation summary / digest
-    summary = _build_summary(recommendations, skipped_guests, nodes, penalty_cfg)
+    summary = _build_summary(recommendations, skipped_guests, nodes, penalty_cfg, guests=guests,
+                             limits={"cpu": _conflict_cpu, "mem": _conflict_mem})
 
     # Save score history snapshot
     _save_score_snapshot(nodes, recommendations, penalty_cfg)
