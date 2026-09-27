@@ -17,6 +17,10 @@ const ALL_TABS = [
   { id: 'recommendations', label: 'Suggestions', promoteKey: 'recs'   },
 ];
 
+// Internal tab ids ↔ URL slugs
+const TAB_TO_URL = { table: 'nodes', guests: 'guests', map: 'map', charts: 'charts', recommendations: 'suggestions' };
+const URL_TO_TAB = Object.fromEntries(Object.entries(TAB_TO_URL).map(([k, v]) => [v, k]));
+
 const PROMOTABLE = [
   { key: 'recs',   label: 'Suggestions' },
   { key: 'map',    label: 'Map' },
@@ -40,13 +44,16 @@ export default function ClusterSection(props) {
       ? { ...t, label: `Suggestions${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }
       : t);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('clusterSectionTab') || 'table';
-  });
+  // The URL (#/dashboard/<slug>) wins when present; otherwise fall back to the
+  // last tab this browser used.
+  const [storedTab, setStoredTab] = useState(() => localStorage.getItem('clusterSectionTab') || 'table');
+  const routed = props.routeTab ? URL_TO_TAB[props.routeTab] : null;
+  const activeTab = routed || storedTab;
   const effectiveTab = TABS.find(t => t.id === activeTab) ? activeTab : 'table';
   const setTab = (id) => {
-    setActiveTab(id);
+    setStoredTab(id);
     localStorage.setItem('clusterSectionTab', id);
+    props.onRouteTab?.(TAB_TO_URL[id] || id);
   };
 
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
@@ -68,7 +75,7 @@ export default function ClusterSection(props) {
   }, [effectiveTab, props.chartJsLoaded]);
 
   return (
-    <div className={GLASS_CARD}>
+    <div id="cluster-section" className={`${GLASS_CARD} scroll-mt-16`}>
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <div className="flex items-center gap-3">
           <div className={iconBadge('teal', 'cyan')}>

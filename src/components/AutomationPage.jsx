@@ -59,7 +59,9 @@ export default function AutomationPage(props) {
     setMigrationLogsTab,
   } = props;
 
-  const [activeTab, setActiveTab] = useState('schedule');
+  // Sub-tab lives in the URL (#/automation/<tab>) so reload and Back keep it.
+  const activeTab = TABS.some(t => t.id === props.routeTab) ? props.routeTab : 'schedule';
+  const setActiveTab = (id) => props.onRouteTab?.(id);
 
   if (!automationConfig) {
     return (

@@ -1,7 +1,46 @@
-const { useState, useEffect } = React;
+const { useState, useEffect, useCallback } = React;
+
+const PAGES = ['dashboard', 'automation', 'settings'];
+
+// Hash routes: #/<page>[/<sub>], e.g. #/automation/filters, #/dashboard/map.
+// Reload keeps your place, Back/Forward work, and any view can be linked.
+function parseHash() {
+  const [page, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+  return {
+    page: PAGES.includes(page) ? page : 'dashboard',
+    sub: PAGES.includes(page) && sub ? decodeURIComponent(sub) : null,
+  };
+}
+
+function writeHash(page, sub) {
+  const next = `#/${page}${sub ? `/${encodeURIComponent(sub)}` : ''}`;
+  if (window.location.hash !== next) window.location.hash = next;
+}
 
 export function useUIState() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [route, setRoute] = useState(parseHash);
+  const currentPage = route.page;
+  const subPage = route.sub;
+
+  useEffect(() => {
+    const onHash = () => setRoute(parseHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const setCurrentPage = useCallback((page) => {
+    if (page === route.page && !route.sub) return;
+    setRoute({ page, sub: null });
+    writeHash(page, null);
+    window.scrollTo(0, 0);
+  }, [route.page, route.sub]);
+
+  // Navigate to a sub-view; optional page switch in the same step.
+  const setSubPage = useCallback((sub, page = route.page) => {
+    setRoute({ page, sub });
+    writeHash(page, sub);
+    if (page !== route.page) window.scrollTo(0, 0);
+  }, [route.page]);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [scrollToApiConfig, setScrollToApiConfig] = useState(false);
@@ -90,6 +129,7 @@ export function useUIState() {
 
   return {
     currentPage, setCurrentPage,
+    subPage, setSubPage,
     showSettings, setShowSettings,
     showAdvancedSettings, setShowAdvancedSettings,
     scrollToApiConfig, setScrollToApiConfig,

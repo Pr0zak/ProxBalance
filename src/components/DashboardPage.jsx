@@ -20,9 +20,10 @@ import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
 import MigrationModals from './dashboard/MigrationModals.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
-import SystemModals from './dashboard/SystemModals.jsx';
 
 export default function DashboardPage({
+  // Routing
+  routeTab, onRouteTab,
   // Data & loading
   data, setData, loading, error, setError, config,
   // Navigation
@@ -32,11 +33,7 @@ export default function DashboardPage({
   // Cluster health
   clusterHealth,
   // System info & updates
-  systemInfo, showUpdateModal, setShowUpdateModal, updating, updateLog, setUpdateLog,
-  updateResult, setUpdateResult, updateError, handleUpdate,
-  // Branch management
-  showBranchModal, setShowBranchModal, loadingBranches, availableBranches, branchPreview, setBranchPreview,
-  loadingPreview, switchingBranch, rollingBack, fetchBranches, switchBranch, rollbackBranch, clearTestingMode, fetchBranchPreview,
+  systemInfo,
   // Automation
   automationStatus, automationConfig, fetchAutomationStatus, runAutomationNow, runningAutomation,
   runNowMessage, setRunNowMessage, runHistory, expandedRun, setExpandedRun,
@@ -147,6 +144,7 @@ export default function DashboardPage({
           autoMigrateOkGuests={autoMigrateOkGuests}
           affinityGuests={affinityGuests}
           excludeGuests={excludeGuests}
+          onNavigate={onRouteTab}
         />
 
         {/* Auto-migration status banner — expandable to show last-run + run history */}
@@ -181,6 +179,8 @@ export default function DashboardPage({
 
         {/* Unified Cluster section — Nodes / Guests / Map / Charts / Suggestions / Auto tabs */}
         <ClusterSection
+          routeTab={routeTab}
+          onRouteTab={onRouteTab}
           data={data}
           nodeScores={nodeScores}
           recommendationData={recommendationData}
@@ -387,32 +387,6 @@ export default function DashboardPage({
       </div>
     </div>
 
-    <SystemModals
-      showUpdateModal={showUpdateModal}
-      setShowUpdateModal={setShowUpdateModal}
-      updating={updating}
-      updateLog={updateLog}
-      setUpdateLog={setUpdateLog}
-      updateResult={updateResult}
-      setUpdateResult={setUpdateResult}
-      updateError={updateError}
-      handleUpdate={handleUpdate}
-      systemInfo={systemInfo}
-      showBranchModal={showBranchModal}
-      setShowBranchModal={setShowBranchModal}
-      loadingBranches={loadingBranches}
-      availableBranches={availableBranches}
-      branchPreview={branchPreview}
-      setBranchPreview={setBranchPreview}
-      loadingPreview={loadingPreview}
-      switchingBranch={switchingBranch}
-      rollingBack={rollingBack}
-      fetchBranches={fetchBranches}
-      switchBranch={switchBranch}
-      rollbackBranch={rollbackBranch}
-      clearTestingMode={clearTestingMode}
-      fetchBranchPreview={fetchBranchPreview}
-    />
 
     <MigrationModals
       showMigrationDialog={showMigrationDialog}

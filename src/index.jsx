@@ -1,6 +1,7 @@
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
+import SystemModals from './components/dashboard/SystemModals.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
 import useIsMobile from './utils/useIsMobile.js';
@@ -250,6 +251,24 @@ const ProxmoxBalanceManager = () => {
 
   // Run Plan modal + a "Running plan" pill — rendered on every page so the run
   // (state lives in useMigrations) is reachable after closing/navigating away.
+  // Update / branch dialogs are opened from the TopNav, so mount them on every page.
+  const systemModals = (
+    <SystemModals
+      showUpdateModal={updates.showUpdateModal} setShowUpdateModal={updates.setShowUpdateModal}
+      updating={updates.updating} updateLog={updates.updateLog} setUpdateLog={updates.setUpdateLog}
+      updateResult={updates.updateResult} setUpdateResult={updates.setUpdateResult} updateError={updates.updateError}
+      handleUpdate={updates.handleUpdate}
+      systemInfo={updates.systemInfo}
+      showBranchModal={updates.showBranchModal} setShowBranchModal={updates.setShowBranchModal}
+      loadingBranches={updates.loadingBranches} availableBranches={updates.availableBranches}
+      branchPreview={updates.branchPreview} setBranchPreview={updates.setBranchPreview}
+      loadingPreview={updates.loadingPreview} switchingBranch={updates.switchingBranch}
+      rollingBack={updates.rollingBack}
+      fetchBranches={updates.fetchBranches} switchBranch={updates.switchBranch}
+      rollbackBranch={updates.rollbackBranch} clearTestingMode={updates.clearTestingMode} fetchBranchPreview={updates.fetchBranchPreview}
+    />
+  );
+
   const runPlanOverlay = (
     <>
       {migrations.planModalOpen && (
@@ -284,7 +303,7 @@ const ProxmoxBalanceManager = () => {
 
   // Settings Page
   if (ui.currentPage === 'settings') {
-    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<SettingsPage
+    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<SettingsPage
       setCurrentPage={ui.setCurrentPage}
       aiEnabled={ai.aiEnabled} setAiEnabled={ai.setAiEnabled}
       aiProvider={ai.aiProvider} setAiProvider={ai.setAiProvider}
@@ -328,7 +347,8 @@ const ProxmoxBalanceManager = () => {
 
   // Automation Settings Page
   if (ui.currentPage === 'automation') {
-    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<AutomationPage
+    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<AutomationPage
+      routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'automation')}
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
       automigrateLogs={automation.automigrateLogs}
@@ -446,7 +466,8 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Dashboard Page
-  return <div className={PAGE_BG}>{topNav}{runPlanOverlay}<DashboardPage
+  return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<DashboardPage
+    routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'dashboard')}
     data={cluster.data} setData={cluster.setData}
     loading={cluster.loading} error={cluster.error} setError={cluster.setError}
     config={configHook.config}
@@ -456,17 +477,6 @@ const ProxmoxBalanceManager = () => {
     tokenAuthError={auth.tokenAuthError} setTokenAuthError={auth.setTokenAuthError}
     clusterHealth={cluster.clusterHealth}
     systemInfo={updates.systemInfo}
-    showUpdateModal={updates.showUpdateModal} setShowUpdateModal={updates.setShowUpdateModal}
-    updating={updates.updating} updateLog={updates.updateLog} setUpdateLog={updates.setUpdateLog}
-    updateResult={updates.updateResult} setUpdateResult={updates.setUpdateResult} updateError={updates.updateError}
-    handleUpdate={updates.handleUpdate}
-    showBranchModal={updates.showBranchModal} setShowBranchModal={updates.setShowBranchModal}
-    loadingBranches={updates.loadingBranches} availableBranches={updates.availableBranches}
-    branchPreview={updates.branchPreview} setBranchPreview={updates.setBranchPreview}
-    loadingPreview={updates.loadingPreview} switchingBranch={updates.switchingBranch}
-    rollingBack={updates.rollingBack}
-    fetchBranches={updates.fetchBranches} switchBranch={updates.switchBranch}
-    rollbackBranch={updates.rollbackBranch} clearTestingMode={updates.clearTestingMode} fetchBranchPreview={updates.fetchBranchPreview}
     automationStatus={automation.automationStatus} automationConfig={automation.automationConfig}
     fetchAutomationStatus={automation.fetchAutomationStatus}
     runAutomationNow={automation.runAutomationNow} runningAutomation={automation.runningAutomation}
