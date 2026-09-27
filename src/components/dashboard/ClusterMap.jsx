@@ -4,8 +4,7 @@ import {
 } from '../Icons.jsx';
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
-  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE,
-} from '../../utils/designTokens.js';
+  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex } from '../../utils/designTokens.js';
 import { HEADROOM_HINT } from '../../utils/constants.js';
 import {
   QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration,
@@ -20,7 +19,7 @@ const detectTouch = () => {
 };
 
 // Suitability rating → color (matches the rest of the app: higher = healthier).
-const scoreHex = (r) => r >= 70 ? '#22c55e' : r >= 50 ? '#eab308' : r >= 30 ? '#f97316' : '#ef4444';
+const scoreHex = headroomHex;
 // Load ratio (0..1) → heat color for the "color by load" mode.
 const heatHex = (ratio) => ratio < 0.4 ? '#22c55e' : ratio < 0.7 ? '#eab308' : ratio < 0.88 ? '#f97316' : '#ef4444';
 // Narrowest a node column may get before the grid wraps to another row.
@@ -830,7 +829,7 @@ export default function ClusterMap({
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ background: '#22c55e' }} />
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#f97316' }} />
                 <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#ef4444' }} />
-                <span className="ml-1">node border/badge = headroom (higher = more room)</span>
+                <span className="ml-1">node border: amber = headroom under 50, red = under 30</span>
               </div>
               <div className="flex items-center gap-2">
                 <span>

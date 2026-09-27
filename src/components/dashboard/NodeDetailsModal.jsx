@@ -3,18 +3,13 @@ import {
 } from '../Icons.jsx';
 import {
   MODAL_OVERLAY, MODAL_CONTAINER, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER,
-  PROGRESS_BAR_BG, metricColor, metricTextColor
-} from '../../utils/designTokens.js';
+  PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 
 const { useState, useEffect } = React;
 
-const headroomTone = (r) =>
-  r >= 70 ? 'text-green-600 dark:text-green-400'
-  : r >= 50 ? 'text-yellow-600 dark:text-yellow-400'
-  : r >= 30 ? 'text-orange-600 dark:text-orange-400'
-  : 'text-red-600 dark:text-red-400';
+const headroomTone = headroomTextColor;
 
 const fmtUptime = (sec) => {
   if (!sec) return null;

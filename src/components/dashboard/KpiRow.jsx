@@ -80,7 +80,7 @@ export default function KpiRow({
     { label: 'Total Guests', to: 'guests', value: allGuests, icon: <Activity size={18} className="text-blue-600 dark:text-blue-400" />, color: 'text-pb-text dark:text-white' },
     { label: 'Active Migrations', onClick: () => setShowInFlight(true), clickTitle: activeMigrations > 0 ? 'Show migrations in flight' : 'No migrations running', value: activeMigrations, icon: <MoveRight size={18} className="text-blue-600 dark:text-blue-400" />, color: activeMigrations > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-400' },
     { label: 'Suggestions', to: 'suggestions', value: pendingRecs, icon: <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-600 dark:text-purple-400"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>, color: pendingRecs > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-pb-text2 dark:text-gray-400' },
-    { label: 'Tagged', to: 'guests', value: taggedCount, icon: <Tag size={18} className={taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-500'} />, color: taggedCount > 0 ? 'text-pink-600 dark:text-pink-400' : 'text-pb-text2 dark:text-gray-400', sublabel: tagBreakdown },
+    { label: 'Tagged', to: 'guests', value: taggedCount, icon: <Tag size={18} className="text-pb-text2 dark:text-gray-400" />, color: 'text-pb-text dark:text-white', sublabel: tagBreakdown },
   ];
 
   return (

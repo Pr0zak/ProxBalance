@@ -249,11 +249,38 @@ export const metricTextColor = (pct) => {
   return 'text-emerald-600 dark:text-emerald-400';
 };
 
-export const scoreColor = (score) => {
-  if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
-  if (score >= 60) return 'text-amber-600 dark:text-amber-400';
-  return 'text-red-600 dark:text-red-400';
+// ---------------------------------------------------------------------------
+// Headroom (node score 0-100, higher = more room): ONE scale everywhere.
+// Colour only real trouble — 50+ stays neutral, 30-49 amber, under 30 red —
+// matching the backend's "under 30 = under pressure" rule.
+// ---------------------------------------------------------------------------
+
+export const HEADROOM_WARN = 50;
+export const HEADROOM_CRIT = 30;
+
+/** 'ok' | 'warn' | 'crit' for a headroom value, or null when unknown. */
+export const headroomLevel = (r) => {
+  if (r == null || isNaN(r)) return null;
+  if (r < HEADROOM_CRIT) return 'crit';
+  if (r < HEADROOM_WARN) return 'warn';
+  return 'ok';
 };
+
+/** Tailwind text classes for a headroom value. */
+export const headroomTextColor = (r) => ({
+  crit: 'text-red-600 dark:text-red-400',
+  warn: 'text-amber-600 dark:text-amber-400',
+  ok: 'text-pb-text dark:text-pb-text-dark',
+}[headroomLevel(r)] || 'text-pb-text2 dark:text-gray-500');
+
+/** statusBadge() colour key for a headroom value. */
+export const headroomBadge = (r) => ({ crit: 'red', warn: 'yellow', ok: 'gray' }[headroomLevel(r)] || 'gray');
+
+/** Hex colour for SVG/canvas (map borders, chart lines). */
+export const headroomHex = (r) => ({ crit: '#dc4c3f', warn: '#d9962b', ok: '#7c8aa0' }[headroomLevel(r)] || '#7c8aa0');
+
+/** Kept for existing callers: node headroom / cluster health text colour. */
+export const scoreColor = headroomTextColor;
 
 // ---------------------------------------------------------------------------
 // Filter chips

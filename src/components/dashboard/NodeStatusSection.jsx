@@ -1,5 +1,5 @@
 import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge } from '../../utils/designTokens.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 import MetricCompareCard from './MetricCompareCard.jsx';
 import { NODE_COLORS, RESOURCE_METRICS, hasTrendData } from './nodeSeries.js';
@@ -11,7 +11,7 @@ const COMPARE_MODES = [
   { id: 'metric', label: 'By metric', title: 'One chart per metric with every node overlaid' },
 ];
 
-const headroomTone = (r) => (r >= 70 ? 'green' : r >= 50 ? 'yellow' : r >= 30 ? 'orange' : 'red');
+const headroomTone = headroomBadge;
 
 /**
  * Live value per chart series, doubling as the chart legend. Clicking one hides
@@ -322,12 +322,7 @@ export default function NodeStatusSection({
                     <div className="flex justify-between pt-1 border-t border-pb-border dark:border-slate-600">
                       <span className="text-pb-text2 dark:text-gray-400">Headroom:</span>
                       <span className={`font-semibold ${
-                        nodeScores && nodeScores[node.name] ? (
-                          nodeScores[node.name].suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
-                          nodeScores[node.name].suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                          nodeScores[node.name].suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
-                          'text-red-600 dark:text-red-400'
-                        ) : 'text-pb-text dark:text-white'
+                        nodeScores && nodeScores[node.name] ? headroomTextColor(nodeScores[node.name].suitability_rating) : 'text-pb-text dark:text-white'
                       }`}>
                         {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}/100` : 'N/A'}
                       </span>

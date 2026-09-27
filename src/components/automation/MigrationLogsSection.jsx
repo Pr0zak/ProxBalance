@@ -2,7 +2,7 @@ import {
   ArrowRight, CheckCircle, ClipboardList, Clock, Download, Info,
   RefreshCw, XCircle
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD, headroomTextColor } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 
@@ -178,12 +178,7 @@ export default function MigrationLogsSection({
 
                                   return (
                                 <div className="flex items-center gap-1">
-                                  <span className={`font-semibold ${
-                                    suitabilityPercent >= 70 ? 'text-green-600 dark:text-green-400' :
-                                    suitabilityPercent >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                    suitabilityPercent >= 30 ? 'text-orange-600 dark:text-orange-400' :
-                                    'text-red-600 dark:text-red-400'
-                                  }`}>
+                                  <span className={`font-semibold ${headroomTextColor(suitabilityPercent)}`}>
                                     {suitabilityPercent}<span className="text-[10px] opacity-70">/100</span>
                                   </span>
                                   <span className="relative group inline-block">

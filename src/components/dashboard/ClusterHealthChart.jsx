@@ -62,11 +62,12 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
 // Health bands (cluster_health / suitability: higher = healthier).
 // Softened/muted tones so the color coding stays a gentle hint, not a loud alarm.
+// Same bands as headroomLevel() in designTokens.js: 50+ fine, 30-49 strained,
+// under 30 critical.
 const HEALTH_BANDS = [
-  { min: 70, color: '#5fae7d', label: 'Healthy' },
-  { min: 50, color: '#cdab52', label: 'Fair' },
-  { min: 30, color: '#dd8b54', label: 'Strained' },
-  { min: -Infinity, color: '#d06b6b', label: 'Critical' },
+  { min: 50, color: '#5f9fae', label: 'OK \u226550' },
+  { min: 30, color: '#d9962b', label: 'Strained 30\u201349' },
+  { min: -Infinity, color: '#dc4c3f', label: 'Critical <30' },
 ];
 const healthColor = (v) => (HEALTH_BANDS.find(b => v >= b.min) || HEALTH_BANDS[HEALTH_BANDS.length - 1]).color;
 // Build vertical-gradient stops so the line/area is colored by absolute health value.
@@ -653,7 +654,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
           {HEALTH_BANDS.map((b) => (
             <span key={b.label} className="flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: b.color }} />
-              {b.label}{b.min > -Infinity ? ` ≥${b.min}` : ' <30'}
+              {b.label}
             </span>
           ))}
           <span className="ml-auto">line colored by health value</span>
