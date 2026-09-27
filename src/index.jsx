@@ -366,6 +366,7 @@ const ProxmoxBalanceManager = () => {
       automationConfig={automation.automationConfig}
       automationStatus={automation.automationStatus}
       automigrateLogs={automation.automigrateLogs}
+      clusterData={cluster.data}
       collapsedSections={ui.collapsedSections}
       config={configHook.config}
       confirmRemoveWindow={automation.confirmRemoveWindow}

@@ -1,7 +1,9 @@
 import {
   Calendar, Check, ChevronDown, Clock, Edit, Info, Moon, Plus, Save, Trash, X
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
+import WeeklyScheduleOverview from './WeeklyScheduleOverview.jsx';
+import { describeDays, isOvernight, scheduleOutlook } from '../../utils/scheduleWindows.js';
+import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD, statusBadge } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -34,7 +36,7 @@ function WindowTypeButtons({ currentType, onSelect }) {
   );
 }
 
-export default function TimeWindowsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, setError, embedded }) {
+export default function TimeWindowsSection({ automationConfig, savedConfig, automationStatus, saveAutomationConfig, collapsedSections, setCollapsedSections, setError, embedded }) {
   const [editingWindowIndex, setEditingWindowIndex] = useState(null);
   const [showTimeWindowForm, setShowTimeWindowForm] = useState(false);
   const [newWindowData, setNewWindowData] = useState({ name: '', type: 'migration', days: [], start_time: '00:00', end_time: '00:00' });
@@ -99,171 +101,24 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
             If no windows are configured, migrations are allowed at any time.
           </p>
 
-          {/* Weekly Visual Timeline */}
-          {(() => {
-            const migrationWindows = automationConfig.schedule?.migration_windows || [];
-            const blackoutWindows = automationConfig.schedule?.blackout_windows || [];
-            const hasWindows = migrationWindows.length > 0 || blackoutWindows.length > 0;
-
-            if (!hasWindows) return null;
-
-            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            const today = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
-
-            return (
-              <div className="mb-4 p-4 bg-pb-surface2 dark:bg-slate-700 rounded-lg">
-                <div className="text-sm font-semibold text-pb-text dark:text-gray-300 mb-3">
-                  Weekly Schedule Overview
-                </div>
-
-                {/* Week Grid */}
-                <div className="space-y-3 mt-4">
-                  {daysOfWeek.map((day) => {
-                    const dayMigrations = migrationWindows.filter(w => w.days?.includes(day));
-                    const dayBlackouts = blackoutWindows.filter(w => w.days?.includes(day));
-                    const isToday = day === today;
-
-                    return (
-                      <div key={day} className="flex gap-2">
-                        {/* Day Label */}
-                        <div className={`w-20 flex-shrink-0 text-xs font-medium flex items-center ${
-                          isToday
-                            ? 'text-blue-600 dark:text-blue-400 font-bold'
-                            : 'text-pb-text2 dark:text-gray-400'
-                        }`}>
-                          {day.slice(0, 3)}
-                          {isToday && <span className="ml-1 text-blue-600 dark:text-blue-400">●</span>}
-                        </div>
-
-                        {/* Timeline Bar */}
-                        <div className="flex-1 relative h-6 bg-gray-600 rounded overflow-visible">
-                          {/* Hour tick marks - every hour */}
-                          {Array.from({ length: 25 }, (_, hour) => {
-                            const isMajorTick = hour % 6 === 0;
-                            const isMinorTick = hour % 3 === 0 && !isMajorTick;
-
-                            return (
-                              <div
-                                key={`tick-${hour}`}
-                                className={`absolute bottom-0 z-0 ${
-                                  isMajorTick
-                                    ? 'h-full border-l-2 border-gray-500'
-                                    : isMinorTick
-                                    ? 'h-2/3 border-l border-gray-500'
-                                    : 'h-1/3 border-l border-gray-550'
-                                }`}
-                                style={{ left: `${(hour / 24) * 100}%` }}
-                              >
-                                {isMajorTick && hour < 24 && (
-                                  <div className="absolute -top-3 -translate-x-1/2 text-[10px] font-medium text-pb-text2 dark:text-gray-400">
-                                    {hour.toString().padStart(2, '0')}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-
-                          {/* Render blackout windows */}
-                          {dayBlackouts.map((window, idx) => {
-                            const [startHour, startMin] = window.start_time.split(':').map(Number);
-                            const [endHour, endMin] = window.end_time.split(':').map(Number);
-                            const startPercent = ((startHour * 60 + startMin) / 1440) * 100;
-                            const endPercent = ((endHour * 60 + endMin) / 1440) * 100;
-                            const width = endPercent - startPercent;
-
-                            // Find the global index for this blackout window
-                            const blackoutIndex = blackoutWindows.findIndex(w =>
-                              w.name === window.name &&
-                              w.start_time === window.start_time &&
-                              w.end_time === window.end_time
-                            );
-                            const globalIndex = migrationWindows.length + blackoutIndex;
-
-                            return (
-                              <div
-                                key={`blackout-${idx}`}
-                                className="absolute top-0 bottom-0 bg-red-600 hover:bg-red-100 dark:hover:bg-red-700 transition-colors z-10 cursor-pointer"
-                                style={{ left: `${startPercent}%`, width: `${width}%` }}
-                                title={`${window.name}: ${window.start_time}-${window.end_time} (BLOCKED) - Click to edit`}
-                                onClick={() => {
-                                  setEditingWindowIndex(globalIndex);
-                                  // Scroll to the window list
-                                  setTimeout(() => {
-                                    const element = document.querySelector(`[data-window-index="${globalIndex}"]`);
-                                    if (element) {
-                                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }
-                                  }, 100);
-                                }}
-                              />
-                            );
-                          })}
-
-                          {/* Render migration windows */}
-                          {dayMigrations.map((window, idx) => {
-                            const [startHour, startMin] = window.start_time.split(':').map(Number);
-                            const [endHour, endMin] = window.end_time.split(':').map(Number);
-                            const startPercent = ((startHour * 60 + startMin) / 1440) * 100;
-                            const endPercent = ((endHour * 60 + endMin) / 1440) * 100;
-                            const width = endPercent - startPercent;
-
-                            // Find the global index for this migration window
-                            const migrationIndex = migrationWindows.findIndex(w =>
-                              w.name === window.name &&
-                              w.start_time === window.start_time &&
-                              w.end_time === window.end_time
-                            );
-
-                            return (
-                              <div
-                                key={`migration-${idx}`}
-                                className="absolute top-0 bottom-0 bg-green-600 hover:bg-green-100 dark:hover:bg-green-700 transition-colors z-10 cursor-pointer"
-                                style={{ left: `${startPercent}%`, width: `${width}%` }}
-                                title={`${window.name}: ${window.start_time}-${window.end_time} (ALLOWED) - Click to edit`}
-                                onClick={() => {
-                                  setEditingWindowIndex(migrationIndex);
-                                  // Scroll to the window list
-                                  setTimeout(() => {
-                                    const element = document.querySelector(`[data-window-index="${migrationIndex}"]`);
-                                    if (element) {
-                                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                    }
-                                  }, 100);
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center gap-4 mt-6 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-600 rounded"></div>
-                    <span className="text-pb-text2 dark:text-gray-400">Migrations Allowed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-600 rounded"></div>
-                    <span className="text-pb-text2 dark:text-gray-400">Migrations Blocked</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-600 rounded border border-gray-500"></div>
-                    <span className="text-pb-text2 dark:text-gray-400">No Restriction</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+          {/* Weekly overview + live outlook */}
+          <WeeklyScheduleOverview
+            schedule={automationConfig.schedule}
+            savedConfig={savedConfig}
+            automationStatus={automationStatus}
+            onEditWindow={setEditingWindowIndex}
+          />
 
           {/* Combined Windows List */}
           {(() => {
             const migrationWindows = automationConfig.schedule?.migration_windows || [];
             const blackoutWindows = automationConfig.schedule?.blackout_windows || [];
 
+            // The window that decides the (draft) schedule right now, if any.
+            const activeNow = scheduleOutlook(automationConfig.schedule).window;
+
             // Combine both arrays with type information
+
             const allWindows = [
               ...migrationWindows.map((w, idx) => ({ ...w, type: 'migration', originalIndex: idx })),
               ...blackoutWindows.map((w, idx) => ({ ...w, type: 'blackout', originalIndex: idx }))
@@ -534,30 +389,40 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          {/* Type Badge */}
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            isMigration
-                              ? 'bg-green-600 text-white'
-                              : 'bg-red-600 text-white'
-                          }`}>
-                            {isMigration ? 'MIGRATION' : 'BLACKOUT'}
-                          </span>
-
-                          {/* Window Info */}
-                          <div className="flex-1">
-                            <span className="font-medium text-pb-text dark:text-white">
-                              {window.name || `${isMigration ? 'Migration' : 'Blackout'} ${window.originalIndex + 1}`}
-                            </span>
-                            <span className="text-sm text-pb-text2 dark:text-gray-400 ml-2">
-                              {window.days?.join(', ')} {window.start_time}-{window.end_time}
-                            </span>
+                        <div className="flex items-start gap-2">
+                          {/* Window Info: badge + name on one line, schedule below */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold tracking-wide ${
+                                isMigration ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                              }`}>
+                                {isMigration ? 'MIGRATION' : 'BLACKOUT'}
+                              </span>
+                              <span className="font-medium text-pb-text dark:text-white break-words min-w-0">
+                                {window.name || `${isMigration ? 'Migration' : 'Blackout'} ${window.originalIndex + 1}`}
+                              </span>
+                              {activeNow && activeNow === (isMigration ? migrationWindows : blackoutWindows)[window.originalIndex] && (
+                                <span className={statusBadge(isMigration ? 'green' : 'red')}>Active now</span>
+                              )}
+                              {window.enabled === false && (
+                                <span className={statusBadge('gray')}>Disabled</span>
+                              )}
+                            </div>
+                            <div className="mt-1 text-sm text-pb-text2 dark:text-gray-400 tabular-nums">
+                              {describeDays(window.days)} · {window.start_time}–{window.end_time}
+                              {isOvernight(window) && (
+                                <span
+                                  className="ml-1 text-xs"
+                                  title={`Runs past midnight. The runner checks both parts against the listed days, so ${window.start_time}–24:00 and 00:00–${window.end_time} each apply on ${describeDays(window.days)}.`}
+                                >(overnight)</span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
+                            className="shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-100 dark:hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -586,7 +451,7 @@ export default function TimeWindowsSection({ automationConfig, saveAutomationCon
                                 setConfirmRemoveWindow({ id: windowId, type: isMigration ? 'migration' : 'blackout' });
                               }
                             }}
-                            className={`px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
+                            className={`shrink-0 px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
                               confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
                                 ? 'bg-orange-600 hover:bg-orange-100 dark:hover:bg-orange-700'
                                 : 'bg-red-600 hover:bg-red-100 dark:hover:bg-red-700'

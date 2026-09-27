@@ -5,7 +5,7 @@ import TimeWindowsSection from './TimeWindowsSection.jsx';
 import SectionHeader from '../SectionHeader.jsx';
 
 export default function ScheduleSection({
-  automationConfig, saveAutomationConfig,
+  automationConfig, savedConfig, saveAutomationConfig, automationStatus,
   collapsedSections, setCollapsedSections,
   setError,
 }) {
@@ -75,6 +75,8 @@ export default function ScheduleSection({
             <TimeWindowsSection
               embedded
               automationConfig={automationConfig}
+              savedConfig={savedConfig}
+              automationStatus={automationStatus}
               saveAutomationConfig={saveAutomationConfig}
               collapsedSections={collapsedSections}
               setCollapsedSections={setCollapsedSections}
