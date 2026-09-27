@@ -373,6 +373,11 @@ class NotificationManager:
         self.notifications_config = am_notif
         self.enabled = self.notifications_config.get("enabled", False)
         self.providers: List[NotificationProvider] = []
+        # Channel name -> provider, for channels that will actually be used.
+        self.named_providers: Dict[str, NotificationProvider] = {}
+        # Enabled channels left out because their config is incomplete,
+        # mapped to the validate_config() reason.
+        self.skipped: Dict[str, str] = {}
 
         if not self.enabled:
             return
@@ -388,16 +393,21 @@ class NotificationManager:
                 if provider_cls is None:
                     logger.warning(f"Unknown notification provider: {provider_name}")
                     continue
-                valid, err = provider_cls(provider_conf).validate_config()
+                provider = provider_cls(provider_conf)
+                valid, err = provider.validate_config()
                 if valid:
-                    self.providers.append(provider_cls(provider_conf))
+                    self.providers.append(provider)
+                    self.named_providers[provider_name] = provider
                 else:
+                    self.skipped[provider_name] = err or "Incomplete configuration"
                     logger.warning(f"Notification provider '{provider_name}' has invalid config: {err}")
         else:
             # Legacy webhook-only config (backward compat)
             webhook_url = self.notifications_config.get("webhook_url", "")
             if webhook_url:
-                self.providers.append(WebhookProvider({"url": webhook_url}))
+                provider = WebhookProvider({"url": webhook_url})
+                self.providers.append(provider)
+                self.named_providers["webhook"] = provider
 
     def should_notify(self, event_type: str, data: Dict[str, Any] = None) -> bool:
         """Check whether notifications should fire for this event type.
@@ -449,19 +459,23 @@ class NotificationManager:
             except Exception as e:
                 logger.error(f"Failed to send {event_type} notification via {provider.__class__.__name__}: {e}")
 
-    def test(self) -> Dict[str, Any]:
+    def test(self, only: Optional[str] = None) -> Dict[str, Any]:
         """
-        Send a test notification to all enabled providers.
+        Send a test notification to all enabled providers, or to one.
+
+        Args:
+            only: Channel name (e.g. "pushover") to test just that channel.
 
         Returns:
-            Dict with per-provider results.
+            Dict with per-provider results, keyed by channel name.
         """
         results = {}
         title = "ProxBalance Test Notification"
         message = "This is a test notification from ProxBalance. If you see this, your notification provider is configured correctly."
 
-        for provider in self.providers:
-            name = provider.__class__.__name__.replace("Provider", "").lower()
+        for name, provider in self.named_providers.items():
+            if only is not None and name != only:
+                continue
             try:
                 provider.send(title, message, "normal")
                 results[name] = {"success": True}

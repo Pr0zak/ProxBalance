@@ -3,84 +3,111 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_SECONDARY, statusBadge } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, statusBadge } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
-const { useState } = React;
+const { useState, useEffect } = React;
 
-// Fields a channel needs before the backend will use it. Mirrors each
-// provider's validate_config() in notifications.py: an enabled channel with a
-// missing field is silently skipped, for real alerts and for tests alike.
-const REQUIRED_FIELDS = {
-  pushover: [['api_token', 'API token'], ['user_key', 'user key']],
-  email: [['smtp_host', 'SMTP host'], ['from_address', 'from address'], ['to_addresses', 'recipients']],
-  telegram: [['bot_token', 'bot token'], ['chat_id', 'chat ID']],
-  discord: [['webhook_url', 'webhook URL']],
-  slack: [['webhook_url', 'webhook URL']],
-  webhook: [['url', 'URL']],
-};
-const missingFields = (name, conf) => (REQUIRED_FIELDS[name] || [])
-  .filter(([field]) => { const v = conf?.[field]; return Array.isArray(v) ? v.length === 0 : !v; })
-  .map(([, label]) => label);
 const timeOf = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-/** What we know about one channel: missing fields, or the result of its last test. */
-function ChannelStatus({ name, conf, result }) {
+const SUMMARY_TONE = {
+  ok: 'text-emerald-600 dark:text-emerald-400',
+  warn: 'text-amber-600 dark:text-amber-400',
+  error: 'text-red-600 dark:text-red-400',
+};
+
+/**
+ * One channel's state. `ready` comes from the server's validate_config() on
+ * the saved settings ({ ready, reason }); `result` is this channel's last test.
+ */
+function ChannelStatus({ conf, ready, result, dirty }) {
   if (!conf?.enabled) return null;
-  const missing = missingFields(name, conf);
-  if (missing.length) {
+  if (result?.skipped || (!dirty && ready && ready.ready === false)) {
+    const reason = result?.skipped ? result.reason : ready.reason;
     return (
-      <span className={`${statusBadge('yellow')} !rounded-lg`} title="ProxBalance skips a channel with missing fields, so it gets no alerts and no test messages">
-        <AlertTriangle size={12} /> Missing {missing.join(', ')} · skipped
+      <span className={`${statusBadge('yellow')} max-w-full sm:max-w-md !rounded-lg`} title="ProxBalance skips a channel whose settings are incomplete, so it gets no alerts and no test messages">
+        <AlertTriangle size={12} className="shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere] sm:truncate">{reason || 'Incomplete settings'} · skipped</span>
       </span>
     );
   }
-  if (!result) return <span className={statusBadge('gray')}>Not tested yet</span>;
-  if (result.skipped) {
+  if (result?.success) return <span className={statusBadge('green')}><CheckCircle size={12} /> Test sent · {timeOf(result.at)}</span>;
+  if (result) {
     return (
-      <span className={statusBadge('yellow')} title="The server did not try this channel. Check its settings, save, and test again.">
-        <AlertTriangle size={12} /> Not reached · {timeOf(result.at)}
+      <span className={`${statusBadge('red')} max-w-full sm:max-w-md !rounded-lg`} title={result.error}>
+        <AlertCircle size={12} className="shrink-0" /> <span className="min-w-0 [overflow-wrap:anywhere] sm:truncate">Failed: {result.error || 'unknown error'}</span>
       </span>
     );
   }
-  if (result.success) return <span className={statusBadge('green')}><CheckCircle size={12} /> Test sent · {timeOf(result.at)}</span>;
-  return (
-    <span className={`${statusBadge('red')} max-w-xs`} title={result.error}>
-      <AlertCircle size={12} className="shrink-0" /> <span className="truncate">Failed: {result.error || 'unknown error'}</span>
-    </span>
-  );
+  if (dirty) return <span className={statusBadge('gray')}>Save to test</span>;
+  return <span className={statusBadge('gray')}>Not tested yet</span>;
 }
 
 export default function NotificationsSection({ automationConfig, saveAutomationConfig, collapsedSections, setCollapsedSections, testDisabledReason }) {
-  const [tests, setTests] = useState({});      // channel -> { success, error, skipped, at }
-  const [testing, setTesting] = useState(null); // channel name, 'all', or null
-  const [testError, setTestError] = useState(null);
+  const [tests, setTests] = useState({});        // channel -> { success, error, skipped, reason, at }
+  const [readiness, setReadiness] = useState({}); // channel -> { ready, reason } for the saved settings
+  const [testing, setTesting] = useState(null);   // channel name, 'all', or null
+  const [summary, setSummary] = useState(null);   // last "test all": { text, tone, at, perChannel }
   const providers = automationConfig.notifications?.providers || {};
   const enabledChannels = Object.keys(providers).filter(k => providers[k]?.enabled);
+  const dirty = !!testDisabledReason;
+
+  // Ask the server which enabled channels it would skip, and why. Only when
+  // there are no pending edits: the check runs against the saved settings.
+  const savedKey = dirty ? null : JSON.stringify([automationConfig.notifications?.enabled, providers]);
+  useEffect(() => {
+    if (savedKey == null) return undefined;
+    let cancelled = false;
+    fetch(`${API_BASE}/notifications/providers`)
+      .then(r => r.json())
+      .then(body => { if (!cancelled && body?.channels) setReadiness(body.channels); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [savedKey]);
 
   // Test one channel, or every enabled one. Results land on each channel row.
   const runTest = async (channel) => {
     setTesting(channel || 'all');
-    setTestError(null);
+    if (!channel) setSummary(null);
+    const at = new Date();
+    const fail = (error) => {
+      if (channel) setTests(prev => ({ ...prev, [channel]: { success: false, error, at } }));
+      else setSummary({ text: error, tone: 'error', at, perChannel: false });
+    };
     try {
       const response = await fetch(`${API_BASE}/notifications/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(channel ? { provider: channel } : {}),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!result.results) {
-        setTestError(result.error || 'The test could not be sent');
+        fail(result.error || `The test could not be sent (HTTP ${response.status})`);
         return;
       }
-      const at = new Date();
-      const targets = channel ? [channel] : enabledChannels;
+      const skipped = result.skipped || {};
       setTests(prev => {
         const next = { ...prev };
-        for (const k of targets) next[k] = result.results[k] ? { ...result.results[k], at } : { skipped: true, at };
+        for (const [k, r] of Object.entries(result.results)) next[k] = { ...r, at };
+        for (const [k, reason] of Object.entries(skipped)) next[k] = { skipped: true, reason, at };
         return next;
       });
+      if (Object.keys(skipped).length) {
+        setReadiness(prev => {
+          const next = { ...prev };
+          for (const [k, reason] of Object.entries(skipped)) next[k] = { ready: false, reason };
+          return next;
+        });
+      }
+      if (!channel) {
+        const failed = Object.values(result.results).some(r => !r.success);
+        setSummary({
+          text: result.message || (result.success ? 'All sent' : 'Some channels need attention'),
+          tone: failed ? 'error' : Object.keys(skipped).length ? 'warn' : 'ok',
+          at,
+          perChannel: true,
+        });
+      }
     } catch (err) {
-      setTestError(err.message);
+      fail(`The test could not be sent: ${err.message}`);
     } finally {
       setTesting(null);
     }
@@ -89,8 +116,8 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
   const testButton = (channel) => providers[channel]?.enabled ? (
     <button
       onClick={(e) => { e.stopPropagation(); runTest(channel); }}
-      disabled={!!testing || !!testDisabledReason || missingFields(channel, providers[channel]).length > 0}
-      title={testDisabledReason || `Send a test message to ${channel} only`}
+      disabled={!!testing || dirty || readiness[channel]?.ready === false}
+      title={testDisabledReason || (readiness[channel]?.ready === false ? readiness[channel].reason : 'Send a test message to this channel only')}
       className={`${BTN_SECONDARY} !px-2.5 !py-1 !gap-1.5 text-xs`}
     >
       {testing === channel ? <RefreshCw size={12} className="animate-spin" /> : <Bell size={12} />}
@@ -98,10 +125,9 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
     </button>
   ) : null;
 
-  const tested = enabledChannels.filter(k => tests[k]);
-  const lastAt = tested.reduce((a, k) => (tests[k].at > a ? tests[k].at : a), null);
-  const sent = tested.filter(k => tests[k].success).length;
-  const problems = tested.length - sent;
+  const status = (channel) => (
+    <ChannelStatus conf={providers[channel]} ready={readiness[channel]} result={tests[channel]} dirty={dirty} />
+  );
 
   return (
                     <div>
@@ -218,11 +244,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Pushover */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Pushover</span>
-                              <ChannelStatus name="pushover" conf={providers.pushover} result={tests.pushover} />
+                              {status('pushover')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('pushover')}
@@ -319,11 +345,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Email (SMTP) */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Email (SMTP)</span>
-                              <ChannelStatus name="email" conf={providers.email} result={tests.email} />
+                              {status('email')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('email')}
@@ -426,11 +452,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Telegram */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Telegram</span>
-                              <ChannelStatus name="telegram" conf={providers.telegram} result={tests.telegram} />
+                              {status('telegram')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('telegram')}
@@ -476,11 +502,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Discord */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Discord</span>
-                              <ChannelStatus name="discord" conf={providers.discord} result={tests.discord} />
+                              {status('discord')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('discord')}
@@ -513,11 +539,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Slack */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Slack</span>
-                              <ChannelStatus name="slack" conf={providers.slack} result={tests.slack} />
+                              {status('slack')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('slack')}
@@ -550,11 +576,11 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                         {/* Generic Webhook */}
                         <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
-                          <div className="flex items-center justify-between p-3 cursor-pointer"
+                          <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                               <span className="font-medium text-pb-text dark:text-gray-300">Generic Webhook</span>
-                              <ChannelStatus name="webhook" conf={providers.webhook} result={tests.webhook} />
+                              {status('webhook')}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {testButton('webhook')}
@@ -589,22 +615,22 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         <div className="pt-2 flex items-center gap-3 flex-wrap">
                           <button
                             onClick={() => runTest(null)}
-                            disabled={!!testing || !!testDisabledReason || enabledChannels.length === 0}
-                            title={testDisabledReason || ''}
-                            className="px-4 py-2 bg-pb-accent hover:bg-pb-accent-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!!testing || dirty || enabledChannels.length === 0}
+                            title={testDisabledReason || (enabledChannels.length === 0 ? 'Enable a channel first' : '')}
+                            className={BTN_PRIMARY}
                           >
                             {testing === 'all' ? <RefreshCw size={14} className="animate-spin" /> : <Bell size={14} />}
                             Test all enabled channels
                           </button>
-                          {testError ? (
-                            <span className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"><AlertCircle size={14} /> {testError}</span>
-                          ) : lastAt ? (
-                            <span className="text-sm text-pb-text2 dark:text-gray-400">
-                              Last test {timeOf(lastAt)}: <span className="text-emerald-600 dark:text-emerald-400 font-medium">{sent} sent</span>
-                              {problems > 0 && <>, <span className="text-amber-600 dark:text-amber-400 font-medium">{problems} need attention</span></>}
-                              {' '}· results are shown on each channel
+                          {summary && (
+                            <span className={`text-sm flex items-center gap-1.5 ${SUMMARY_TONE[summary.tone]}`} role="status">
+                              {summary.tone === 'ok' ? <CheckCircle size={14} className="shrink-0" /> : summary.tone === 'warn' ? <AlertTriangle size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                              <span>
+                                <span className="font-medium">{summary.text}</span>
+                                <span className="text-pb-text2 dark:text-gray-400"> · {timeOf(summary.at)}{summary.perChannel ? ' · details on each channel' : ''}</span>
+                              </span>
                             </span>
-                          ) : null}
+                          )}
                         </div>
                         <p className="text-xs text-pb-text2 dark:text-gray-400 -mt-2">
                           {testDisabledReason || 'Tests use the saved settings. Each channel shows whether its test went through.'}
