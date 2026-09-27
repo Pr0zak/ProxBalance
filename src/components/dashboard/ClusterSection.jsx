@@ -160,6 +160,7 @@ export default function ClusterSection(props) {
           setShowTagModal={props.setShowTagModal}
           guestRecMap={props.guestRecMap}
           setConfirmMigration={props.setConfirmMigration}
+          skippedGuests={props.recommendationData?.skipped_guests}
         />
       )}
       {effectiveTab === 'map' && (
