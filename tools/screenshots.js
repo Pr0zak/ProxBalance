@@ -9,9 +9,9 @@
  * React state — there are no per-page URLs).
  *
  * Usage:
- *   PB_URL=http://10.0.0.211/ node tools/screenshots.js
- *   PB_URL=http://10.0.0.211/ PAGES=dashboard,automation node tools/screenshots.js
- *   PB_URL=http://10.0.0.211/ THEMES=dark node tools/screenshots.js
+ *   PB_URL=http://localhost/ node tools/screenshots.js
+ *   PB_URL=http://localhost/ PAGES=dashboard,automation node tools/screenshots.js
+ *   PB_URL=http://localhost/ THEMES=dark node tools/screenshots.js
  *
  * Requirements: `npm install puppeteer` in the repo root (puppeteer is gitignored).
  */
@@ -19,7 +19,7 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const URL_BASE = process.env.PB_URL || 'http://10.0.0.211/';
+const URL_BASE = process.env.PB_URL || 'http://localhost/';
 const OUTDIR = path.resolve(__dirname, '..', 'docs', 'images');
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 };
 

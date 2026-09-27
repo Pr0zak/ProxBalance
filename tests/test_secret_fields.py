@@ -11,7 +11,7 @@ from proxbalance.secret_fields import (
 )
 
 STORED = {
-    "proxmox_host": "10.0.0.3",
+    "proxmox_host": "192.168.1.10",
     "proxmox_api_token_id": "proxbalance@pve!tok",
     "proxmox_api_token_secret": "real-token-secret",
     "ai_provider": "openai",

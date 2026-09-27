@@ -12,7 +12,7 @@
 
 const puppeteer = require('puppeteer');
 
-async function testPageLoad(url = 'http://10.0.0.159/') {
+async function testPageLoad(url = 'http://localhost/') {
   console.log(`\n🧪 Testing page load performance for: ${url}\n`);
 
   const browser = await puppeteer.launch({
@@ -159,5 +159,5 @@ async function testPageLoad(url = 'http://10.0.0.159/') {
 }
 
 // Run test
-const url = process.argv[2] || 'http://10.0.0.159/';
+const url = process.argv[2] || 'http://localhost/';
 testPageLoad(url).catch(console.error);

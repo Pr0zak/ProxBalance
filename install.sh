@@ -407,11 +407,11 @@ select_network() {
       ;;
     2)
       echo ""
-      echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter IP address (e.g., 10.0.0.131): "
+      echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter IP address (e.g., 192.168.1.131): "
       read ip_addr
       echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter CIDR (e.g., 24): "
       read cidr
-      echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter gateway (e.g., 10.0.0.1): "
+      echo -ne "${PROMPT_COLOR}${ARROW}${CL} Enter gateway (e.g., 192.168.1.1): "
       read gateway
 
       if [[ ! "$ip_addr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || ! IFS='.' read -ra octets <<< "$ip_addr" || \

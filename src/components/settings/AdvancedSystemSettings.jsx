@@ -536,7 +536,7 @@ export default function AdvancedSystemSettings({
                             type="text"
                             id="proxmoxHostInput"
                             defaultValue={config?.proxmox_host || ''}
-                            placeholder="10.0.0.3 or pve-node1"
+                            placeholder="192.168.1.10 or pve-node1"
                             className={INPUT_FIELD}
                           />
                           <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">

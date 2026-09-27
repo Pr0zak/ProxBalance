@@ -5,7 +5,7 @@
   "_comment_cors_origins": "List of allowed CORS origins, e.g. [\"https://myserver.local\"]. Empty list restricts to same-origin only.",
   "collection_interval_minutes": 60,
   "ui_refresh_interval_minutes": 15,
-  "proxmox_host": "10.0.0.3",
+  "proxmox_host": "192.168.1.10",
   "proxmox_port": 8006,
   "proxmox_auth_method": "api_token",
   "proxmox_api_token_id": "proxbalance@pam!proxbalance",

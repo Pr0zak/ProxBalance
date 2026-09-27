@@ -8,7 +8,7 @@ from flask import Flask
 from proxbalance import config_manager
 
 CONFIG = {
-    "proxmox_host": "10.0.0.3",
+    "proxmox_host": "192.168.1.10",
     "automated_migrations": {
         "notifications": {
             "enabled": True,

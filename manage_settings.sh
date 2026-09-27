@@ -13,7 +13,7 @@ show_current() {
         echo '{'
         echo '  "collection_interval_minutes": 60,'
         echo '  "ui_refresh_interval_minutes": 60,'
-        echo '  "proxmox_host": "10.0.0.3"'
+        echo '  "proxmox_host": "192.168.1.10"'
         echo '}'
     fi
 }

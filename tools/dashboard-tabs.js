@@ -6,13 +6,13 @@
  *
  * Output: docs/images/dashboard-<tab>.png  (dark mode only)
  *
- * Usage: PB_URL=http://10.0.0.211/ node tools/dashboard-tabs.js
+ * Usage: PB_URL=http://localhost/ node tools/dashboard-tabs.js
  */
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const URL_BASE = process.env.PB_URL || 'http://10.0.0.211/';
+const URL_BASE = process.env.PB_URL || 'http://localhost/';
 const OUTDIR = path.resolve(__dirname, '..', 'docs', 'images');
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 };
 
