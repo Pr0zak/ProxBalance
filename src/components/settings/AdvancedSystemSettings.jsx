@@ -3,7 +3,9 @@ import {
   RefreshCw, Download, Upload, Server, Terminal, X
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { GLASS_CARD, INPUT_FIELD, ICON, INNER_CARD, BTN_SECONDARY } from '../../utils/designTokens.js';
+import {
+  GLASS_CARD, INPUT_FIELD, ICON, INNER_CARD, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN,
+} from '../../utils/designTokens.js';
 import { formatRelativeTime } from '../../utils/formatters.js';
 import SectionHeader from '../SectionHeader.jsx';
 const { useState, useEffect, useRef } = React;
@@ -110,111 +112,233 @@ function LogViewer({ service, onClose }) {
           <div key={i} className={`whitespace-pre-wrap break-words ${LOG_PROBLEM.test(line) ? 'text-amber-300' : ''}`}>{line}</div>
         ))}
       </div>
-      <p className="text-[11px] text-pb-text3 dark:text-gray-500 mt-1.5">Newest {shown.length} of the last {lines.length || 1000} journal lines. Download keeps all of them.</p>
+      {text != null && shown.length > 0 && (
+        <p className="text-[11px] text-pb-text3 dark:text-gray-500 mt-1.5">
+          Newest {shown.length} {problemsOnly ? 'warning/error' : ''} line{shown.length !== 1 ? 's' : ''} of the last {lines.length} journal lines. Download keeps all of them.
+        </p>
+      )}
     </div>
   );
 }
 
-function restartService(service, label, detail, setError) {
-  if (!confirm(`Restart ${label}?\n\n${detail}`)) return;
-  fetch(`${API_BASE}/system/restart-service`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ service }),
-  })
-    .then(response => response.json())
-    .then(result => { if (!result.success) setError('Failed to restart service: ' + (result.error || 'Unknown error')); })
-    .catch(error => setError('Error: ' + error.message));
+const BANNER_ERROR =
+  'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300';
+const NOTICE_STYLE = { ok: BANNER_SUCCESS, warn: BANNER_WARN, error: BANNER_ERROR };
+const NOTICE_ICON = { ok: CheckCircle, warn: AlertTriangle, error: AlertCircle };
+
+/** In-page result message under a row, replacing alert(). */
+function Notice({ notice, onDismiss }) {
+  if (!notice) return null;
+  const Icon = NOTICE_ICON[notice.tone] || AlertCircle;
+  return (
+    <div className="px-4 pb-3" role="status">
+      <div className={`${NOTICE_STYLE[notice.tone] || BANNER_ERROR} !items-start text-sm`}>
+        <Icon size={16} className="shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="break-words">{notice.text}</div>
+          {notice.lines?.length > 0 && (
+            <ul className="mt-1 text-xs list-disc pl-4 space-y-0.5">
+              {notice.lines.map((l, i) => <li key={i} className="break-words">{l}</li>)}
+            </ul>
+          )}
+        </div>
+        {onDismiss && (
+          <button onClick={onDismiss} className="shrink-0 opacity-70 hover:opacity-100" title="Dismiss" aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
+/** In-page confirmation under a row, replacing confirm(). */
+function ConfirmStrip({ text, confirmLabel, busy, onConfirm, onCancel }) {
+  return (
+    <div className="px-4 pb-3">
+      <div className={`${BANNER_WARN} flex-wrap text-sm`}>
+        <AlertTriangle size={16} className="shrink-0" />
+        <span className="flex-1 min-w-[12rem]">{text}</span>
+        <div className="flex items-center gap-2">
+          <button onClick={onCancel} disabled={busy} className={BTN_ROW}>Cancel</button>
+          <button onClick={onConfirm} disabled={busy} className={`${BTN_DANGER} !px-3 !py-1.5 !gap-1.5 text-xs`}>
+            {busy ? <RefreshCw size={12} className="animate-spin" /> : null}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SERVICES = [
+  {
+    id: 'proxmox-balance',
+    title: 'API service',
+    name: 'the API service',
+    about: 'serves this dashboard and the REST API',
+    restartEffect: 'The dashboard stops answering for a few seconds while it restarts.',
+  },
+  {
+    id: 'proxmox-collector',
+    title: 'Data collector',
+    name: 'the data collector',
+    about: null, // filled with last run, duration and interval
+    restartEffect: 'A collection in progress is cut short and starts again.',
+  },
+];
+
 /** Settings → System: service logs and restarts, data export, config backup and restore. */
-function SystemActions({ data, config, setError }) {
+function SystemActions({ data, config }) {
   const [openLog, setOpenLog] = useState(null);
+  const [confirmRestart, setConfirmRestart] = useState(null); // service id
+  const [restarting, setRestarting] = useState(null);
+  const [restartNotice, setRestartNotice] = useState({});     // service id -> notice
+  const [importFile, setImportFile] = useState(null);         // File awaiting confirmation
+  const [importing, setImporting] = useState(false);
+  const [importNotice, setImportNotice] = useState(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupNotice, setBackupNotice] = useState(null);
   const importRef = useRef(null);
+
   const perf = data?.performance;
   const interval = config?.collection_interval_minutes;
   const guestCount = data?.guests ? Object.keys(data.guests).length : 0;
   const collectorDetail = [
     'proxmox-collector',
-    data?.collected_at && `last run ${formatRelativeTime(data.collected_at).toLowerCase()}`,
+    data?.collected_at ? `last run ${formatRelativeTime(data.collected_at).toLowerCase()}` : 'no run yet',
     perf?.total_time != null && `took ${perf.total_time}s`,
     interval && `every ${interval} min`,
   ].filter(Boolean).join(' · ');
 
-  const logButton = (service) => (
-    <button onClick={() => setOpenLog(prev => (prev === service ? null : service))} className={BTN_ROW} aria-expanded={openLog === service}>
-      <Terminal size={12} /> {openLog === service ? 'Hide log' : 'View log'}
-    </button>
-  );
+  const restart = async (svc) => {
+    setRestarting(svc.id);
+    try {
+      const response = await fetch(`${API_BASE}/system/restart-service`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: svc.id }),
+      });
+      const result = await response.json().catch(() => ({}));
+      setRestartNotice(prev => ({
+        ...prev,
+        [svc.id]: result.success
+          ? { tone: 'ok', text: `${svc.title} restarted at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.` }
+          : { tone: 'error', text: `Restart failed: ${result.error || `HTTP ${response.status}`}` },
+      }));
+    } catch (err) {
+      // Restarting the API can drop the very request that asked for it.
+      setRestartNotice(prev => ({
+        ...prev,
+        [svc.id]: svc.id === 'proxmox-balance'
+          ? { tone: 'warn', text: 'Restart sent. The API dropped the connection while restarting; the dashboard reconnects on its next refresh.' }
+          : { tone: 'error', text: `Restart failed: ${err.message}` },
+      }));
+    } finally {
+      setRestarting(null);
+      setConfirmRestart(null);
+    }
+  };
 
   const exportGuestsCsv = () => {
     if (!data || !data.guests) return;
+    const num = (v) => (typeof v === 'number' ? v.toFixed(2) : '');
     let csv = 'VMID,Name,Type,Node,Status,CPU Usage (%),Memory Used (GB),Memory Max (GB),CPU Cores\n';
     Object.values(data.guests).forEach(guest => {
-      csv += `${guest.vmid},"${guest.name}",${guest.type},${guest.node},${guest.status},${guest.cpu_current.toFixed(2)},${guest.mem_used_gb.toFixed(2)},${guest.mem_max_gb.toFixed(2)},${guest.cpu_cores || 0}\n`;
+      csv += `${guest.vmid},"${String(guest.name || '').replace(/"/g, '""')}",${guest.type},${guest.node},${guest.status},${num(guest.cpu_current)},${num(guest.mem_used_gb)},${num(guest.mem_max_gb)},${guest.cpu_cores || 0}\n`;
     });
     saveBlob(csv, 'text/csv', `proxbalance-guests-${new Date().toISOString()}.csv`);
   };
 
-  const importConfig = (e) => {
+  const pickImportFile = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    if (!confirm('Import configuration?\n\nThis will replace all current settings. Your current configuration will be backed up automatically.\n\nAre you sure?')) {
-      e.target.value = '';
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    fetch(`${API_BASE}/config/import`, { method: 'POST', body: formData })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          alert('Configuration imported successfully!\n\n' +
-                (result.validation_warnings?.length > 0
-                  ? 'Warnings:\n' + result.validation_warnings.join('\n')
-                  : 'Services will restart automatically.'));
-          setTimeout(() => window.location.reload(), 2000);
-        } else {
-          let errorMsg = 'Failed to import configuration:\n' + result.error;
-          if (result.validation_errors?.length > 0) errorMsg += '\n\nValidation Errors:\n' + result.validation_errors.join('\n');
-          if (result.validation_warnings?.length > 0) errorMsg += '\n\nWarnings:\n' + result.validation_warnings.join('\n');
-          alert(errorMsg);
-        }
-      })
-      .catch(error => alert('Error importing configuration: ' + error.message))
-      .finally(() => { e.target.value = ''; });
+    setImportNotice(null);
+    setImportFile(file);
   };
 
-  const createBackup = () => {
-    fetch(`${API_BASE}/config/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-      .then(response => response.json())
-      .then(result => alert(result.success ? 'Backup created successfully!\n\nFile: ' + result.backup_file : 'Failed to create backup: ' + result.error))
-      .catch(error => alert('Error creating backup: ' + error.message));
+  const importConfig = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const response = await fetch(`${API_BASE}/config/import`, { method: 'POST', body: formData });
+      const result = await response.json().catch(() => ({}));
+      const warnings = result.validation_warnings || [];
+      if (result.success) {
+        setImportNotice({
+          tone: warnings.length ? 'warn' : 'ok',
+          text: `Imported ${importFile.name}. Services restart automatically; this page reloads in a moment.`,
+          lines: warnings,
+        });
+        setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setImportNotice({
+          tone: 'error',
+          text: `Import failed: ${result.error || `HTTP ${response.status}`}. Nothing was changed.`,
+          lines: [...(result.validation_errors || []), ...warnings.map(w => `Warning: ${w}`)],
+        });
+      }
+    } catch (err) {
+      setImportNotice({ tone: 'error', text: `Import failed: ${err.message}` });
+    } finally {
+      setImporting(false);
+      setImportFile(null);
+    }
+  };
+
+  const createBackup = async () => {
+    setBackingUp(true);
+    setBackupNotice(null);
+    try {
+      const response = await fetch(`${API_BASE}/config/backup`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const result = await response.json().catch(() => ({}));
+      setBackupNotice(result.success
+        ? { tone: 'ok', text: `Backup saved: ${result.backup_file}` }
+        : { tone: 'error', text: `Backup failed: ${result.error || `HTTP ${response.status}`}` });
+    } catch (err) {
+      setBackupNotice({ tone: 'error', text: `Backup failed: ${err.message}` });
+    } finally {
+      setBackingUp(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <ActionGroup title="Services" note="Check a service's log before restarting it. A restart briefly interrupts the dashboard or data collection.">
-        <ActionRow
-          title="API service"
-          detail="proxmox-balance · serves this dashboard and the REST API"
-          below={openLog === 'proxmox-balance' && <LogViewer service="proxmox-balance" onClose={() => setOpenLog(null)} />}
-        >
-          {logButton('proxmox-balance')}
-          <button onClick={() => restartService('proxmox-balance', 'the API service', 'This will briefly interrupt data collection.', setError)} className={BTN_ROW_CAUTION}>
-            <RefreshCw size={12} /> Restart
-          </button>
-        </ActionRow>
-        <ActionRow
-          title="Data collector"
-          detail={collectorDetail}
-          below={openLog === 'proxmox-collector' && <LogViewer service="proxmox-collector" onClose={() => setOpenLog(null)} />}
-        >
-          {logButton('proxmox-collector')}
-          <button onClick={() => restartService('proxmox-collector', 'the data collector', 'This will restart the background data collection process.', setError)} className={BTN_ROW_CAUTION}>
-            <RefreshCw size={12} /> Restart
-          </button>
-        </ActionRow>
+      <ActionGroup title="Services" note="Check a service's log before restarting it.">
+        {SERVICES.map(svc => (
+          <ActionRow
+            key={svc.id}
+            title={svc.title}
+            detail={svc.about ? `${svc.id} · ${svc.about}` : collectorDetail}
+            below={<>
+              {confirmRestart === svc.id && (
+                <ConfirmStrip
+                  text={`Restart ${svc.name}? ${svc.restartEffect}`}
+                  confirmLabel="Restart now"
+                  busy={restarting === svc.id}
+                  onConfirm={() => restart(svc)}
+                  onCancel={() => setConfirmRestart(null)}
+                />
+              )}
+              <Notice notice={restartNotice[svc.id]} onDismiss={() => setRestartNotice(prev => ({ ...prev, [svc.id]: null }))} />
+              {openLog === svc.id && <LogViewer service={svc.id} onClose={() => setOpenLog(null)} />}
+            </>}
+          >
+            <button onClick={() => setOpenLog(prev => (prev === svc.id ? null : svc.id))} className={BTN_ROW} aria-expanded={openLog === svc.id}>
+              <Terminal size={12} /> {openLog === svc.id ? 'Hide log' : 'View log'}
+            </button>
+            <button
+              onClick={() => { setRestartNotice(prev => ({ ...prev, [svc.id]: null })); setConfirmRestart(svc.id); }}
+              disabled={!!restarting || confirmRestart === svc.id}
+              className={BTN_ROW_CAUTION}
+            >
+              <RefreshCw size={12} /> Restart
+            </button>
+          </ActionRow>
+        ))}
       </ActionGroup>
 
       <ActionGroup title="Export data">
@@ -232,19 +356,38 @@ function SystemActions({ data, config, setError }) {
 
       <ActionGroup title="Configuration backup" note="Server backups live in /opt/proxmox-balance-manager/backups/ and rotate automatically (last 5 kept). One is also taken before every import.">
         <ActionRow title="Export settings" detail="Download all settings as JSON, to keep or to move to another instance">
-          <button onClick={() => { window.location.href = `${API_BASE}/config/export`; }} className={BTN_ROW}>
+          <a href={`${API_BASE}/config/export`} className={BTN_ROW}>
             <Download size={12} /> Export
-          </button>
+          </a>
         </ActionRow>
-        <ActionRow title="Import settings" detail="Replace every setting from a file; services restart afterwards">
-          <input type="file" ref={importRef} accept=".json" className="hidden" onChange={importConfig} />
-          <button onClick={() => importRef.current?.click()} className={BTN_ROW}>
+        <ActionRow
+          title="Import settings"
+          detail="Replace every setting from a file; services restart afterwards"
+          below={<>
+            {importFile && (
+              <ConfirmStrip
+                text={`Replace all current settings with ${importFile.name}? The current configuration is backed up first.`}
+                confirmLabel="Import"
+                busy={importing}
+                onConfirm={importConfig}
+                onCancel={() => setImportFile(null)}
+              />
+            )}
+            <Notice notice={importNotice} onDismiss={() => setImportNotice(null)} />
+          </>}
+        >
+          <input type="file" ref={importRef} accept=".json" className="hidden" onChange={pickImportFile} />
+          <button onClick={() => importRef.current?.click()} disabled={importing} className={BTN_ROW}>
             <Upload size={12} /> Import…
           </button>
         </ActionRow>
-        <ActionRow title="Backup on the server" detail="Save a copy of the current settings on the ProxBalance host">
-          <button onClick={createBackup} className={BTN_ROW}>
-            <Save size={12} /> Create backup
+        <ActionRow
+          title="Backup on the server"
+          detail="Save a copy of the current settings on the ProxBalance host"
+          below={<Notice notice={backupNotice} onDismiss={() => setBackupNotice(null)} />}
+        >
+          <button onClick={createBackup} disabled={backingUp} className={BTN_ROW}>
+            {backingUp ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />} Create backup
           </button>
         </ActionRow>
       </ActionGroup>
@@ -432,5 +575,5 @@ export default function AdvancedSystemSettings({
     );
   }
 
-  return <SystemActions data={data} config={config} setError={setError} />;
+  return <SystemActions data={data} config={config} />;
 }
