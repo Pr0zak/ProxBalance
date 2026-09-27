@@ -146,6 +146,7 @@ export default function ClusterSection(props) {
           nodeRecCounts={props.nodeRecCounts}
           guestRecMap={props.guestRecMap}
           setConfirmMigration={props.setConfirmMigration}
+          maintenanceNodes={props.maintenanceNodes}
         />
       )}
       {effectiveTab === 'guests' && (

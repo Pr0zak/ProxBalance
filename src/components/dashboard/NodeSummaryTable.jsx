@@ -6,6 +6,7 @@ import {
 import { ChevronDown, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { HEADROOM_HINT } from '../../utils/constants.js';
+import { topPenalty, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
 
 const { useState, useMemo } = React;
 
@@ -38,10 +39,10 @@ function guestHasAnyTag(guest) {
 const TOTAL_COLS = 11;
 
 /** Inline progress bar with label */
-function MetricBar({ pct, detail }) {
+function MetricBar({ pct, detail, title }) {
   const clampedPct = Math.min(100, Math.max(0, pct || 0));
   return (
-    <div className="min-w-[56px] md:min-w-[120px]">
+    <div className="min-w-[56px] md:min-w-[120px]" title={title}>
       <div className="flex items-center justify-between mb-0.5">
         <span className={`text-xs font-mono tabular-nums ${metricTextColor(clampedPct)}`}>
           {Math.round(clampedPct)}%
@@ -56,6 +57,33 @@ function MetricBar({ pct, detail }) {
       </div>
     </div>
   );
+}
+
+// Storage types that are shared between nodes (NAS, backup server, Ceph,
+// ZFS-over-iSCSI). They report the same fill on every node, so a 50 TB CIFS
+// share at 69% would otherwise paint every node's disk bar amber.
+const SHARED_STORAGE_TYPES = new Set(['cifs', 'nfs', 'pbs', 'rbd', 'cephfs', 'glusterfs', 'iscsi', 'iscsidirect', 'zfs']);
+
+function isSharedStorage(s) {
+  // PVE's own `shared` flag wins when the collector passes it through.
+  if (s.shared === true || s.shared === 1 || s.shared === '1') return true;
+  if (s.shared === false || s.shared === 0 || s.shared === '0') return false;
+  return SHARED_STORAGE_TYPES.has(String(s.type || '').toLowerCase());
+}
+
+/** Fullest active local pool on a node, or null when it has only shared storage. */
+function fullestLocalPool(storageArr) {
+  const pctOf = s => (typeof s.usage_pct === 'number' ? s.usage_pct : ((s.used_gb || 0) / s.total_gb) * 100);
+  const pools = (storageArr || []).filter(s => s.active !== false && (s.total_gb || 0) > 0 && !isSharedStorage(s));
+  if (pools.length === 0) return null;
+  const fullest = pools.reduce((a, b) => (pctOf(b) > pctOf(a) ? b : a));
+  return {
+    pct: pctOf(fullest),
+    name: fullest.storage,
+    title: `Fullest local pool: ${fullest.storage}\n`
+      + pools.map(s => `${s.storage} (${s.type}) ${pctOf(s).toFixed(1)}% of ${Math.round(s.total_gb)} GB`).join('\n')
+      + '\nShared storage (CIFS/NFS/PBS/Ceph...) is left out: it shows the same fill on every node.',
+  };
 }
 
 /** IOWait cell — different scale than CPU/Mem (5% is fine, 30% is critical) so
@@ -74,13 +102,32 @@ function IOWaitCell({ pct, avg }) {
   );
 }
 
-function StatusDot({ online }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-full ${online ? 'bg-green-400' : 'bg-red-400'}`} />
-      <span className={`text-xs ${online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-        {online ? 'Online' : 'Offline'}
+const CHIP = 'inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded border whitespace-nowrap';
+
+/** Condition: Offline / Maintenance when true, else the node's largest
+ *  headroom penalty as a chip, else OK. */
+function ConditionCell({ online, maintenance, top, tooltip }) {
+  if (!online) {
+    return <span className={`${CHIP} bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40`}>Offline</span>;
+  }
+  if (maintenance) {
+    return <span className={`${CHIP} bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/40`} title="In maintenance: guests are being moved off, not onto, this node">Maintenance</span>;
+  }
+  if (top) {
+    const tone = top.pts >= 50
+      ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40'
+      : top.pts >= 20
+        ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/40'
+        : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/40';
+    return (
+      <span className={`${CHIP} ${tone}`} title={`Largest penalty on headroom\n${tooltip}`}>
+        {top.label} <span className="tabular-nums">+{top.pts}</span>
       </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400" title="No penalties on headroom">
+      <span className="w-2 h-2 rounded-full bg-green-400" />OK
     </span>
   );
 }
@@ -161,75 +208,226 @@ function WorkloadBadge({ profile, running }) {
   );
 }
 
-function GuestList({ guests, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal, guestRecMap, setConfirmMigration }) {
+// Sort keys for the per-node guest list. Metric sorts are largest-first so the
+// guests loading the node come to the top.
+const GUEST_SORTS = [
+  { id: 'cpu',  label: 'CPU',      title: "Share of this node's CPU cores the guest is using now" },
+  { id: 'mem',  label: 'Memory',   title: "RAM in use, as a share of this node's physical RAM" },
+  { id: 'disk', label: 'Disk I/O', title: 'Disk read + write rate at the last collection', wide: true },
+  { id: 'net',  label: 'Network',  title: 'Network in + out rate at the last collection', wide: true },
+];
+
+// One grid template for the header and every row so the columns line up.
+// Phone: guest · CPU · Memory. md+: guest · CPU · Memory · Disk · Net. The
+// VM/CT badge sits inside the guest cell, and the name column shares spare
+// width with the two bar columns instead of taking all of it, so wide screens
+// don't open a gap between the name and the numbers.
+const GUEST_GRID = 'grid items-center gap-x-3 grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] md:grid-cols-[minmax(16rem,1.4fr)_minmax(7rem,1fr)_minmax(7rem,1fr)_5.5rem_5.5rem]';
+
+function formatRate(bps) {
+  if (!bps) return '—';
+  if (bps >= 1e9) return `${(bps / 1e9).toFixed(1)} GB/s`;
+  if (bps >= 1e6) return `${(bps / 1e6).toFixed(1)} MB/s`;
+  if (bps >= 1e3) return `${Math.round(bps / 1e3)} KB/s`;
+  return `${Math.round(bps)} B/s`;
+}
+
+function readGuestSort() {
+  try { return localStorage.getItem('nodeGuestSort') || 'cpu'; } catch { return 'cpu'; }
+}
+
+/** Value + thin bar, where the bar is the share of the node (not of the guest). */
+function ShareCell({ pct, label, title }) {
+  return (
+    <div className="min-w-0" title={title}>
+      <div className="text-xs tabular-nums text-pb-text dark:text-gray-200">{label}</div>
+      <div className={`${PROGRESS_BAR_BG} mt-0.5`}>
+        <div className={`h-full rounded-full ${metricColor(pct)}`} style={{ width: `${Math.min(100, Math.max(pct > 0 ? 2 : 0, pct))}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function TypeBadge({ type }) {
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded justify-self-start ${
+      type === 'VM'
+        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30'
+        : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30'
+    }`}>
+      {type}
+    </span>
+  );
+}
+
+function GuestList({
+  guests, node, onGuestClick, canMigrate, guestProfiles, handleRemoveTag, openTagModal,
+  guestRecMap, setConfirmMigration, forceShowStopped,
+}) {
+  const [sortKey, setSortKey] = useState(readGuestSort);
+  const [showStopped, setShowStopped] = useState(false);
+  const chooseSort = (id) => {
+    setSortKey(id);
+    try { localStorage.setItem('nodeGuestSort', id); } catch { /* per-viewer nicety only */ }
+  };
+
+  const nodeCores = node?.cpu_cores || 0;
+  const nodeMemGB = node?.total_mem_gb || 0;
+
+  const { running, stopped, totals } = useMemo(() => {
+    const rows = (guests || []).map(g => {
+      const isRunning = g.status === 'running';
+      // cpu_current is % of the guest's own vCPUs; convert to % of the node.
+      const cpuShare = isRunning && nodeCores ? ((g.cpu_current || 0) * (g.cpu_cores || 1)) / nodeCores : 0;
+      const memShare = isRunning && nodeMemGB ? ((g.mem_used_gb || 0) / nodeMemGB) * 100 : 0;
+      const disk = isRunning ? (g.disk_read_bps || 0) + (g.disk_write_bps || 0) : 0;
+      const net = isRunning ? (g.net_in_bps || 0) + (g.net_out_bps || 0) : 0;
+      return { g, isRunning, cpuShare, memShare, disk, net };
+    });
+    const metric = { cpu: r => r.cpuShare, mem: r => r.memShare, disk: r => r.disk, net: r => r.net }[sortKey] || (r => r.cpuShare);
+    const run = rows.filter(r => r.isRunning).sort((a, b) => (metric(b) - metric(a)) || ((a.g.vmid || 0) - (b.g.vmid || 0)));
+    const stop = rows.filter(r => !r.isRunning).sort((a, b) => (a.g.vmid || 0) - (b.g.vmid || 0));
+    return {
+      running: run,
+      stopped: stop,
+      totals: {
+        cpu: run.reduce((s, r) => s + r.cpuShare, 0),
+        memGB: run.reduce((s, r) => s + (r.g.mem_used_gb || 0), 0),
+      },
+    };
+  }, [guests, sortKey, nodeCores, nodeMemGB]);
+
   if (!guests || guests.length === 0) {
     return <div className="text-xs text-pb-text2 dark:text-gray-600 italic px-3 py-2">No guests on this node</div>;
   }
+
+  const stoppedOpen = showStopped || forceShowStopped;
+
+  const renderName = (g) => {
+    const rec = guestRecMap?.[String(g.vmid)];
+    const clickable = canMigrate && setConfirmMigration;
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 md:flex-wrap">
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${g.status === 'running' ? 'bg-green-400' : 'bg-gray-500'}`} />
+        <span className="text-sm text-pb-text dark:text-gray-200 truncate min-w-0 max-w-[14rem]">{g.name || `guest-${g.vmid}`}</span>
+        <span className="text-[10px] text-pb-text2 dark:text-gray-500 tabular-nums shrink-0">{g.vmid}</span>
+        <span className="hidden md:inline-flex shrink-0"><TypeBadge type={g.type} /></span>
+        <span className="hidden md:inline-flex"><WorkloadBadge profile={guestProfiles?.[String(g.vmid)]} running={g.status === 'running'} /></span>
+        {rec && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
+            disabled={!clickable}
+            title={recBadgeTooltip(rec)}
+            className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 ${clickable ? 'hover:bg-orange-100 dark:hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
+          >
+            ↗ {rec.target_node}
+          </button>
+        )}
+        <span className="hidden md:contents"><TagChips guest={g} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} /></span>
+        {canMigrate && openTagModal && (
+          <button
+            onClick={(e) => { e.stopPropagation(); openTagModal(g); }}
+            className="hidden md:inline-flex p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
+            title="Manage tags"
+            aria-label="Manage tags"
+          >
+            <Tag size={12} />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const rowClass = (g) => {
+    const hasRec = !!guestRecMap?.[String(g.vmid)];
+    return `${GUEST_GRID} px-3 py-1.5 rounded cursor-pointer transition-colors ${hasRec
+      ? 'bg-orange-50 dark:bg-orange-900/15 hover:bg-orange-100/70 dark:hover:bg-orange-900/25'
+      : 'hover:bg-slate-100 dark:hover:bg-slate-700/30'}`;
+  };
+
   return (
     <div className="border-l border-pb-border dark:border-slate-700/40 ml-2">
-      {guests.map(guest => {
-        const hasRec = !!guestRecMap?.[String(guest.vmid)];
-        return (
-        <div
-          key={guest.vmid}
-          onClick={(e) => { e.stopPropagation(); onGuestClick?.(guest); }}
-          className={`flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors flex-wrap ${hasRec ? 'bg-orange-50 dark:bg-orange-900/15 hover:bg-orange-50 dark:hover:bg-orange-900/25' : 'hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30'}`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${guest.status === 'running' ? 'bg-green-400' : 'bg-gray-600'}`} />
-          <span className="text-sm text-pb-text dark:text-gray-200 min-w-[160px] flex items-center gap-1.5">
-            {guest.name || `guest-${guest.vmid}`}
-            <span className="text-[10px] text-pb-text2 dark:text-gray-600">{guest.vmid}</span>
-            <WorkloadBadge profile={guestProfiles?.[String(guest.vmid)]} running={guest.status === 'running'} />
-            {(() => {
-              const rec = guestRecMap?.[String(guest.vmid)];
-              if (!rec) return null;
-              const clickable = canMigrate && setConfirmMigration;
-              return (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); if (clickable) setConfirmMigration(rec); }}
-                  disabled={!clickable}
-                  title={recBadgeTooltip(rec)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 ${clickable ? 'hover:bg-orange-100 dark:hover:bg-orange-800/60 cursor-pointer' : 'cursor-default'}`}
-                >
-                  ↗ {rec.target_node}
-                </button>
-              );
-            })()}
+      {/* Caption: what the running guests add up to on this node */}
+      <div className="px-3 pt-1 pb-1.5 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
+        {running.length} running{stopped.length > 0 && ` · ${stopped.length} stopped`}
+        {running.length > 0 && nodeCores > 0 && (
+          <> — together <span className="text-pb-text dark:text-gray-300">{totals.cpu.toFixed(1)}%</span> of {node?.name || 'node'} CPU
+            {' '}and <span className="text-pb-text dark:text-gray-300">{formatMem(totals.memGB)}</span> RAM</>
+        )}
+      </div>
+
+      {/* Sortable column header */}
+      <div className={`${GUEST_GRID} px-3 pb-1 text-[10px] uppercase tracking-wider text-pb-text2 dark:text-gray-500 select-none`}>
+        <span>Guest <span className="normal-case tracking-normal">· sorted by {(GUEST_SORTS.find(s => s.id === sortKey) || GUEST_SORTS[0]).label.toLowerCase()}</span></span>
+        {GUEST_SORTS.map(s => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); chooseSort(s.id); }}
+            title={`${s.title} — click to sort, largest first`}
+            className={`${s.wide ? 'hidden md:flex' : 'flex'} items-center gap-0.5 uppercase tracking-wider text-left hover:text-pb-text dark:hover:text-gray-200 ${sortKey === s.id ? 'text-pb-accent dark:text-pb-accent-dark font-semibold' : ''}`}
+          >
+            {s.label}{s.id === 'cpu' && <span className="hidden md:inline normal-case tracking-normal font-normal"> (of node)</span>}
+            {sortKey === s.id && <ChevronDown size={10} />}
+          </button>
+        ))}
+      </div>
+
+      {running.map(({ g, cpuShare, memShare, disk, net }) => (
+        <div key={g.vmid} onClick={(e) => { e.stopPropagation(); onGuestClick?.(g); }} className={rowClass(g)}>
+          {renderName(g)}
+          <ShareCell
+            pct={cpuShare}
+            label={`${cpuShare.toFixed(1)}%`}
+            title={`${(g.cpu_current || 0).toFixed(1)}% of its ${g.cpu_cores || 1} vCPU = ${cpuShare.toFixed(1)}% of ${node?.name || 'the node'}'s ${nodeCores} cores`}
+          />
+          <ShareCell
+            pct={memShare}
+            label={formatMem(g.mem_used_gb)}
+            title={`${formatMem(g.mem_used_gb)} in use of ${formatMem(g.mem_max_gb)} allocated · ${memShare.toFixed(1)}% of the node's RAM`}
+          />
+          <span
+            className={`hidden md:block text-xs tabular-nums ${disk > 0 ? 'text-pb-text dark:text-gray-300' : 'text-pb-text2 dark:text-gray-600'}`}
+            title={`Read ${formatRate(g.disk_read_bps)} · Write ${formatRate(g.disk_write_bps)}`}
+          >
+            {formatRate(disk)}
           </span>
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-            guest.type === 'VM'
-              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30'
-              : 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/30'
-          }`}>
-            {guest.type}
+          <span
+            className={`hidden md:block text-xs tabular-nums ${net > 0 ? 'text-pb-text dark:text-gray-300' : 'text-pb-text2 dark:text-gray-600'}`}
+            title={`In ${formatRate(g.net_in_bps)} · Out ${formatRate(g.net_out_bps)}`}
+          >
+            {formatRate(net)}
           </span>
-          <TagChips guest={guest} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} />
-          {canMigrate && openTagModal && (
-            <button
-              onClick={(e) => { e.stopPropagation(); openTagModal(guest); }}
-              className="p-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
-              title="Manage tags"
-              aria-label="Manage tags"
-            >
-              <Tag size={12} />
-            </button>
-          )}
-          {guest.status === 'running' ? (
-            <div className="flex items-center gap-4 ml-auto text-xs text-pb-text2 dark:text-gray-500 tabular-nums">
-              {guest.cpu_current != null && (
-                <span>CPU <span className="text-pb-text dark:text-gray-300">{guest.cpu_current.toFixed(0)}%</span></span>
-              )}
-              {guest.mem_used_gb != null && (
-                <span>Mem <span className="text-pb-text dark:text-gray-300">{formatMem(guest.mem_used_gb)}</span></span>
-              )}
-            </div>
-          ) : (
-            <span className="ml-auto text-xs text-pb-text2 dark:text-gray-600">stopped</span>
-          )}
         </div>
-        );
-      })}
+      ))}
+
+      {stopped.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowStopped(v => !v); }}
+            disabled={forceShowStopped}
+            className="w-full flex items-center gap-1.5 px-3 py-1.5 mt-0.5 text-xs text-pb-text2 dark:text-gray-500 hover:text-pb-text dark:hover:text-gray-300 text-left disabled:cursor-default"
+          >
+            <ChevronDown size={12} className={`transition-transform duration-200 ${stoppedOpen ? '' : '-rotate-90'}`} />
+            {stopped.length} stopped guest{stopped.length !== 1 ? 's' : ''}
+            {!stoppedOpen && (
+              <span className="truncate text-pb-text2/80 dark:text-gray-600">
+                — {stopped.slice(0, 4).map(r => r.g.name || r.g.vmid).join(', ')}{stopped.length > 4 ? ` +${stopped.length - 4}` : ''}
+              </span>
+            )}
+          </button>
+          {stoppedOpen && stopped.map(({ g }) => (
+            <div key={g.vmid} onClick={(e) => { e.stopPropagation(); onGuestClick?.(g); }} className={`${rowClass(g)} opacity-70`}>
+              {renderName(g)}
+              <span className="col-span-2 md:col-span-4 text-xs text-pb-text2 dark:text-gray-500">
+                stopped<span className="hidden md:inline"> · {formatMem(g.mem_max_gb)} allocated when started</span>
+              </span>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -242,6 +440,8 @@ export default function NodeSummaryTable({
   canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
   // Optional cross-reference badges from recommendations
   nodeRecCounts, guestRecMap, setConfirmMigration,
+  // Nodes in maintenance (Set or array of names), for the Condition column
+  maintenanceNodes,
 }) {
   const openTagModal = setTagModalGuest && setShowTagModal
     ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
@@ -302,6 +502,8 @@ export default function NodeSummaryTable({
     });
   };
 
+  const maintSet = useMemo(() => toNodeSet(maintenanceNodes), [maintenanceNodes]);
+
   const nodes = useMemo(() => {
     if (!data?.nodes) return [];
     const nodesArr = Array.isArray(data.nodes) ? data.nodes : Object.values(data.nodes);
@@ -315,12 +517,12 @@ export default function NodeSummaryTable({
       const totalMemGB = node.total_mem_gb || 0;
       const usedMemGB = totalMemGB * (memPct / 100);
 
-      const storageArr = node.storage || [];
-      const diskTotalGB = storageArr.reduce((sum, s) => sum + (s.total_gb || 0), 0);
-      const diskUsedGB = storageArr.reduce((sum, s) => sum + (s.used_gb || 0), 0);
-      const diskPct = diskTotalGB > 0 ? (diskUsedGB / diskTotalGB) * 100 : 0;
+      const disk = fullestLocalPool(node.storage);
 
-      const score = nodeScores?.[node.name]?.suitability_rating;
+      const nodeScore = nodeScores?.[node.name];
+      const score = nodeScore?.suitability_rating;
+      const top = topPenalty(nodeScore);
+      const penaltyTip = penaltyTooltip(nodeScore);
 
       const guestVmids = node.guests || [];
       let vms = 0, cts = 0;
@@ -337,7 +539,8 @@ export default function NodeSummaryTable({
         status: node.status,
         online: node.status === 'online',
         uptime: node.uptime,
-        cpuPct, memPct, iowaitPct, iowaitAvg, diskPct, score, vms, cts,
+        maintenance: maintSet.has(node.name),
+        cpuPct, memPct, iowaitPct, iowaitAvg, disk, score, top, penaltyTip, vms, cts,
         cpuDetail: `${node.cpu_cores || 0} cores`,
         memDetail: `${usedMemGB.toFixed(1)}/${totalMemGB.toFixed(0)} GB`,
         iowaitDetail: `24h avg ${iowaitAvg.toFixed(1)}%`,
@@ -352,7 +555,7 @@ export default function NodeSummaryTable({
       if (sortField === 'iowait') return (a.iowaitPct - b.iowaitPct) * v;
       return 0;
     });
-  }, [data, nodeScores, sortField, sortDir]);
+  }, [data, nodeScores, sortField, sortDir, maintSet]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -464,12 +667,12 @@ export default function NodeSummaryTable({
                 <tr className="border-b border-pb-border dark:border-slate-700/50">
                   <th className={`${TABLE_HEADER} w-8`}></th>
                   <SortHeader field="name">Node</SortHeader>
-                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>Status</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`} title="Offline or Maintenance when true; otherwise the largest penalty on this node's headroom, or OK">Condition</th>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`}>Uptime</th>
                   <SortHeader field="cpu">CPU</SortHeader>
                   <SortHeader field="mem">Memory</SortHeader>
                   <SortHeader field="iowait" className="hidden md:table-cell">IOWait</SortHeader>
-                  <th className={`${TABLE_HEADER} hidden md:table-cell`}>Disk</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`} title="Fullest local storage pool on the node. Shared storage (CIFS/NFS/PBS/Ceph) is left out: it shows the same fill on every node.">Local disk</th>
                   <SortHeader field="score" title={HEADROOM_HINT}><span className="hidden md:inline">Headroom</span><span className="md:hidden">Room</span></SortHeader>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`}>VMs</th>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`}>CTs</th>
@@ -520,15 +723,25 @@ export default function NodeSummaryTable({
                             )}
                           </div>
                         </td>
-                        <td className="p-3 hidden md:table-cell"><StatusDot online={node.online} /></td>
+                        <td className="p-3 hidden md:table-cell">
+                          <ConditionCell online={node.online} maintenance={node.maintenance} top={node.top} tooltip={node.penaltyTip} />
+                        </td>
                         <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
                         <td className="p-3"><MetricBar pct={node.cpuPct} detail={node.cpuDetail} /></td>
-                        <td className="p-3"><MetricBar pct={node.memPct} detail={node.memDetail} /></td>
+                        <td className="p-3">
+                          <MetricBar pct={node.memPct} detail={node.memDetail} />
+                        </td>
                         <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} /></td>
-                        <td className="p-3 hidden md:table-cell"><MetricBar pct={node.diskPct} /></td>
+                        <td className="p-3 hidden md:table-cell">
+                          {node.disk ? (
+                            <MetricBar pct={node.disk.pct} detail={node.disk.name} title={node.disk.title} />
+                          ) : (
+                            <span className="text-xs text-pb-text2 dark:text-gray-500" title="This node has no local storage pool; only shared storage">shared only</span>
+                          )}
+                        </td>
                         <td className="p-3">
                           {node.score != null ? (
-                            <span className={`text-sm font-bold font-mono tabular-nums ${scoreColor(node.score)}`}>
+                            <span className={`text-sm font-bold font-mono tabular-nums ${scoreColor(node.score)}`} title={`${HEADROOM_HINT}\n\n${node.penaltyTip}`}>
                               {Math.round(node.score)}
                             </span>
                           ) : (
@@ -539,10 +752,14 @@ export default function NodeSummaryTable({
                         <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 tabular-nums text-center">{node.cts}</td>
                       </tr>
                       {isExpanded && (
-                        <tr className="bg-slate-900/40">
+                        <tr className="bg-slate-50 dark:bg-slate-900/40">
                           <td colSpan={TOTAL_COLS} className="px-3 pb-3 pt-1">
+                            {/* w-0 + min-w-full: fill the row without letting the guest grid widen the table on phones */}
+                            <div className="w-0 min-w-full">
                             <GuestList
                               guests={nodeGuests}
+                              node={node.raw}
+                              forceShowStopped={filterActive}
                               onGuestClick={onGuestClick}
                               canMigrate={canMigrate}
                               guestProfiles={guestProfiles}
@@ -551,6 +768,7 @@ export default function NodeSummaryTable({
                               guestRecMap={guestRecMap}
                               setConfirmMigration={setConfirmMigration}
                             />
+                            </div>
                           </td>
                         </tr>
                       )}
