@@ -277,6 +277,71 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     }
 
 
+def estimate_move_deltas(rec: Dict[str, Any], guest: Optional[Dict[str, Any]],
+                         source_node: Dict[str, Any], target_node: Dict[str, Any]) -> Dict[str, float]:
+    """
+    Estimate how one migration shifts CPU / memory (percentage points).
+
+    The target side uses the same conservative estimate as the conflict
+    detector (allocated memory, the engine's predicted CPU), so the impact
+    view and the conflict warnings agree. The source side only gets back
+    what the guest actually uses right now: subtracting the allocation there
+    over-states the relief and used to drive a source node that still had
+    guests down to 0% CPU / 0% memory.
+
+    Args:
+        rec: Recommendation dict (mem_gb = allocated memory, score_details).
+        guest: The guest's collector record, or None when unknown.
+        source_node: Source node record (total_mem_gb, cpu_cores).
+        target_node: Target node record (total_mem_gb, cpu_cores).
+
+    Returns:
+        Dict with source_cpu, source_mem, target_cpu, target_mem (all >= 0).
+    """
+    source_total_mem = source_node.get("total_mem_gb", 0) or 0
+    target_total_mem = target_node.get("total_mem_gb", 0) or 0
+    source_cores = source_node.get("cpu_cores", 0) or 0
+    target_cores = target_node.get("cpu_cores", 0) or 0
+
+    alloc_mem_gb = rec.get("mem_gb", 0) or (guest or {}).get("mem_max_gb", 0) or 0
+    target_mem = (alloc_mem_gb / target_total_mem * 100) if target_total_mem > 0 else 0.0
+
+    # Target CPU: the engine's predicted-minus-current when it has one.
+    target_cpu = None
+    score_details = rec.get("score_details") or {}
+    target_det = score_details.get("target", {}) if isinstance(score_details, dict) else {}
+    target_met = target_det.get("metrics", {}) if isinstance(target_det, dict) else {}
+    predicted_cpu = target_met.get("predicted_cpu")
+    immediate_cpu = target_met.get("immediate_cpu")
+    if predicted_cpu is not None and immediate_cpu is not None:
+        target_cpu = max(0.0, predicted_cpu - immediate_cpu)
+
+    if guest:
+        guest_cores = guest.get("cpu_cores", 0) or 1
+        guest_cpu = guest.get("cpu_current", 0) or 0  # % of the guest's own cores
+        used_mem_gb = guest.get("mem_used_gb", 0) or 0
+        source_cpu = (guest_cpu * guest_cores / source_cores) if source_cores > 0 else 0.0
+        source_mem = (used_mem_gb / source_total_mem * 100) if source_total_mem > 0 else 0.0
+        if target_cpu is None:
+            target_cpu = (guest_cpu * guest_cores / target_cores) if target_cores > 0 else 0.0
+    else:
+        # No guest record: fall back to the allocation-based estimate.
+        if target_cpu is None:
+            target_cpu = target_mem * 0.5
+        source_mem = (alloc_mem_gb / source_total_mem * 100) if source_total_mem > 0 else 0.0
+        if source_cores > 0 and target_cores > 0:
+            source_cpu = target_cpu * (target_cores / source_cores)
+        else:
+            source_cpu = target_cpu
+
+    return {
+        "source_cpu": max(0.0, source_cpu),
+        "source_mem": max(0.0, source_mem),
+        "target_cpu": max(0.0, target_cpu),
+        "target_mem": max(0.0, target_mem),
+    }
+
+
 def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dict[str, Any], guests: Dict[str, Any],
                                cpu_threshold: float, mem_threshold: float, penalty_cfg: Dict[str, Any],
                                max_migrations_per_run: int = 0) -> List[Dict[str, Any]]:
@@ -284,8 +349,10 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
     Post-generation validation: detect conflicts among recommended migrations.
 
     Groups recommendations by target node and simulates the combined
-    post-migration load. If the combined load exceeds thresholds, flags
-    the conflict with a resolution suggestion.
+    post-migration load (net of guests the batch moves off that node). If
+    the combined load exceeds thresholds, flags the conflict with a
+    resolution suggestion, in text (`resolution`) and in structured form
+    (`resolution_action`, `resolution_vmid`, `resolution_target`).
 
     When max_migrations_per_run is set (> 0), conflict detection is scoped
     to the number of migrations that can actually execute per automation
@@ -321,8 +388,6 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
         metrics = node.get("metrics", {})
         current_cpu = metrics.get("current_cpu", 0)
         current_mem = metrics.get("current_mem", 0)
-        node_total_mem = node.get("total_mem_gb", 1) or 1
-        node_cores = node.get("cpu_cores", 1) or 1
 
         # Sort by score improvement (highest first) to match automigrate priority
         recs_by_priority = sorted(recs, key=lambda r: r.get("score_improvement", 0), reverse=True)
@@ -335,39 +400,42 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
         else:
             batch_recs = recs_by_priority
 
+        # Guests the batch moves *off* this node free what they use today.
+        # The execution planner runs those moves first ("frees capacity"), so
+        # they count before the incoming ones land. Same estimator as the
+        # summary's batch impact, so the UI's numbers and these agree.
+        outgoing: List[Dict[str, Any]] = []
+        freed_cpu = 0.0
+        freed_mem = 0.0
+        for rec in recommendations:
+            if rec.get("source_node") != target_node or not rec.get("target_node"):
+                continue
+            d = estimate_move_deltas(rec, guests.get(str(rec.get("vmid"))), node,
+                                     nodes.get(rec.get("target_node"), {}))
+            freed_cpu += d["source_cpu"]
+            freed_mem += d["source_mem"]
+            outgoing.append({
+                "vmid": rec.get("vmid"),
+                "name": rec.get("name", "unknown"),
+                "freed_cpu": round(d["source_cpu"], 1),
+                "freed_mem": round(d["source_mem"], 1),
+            })
+
         # Simulate combined post-migration load for the batch
-        combined_cpu = current_cpu
-        combined_mem = current_mem
+        combined_cpu = max(0.0, current_cpu - freed_cpu)
+        combined_mem = max(0.0, current_mem - freed_mem)
         incoming: List[Dict[str, Any]] = []
 
         for rec in batch_recs:
-            vmid_key = str(rec.get("vmid"))
-            guest = guests.get(vmid_key, {})
-            mem_gb = rec.get("mem_gb", 0) or guest.get("mem_max_gb", 0)
-            mem_impact = (mem_gb / node_total_mem * 100) if node_total_mem > 0 else 0
-
-            # Estimate CPU impact from score_details or rough heuristic
-            cpu_impact = 0
-            score_details = rec.get("score_details") or {}
-            tgt_met: Dict[str, Any] = {}
-            if isinstance(score_details, dict):
-                tgt_det = score_details.get("target", {})
-                if isinstance(tgt_det, dict):
-                    tgt_met = tgt_det.get("metrics", {})
-            predicted_cpu = tgt_met.get("predicted_cpu")
-            immediate_cpu = tgt_met.get("immediate_cpu")
-            if predicted_cpu is not None and immediate_cpu is not None:
-                cpu_impact = max(0, predicted_cpu - immediate_cpu)
-            elif mem_gb > 0:
-                cpu_impact = mem_impact * 0.5  # rough fallback
-
-            combined_cpu += cpu_impact
-            combined_mem += mem_impact
+            d = estimate_move_deltas(rec, guests.get(str(rec.get("vmid"))),
+                                     nodes.get(rec.get("source_node"), {}), node)
+            combined_cpu += d["target_cpu"]
+            combined_mem += d["target_mem"]
             incoming.append({
                 "vmid": rec.get("vmid"),
                 "name": rec.get("name", "unknown"),
-                "predicted_cpu_impact": round(cpu_impact, 1),
-                "predicted_mem_impact": round(mem_impact, 1),
+                "predicted_cpu_impact": round(d["target_cpu"], 1),
+                "predicted_mem_impact": round(d["target_mem"], 1),
             })
 
         # Check if combined load exceeds thresholds
@@ -378,22 +446,26 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
             # Find best alternative target for the lowest-improvement recommendation
             batch_sorted_asc = sorted(batch_recs, key=lambda r: r.get("score_improvement", 0))
             weakest = batch_sorted_asc[0]
+            weakest_label = f"{weakest.get('name', 'unknown')} ({weakest.get('type') or 'VM'} {weakest.get('vmid')})"
 
-            resolution = f"Consider deferring migration of {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')})"
+            resolution = f"Consider deferring migration of {weakest_label}"
+            resolution_target = None
 
-            # Try to find an alternative target
+            # Try to find an alternative target (never the guest's own source node)
             for alt_name, alt_node in nodes.items():
-                if alt_name == target_node or alt_node.get("status") != "online":
+                if alt_name in (target_node, weakest.get("source_node")) or alt_node.get("status") != "online":
                     continue
                 alt_cpu = alt_node.get("metrics", {}).get("current_cpu", 0)
                 alt_mem = alt_node.get("metrics", {}).get("current_mem", 0)
                 if alt_cpu < cpu_threshold - 10 and alt_mem < mem_threshold - 10:
-                    resolution = f"Consider moving {weakest.get('name', 'unknown')} (VM {weakest.get('vmid')}) to {alt_name} instead"
+                    resolution = f"Consider moving {weakest_label} to {alt_name} instead"
+                    resolution_target = alt_name
                     break
 
             conflict = {
                 "target_node": target_node,
                 "incoming_guests": incoming,
+                "outgoing_guests": outgoing,
                 "combined_predicted_cpu": round(combined_cpu, 1),
                 "combined_predicted_mem": round(combined_mem, 1),
                 "cpu_threshold": cpu_threshold,
@@ -401,6 +473,13 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
                 "exceeds_cpu": cpu_exceeded,
                 "exceeds_mem": mem_exceeded,
                 "resolution": resolution,
+                # Structured form of `resolution` so clients need not parse the text:
+                # action is "retarget" (send resolution_vmid to resolution_target)
+                # or "defer" (leave resolution_vmid out of this run).
+                "resolution_action": "retarget" if resolution_target else "defer",
+                "resolution_vmid": weakest.get("vmid"),
+                "resolution_name": weakest.get("name", "unknown"),
+                "resolution_target": resolution_target,
             }
             conflicts.append(conflict)
 

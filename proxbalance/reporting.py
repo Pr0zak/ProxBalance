@@ -6,14 +6,32 @@ urgency classifications, and capacity planning advisories.
 """
 
 import statistics
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
+from proxbalance.recommendation_analysis import estimate_move_deltas
 from proxbalance.scoring import calculate_node_health_score
 
 
-def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Dict[str, Any]], nodes: Dict[str, Any], penalty_cfg: Dict[str, Any]) -> Dict[str, Any]:
+def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Dict[str, Any]], nodes: Dict[str, Any], penalty_cfg: Dict[str, Any],
+                  guests: Optional[Dict[str, Any]] = None,
+                  limits: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
     """
     Build a recommendation digest / summary for the UI.
+
+    Args:
+        recommendations: Generated recommendations.
+        skipped_guests: Guests the engine considered and skipped.
+        nodes: Node records keyed by name.
+        penalty_cfg: Penalty scoring config.
+        guests: Guest records keyed by vmid string. Used to estimate how
+            much each move actually frees on its source node; optional for
+            backward compatibility.
+        limits: Per-node safety limits {"cpu": %, "mem": %} the conflict
+            detector checked against; echoed in batch_impact so the UI can
+            flag a node whose predicted load crosses them.
+
+    Returns:
+        Summary dict including batch_impact (before/after/improvement/moves).
     """
     total_improvement = sum(r.get("score_improvement", 0) for r in recommendations)
     maintenance_count = sum(1 for r in recommendations if r.get("structured_reason", {}).get("primary_reason") == "maintenance_evacuation")
@@ -85,8 +103,16 @@ def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Di
             "guest_count": len(node.get("guests", [])),
         }
 
-    # "After" state: simulate all recommended migrations
-    after_node_scores = {n: dict(d) for n, d in before_node_scores.items()}
+    # "After" state: simulate all recommended migrations.
+    #
+    # Each move is estimated on its own (see estimate_move_deltas), the raw
+    # deltas are summed, and the result is clamped once at the end. Emitting
+    # the per-move deltas lets the UI recompute the "after" picture for any
+    # subset of the suggestions (selected / not deferred) with the same math.
+    n_online = max(1, len(online_nodes))
+    after_raw = {n: {"cpu": d["cpu"], "mem": d["mem"], "guest_count": d["guest_count"]}
+                 for n, d in before_node_scores.items()}
+    moves: List[Dict[str, Any]] = []
 
     for rec in recommendations:
         source = rec.get("source_node")
@@ -94,44 +120,35 @@ def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Di
 
         if not source or not target:
             continue
-        if source not in after_node_scores or target not in after_node_scores:
+        if source not in after_raw or target not in after_raw:
             continue
 
-        # Estimate guest memory contribution from allocated mem_gb
-        guest_mem_gb = rec.get("mem_gb", 0)
-        source_total_mem = nodes.get(source, {}).get("total_mem_gb", 1) or 1
-        target_total_mem = nodes.get(target, {}).get("total_mem_gb", 1) or 1
-        mem_delta_source = (guest_mem_gb / source_total_mem) * 100
-        mem_delta_target = (guest_mem_gb / target_total_mem) * 100
+        guest = (guests or {}).get(str(rec.get("vmid")))
+        deltas = estimate_move_deltas(rec, guest, nodes.get(source, {}), nodes.get(target, {}))
 
-        # Estimate guest CPU contribution from score_details predicted metrics
-        cpu_delta_target = 0.0
-        score_details = rec.get("score_details") or {}
-        target_det = score_details.get("target", {}) if isinstance(score_details, dict) else {}
-        target_met = target_det.get("metrics", {}) if isinstance(target_det, dict) else {}
+        after_raw[source]["cpu"] -= deltas["source_cpu"]
+        after_raw[source]["mem"] -= deltas["source_mem"]
+        after_raw[source]["guest_count"] -= 1
+        after_raw[target]["cpu"] += deltas["target_cpu"]
+        after_raw[target]["mem"] += deltas["target_mem"]
+        after_raw[target]["guest_count"] += 1
 
-        predicted_cpu = target_met.get("predicted_cpu")
-        immediate_cpu = target_met.get("immediate_cpu")
-        if predicted_cpu is not None and immediate_cpu is not None:
-            cpu_delta_target = max(0.0, predicted_cpu - immediate_cpu)
+        moves.append({
+            "vmid": rec.get("vmid"),
+            "source_node": source,
+            "target_node": target,
+            **{k: round(v, 2) for k, v in deltas.items()},
+            "health_delta": round(rec.get("score_improvement", 0) * 0.3 / n_online, 2),
+        })
 
-        # Fallback: rough estimate from memory ratio when no score_details
-        if cpu_delta_target == 0.0 and guest_mem_gb > 0:
-            cpu_delta_target = mem_delta_target * 0.5
-
-        # Scale CPU delta from target to source based on core count ratio
-        source_cores = nodes.get(source, {}).get("cpu_cores", 1) or 1
-        target_cores = nodes.get(target, {}).get("cpu_cores", 1) or 1
-        cpu_delta_source = cpu_delta_target * (target_cores / source_cores)
-
-        # Apply: remove guest from source, add to target
-        after_node_scores[source]["cpu"] = round(max(0, after_node_scores[source]["cpu"] - cpu_delta_source), 1)
-        after_node_scores[source]["mem"] = round(max(0, after_node_scores[source]["mem"] - mem_delta_source), 1)
-        after_node_scores[source]["guest_count"] = max(0, after_node_scores[source]["guest_count"] - 1)
-
-        after_node_scores[target]["cpu"] = round(min(100, after_node_scores[target]["cpu"] + cpu_delta_target), 1)
-        after_node_scores[target]["mem"] = round(min(100, after_node_scores[target]["mem"] + mem_delta_target), 1)
-        after_node_scores[target]["guest_count"] += 1
+    after_node_scores = {
+        name: {
+            "cpu": round(min(100.0, max(0.0, d["cpu"])), 1),
+            "mem": round(min(100.0, max(0.0, d["mem"])), 1),
+            "guest_count": max(0, d["guest_count"]),
+        }
+        for name, d in after_raw.items()
+    }
 
     # Compute score variance (combined CPU + memory load spread across nodes)
     def _calc_variance(node_scores: Dict[str, Dict[str, Any]]) -> float:
@@ -173,6 +190,10 @@ def build_summary(recommendations: List[Dict[str, Any]], skipped_guests: List[Di
             "variance_reduction_pct": variance_reduction_pct,
             "all_nodes_improved": all_nodes_improved,
         },
+        # Per-move deltas (percentage points) behind the "after" picture, so a
+        # client can re-simulate any subset of the suggestions.
+        "moves": moves,
+        "limits": limits,
     }
 
     return {
