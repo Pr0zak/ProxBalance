@@ -244,9 +244,14 @@ def update_post_migration_metrics(vmid: Optional[Union[int, str]] = None) -> Dic
         source_name = entry.get("source_node", "")
         target_name = entry.get("target_node", "")
 
-        def _capture_snapshot() -> Dict[str, Any]:
+        def _capture_snapshot(window_seconds: int) -> Dict[str, Any]:
+            # A refresh that runs long after the window (e.g. the service was
+            # down) measures "now", not the window. Flag it so consumers can
+            # ignore it instead of trusting a months-late comparison.
             return {
                 "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "elapsed_seconds": int(elapsed),
+                "late": elapsed > window_seconds * 2 + 1800,
                 "source_node": _extract_node_metrics_from_cache(nodes, source_name),
                 "target_node": _extract_node_metrics_from_cache(nodes, target_name),
             }
@@ -257,7 +262,7 @@ def update_post_migration_metrics(vmid: Optional[Union[int, str]] = None) -> Dic
 
         # 5 minute window
         if status == "pending_5min" and elapsed >= POST_CAPTURE_DELAY_SECONDS:
-            snapshot = _capture_snapshot()
+            snapshot = _capture_snapshot(POST_CAPTURE_DELAY_SECONDS)
             actual_imp = _calculate_improvement_dict(pre, snapshot)
             accuracy = _calculate_accuracy(entry.get("predicted_improvement"), actual_imp)
 
@@ -273,7 +278,7 @@ def update_post_migration_metrics(vmid: Optional[Union[int, str]] = None) -> Dic
 
         # 1 hour window
         if status == "pending_1h" and elapsed >= POST_CAPTURE_1H_SECONDS:
-            snapshot = _capture_snapshot()
+            snapshot = _capture_snapshot(POST_CAPTURE_1H_SECONDS)
             conn.execute(
                 "UPDATE migration_outcomes SET status = 'pending_24h', post_1h_json = ? WHERE id = ?",
                 (json.dumps(snapshot), entry["id"]),
@@ -283,7 +288,7 @@ def update_post_migration_metrics(vmid: Optional[Union[int, str]] = None) -> Dic
 
         # 24 hour window
         if status == "pending_24h" and elapsed >= POST_CAPTURE_24H_SECONDS:
-            snapshot = _capture_snapshot()
+            snapshot = _capture_snapshot(POST_CAPTURE_24H_SECONDS)
             sustained_imp = _calculate_improvement_dict(pre, snapshot)
             verdict = _determine_verdict_from_deltas(
                 json.loads(entry.get("actual_improvement_json", "{}") or "{}"),

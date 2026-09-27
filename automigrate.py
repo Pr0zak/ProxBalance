@@ -37,6 +37,7 @@ LOCK_FILE = BASE_DIR / "automigrate.lock"
 from proxbalance.db import init_db, close_all as db_close_all
 from proxbalance import migration_db
 from proxbalance.forecasting import get_score_history
+from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
 
 # Logging
 logging.basicConfig(
@@ -1895,7 +1896,26 @@ def main():
             except Exception as e:
                 logger.error(f"Failed to save decisions before migration: {e}")
 
+            # Snapshot node metrics first so the outcome tracker can compare
+            # before/after (it captures the 5 min / 1 h / 24 h side later).
+            pre_snapshot = None
+            if not dry_run:
+                try:
+                    pre_snapshot = capture_pre_migration_snapshot(vmid, source, target)
+                except Exception as e:
+                    logger.warning(f"Could not capture pre-migration snapshot for {vmid}: {e}")
+
             result = execute_migration(vmid, target, source, guest_type, config, dry_run=dry_run)
+
+            if not dry_run and result.get('success') and pre_snapshot:
+                try:
+                    record_migration_outcome(
+                        vmid, source, target, guest_type, pre_snapshot,
+                        predicted_improvement=rec.get('score_improvement'),
+                        trend_evidence=rec.get('trend_evidence'),
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not record migration outcome for {vmid}: {e}")
 
             # Track decision outcome
             migrations_attempted += 1
