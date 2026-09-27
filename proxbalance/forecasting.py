@@ -366,8 +366,8 @@ def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[D
     """Retrieve score history aggregated into fixed-size time buckets.
 
     Each returned row represents one bucket: the average cluster_health, summed
-    recommendation count, and the average per-node suitability across all raw
-    samples in the bucket. Per-node averages power the stacked/per-node chart
+    recommendation count, and the average per-node suitability, cpu and mem across
+    all raw samples in the bucket. Per-node averages power the stacked/per-node chart
     views; bucketing is done in Python because the per-node data is a JSON blob.
 
     Args:
@@ -411,19 +411,28 @@ def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[D
         except (ValueError, TypeError):
             node_json = {}
         for name, nd in node_json.items():
-            s = nd.get("suitability") if isinstance(nd, dict) else None
-            if isinstance(s, (int, float)):
-                acc = b["nodes"].setdefault(name, [0.0, 0])
-                acc[0] += s
-                acc[1] += 1
+            if not isinstance(nd, dict):
+                continue
+            # Per-node [sum, count] per field, averaged independently so a sample
+            # missing cpu/mem doesn't drag the other fields' averages.
+            acc = b["nodes"].setdefault(name, {})
+            for field in ("suitability", "cpu", "mem"):
+                v = nd.get(field)
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    fa = acc.setdefault(field, [0.0, 0])
+                    fa[0] += v
+                    fa[1] += 1
 
     result = []
     for key in sorted(buckets.keys())[-limit:]:
         b = buckets[key]
-        nodes_avg = {
-            name: {"suitability": round(v[0] / v[1], 1)}
-            for name, v in b["nodes"].items() if v[1]
-        }
+        nodes_avg = {}
+        for name, acc in b["nodes"].items():
+            if not acc.get("suitability"):
+                continue
+            nodes_avg[name] = {
+                field: round(fa[0] / fa[1], 1) for field, fa in acc.items() if fa[1]
+            }
         result.append({
             "timestamp": b["ts_max"],
             "nodes": nodes_avg,
