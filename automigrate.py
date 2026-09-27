@@ -1380,6 +1380,9 @@ def main():
             return 0
 
         dry_run = auto_config.get('dry_run', True)
+        # /api/automigrate/test sets this so a "test" run can never migrate for real.
+        if os.environ.get('PROXBALANCE_FORCE_DRY_RUN') == '1':
+            dry_run = True
         last_run_summary['mode'] = 'dry_run' if dry_run else 'live'
 
         logger.info(f"Will attempt up to {max_new_migrations} migrations (dry_run={dry_run}, max_concurrent={max_concurrent}, available_slots={available_slots})")

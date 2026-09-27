@@ -639,12 +639,14 @@ def test_automigrate():
                 "error": f"automigrate.py not found at {script_path}"
             }), 404
 
+        # Force dry-run: without this, a "test" in live mode executed real migrations.
         result = subprocess.run(
             [venv_python, script_path],
             capture_output=True,
             text=True,
             timeout=60,
-            cwd=BASE_PATH
+            cwd=BASE_PATH,
+            env={**os.environ, 'PROXBALANCE_FORCE_DRY_RUN': '1'},
         )
 
         return jsonify({
