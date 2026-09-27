@@ -350,7 +350,11 @@ const ProxmoxBalanceManager = () => {
   // Insights Page
   if (ui.currentPage === 'insights') {
     return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
-      <InsightsPage cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} />
+      <InsightsPage
+        cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
+        clusterNodes={cluster.data?.nodes}
+        automationConfig={automation.automationConfig}
+      />
       {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
     </div>;
   }
