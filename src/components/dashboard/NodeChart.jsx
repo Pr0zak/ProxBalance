@@ -109,7 +109,7 @@ export default function NodeChart({ nodeName, trendData, chartPeriod, nodeScore,
       const c = r >= 70 ? '34, 197, 94' : r >= 50 ? '234, 179, 8' : r >= 30 ? '249, 115, 22' : '239, 68, 68';
       annotations.scoreLine = {
         type: 'line', yMin: r, yMax: r, borderColor: `rgba(${c}, 0.7)`, borderWidth: 2, borderDash: [5, 5],
-        label: { display: true, content: `Suitability: ${r}%`, position: 'start', backgroundColor: `rgba(${c}, 0.9)`, color: '#fff', font: { size: 10, weight: 'bold' }, padding: 3 },
+        label: { display: true, content: `Headroom ${r}`, position: 'start', backgroundColor: `rgba(${c}, 0.9)`, color: '#fff', font: { size: 10, weight: 'bold' }, padding: 3 },
       };
     }
     const th = thresholds || {};

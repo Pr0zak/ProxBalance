@@ -101,7 +101,7 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
             <div className="min-w-0">
               <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
               <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5">
-                {healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node ratings'} · lower = more pressure
+                {healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier
               </p>
             </div>
           </div>

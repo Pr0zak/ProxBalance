@@ -57,3 +57,35 @@ export function recBadgeTooltip(rec) {
   lines.push('Click to open migration dialog');
   return lines.join('\n');
 }
+
+/**
+ * Human-readable labels for the recommendation engine's skip-reason codes.
+ * `tone` picks the pill color; unknown codes fall back to a prettified key.
+ */
+export const SKIP_REASONS = {
+  source_memory_healthy: { label: 'Node healthy — no need to move', tone: 'green' },
+  has_ignore_tag: { label: "Tagged 'ignore'", tone: 'gray' },
+  stopped: { label: 'Not running', tone: 'gray' },
+  insufficient_improvement: { label: 'Move would barely help', tone: 'yellow' },
+  no_suitable_target: { label: 'No node has room', tone: 'red' },
+  ha_managed: { label: 'Managed by PVE HA', tone: 'blue' },
+  passthrough_disk: { label: 'Has passthrough disk', tone: 'orange' },
+  unshared_bind_mount: { label: 'Has local bind mount', tone: 'orange' },
+  seasonal_baseline: { label: 'Normal for this time of day', tone: 'green' },
+};
+
+export function skipReasonLabel(code) {
+  if (SKIP_REASONS[code]) return SKIP_REASONS[code].label;
+  const s = String(code || 'other').replace(/_/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export const SKIP_TONE_CLASS = {
+  green: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800/50',
+  gray: 'bg-pb-surface2 dark:bg-slate-700/50 text-pb-text2 dark:text-gray-300 border-pb-border dark:border-slate-600/50',
+  yellow: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50',
+  red: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/50',
+  blue: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
+  orange: 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/50',
+};
+export const skipToneClass = (code) => SKIP_TONE_CLASS[SKIP_REASONS[code]?.tone || 'gray'];

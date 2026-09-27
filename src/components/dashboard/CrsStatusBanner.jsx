@@ -1,4 +1,6 @@
-import { Info, AlertTriangle, Server } from '../Icons.jsx';
+import { Info, AlertTriangle, Server, ChevronDown } from '../Icons.jsx';
+
+const { useState } = React;
 
 const CRS_MODE_LABEL = {
   basic: 'Basic (guest count)',
@@ -28,6 +30,7 @@ const CRS_METHOD_LABEL = {
  * nothing to say, no clutter.
  */
 export default function CrsStatusBanner({ pveCrs, automationEnabled, onEdit }) {
+  const [showDetails, setShowDetails] = useState(false);
   if (!pveCrs || typeof pveCrs !== 'object') return null;
 
   const mode = pveCrs.ha || 'basic';
@@ -72,6 +75,41 @@ export default function CrsStatusBanner({ pveCrs, automationEnabled, onEdit }) {
 
   const modeLabel = CRS_MODE_LABEL[mode] || mode;
   const methodLabel = CRS_METHOD_LABEL[pveCrs['ha-auto-rebalance-method']] || pveCrs['ha-auto-rebalance-method'];
+
+  // Informational (not dueling): one quiet line, details on demand. Only the
+  // dueling state earns a full-width warning banner.
+  if (!dueling) {
+    const summary = autoRebalance
+      ? `auto-rebalances HA guests at ${pveCrs['ha-auto-rebalance-threshold']}% imbalance; ProxBalance covers the rest`
+      : 'start-node placement only; ProxBalance handles rebalancing';
+    return (
+      <div className="mb-3 px-3 py-1.5 text-xs text-pb-text2 dark:text-gray-400">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Server size={12} className="text-blue-500 dark:text-blue-400" />
+          <span>PVE CRS</span>
+          <span className="font-mono px-1.5 rounded bg-pb-surface2 dark:bg-slate-800 text-pb-text dark:text-gray-300">{mode}</span>
+          {autoRebalance && <span className="font-mono px-1.5 rounded bg-pb-surface2 dark:bg-slate-800 text-pb-text dark:text-gray-300">auto-rebalance</span>}
+          {rebalanceOnStart && !autoRebalance && <span className="font-mono px-1.5 rounded bg-pb-surface2 dark:bg-slate-800 text-pb-text dark:text-gray-300">rebalance-on-start</span>}
+          <span className="hidden sm:inline">— {summary}</span>
+          <span className="ml-auto flex items-center gap-3">
+            <button onClick={() => setShowDetails(v => !v)} className="flex items-center gap-0.5 hover:text-pb-text dark:hover:text-gray-200">
+              Details <ChevronDown size={12} className={`transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`} />
+            </button>
+            {onEdit && <button onClick={onEdit} className="underline hover:text-pb-text dark:hover:text-gray-200">Edit</button>}
+          </span>
+        </div>
+        {showDetails && (
+          <p className="mt-1.5 pl-5 text-pb-text2 dark:text-gray-400">
+            {autoRebalance ? (
+              <>PVE CRS will autonomously rebalance HA-managed guests at <strong>{pveCrs['ha-auto-rebalance-threshold']}%</strong> imbalance using <strong>{methodLabel}</strong>. ProxBalance complements this by covering non-HA guests, IOWait, forecasting, and outcome tracking.</>
+            ) : (
+              <>Mode: <strong>{modeLabel}</strong>. {rebalanceOnStart && 'CRS picks the best start node when HA guests transition from stopped to running. '}This affects start-node selection only; ProxBalance still owns periodic rebalancing.</>
+            )}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`mb-3 ${tone.wrap} p-3 rounded-r-lg`}>

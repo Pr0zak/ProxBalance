@@ -5,6 +5,7 @@ import {
 } from '../../utils/designTokens.js';
 import { ChevronDown, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
+import { HEADROOM_HINT } from '../../utils/constants.js';
 
 const { useState, useMemo } = React;
 
@@ -358,8 +359,9 @@ export default function NodeSummaryTable({
     else { setSortField(field); setSortDir('asc'); }
   };
 
-  const SortHeader = ({ field, children }) => (
+  const SortHeader = ({ field, children, title }) => (
     <th
+      title={title}
       className={`${TABLE_HEADER} cursor-pointer hover:text-pb-text dark:hover:text-gray-200`}
       onClick={() => handleSort(field)}
     >
@@ -414,7 +416,7 @@ export default function NodeSummaryTable({
                     <span className="text-pb-text2 dark:text-gray-500">Mem</span>
                     <span className={`tabular-nums ${metricTextColor(node.memPct)}`}>{Math.round(node.memPct)}%</span>
                     {node.score != null && (
-                      <span className={`font-bold tabular-nums ${scoreColor(node.score)}`} title="Suitability score">
+                      <span className={`font-bold tabular-nums ${scoreColor(node.score)}`} title={HEADROOM_HINT}>
                         {Math.round(node.score)}
                       </span>
                     )}
@@ -468,7 +470,7 @@ export default function NodeSummaryTable({
                   <SortHeader field="mem">Memory</SortHeader>
                   <SortHeader field="iowait">IOWait</SortHeader>
                   <th className={TABLE_HEADER}>Disk</th>
-                  <SortHeader field="score">Score</SortHeader>
+                  <SortHeader field="score" title={HEADROOM_HINT}>Headroom</SortHeader>
                   <th className={TABLE_HEADER}>VMs</th>
                   <th className={TABLE_HEADER}>CTs</th>
                 </tr>

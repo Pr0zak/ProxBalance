@@ -155,7 +155,7 @@ export default function NodeDetailsModal({
           {/* Migration Suitability Metrics */}
           {selectedNode.metrics && (
             <Section
-              title={<><Activity size={16} className="text-blue-600 dark:text-blue-400" /> Migration Target Suitability</>}
+              title={<><Activity size={16} className="text-blue-600 dark:text-blue-400" /> Headroom</>}
               isOpen={open.suitability}
               onToggle={() => toggle('suitability')}
             >
@@ -164,14 +164,14 @@ export default function NodeDetailsModal({
                 <div className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border-2 border-blue-600">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Suitability Rating</div>
+                      <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1">Headroom <span className="text-pb-text3 dark:text-gray-500">· higher = more room</span></div>
                       <div className={`text-2xl font-bold ${
                         nodeScores[selectedNode.name].suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
                         nodeScores[selectedNode.name].suitability_rating >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
                         nodeScores[selectedNode.name].suitability_rating >= 30 ? 'text-orange-600 dark:text-orange-400' :
                         'text-red-600 dark:text-red-400'
                       }`}>
-                        {nodeScores[selectedNode.name].suitability_rating}%
+                        {nodeScores[selectedNode.name].suitability_rating}<span className="text-sm text-pb-text2 dark:text-gray-400">/100</span>
                       </div>
                     </div>
                     <div className="text-right">

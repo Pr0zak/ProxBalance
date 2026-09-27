@@ -220,7 +220,7 @@ export default function MigrationRecommendationsSection({
           })()}
 
           {/* Summary Digest */}
-          {!loadingRecommendations && (
+          {!loadingRecommendations && recommendations.length > 0 && (
             <RecommendationSummaryBar recommendationData={recommendationData} />
           )}
 
@@ -286,27 +286,22 @@ export default function MigrationRecommendationsSection({
               )}
             </div>
           ) : recommendations.length === 0 ? (
-            <div className="space-y-4">
-              <div className="text-center py-6 text-pb-text2 dark:text-gray-400">
-                <CheckCircle size={48} className="mx-auto mb-2 text-green-600 dark:text-green-400" />
-                <p className="font-medium">Cluster is balanced</p>
-                <p className="text-sm">No migrations recommended right now</p>
+            <div className="flex items-center gap-3 py-4">
+              <CheckCircle size={28} className="shrink-0 text-green-600 dark:text-green-400" />
+              <div className="min-w-0">
+                <p className="font-medium text-pb-text dark:text-gray-200">Cluster is balanced — no migrations recommended right now</p>
+                <EngineDiagnostics recommendationData={recommendationData} recommendations={recommendations} />
               </div>
-              {recommendationData?.generated_at && (
-                <div className="border-t border-pb-border dark:border-slate-700/50 pt-4">
-                  <h4 className="text-xs uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-2 flex items-center gap-2">
-                    <Terminal size={12} className="text-pb-text2 dark:text-gray-500" />
-                    Why nothing recommended?
-                  </h4>
-                  <EngineDiagnostics recommendationData={recommendationData} recommendations={recommendations} />
-                </div>
-              )}
+            </div>
+          ) : getFilteredRecs().length === 0 ? (
+            <div className="text-center py-6 text-sm text-pb-text2 dark:text-gray-400">
+              No suggestions match the current filters ({recommendations.length} hidden).
             </div>
           ) : (
             <div className="space-y-3">
               {getFilteredRecs().map((rec, idx) => (
                 <RecommendationCard
-                  key={idx}
+                  key={`${rec.vmid}-${rec.target_node}`}
                   rec={rec}
                   idx={idx}
                   penaltyConfig={penaltyConfig}

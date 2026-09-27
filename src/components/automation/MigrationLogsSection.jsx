@@ -118,7 +118,7 @@ export default function MigrationLogsSection({
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Time</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">VM</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Migration</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Score</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300" title="Target node headroom at decision time (higher = more room)">Target headroom</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Reason</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Duration</th>
@@ -193,7 +193,7 @@ export default function MigrationLogsSection({
                                       <div className="text-[10px] space-y-0.5">
                                         <div>Target: {migration.target_node}</div>
                                         <div>Penalty Score: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
-                                        <div>Suitability: {suitabilityPercent}%</div>
+                                        <div>Target headroom: {suitabilityPercent}/100</div>
                                         <div className="border-t border-pb-border dark:border-gray-700 pt-1 mt-1">
                                           <div className="text-pb-text2 dark:text-gray-400">Lower penalty = better target</div>
                                           <div>• CPU Load × 30%</div>

@@ -1,78 +1,33 @@
-import { Terminal } from '../../../Icons.jsx';
-
+/**
+ * One-line engine summary shown under the "Cluster is balanced" empty state:
+ * how many guests were looked at, how long it took, and the active thresholds.
+ * Conflicts / advisories / AI only appear when they carry information.
+ */
 export default function EngineDiagnostics({ recommendationData, recommendations }) {
   if (!recommendationData?.generated_at) return null;
 
+  const suggested = recommendationData.count ?? recommendations.length;
+  const evaluated = suggested + (recommendationData.skipped_guests?.length || 0);
+  const ms = recommendationData.generation_time_ms;
+  const p = recommendationData.parameters;
+  const conflicts = recommendationData.conflicts?.length || 0;
+  const advisories = recommendationData.capacity_advisories?.length || 0;
+
+  const parts = [
+    `${evaluated} guests evaluated`,
+    ms ? `generated in ${(ms / 1000).toFixed(1)} s` : null,
+    p ? `thresholds CPU ${p.cpu_threshold}% · Mem ${p.mem_threshold}% · IOWait ${p.iowait_threshold}%` : null,
+    conflicts ? `${conflicts} conflict${conflicts !== 1 ? 's' : ''}` : null,
+    advisories ? `${advisories} capacity advisor${advisories !== 1 ? 'ies' : 'y'}` : null,
+    recommendationData.ai_enhanced ? 'AI-enhanced' : null,
+    p?.maintenance_nodes?.length ? `maintenance: ${p.maintenance_nodes.join(', ')}` : null,
+  ].filter(Boolean);
+
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Generation Time</div>
-          <div className="font-mono font-semibold text-pb-text dark:text-white">
-            {recommendationData.generation_time_ms ? `${recommendationData.generation_time_ms}ms` : 'N/A'}
-          </div>
-        </div>
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Suggestions</div>
-          <div className="font-mono font-semibold text-pb-text dark:text-white">
-            {recommendationData.count || recommendations.length}
-          </div>
-        </div>
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Guests Evaluated</div>
-          <div className="font-mono font-semibold text-pb-text dark:text-white">
-            {(recommendationData.count || 0) + (recommendationData.skipped_guests?.length || 0)}
-          </div>
-        </div>
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Skipped</div>
-          <div className="font-mono font-semibold text-pb-text dark:text-white">
-            {recommendationData.skipped_guests?.length || 0}
-          </div>
-        </div>
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">AI Enhanced</div>
-          <div className={`font-semibold ${recommendationData.ai_enhanced ? 'text-purple-600 dark:text-purple-400' : 'text-pb-text2 dark:text-gray-400'}`}>
-            {recommendationData.ai_enhanced ? 'Yes' : 'No'}
-          </div>
-        </div>
-        <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded p-2 border border-pb-border dark:border-slate-700">
-          <div className="text-pb-text2 dark:text-gray-400 mb-0.5">Conflicts / Advisories</div>
-          <div className="font-mono font-semibold text-pb-text dark:text-white">
-            {recommendationData.conflicts?.length || 0} / {recommendationData.capacity_advisories?.length || 0}
-          </div>
-        </div>
-      </div>
+    <div className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">
+      {parts.join(' · ')}
       {recommendationData.summary?.convergence_message && (
-        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-300 dark:border-green-700 text-xs">
-          <span className="text-green-700 dark:text-green-300 font-medium">Cluster Converged: </span>
-          <span className="text-green-600 dark:text-green-400">{recommendationData.summary.convergence_message}</span>
-        </div>
-      )}
-      {recommendationData.parameters && (
-        <div className="p-2 bg-pb-surface2 dark:bg-gray-900/50 rounded border border-pb-border dark:border-slate-700 text-xs">
-          <span className="text-pb-text2 dark:text-gray-400">Thresholds: </span>
-          <span className="font-mono text-pb-text dark:text-gray-300">
-            CPU {recommendationData.parameters.cpu_threshold}% | Mem {recommendationData.parameters.mem_threshold}% | IOWait {recommendationData.parameters.iowait_threshold}%
-          </span>
-          {recommendationData.parameters.maintenance_nodes?.length > 0 && (
-            <span className="ml-2 text-yellow-600 dark:text-yellow-400">
-              | Maintenance: {recommendationData.parameters.maintenance_nodes.join(', ')}
-            </span>
-          )}
-        </div>
-      )}
-      {recommendationData.summary?.skip_reasons && Object.keys(recommendationData.summary.skip_reasons).length > 0 && (
-        <div className="p-2 bg-pb-surface2 dark:bg-gray-900/50 rounded border border-pb-border dark:border-slate-700 text-xs">
-          <span className="text-pb-text2 dark:text-gray-400 block mb-1">Skip Reasons:</span>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(recommendationData.summary.skip_reasons).map(([reason, count]) => (
-              <span key={reason} className="px-1.5 py-0.5 bg-white dark:bg-gray-800 rounded text-pb-text dark:text-gray-300 font-mono">
-                {reason}: {count}
-              </span>
-            ))}
-          </div>
-        </div>
+        <div className="mt-1 text-green-700 dark:text-green-400">{recommendationData.summary.convergence_message}</div>
       )}
     </div>
   );

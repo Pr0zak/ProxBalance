@@ -232,7 +232,7 @@ export default function NodeStatusSection({
                     </div>
 
                     <div className="flex justify-between pt-1 border-t border-pb-border dark:border-slate-600">
-                      <span className="text-pb-text2 dark:text-gray-400">Suitability:</span>
+                      <span className="text-pb-text2 dark:text-gray-400">Headroom:</span>
                       <span className={`font-semibold ${
                         nodeScores && nodeScores[node.name] ? (
                           nodeScores[node.name].suitability_rating >= 70 ? 'text-green-600 dark:text-green-400' :
@@ -241,7 +241,7 @@ export default function NodeStatusSection({
                           'text-red-600 dark:text-red-400'
                         ) : 'text-pb-text dark:text-white'
                       }`}>
-                        {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}%` : 'N/A'}
+                        {nodeScores && nodeScores[node.name] ? `${nodeScores[node.name].suitability_rating}/100` : 'N/A'}
                       </span>
                     </div>
 
