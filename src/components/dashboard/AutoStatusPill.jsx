@@ -1,9 +1,10 @@
-import { Clock, Pause, Play, Loader, Settings, ChevronDown } from '../Icons.jsx';
+import { Clock, Pause, Play, Loader, Settings, ChevronDown, MoveRight, Eye } from '../Icons.jsx';
 import RunHistoryDisplay from './RunHistoryDisplay.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
+import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useMemo } = React;
 
 /**
  * Reusable auto-migration status indicator. Three sizes:
@@ -76,6 +77,7 @@ export default function AutoStatusPill({
   setCurrentPage,
   runHistory,
   API_BASE,
+  automationConfig,
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
@@ -88,6 +90,21 @@ export default function AutoStatusPill({
   useEffect(() => {
     if (size === 'banner') localStorage.setItem('autoBannerExpanded', String(expanded));
   }, [expanded, size]);
+  const [showWatching, setShowWatching] = useState(false);
+
+  // Banner-only: when the schedule next lets a run act. Recomputed once a
+  // minute at most, since the forward search walks up to a week of minutes.
+  const minuteKey = Math.floor(Date.now() / 60000);
+  const wantsSchedule = size === 'banner' && !!automationStatus?.enabled && !!automationStatus?.timer_active;
+  const schedule = automationConfig?.schedule;
+  const nextAct = useMemo(() => (wantsSchedule
+    ? nextActionWindow(schedule, {
+        now: new Date(),
+        nextCheck: parseTimestamp(automationStatus?.next_check),
+        intervalMin: automationStatus?.check_interval_minutes || 0,
+      })
+    : null
+  ), [wantsSchedule, schedule, automationStatus?.next_check, automationStatus?.check_interval_minutes, minuteKey]);
 
   if (!automationStatus) return null;
   const status = getStatus(automationStatus);
@@ -96,6 +113,19 @@ export default function AutoStatusPill({
   const canExpand = size === 'banner' && lastRunObj;
   const outsideWindow = automationStatus.enabled
     && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
+
+  // Banner context: what automation last moved, and which guests it is
+  // watching before it moves them.
+  const now = new Date();
+  const actAt = nextAct?.firstRunAt || nextAct?.opensAt || null;
+  // "until HH:MM" only when the blackout is the last thing in the way;
+  // otherwise the "can act next" time says it.
+  const blackoutUntil = nextAct?.blackoutUntil && nextAct?.opensAt
+    && nextAct.blackoutUntil.getTime() === nextAct.opensAt.getTime() ? nextAct.blackoutUntil : null;
+  const lastMove = (automationStatus.recent_migrations || []).find(m => m.status === 'completed' || m.status === 'failed');
+  const tracking = automationStatus.intelligent_tracking;
+  const watching = (tracking?.items || []).filter(i => i.status === 'observing');
+  const periods = tracking?.observation_periods || null;
 
   if (size === 'pill') {
     return (
@@ -139,7 +169,24 @@ export default function AutoStatusPill({
           )}
           <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
           <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}><span className="hidden sm:inline">Auto-migration: </span><span className="sm:hidden">Auto: </span>{status.label}</span>
-          {nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>}
+          {nextAct?.blocked && actAt ? (
+            <span
+              className="text-pb-text2 dark:text-gray-400 text-xs"
+              title={[
+                nextAct.opensAt && `Schedule allows migrations from ${formatInZone(nextAct.opensAt, nextAct.tz, now)}`,
+                nextAct.firstRunAt && `First ${automationStatus.check_interval_minutes}-minute timer run inside it: ${formatInZone(nextAct.firstRunAt, nextAct.tz, now)}`,
+                'Run Now still works, but exits early until then.',
+              ].filter(Boolean).join('\n')}
+            >
+              {nextAct.reason === 'blackout'
+                ? <>{nextAct.blackoutName || 'Blackout'}{nextAct.blackoutName ? ' blackout' : ''}{blackoutUntil ? <> until {formatInZone(blackoutUntil, nextAct.tz, now)}</> : null}</>
+                : <>outside migration windows</>}
+              {' '}· can act next <span className="text-pb-text dark:text-gray-200 font-medium">{formatInZone(actAt, nextAct.tz, now)}</span>
+              <span className="text-pb-text2 dark:text-gray-500"> (in {formatIn(actAt, now)})</span>
+            </span>
+          ) : (
+            nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>
+          )}
           {lastRun && (
             <span className="hidden sm:inline text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
           )}
@@ -183,6 +230,49 @@ export default function AutoStatusPill({
           </div>
         )}
       </div>
+      {size === 'banner' && automationStatus.enabled && (lastMove || watching.length > 0) && (
+        <div className="px-4 pb-2 -mt-0.5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
+            {lastMove && (
+              <span className="inline-flex items-center gap-1.5 min-w-0" title={lastMove.reason || undefined}>
+                <MoveRight size={12} className={lastMove.status === 'failed' ? 'text-red-500' : 'text-blue-500 dark:text-blue-400'} />
+                Last move
+                <span className="text-pb-text dark:text-gray-200">{lastMove.name || lastMove.vmid}</span>
+                <span className="font-mono">{lastMove.source_node} → {lastMove.target_node}</span>
+                {lastMove.status === 'failed' && <span className="text-red-600 dark:text-red-400">failed</span>}
+                <span className="text-pb-text2 dark:text-gray-500">· {relativeAgo(lastMove.timestamp)}</span>
+              </span>
+            )}
+            {watching.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowWatching(v => !v)}
+                className="inline-flex items-center gap-1.5 hover:text-pb-text dark:hover:text-gray-200"
+                title="Guests the engine keeps recommending. It moves one only after it has been recommended on enough consecutive checks."
+              >
+                <Eye size={12} className="text-violet-500 dark:text-violet-400" />
+                Watching <span className="text-pb-text dark:text-gray-200">{watching.length}</span> guest{watching.length !== 1 ? 's' : ''} before moving
+                <ChevronDown size={12} className={`transition-transform duration-200 ${showWatching ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+          </div>
+          {showWatching && watching.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {watching.map(w => (
+                <span
+                  key={w.vmid}
+                  className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/25 text-violet-800 dark:text-violet-200"
+                  title={`Recommended on ${w.consecutive_count}${periods ? ` of ${periods}` : ''} consecutive checks · first seen ${relativeAgo(w.first_seen)}`}
+                >
+                  {w.name}
+                  <span className="font-mono text-violet-600 dark:text-violet-300/80">{w.source_node} → {w.last_target_node}</span>
+                  {periods && <span className="tabular-nums text-violet-600/80 dark:text-violet-300/70">{w.consecutive_count}/{periods}</span>}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {canExpand && expanded && (
         <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 space-y-4">
           {(runHistory && runHistory.length > 0) || lastRunObj ? (

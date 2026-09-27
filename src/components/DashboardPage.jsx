@@ -6,6 +6,7 @@ import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 const { useState, useEffect, useMemo } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
+import NeedsAttentionStrip from './dashboard/NeedsAttentionStrip.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
 import CrsStatusBanner from './dashboard/CrsStatusBanner.jsx';
@@ -133,6 +134,15 @@ export default function DashboardPage({
           </div>
         )}
 
+        {/* One-line "Needs attention" strip — renders nothing when all is well */}
+        <NeedsAttentionStrip
+          data={data}
+          config={config}
+          automationStatus={automationStatus}
+          maintenanceNodes={maintenanceNodes}
+          nodeScores={nodeScores}
+        />
+
         {/* KPI Summary Row */}
         <KpiRow
           data={data}
@@ -145,6 +155,11 @@ export default function DashboardPage({
           affinityGuests={affinityGuests}
           excludeGuests={excludeGuests}
           onNavigate={onRouteTab}
+          maintenanceNodes={maintenanceNodes}
+          guestsMigrating={guestsMigrating}
+          migrationProgress={migrationProgress}
+          canMigrate={canMigrate}
+          setCancelMigrationModal={setCancelMigrationModal}
         />
 
         {/* Auto-migration status banner — expandable to show last-run + run history */}
@@ -158,6 +173,7 @@ export default function DashboardPage({
             setCurrentPage={setCurrentPage}
             runHistory={runHistory}
             API_BASE={API_BASE}
+            automationConfig={automationConfig}
           />
         </div>
 
