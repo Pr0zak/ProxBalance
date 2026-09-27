@@ -108,8 +108,8 @@ export default function NeedsAttentionStrip(props) {
     <div
       role="status"
       className={`mb-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs overflow-x-auto whitespace-nowrap ${anyError
-        ? 'bg-red-50 dark:bg-red-900/15 border-red-200 dark:border-red-800/40'
-        : 'bg-amber-50 dark:bg-amber-900/15 border-amber-200 dark:border-amber-800/40'}`}
+        ? 'bg-red-50 dark:bg-red-900/35 border-red-300 dark:border-red-700/70'
+        : 'bg-amber-50 dark:bg-amber-900/35 border-amber-300 dark:border-amber-600/70'}`}
     >
       <span className={`inline-flex items-center gap-1.5 font-semibold shrink-0 ${anyError ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
         <AlertTriangle size={14} />
