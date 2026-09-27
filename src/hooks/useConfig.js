@@ -25,6 +25,7 @@ export function useConfig(API_BASE, deps = {}) {
   // Last values confirmed by the server — lets pages show unsaved edits.
   const [savedMigrationSettings, setSavedMigrationSettings] = useState(null);
   const [savedPenaltyConfig, setSavedPenaltyConfig] = useState(null);
+  const lastServerUiRef = React.useRef(60);
   const [migrationSettingsDefaults, setMigrationSettingsDefaults] = useState(null);
   const [migrationSettingsDescriptions, setMigrationSettingsDescriptions] = useState(null);
   const [effectivePenaltyConfig, setEffectivePenaltyConfig] = useState(null);
@@ -41,7 +42,11 @@ export function useConfig(API_BASE, deps = {}) {
         const intervalMs = (result.config.ui_refresh_interval_minutes || 60) * 60 * 1000;
         setAutoRefreshInterval(intervalMs);
         setTempBackendInterval(result.config.collection_interval_minutes || 60);
-        setTempUiInterval(result.config.ui_refresh_interval_minutes || 60);
+        // Don't clobber an unsaved edit of the refresh interval on reload.
+        const serverUi = result.config.ui_refresh_interval_minutes || 60;
+        const lastServerUi = lastServerUiRef.current; // capture: the updater runs later
+        setTempUiInterval(prev => (prev === lastServerUi ? serverUi : prev));
+        lastServerUiRef.current = serverUi;
         return result.config;
       }
     } catch (err) {
@@ -60,10 +65,12 @@ export function useConfig(API_BASE, deps = {}) {
         setPenaltyDefaults(result.defaults);
         if (result.presets) setPenaltyPresets(result.presets);
         if (result.active_preset) setActivePreset(result.active_preset);
+        return result.config;
       }
     } catch (err) {
       console.error('Failed to load penalty config:', err);
     }
+    return null;
   };
 
   const applyPenaltyPreset = async (presetName) => {
@@ -112,14 +119,15 @@ export function useConfig(API_BASE, deps = {}) {
     }
   };
 
-  const savePenaltyConfig = async () => {
+  const savePenaltyConfig = async (configOverride) => {
+    const toSave = configOverride || penaltyConfig;
     setSavingPenaltyConfig(true);
     setPenaltyConfigSaved(false);
     try {
       const response = await fetch(`${API_BASE}/penalty-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: penaltyConfig })
+        body: JSON.stringify({ config: toSave })
       });
       const result = await response.json();
       if (result.success) {
@@ -197,8 +205,9 @@ export function useConfig(API_BASE, deps = {}) {
         setEffectivePenaltyConfig(result.effective_penalty_config);
         setMigrationSettingsSaved(true);
         setTimeout(() => setMigrationSettingsSaved(false), 3000);
-        // Also refresh penalty config so expert mode stays in sync
-        fetchPenaltyConfig();
+        // Refresh penalty config so expert mode stays in sync. Awaited so a
+        // penalty save that follows builds on the new mapping, not a stale one.
+        await fetchPenaltyConfig();
       } else {
         if (setError) setError(`Failed to save migration settings: ${result.error}`);
       }
@@ -223,7 +232,7 @@ export function useConfig(API_BASE, deps = {}) {
         setEffectivePenaltyConfig(result.effective_penalty_config);
         setMigrationSettingsSaved(true);
         setTimeout(() => setMigrationSettingsSaved(false), 3000);
-        fetchPenaltyConfig();
+        await fetchPenaltyConfig();
       } else {
         if (setError) setError(`Failed to reset migration settings: ${result.error}`);
       }

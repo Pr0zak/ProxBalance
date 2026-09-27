@@ -19,8 +19,9 @@ export function useUnsavedRegistry() {
   const [counts, setCounts] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const register = useCallback((key, count, save, discard) => {
-    saversRef.current[key] = { save, discard };
+  // `order` sets save order (lower first); ties keep registration order.
+  const register = useCallback((key, count, save, discard, order = 0) => {
+    saversRef.current[key] = { save, discard, order };
     if (!orderRef.current.includes(key)) orderRef.current.push(key);
     setCounts(prev => (prev[key] === count ? prev : { ...prev, [key]: count }));
   }, []);
@@ -41,7 +42,11 @@ export function useUnsavedRegistry() {
   const saveAll = useCallback(async () => {
     setSaving(true);
     try {
-      for (const key of orderRef.current) {
+      const keys = orderRef.current
+        .map((k, i) => [k, i])
+        .sort((a, b) => (saversRef.current[a[0]]?.order ?? 0) - (saversRef.current[b[0]]?.order ?? 0) || a[1] - b[1])
+        .map(([k]) => k);
+      for (const key of keys) {
         if (!counts[key]) continue;
         await saversRef.current[key]?.save();
       }
@@ -61,11 +66,11 @@ export function useUnsavedRegistry() {
 }
 
 /** Register an editable group with the nearest UnsavedContext. */
-export function useUnsaved(key, count, save, discard) {
+export function useUnsaved(key, count, save, discard, order = 0) {
   const ctx = useContext(UnsavedContext);
   // Re-register every render so the registry always holds fresh closures;
   // the registry only re-renders when the count actually changes.
-  useEffect(() => { ctx?.register(key, count, save, discard); });
+  useEffect(() => { ctx?.register(key, count, save, discard, order); });
   useEffect(() => () => ctx?.unregister(key), [ctx, key]);
 }
 

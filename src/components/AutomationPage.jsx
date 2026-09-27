@@ -60,7 +60,7 @@ export default function AutomationPage(props) {
     setMigrationHistoryPage,
     setMigrationHistoryPageSize,
     setMigrationLogsTab,
-    savedMigrationSettings, savedPenaltyConfig,
+    savedMigrationSettings, savedPenaltyConfig, fetchPenaltyConfig,
     setNavGuard,
   } = props;
 
@@ -106,8 +106,15 @@ export default function AutomationPage(props) {
   // Expert penalty overrides — saved after the simplified settings.
   const penaltyChangeCount = savedPenaltyConfig ? countChanges(penaltyConfig, savedPenaltyConfig) : 0;
   useEffect(() => {
-    register('penaltyConfig', penaltyChangeCount, savePenaltyConfig,
-      () => setPenaltyConfig(savedPenaltyConfig));
+    register('penaltyConfig', penaltyChangeCount, async () => {
+      // Saving migration settings first rewrites the mapped penalty weights, so
+      // apply only the keys the user edited on top of the latest server config.
+      const edited = Object.keys(penaltyConfig || {}).filter(
+        k => JSON.stringify(penaltyConfig[k]) !== JSON.stringify(savedPenaltyConfig?.[k])
+      );
+      const latest = (await fetchPenaltyConfig()) || savedPenaltyConfig;
+      await savePenaltyConfig({ ...latest, ...pick(penaltyConfig, edited) });
+    }, () => setPenaltyConfig(savedPenaltyConfig), 1);
   });
 
   useEffect(() => () => ['automationConfig', 'migrationSettings', 'penaltyConfig'].forEach(unregister), []);

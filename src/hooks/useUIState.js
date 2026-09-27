@@ -12,9 +12,11 @@ function parseHash() {
   };
 }
 
-function writeHash(page, sub) {
+function writeHash(page, sub, replace = false) {
   const next = `#/${page}${sub ? `/${encodeURIComponent(sub)}` : ''}`;
-  if (window.location.hash !== next) window.location.hash = next;
+  if (window.location.hash === next) return;
+  if (replace) window.history.replaceState(null, '', next);
+  else window.location.hash = next;
 }
 
 export function useUIState() {
@@ -33,7 +35,7 @@ export function useUIState() {
       const next = parseHash();
       // Back/Forward away from a guarded page: undo the hash change if declined.
       if (navGuardRef.current && next.page !== routeRef.current.page && !navGuardRef.current()) {
-        writeHash(routeRef.current.page, routeRef.current.sub);
+        writeHash(routeRef.current.page, routeRef.current.sub, true);
         return;
       }
       setRoute(next);

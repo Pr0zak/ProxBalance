@@ -71,13 +71,18 @@ export default function SettingsPage(props) {
   const generalNowRef = useRef(generalNow);
   generalNowRef.current = generalNow;
   const [generalBaseline, setGeneralBaseline] = useState(null);
+  const generalCount = generalBaseline ? countChanges(generalNow, generalBaseline) : 0;
+  const generalCountRef = useRef(0);
+  generalCountRef.current = generalCount;
   useEffect(() => {
     if (!config) return;
-    // Root hooks are initialised from config right after it loads; read them next tick.
-    const t = setTimeout(() => setGeneralBaseline(generalNowRef.current), 0);
+    // Root hooks are initialised from config right after it loads; read them next
+    // tick. A reload while edits are pending must not bless those edits as saved.
+    const t = setTimeout(() => {
+      if (generalCountRef.current === 0) setGeneralBaseline(generalNowRef.current);
+    }, 0);
     return () => clearTimeout(t);
   }, [config]);
-  const generalCount = generalBaseline ? countChanges(generalNow, generalBaseline) : 0;
   const discardGeneral = () => {
     if (!config) return;
     resetAiFromConfig(config);
@@ -89,7 +94,7 @@ export default function SettingsPage(props) {
     register('general', generalCount, async () => {
       const ok = await saveSettings();
       if (ok) setGeneralBaseline(generalNowRef.current);
-    }, discardGeneral);
+    }, discardGeneral, -1); // before Collection, whose save reloads config
   });
 
   // ── Notifications (part of the automation config) ─────────────────────────
@@ -110,8 +115,6 @@ export default function SettingsPage(props) {
   useEffect(() => () => ['general', 'notifications'].forEach(unregister), []);
 
   // Leaving the page drops local drafts; put root-hook edits back as well.
-  const generalCountRef = useRef(0);
-  generalCountRef.current = generalCount;
   const discardGeneralRef = useRef(discardGeneral);
   discardGeneralRef.current = discardGeneral;
   useEffect(() => () => { if (generalCountRef.current) discardGeneralRef.current(); }, []);

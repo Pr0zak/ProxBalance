@@ -4,7 +4,7 @@ import { API_BASE } from '../../utils/constants.js';
 import { INPUT_FIELD, SELECT_FIELD, INNER_CARD } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
 import { useUnsaved, countChanges } from '../UnsavedChanges.jsx';
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 const PRESETS = {
   small: { collection_interval_minutes: 5, max_parallel_workers: 3, node_rrd_timeframe: 'day', guest_rrd_timeframe: 'hour' },
@@ -31,7 +31,12 @@ export default function DataCollectionSection({
 }) {
   const saved = useMemo(() => fromConfig(config), [config]);
   const [form, setForm] = useState(saved);
-  useEffect(() => { setForm(saved); }, [saved]);
+  // Follow server changes, but never wipe edits the user hasn't saved yet.
+  const prevSavedRef = useRef(saved);
+  useEffect(() => {
+    setForm(prev => (countChanges(prev, prevSavedRef.current) === 0 ? saved : prev));
+    prevSavedRef.current = saved;
+  }, [saved]);
 
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
   const applyPreset = (size) => setForm(prev => ({ ...prev, cluster_size: size, ...(PRESETS[size] || {}) }));
@@ -55,7 +60,7 @@ export default function DataCollectionSection({
       });
       const result = await res.json();
       if (!result.success) setError?.('Failed to update collection settings: ' + (result.error || 'Unknown error'));
-      else fetchConfig?.();
+      else await fetchConfig?.();
     } catch (err) {
       setError?.('Error saving collection settings: ' + err.message);
     }
