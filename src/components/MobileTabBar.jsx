@@ -1,8 +1,9 @@
-import { HardDrive, Clock, Settings } from './Icons.jsx';
+import { HardDrive, Clock, Settings, Activity } from './Icons.jsx';
 
 export default function MobileTabBar({ activePage, onNavigate, lastUpdate }) {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: HardDrive },
+    { id: 'insights', label: 'Insights', icon: Activity },
     { id: 'automation', label: 'Automation', icon: Clock },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

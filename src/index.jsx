@@ -2,6 +2,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import AutomationPage from './components/AutomationPage.jsx';
 import SystemModals from './components/dashboard/SystemModals.jsx';
+import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
 import useIsMobile from './utils/useIsMobile.js';
@@ -347,6 +348,13 @@ const ProxmoxBalanceManager = () => {
   }
 
   // Automation Settings Page
+  if (ui.currentPage === 'insights') {
+    return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
+      <InsightsPage cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} />
+      {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} lastUpdate={cluster.lastUpdate} />}
+    </div>;
+  }
+
   if (ui.currentPage === 'automation') {
     return <div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}<AutomationPage
       routeTab={ui.subPage} onRouteTab={(sub) => ui.setSubPage(sub, 'automation')}

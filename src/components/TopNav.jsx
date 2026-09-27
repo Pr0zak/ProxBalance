@@ -8,9 +8,9 @@ const { useMemo } = React;
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'insights', label: 'Insights' },
   { id: 'automation', label: 'Automation' },
   { id: 'settings', label: 'Settings' },
-  // TODO: Add Nodes, Storage, Backups, Logs tabs
 ];
 
 export default function TopNav({

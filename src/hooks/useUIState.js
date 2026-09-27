@@ -1,6 +1,6 @@
 const { useState, useEffect, useCallback } = React;
 
-const PAGES = ['dashboard', 'automation', 'settings'];
+const PAGES = ['dashboard', 'insights', 'automation', 'settings'];
 
 // Hash routes: #/<page>[/<sub>], e.g. #/automation/filters, #/dashboard/map.
 // Reload keeps your place, Back/Forward work, and any view can be linked.
