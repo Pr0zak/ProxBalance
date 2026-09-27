@@ -488,7 +488,7 @@ class NotificationManager:
         """Remove configured credentials from an error message.
 
         HTTP errors from requests include the full URL, and Telegram puts the
-        bot token in the URL path, so raw exception text can leak secrets.
+        bot token in the URL path, so raw exception text can contain configured values.
         """
         secrets = []
         providers_config = self.notifications_config.get("providers", {}) or {}

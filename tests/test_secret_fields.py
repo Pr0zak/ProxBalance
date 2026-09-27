@@ -66,12 +66,12 @@ def client(tmp_path, monkeypatch):
     return app.test_client(), cfg
 
 
-def test_get_endpoints_do_not_leak(client):
+def test_get_endpoints_mask_sensitive_fields(client):
     c, _ = client
     for url in ("/api/config", "/api/automigrate/config"):
         body = c.get(url).get_data(as_text=True)
         for secret in ("real-token-secret", "sk-real", "po-token", "po-user", "t0ken", "wh-secret"):
-            assert secret not in body, f"{secret} leaked from {url}"
+            assert secret not in body, f"{secret} unmasked in {url}"
 
 
 def test_config_post_with_placeholders_keeps_secrets(client):
