@@ -49,7 +49,7 @@ export default function MigrationModals({
               <strong>Type:</strong> {((selectedGuest.type || '').toUpperCase() === 'VM' || (selectedGuest.type || '').toUpperCase() === 'QEMU') ? 'VM' : 'Container'}
             </div>
             <div className="text-sm text-pb-text2 dark:text-gray-400">
-              <strong>Current Node:</strong> {selectedGuest.currentNode}
+              <strong>Current Node:</strong> {(selectedGuest.currentNode || selectedGuest.node)}
             </div>
           </div>
 
@@ -64,7 +64,7 @@ export default function MigrationModals({
             >
               <option value="">Select target node...</option>
               {data && data.nodes && Object.values(data.nodes)
-                .filter(node => node.name !== selectedGuest.currentNode && node.status === 'online')
+                .filter(node => node.name !== (selectedGuest.currentNode || selectedGuest.node) && node.status === 'online')
                 .map(node => (
                   <option key={node.name} value={node.name}>
                     {node.name}
@@ -85,7 +85,7 @@ export default function MigrationModals({
                 if (migrationTarget) {
                   executeMigration({
                     vmid: selectedGuest.vmid,
-                    source_node: selectedGuest.currentNode,
+                    source_node: (selectedGuest.currentNode || selectedGuest.node),
                     target_node: migrationTarget,
                     type: selectedGuest.type,
                     name: selectedGuest.name

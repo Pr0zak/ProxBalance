@@ -319,9 +319,11 @@ export function useMigrations(API_BASE, deps = {}) {
         trackMigration(rec.vmid, result.source_node, result.target_node, result.task_id, rec.type);
       } else {
         setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+        if (setError) setError(`Migration of ${rec.name || rec.vmid} to ${rec.target_node} failed: ${result.error || `HTTP ${response.status}`}`);
       }
     } catch (err) {
       setMigrationStatus(prev => ({ ...prev, [key]: 'failed' }));
+      if (setError) setError(`Migration of ${rec.name || rec.vmid} to ${rec.target_node} failed: ${err.message}`);
     }
   };
 

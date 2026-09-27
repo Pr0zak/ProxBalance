@@ -539,6 +539,7 @@ const ProxmoxBalanceManager = () => {
     scoreHistory={cluster.scoreHistory}
     fetchScoreHistory={cluster.fetchScoreHistory}
     maintenanceNodes={evacuation.maintenanceNodes} setMaintenanceNodes={evacuation.setMaintenanceNodes}
+    setNodeMaintenance={evacuation.setNodeMaintenance} maintenanceSaving={evacuation.maintenanceSaving}
     evacuatingNodes={evacuation.evacuatingNodes} setEvacuatingNodes={evacuation.setEvacuatingNodes}
     planningNodes={evacuation.planningNodes} setPlanningNodes={evacuation.setPlanningNodes}
     evacuationPlan={evacuation.evacuationPlan} setEvacuationPlan={evacuation.setEvacuationPlan}
