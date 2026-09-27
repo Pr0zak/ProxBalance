@@ -84,10 +84,11 @@ export const ProxBalanceLogo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-label="ProxBalance">
     <circle cx="16" cy="16" r="14" className="stroke-pb-accent dark:stroke-pb-accent-dark" strokeWidth="2" opacity="0.45" />
     <circle cx="16" cy="6"  r="2.6" className="fill-pb-accent dark:fill-pb-accent-dark" />
-    <circle cx="6"  cy="22" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
-    <circle cx="26" cy="22" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
-    <path d="M16 8.5l-9 12.5M16 8.5l9 12.5M7.2 21h17.6"
+    <circle cx="7.34" cy="21" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
+    <circle cx="24.66" cy="21" r="2.6" className="fill-pb-accent2 dark:fill-pb-accent2-dark" />
+    {/* Equilateral triangle inscribed around the ring's centre: every node is 10 units out. */}
+    <path d="M16 6L7.34 21H24.66Z"
           className="stroke-pb-accent dark:stroke-pb-accent-dark"
-          strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
   </svg>
 );

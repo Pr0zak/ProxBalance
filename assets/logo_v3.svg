@@ -7,10 +7,10 @@
   </defs>
   <g transform="translate(120,140)">
     <circle r="100" stroke="#4F6EF7" stroke-width="14" fill="none" opacity="0.45"/>
-    <path d="M 0,-72 L -64,52 M 0,-72 L 64,52 M -56,52 L 56,52" stroke="#4F6EF7" stroke-width="10" stroke-linecap="round" opacity="0.55" fill="none"/>
+    <path d="M 0,-72 L -62.35,36 L 62.35,36 Z" stroke="#4F6EF7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.55" fill="none"/>
     <circle cx="0" cy="-72" r="19" fill="#4F6EF7"/>
-    <circle cx="-72" cy="44" r="19" fill="#7C5CFF"/>
-    <circle cx="72" cy="44" r="19" fill="#7C5CFF"/>
+    <circle cx="-62.35" cy="36" r="19" fill="#7C5CFF"/>
+    <circle cx="62.35" cy="36" r="19" fill="#7C5CFF"/>
   </g>
   <text x="252" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="70" fill="#0F172A" letter-spacing="-3">Prox</text>
   <text x="390" y="130" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800" font-size="70" fill="url(#pbAccent)" letter-spacing="-3">Balance</text>
