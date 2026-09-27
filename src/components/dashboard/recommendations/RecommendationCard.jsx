@@ -13,7 +13,14 @@ export default function RecommendationCard({
   cancelMigration, setConfirmMigration, canMigrate,
   collapsedSections, setCollapsedSections,
   automationStatus,
+  // Run order: 1-based step in the (active) execution plan
+  step,
+  // Multi-select ("run / copy just these")
+  selectable = false, selected = false, onToggleSelect,
+  // Live conflict state (after deferrals); defaults to the engine's flag
+  conflictActive,
 }) {
+  const hasConflict = conflictActive ?? !!rec.has_conflict;
   const [showDetails, setShowDetails] = React.useState(false);
   const [showCommand, setShowCommand] = React.useState(false);
   const key = `${rec.vmid}-${rec.target_node}`;
@@ -32,10 +39,30 @@ export default function RecommendationCard({
         : isMaintenance
         ? 'border border-yellow-600 bg-yellow-50 dark:bg-yellow-900/10'
         : INNER_CARD
-    }`}>
+    } ${selected && !isCompleted ? 'ring-2 ring-blue-500/70 dark:ring-blue-400/60' : ''}`}
+      data-rec-card={rec.vmid}
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
+            {selectable && !isCompleted && (
+              <input
+                type="checkbox"
+                data-rec-select
+                checked={selected}
+                onChange={() => onToggleSelect?.(rec.vmid)}
+                className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+                aria-label={`Select ${rec.name} to run or copy with others`}
+              />
+            )}
+            {step != null && !isCompleted && (
+              <span
+                className="shrink-0 min-w-[1.5rem] h-6 px-1 inline-flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 text-[11px] font-bold tabular-nums"
+                title={`Step ${step} of the run order`}
+              >
+                {step}
+              </span>
+            )}
             <span className={`font-semibold ${isCompleted ? 'text-green-700 dark:text-green-300' : 'text-pb-text dark:text-white'}`}>
               [{rec.type} {rec.vmid}] {rec.name}
             </span>
@@ -176,7 +203,7 @@ export default function RecommendationCard({
           </div>
 
           {/* Risk Badge + Conflict Warning */}
-          {!isCompleted && (rec.risk_level || rec.has_conflict) && (
+          {!isCompleted && (rec.risk_level || hasConflict) && (
             <div className="flex flex-wrap items-center gap-2 mt-1">
               {rec.risk_level && (
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -190,7 +217,7 @@ export default function RecommendationCard({
                   ({rec.risk_score}/100)
                 </span>
               )}
-              {rec.has_conflict && (
+              {hasConflict && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                   title={`Multiple migrations targeting ${rec.conflict_target} — combined load may exceed thresholds`}>
                   <XCircle size={10} />
@@ -202,7 +229,7 @@ export default function RecommendationCard({
                   rec.cost_benefit.ratio >= 2.0 ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
                   rec.cost_benefit.ratio >= 1.0 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
                   'bg-white dark:bg-gray-800 text-pb-text2 dark:text-gray-400'
-                }`} title={`Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x — Score improvement: +${rec.cost_benefit.score_improvement?.toFixed(0) || '?'} pts, Est. duration: ${rec.cost_benefit.estimated_duration_minutes?.toFixed(0) || '?'} min`}>
+                }`} title={`Cost-benefit ratio: ${rec.cost_benefit.ratio.toFixed(1)}x — Score improvement: +${(rec.cost_benefit.score_improvement ?? rec.score_improvement)?.toFixed(0) ?? '?'} pts, Est. duration: ${(rec.cost_benefit.est_duration_minutes ?? rec.cost_benefit.estimated_duration_minutes)?.toFixed(0) ?? '?'} min`}>
                   ROI: {rec.cost_benefit.ratio.toFixed(1)}x
                 </span>
               )}

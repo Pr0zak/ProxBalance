@@ -9,7 +9,7 @@ export default function MobileTabBar({ activePage, onNavigate, lastUpdate }) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden" data-mobile-tabbar>
       {lastUpdate && (
         <div className="bg-white dark:bg-slate-800/80 border-t border-pb-border dark:border-slate-700/40 px-3 py-1 text-center">
           <span className="text-[10px] text-pb-text2 dark:text-gray-500">
