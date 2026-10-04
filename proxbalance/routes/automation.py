@@ -608,8 +608,8 @@ def get_automigrate_history():
             # Get total before limiting
             total = len(migrations)
 
-            # Limit results (get most recent)
-            migrations = migrations[-limit:]
+            # Limit results (already in newest-first order)
+            migrations = migrations[:limit]
 
             return jsonify({
                 "success": True,

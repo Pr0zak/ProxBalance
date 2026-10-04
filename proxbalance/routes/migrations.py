@@ -240,9 +240,13 @@ def get_migration_outcomes():
 
     outcomes = _load_migration_outcomes()
 
-    # Filter by vmid if provided
+    # Filter by vmid if provided.  migration_outcomes.vmid is stored as TEXT,
+    # so compare as strings.
     if vmid_filter is not None:
-        outcomes = [o for o in outcomes if o.get("vmid") == vmid_filter]
+        outcomes = [o for o in outcomes if str(o.get("vmid")) == str(vmid_filter)]
+
+    # Get total before limiting
+    total = len(outcomes)
 
     # Return most recent first, limited
     outcomes = list(reversed(outcomes))[:limit]
@@ -250,7 +254,7 @@ def get_migration_outcomes():
     return jsonify({
         "success": True,
         "outcomes": outcomes,
-        "total": len(outcomes),
+        "total": total,
     })
 
 
