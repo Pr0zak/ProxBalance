@@ -57,6 +57,14 @@ def get_connection() -> sqlite3.Connection:
     """
     conn = getattr(_local, "conn", None)
     if conn is not None:
+        # Every writer commits before returning, so an open transaction here
+        # means an earlier write on this thread raised before commit() (for
+        # example "database is locked").  Left alone, that transaction keeps
+        # its read snapshot for the life of the thread: this connection never
+        # sees newer rows, every later write on it fails, and the WAL can no
+        # longer be checkpointed, so it grows without bound.
+        if conn.in_transaction:
+            conn.rollback()
         return conn
 
     db_path = get_db_path()
