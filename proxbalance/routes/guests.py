@@ -394,6 +394,12 @@ def get_guest_tags(vmid):
 @api_route
 def add_guest_tag(vmid):
     """Add a tag to a guest"""
+    # CSRF protection: reject requests that don't carry the custom header a
+    # cross-site <form> submission cannot attach without triggering a CORS
+    # preflight (which is blocked unless the origin is explicitly allowed).
+    if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        return jsonify({"success": False, "error": "CSRF validation failed"}), 403
+
     data = request.json
     new_tag = data.get("tag", "").strip()
 
