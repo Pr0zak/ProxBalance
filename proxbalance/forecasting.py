@@ -378,14 +378,14 @@ def get_score_history_bucketed(bucket_minutes: int, limit: int = 1000) -> List[D
         return get_score_history(limit=limit)
     conn = get_connection()
     bucket_seconds = bucket_minutes * 60
-    # Bound the raw scan; 20k rows covers any realistic retention window and keeps
-    # JSON parsing cheap. We bucket the most-recent rows and return the last `limit`.
-    MAX_RAW = 20000
+    # Scan only the window the caller can get back (limit buckets), so a 1d
+    # request doesn't parse a year of JSON. The row cap matches retention.
+    since = (datetime.now(timezone.utc) - timedelta(seconds=bucket_seconds * (limit + 1))).isoformat()
     rows = conn.execute(
         "SELECT timestamp, nodes_json, cluster_health, recommendation_count "
-        "FROM score_history WHERE cluster_health IS NOT NULL "
+        "FROM score_history WHERE cluster_health IS NOT NULL AND timestamp >= ? "
         "ORDER BY timestamp DESC LIMIT ?",
-        (MAX_RAW,),
+        (since, SCORE_HISTORY_MAX_ENTRIES),
     ).fetchall()
 
     buckets: Dict[int, Dict[str, Any]] = {}
