@@ -29,10 +29,11 @@ The in-app **Update** button and `update.sh` on the Proxmox host both run
 `release_updater.py apply`. The API starts it as its own transient systemd
 unit, `proxbalance-update`, so it keeps running while it restarts the API. It:
 
-1. Checks free disk space and fetches the release tag.
-2. Backs up `proxbalance.db` (SQLite online backup), `config.json` and the
-   current web files to `backups/updates/<time>-<version>/`. The newest 3
-   backups are kept.
+1. Checks there is free space for a database copy plus 200 MB, and fetches the
+   release tag.
+2. Backs up `proxbalance.db` (SQLite online backup, then gzip-compressed),
+   `config.json` and the current web files to
+   `backups/updates/<time>-<version>/`. The newest 3 backups are kept.
 3. Checks out the release tag (or, on the dev channel, moves the branch to the
    latest commit). Local edits to tracked files are stashed, not discarded.
 4. Downloads the release's web bundle, verifies it against the release's

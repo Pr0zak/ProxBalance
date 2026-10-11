@@ -31,6 +31,7 @@ Channels:
 """
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -429,9 +430,10 @@ class Runner:
 
     def preflight(self) -> None:
         free = shutil.disk_usage(self.repo).free
-        if free < MIN_FREE_BYTES:
+        needed = required_free_bytes(self.repo)
+        if free < needed:
             raise UpdateFailed(f'Only {free // (1024 * 1024)} MB free; need at least '
-                               f'{MIN_FREE_BYTES // (1024 * 1024)} MB')
+                               f'{needed // (1024 * 1024)} MB (database backup plus build space)')
         self._git('fetch', '--tags', '--force', 'origin', timeout=120)
         if self.tag:
             self._git('rev-parse', '--verify', f'refs/tags/{self.tag}^{{commit}}')
@@ -449,12 +451,18 @@ class Runner:
         if os.path.exists(db):
             # The online backup API gives a consistent copy while the
             # collector or API may still be writing (WAL mode).
+            raw = os.path.join(self.backup_dir, 'proxbalance.db')
             src = sqlite3.connect(db)
-            dst = sqlite3.connect(os.path.join(self.backup_dir, 'proxbalance.db'))
+            dst = sqlite3.connect(raw)
             with dst:
                 src.backup(dst)
             src.close()
             dst.close()
+            # Metrics history compresses roughly 5:1; a raw copy of a large
+            # database would eat a small container's disk across 3 backups.
+            with open(raw, 'rb') as f_in, gzip.open(raw + '.gz', 'wb', compresslevel=6) as f_out:
+                shutil.copyfileobj(f_in, f_out, 1024 * 1024)
+            os.remove(raw)
         cfg = os.path.join(self.repo, 'config.json')
         if os.path.exists(cfg):
             shutil.copy2(cfg, os.path.join(self.backup_dir, 'config.json'))
@@ -607,6 +615,16 @@ class Runner:
             return 1
         self.status.finish('succeeded')
         return 0
+
+
+def required_free_bytes(repo_dir: str) -> int:
+    """Free space an update needs: room for an uncompressed database copy
+    (it is compressed after the copy) plus build and download headroom."""
+    try:
+        db_size = os.path.getsize(os.path.join(repo_dir, 'proxbalance.db'))
+    except OSError:
+        db_size = 0
+    return db_size + MIN_FREE_BYTES
 
 
 def wait_for_health(timeout: int = HEALTH_WAIT) -> bool:

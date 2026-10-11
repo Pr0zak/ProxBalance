@@ -224,3 +224,48 @@ def test_bundle_rejected_when_files_missing(tmp_path, monkeypatch):
     with pytest.raises(ru.UpdateFailed, match="tailwind.css missing"):
         runner._install_bundle(release)
     assert not (tmp_path.parent.parent / "etc/passwd").exists()
+
+
+# -- backup ---------------------------------------------------------------
+
+def test_backup_compresses_database_and_keeps_three(tmp_path, monkeypatch):
+    import gzip
+    import sqlite3
+    db = tmp_path / "proxbalance.db"
+    con = sqlite3.connect(db)
+    con.execute("create table t (x text)")
+    con.executemany("insert into t values (?)", [("metrics row " * 20,)] * 2000)
+    con.commit()
+    con.close()
+    (tmp_path / "config.json").write_text("{}")
+    web = tmp_path / "web"
+    (web / "assets/js").mkdir(parents=True)
+    (web / "assets/js/app.js").write_text("js")
+    monkeypatch.setattr(ru, "WEBROOT", str(web))
+
+    for i in range(5):
+        runner = object.__new__(ru.Runner)
+        runner.repo, runner.tag, runner.branch = str(tmp_path), f"v2.16.{i}", None
+        runner.prev_branch, runner.prev_commit, runner.prev_label = "main", "abc", "v2.15.0"
+        runner.status = ru.StatusWriter(str(tmp_path), runner.tag, "v2.15.0")
+        monkeypatch.setattr(ru, "datetime", type("D", (), {"now": staticmethod(
+            lambda tz=None, i=i: __import__("datetime").datetime(2026, 10, 11, 12, 0, i))}))
+        runner.backup()
+
+    root = tmp_path / ru.BACKUP_SUBDIR
+    kept = sorted(p.name for p in root.iterdir())
+    assert len(kept) == ru.BACKUPS_KEPT and kept[-1].endswith("v2.16.4")
+    latest = root / kept[-1]
+    assert not (latest / "proxbalance.db").exists()
+    gz = latest / "proxbalance.db.gz"
+    assert gz.stat().st_size < db.stat().st_size / 3
+    restored = tmp_path / "restored.db"
+    restored.write_bytes(gzip.decompress(gz.read_bytes()))
+    assert sqlite3.connect(restored).execute("select count(*) from t").fetchone()[0] == 2000
+    assert (latest / "web/assets/js/app.js").read_text() == "js"
+
+
+def test_required_free_bytes_counts_database(tmp_path):
+    assert ru.required_free_bytes(str(tmp_path)) == ru.MIN_FREE_BYTES
+    (tmp_path / "proxbalance.db").write_bytes(b"x" * 1000)
+    assert ru.required_free_bytes(str(tmp_path)) == ru.MIN_FREE_BYTES + 1000
