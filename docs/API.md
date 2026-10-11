@@ -40,6 +40,25 @@ curl http://<host>/api/health
 }
 ```
 
+### GET /api/metrics
+
+Prometheus metrics in the text exposition format (`Content-Type: text/plain; version=0.0.4`), not the JSON envelope. Values come from the cluster cache, `config.json` and the SQLite database; a scrape never calls the Proxmox API. Unknown values are left out rather than reported as 0. If the metrics cannot be built at all, the endpoint answers `503` with a body containing only `proxbalance_up 0`. Like the other `/api/` endpoints it needs the API key only when `api_key` is set.
+
+```bash
+curl http://<host>/api/metrics
+```
+
+```text
+# HELP proxbalance_up 1 when the cluster cache was read, 0 when it is missing or unreadable.
+# TYPE proxbalance_up gauge
+proxbalance_up 1
+# HELP proxbalance_node_cpu_recent_percent Node CPU usage averaged over the last 15 minutes, percent (what scoring uses).
+# TYPE proxbalance_node_cpu_recent_percent gauge
+proxbalance_node_cpu_recent_percent{node="pve3"} 23.4
+```
+
+The full metric list, a Prometheus scrape config and a Grafana dashboard are in [PROMETHEUS.md](PROMETHEUS.md).
+
 ---
 
 ## Cluster Data

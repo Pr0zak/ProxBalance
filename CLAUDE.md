@@ -61,7 +61,7 @@ ProxBalance/
 │   ├── settings_mapper.py       # Simplified settings ↔ penalty config mapping
 │   │
 │   └── routes/                  # Flask Blueprints (all API endpoints, use @api_route)
-│       ├── __init__.py          # register_blueprints() — registers all 10 blueprints
+│       ├── __init__.py          # register_blueprints() — registers all 11 blueprints
 │       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary, etc.
 │       ├── automation.py        # /api/automigrate/* endpoints
 │       ├── config.py            # /api/config endpoints
@@ -69,6 +69,7 @@ ProxBalance/
 │       ├── guests.py            # /api/guests/* endpoints
 │       ├── migrations.py        # /api/migrate endpoint
 │       ├── notifications.py     # /api/notifications/test endpoint
+│       ├── metrics.py           # /api/metrics (Prometheus text, not @api_route)
 │       ├── penalty.py           # /api/penalty-config endpoint
 │       ├── recommendations.py   # /api/recommendations endpoints
 │       └── system.py            # /api/update/*, /api/health, etc.
@@ -162,7 +163,7 @@ ProxBalance/
 
 1. **Data Collection** (`collector_api.py`) — Gathers metrics from the Proxmox API using proxmoxer. Runs on a systemd timer (default 120 min). Supports parallel collection with configurable worker count. Writes to `cluster_cache.json` (current snapshot) and persists time-series metrics to SQLite.
 
-2. **Application Logic** (`app.py` + `proxbalance/`) — Flask REST API using a **Blueprint architecture**. The entry point (`app.py`, ~63 lines) creates the Flask app, initializes the SQLite database, registers error handlers, and registers 10 route blueprints. Core logic is in 19 domain modules:
+2. **Application Logic** (`app.py` + `proxbalance/`) — Flask REST API using a **Blueprint architecture**. The entry point (`app.py`, ~63 lines) creates the Flask app, initializes the SQLite database, registers error handlers, and registers 11 route blueprints. Core logic is in 19 domain modules:
    - `proxbalance/db.py` — SQLite connection management, schema DDL, one-time JSON migration
    - `proxbalance/migration_db.py` — Migration history, automation state, recommendation tracking
    - `proxbalance/metrics_store.py` — Node/guest metrics time-series (SQLite INSERTs)
@@ -281,7 +282,7 @@ The UI uses a **glassmorphism/depth aesthetic** — backdrop-blur, frosted glass
 - **`proxbalance/db.py`** — SQLite connection management (thread-local, WAL mode), schema DDL for 10 tables, one-time JSON→SQLite migration. All data modules depend on this.
 - **`proxbalance/migration_db.py`** — Shared data layer for migration history, automation state (key-value), run history, and recommendation tracking. Used by `automigrate.py` and `proxbalance/migrations.py`.
 - **`proxbalance/metrics_store.py`** — Time-series storage for node/guest metrics. Single-row SQLite INSERTs instead of full-file JSON rewrites. Supports tiered compression (raw → hourly → 6-hour aggregates).
-- **`proxbalance/routes/`** — All 48+ API endpoints split across 10 Blueprint modules. Routes use `@api_route` decorator for centralized error handling. Find endpoints by their URL prefix (e.g., `/api/config` → `routes/config.py`).
+- **`proxbalance/routes/`** — All 48+ API endpoints split across 11 Blueprint modules. Routes use `@api_route` decorator for centralized error handling. Find endpoints by their URL prefix (e.g., `/api/config` → `routes/config.py`).
 - **`proxbalance/scoring.py`** — The penalty-based scoring algorithm. Central to cluster analysis.
 - **`proxbalance/config_manager.py`** — Config loading/saving, Proxmox client creation. Re-exports path constants from `constants.py`. Imported everywhere.
 - **`proxbalance/constants.py`** — Shared path constants (`BASE_PATH`, `CACHE_FILE`, `CONFIG_FILE`, `DB_FILE`, etc.) and tuning values.
@@ -393,7 +394,7 @@ The AI system uses an **abstract base class pattern** (`ai_provider.py`):
 
 ## API Endpoints
 
-The Flask API exposes 48+ REST endpoints under `/api/`, organized into 10 Blueprint modules:
+The Flask API exposes 48+ REST endpoints under `/api/`, organized into 11 Blueprint modules:
 
 | Blueprint | File | Key Endpoints |
 |-----------|------|---------------|
@@ -407,6 +408,7 @@ The Flask API exposes 48+ REST endpoints under `/api/`, organized into 10 Bluepr
 | guests | `routes/guests.py` | `/api/guests/*` |
 | automation | `routes/automation.py` | `/api/automigrate/*` |
 | notifications | `routes/notifications.py` | `/api/notifications/test` |
+| metrics | `routes/metrics.py` | `/api/metrics` (Prometheus text exposition, see `docs/PROMETHEUS.md`) |
 
 ## Testing
 
