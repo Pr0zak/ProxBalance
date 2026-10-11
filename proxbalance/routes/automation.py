@@ -677,7 +677,13 @@ def run_automigrate():
 
         # Check if any migrations are currently running cluster-wide
         try:
-            status_data = get_automation_status_data()
+            # Reuse the status endpoint's own view of in-flight migrations.
+            # (This used to call an undefined helper; the NameError was
+            # swallowed below, so Run Now never blocked on a running move.)
+            status_resp = get_automigrate_status()
+            if isinstance(status_resp, tuple):
+                status_resp = status_resp[0]
+            status_data = status_resp.get_json(silent=True) or {}
             if status_data.get('in_progress_migrations') and len(status_data['in_progress_migrations']) > 0:
                 running_migrations = status_data['in_progress_migrations']
                 migration_info = running_migrations[0]
