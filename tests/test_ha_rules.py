@@ -330,6 +330,9 @@ def _bare_collector(proxmox):
     import collector_api
     col = collector_api.ProxmoxAPICollector.__new__(collector_api.ProxmoxAPICollector)
     col.proxmox = proxmox
+    # Attributes __init__ would set that generate_summary() reads on other
+    # branches (e.g. collection_errors from the client-hardening change).
+    col.collection_errors = []
     col.nodes = {n: {"status": "online", "guests": [], "total_mem_gb": 32} for n in ("pve3", "pve5")}
     col.guests = {k: dict(v, tags={"has_ignore": False, "exclude_groups": []})
                   for k, v in _guests().items() if k in ("100", "101")}
