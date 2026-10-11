@@ -215,9 +215,14 @@ def read_cache_file() -> Optional[Dict]:
 def get_proxmox_client(config: Optional[Dict] = None, **kwargs: Any) -> Any:
     """Create and return a ProxmoxAPI client from config.
 
+    The client has explicit (connect, read) timeouts and parses Proxmox's
+    bare NaN/Infinity values as None; see ``proxbalance.pve_client``.
+
     Args:
         config: Configuration dict. If None, loads from file.
         **kwargs: Additional keyword arguments passed to ProxmoxAPI.
+            ``timeout`` may be a ``(connect, read)`` tuple or seconds;
+            it defaults to ``PVE_READ_TIMEOUT``.
 
     Returns:
         ProxmoxAPI instance
@@ -225,7 +230,7 @@ def get_proxmox_client(config: Optional[Dict] = None, **kwargs: Any) -> Any:
     Raises:
         ValueError: If API token is not configured
     """
-    from proxmoxer import ProxmoxAPI
+    from proxbalance.pve_client import build_proxmox_client
 
     if config is None:
         config = load_config()
@@ -239,14 +244,12 @@ def get_proxmox_client(config: Optional[Dict] = None, **kwargs: Any) -> Any:
     if not token_id or not token_secret:
         raise ValueError("API token not configured. Please configure Proxmox API token in settings.")
 
-    user, token_name = token_id.split('!', 1)
-    return ProxmoxAPI(
+    return build_proxmox_client(
         proxmox_host,
-        user=user,
-        token_name=token_name,
-        token_value=token_secret,
         port=proxmox_port,
         verify_ssl=verify_ssl,
+        token_id=token_id,
+        token_secret=token_secret,
         **kwargs
     )
 

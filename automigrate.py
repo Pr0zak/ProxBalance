@@ -647,7 +647,10 @@ def execute_migration(
     try:
         start_time = time_module.time()
 
-        # Call migration API endpoint
+        # Call migration API endpoint. Sent once and never retried, even on a
+        # timeout: Proxmox keeps applying a migrate request we stopped waiting
+        # for, so a resend could migrate the guest twice. The next run's
+        # is_migration_in_progress() check sees a migration that did start.
         response = requests.post(
             'http://127.0.0.1:5000/api/migrate',
             json={

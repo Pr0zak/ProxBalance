@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, current_app
 import json, os, sys, uuid, threading
 from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH, CACHE_FILE, SESSIONS_DIR, DISK_PREFIXES
+from proxbalance.pve_client import PVE_SLOW_READ_TIMEOUT, PVE_WRITE_TIMEOUT
 from proxbalance.error_handlers import api_route
 from proxbalance.evacuation import _get_session_file, _read_session, _write_session, _update_evacuation_progress, _execute_evacuation
 from proxbalance.scoring import calculate_target_node_score, DEFAULT_PENALTY_CONFIG
@@ -36,7 +37,8 @@ def get_node_storage(node):
         return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
 
     try:
-        proxmox = get_proxmox_client(config)
+        # Storage status waits on every backend of the node: slow read.
+        proxmox = get_proxmox_client(config, timeout=PVE_SLOW_READ_TIMEOUT)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -93,7 +95,7 @@ def verify_storage_availability():
         return jsonify({"success": False, "error": config.get("message", "Config error")}), 500
 
     try:
-        proxmox = get_proxmox_client(config)
+        proxmox = get_proxmox_client(config, timeout=PVE_SLOW_READ_TIMEOUT)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -252,10 +254,11 @@ def evacuate_node():
     else:
         print(f"Available target nodes: {[n['node'] for n in available_nodes]}", file=sys.stderr)
 
-    # Setup Proxmox API
+    # Setup Proxmox API. Write timeout: this client also sends the migrate
+    # POSTs, whose lost answers are ambiguous (see pve_client.submit_migration).
     config = load_config()
     try:
-        proxmox = get_proxmox_client(config)
+        proxmox = get_proxmox_client(config, timeout=PVE_WRITE_TIMEOUT)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

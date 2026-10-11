@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH
+from proxbalance.pve_client import PVE_WRITE_TIMEOUT
 from proxbalance.error_handlers import api_route
 from proxbalance.migrations import (
     execute_migration as _execute_migration,
@@ -30,7 +31,8 @@ def execute_migration():
     data = request.json
     config = load_config()
     try:
-        proxmox = get_proxmox_client(config)
+        # Longer read timeout: a migrate POST whose answer is lost is ambiguous.
+        proxmox = get_proxmox_client(config, timeout=PVE_WRITE_TIMEOUT)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -64,7 +66,7 @@ def execute_batch_migration():
     """Execute multiple migrations via Proxmox API"""
     config = load_config()
     try:
-        proxmox = get_proxmox_client(config)
+        proxmox = get_proxmox_client(config, timeout=PVE_WRITE_TIMEOUT)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -186,7 +188,7 @@ def execute_rollback():
                 pass
 
         # Execute the migration via Proxmox
-        proxmox = get_proxmox_client(config)
+        proxmox = get_proxmox_client(config, timeout=PVE_WRITE_TIMEOUT)
         result, status_code = _execute_migration(
             proxmox, vmid, original_node, current_node, guest_type
         )

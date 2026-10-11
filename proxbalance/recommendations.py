@@ -35,6 +35,7 @@ from proxbalance.config_manager import (
     DISK_PREFIXES,
     BASE_PATH,
 )
+from proxbalance.pve_client import PVE_SLOW_READ_TIMEOUT
 from proxbalance.forecasting import (
     project_trend,
     generate_forecast_recommendations as _generate_forecast_recommendations,
@@ -341,7 +342,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         else:
             config = load_config()
             try:
-                proxmox = get_proxmox_client(config)
+                # Storage status waits on every backend of the node: slow read.
+                proxmox = get_proxmox_client(config, timeout=PVE_SLOW_READ_TIMEOUT)
             except ValueError:
                 pass  # proxmox remains None, storage compatibility checks will be skipped
 
