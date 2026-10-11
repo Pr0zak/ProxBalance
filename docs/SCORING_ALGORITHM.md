@@ -108,11 +108,42 @@ if target == source: penalty += 999999
 
 ---
 
+## Anchored Load
+
+Some guests never move under normal operation: they carry the `ignore` tag or are pinned by passthrough disks (a NAS VM, a camera recorder). Their CPU is a fixed baseline on their host, so counting it as load ProxBalance could relieve makes the host look permanently overloaded and pushes every other guest off it without ever bringing CPU down.
+
+For each node, the engine sums the CPU of its running anchored guests (each guest's last-hour average, as a share of the node's CPU) into `anchored_cpu`, capped at 90%. When deciding whether a node needs relief, and how much a move gives, node CPU is re-expressed as a share of the capacity the anchored guests leave free:
+
+```
+movable_cpu = (node_cpu - anchored_cpu) / (100 - anchored_cpu) * 100
+```
+
+Example: SilverNAS holds 50% of pve5. pve5 at 60% has 10 of its 50 free points in use, so movable CPU is 20% and pve5 is not a source. At 92%, movable CPU is 84%, above a 70% threshold, so ProxBalance moves guests off it.
+
+Anchored load still counts in full when a node is scored as a migration **target**, because an incoming guest will compete with it. The node-scores API returns `anchored_cpu` and `anchored_guests` for each node.
+
+### Per-guest relief
+
+A node-versus-node score difference says nothing about the guest being moved: a guest using 1% CPU and one using 30% got the same improvement, so the cheapest guests moved first and the source never improved. The improvement is now scaled by how much of the source's excess this guest would remove:
+
+```
+relief_fraction = min(1, guest_cpu_relief / cpu_excess)       # memory: same with mem relief / (mem - floor)
+score_improvement = (source_score - target_score) * relief_fraction
+```
+
+Maintenance evacuations and IOWait relief keep the full difference. A guest whose scaled improvement falls below `min_score_improvement` is skipped with a detail saying what share of the excess it would have removed.
+
+### Smoothed readings
+
+"Current" CPU and IOWait are the average of the last ~15 one-minute RRD points (`recent_cpu`, `recent_iowait`) rather than the single sample taken at collection time. Source gating, current-load penalties, conflict detection and the automigrate target safety check all use them, so one sample landing on a short burst can't trigger a migration.
+
+---
+
 ## Recommendation Generation
 
 ### Process
 
-1. **Identify guests needing migration**: Source node overloaded (CPU > 80% or memory > 80%), node in maintenance, or anti-affinity violations
+1. **Identify guests needing migration**: source node in maintenance, IOWait-stressed, at or above the memory floor (`source_mem_migration_floor`, default 65%), or with time-weighted movable CPU (see Anchored Load) at or above the CPU threshold. Guests on a node whose CPU is over the threshold only because of anchored guests are skipped as `source_load_anchored`
 2. **Score all targets**: For each candidate guest, calculate penalties for every online node
 3. **Rank by penalty**: Sort targets lowest-first
 4. **Convert to suitability ratings**: Normalize to 0-100%
@@ -142,6 +173,8 @@ The algorithm blends current metrics with historical data:
 ```
 weighted_value = current * weight_current + avg_24h * weight_24h + avg_7d * weight_7d
 ```
+
+`current` is the ~15-minute average described under Smoothed readings, not the instantaneous sample.
 
 Default weights:
 - Current: 0.5

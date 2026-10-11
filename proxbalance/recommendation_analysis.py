@@ -8,6 +8,8 @@ analysis functions used to enrich and validate recommendations.
 
 from typing import Any, Dict, List, Optional
 
+from proxbalance.scoring import recent_cpu, recent_iowait, weighted_cpu
+
 
 def calculate_confidence(score_improvement: float, target_details: Optional[Dict[str, Any]], guest: Dict[str, Any], penalty_cfg: Dict[str, Any],
                          trend_evidence: Optional[Dict[str, Any]] = None, outcome_stats: Optional[Dict[str, Any]] = None) -> float:
@@ -144,21 +146,10 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     tgt_metrics = tgt_node.get("metrics", {})
     factors: List[Dict[str, Any]] = []
 
-    # Get penalty config weights
-    weight_current = penalty_cfg.get("weight_current", 0.5)
-    weight_24h = penalty_cfg.get("weight_24h", 0.3)
-    weight_7d = penalty_cfg.get("weight_7d", 0.2)
-
-    # Calculate weighted metrics
-    def _weighted(m: Dict[str, Any], key_current: str, key_24h: str, key_7d: str) -> float:
-        if m.get("has_historical"):
-            return (m.get(key_current, 0) * weight_current +
-                    m.get(key_24h, 0) * weight_24h +
-                    m.get(key_7d, 0) * weight_7d)
-        return m.get(key_current, 0)
-
-    src_cpu = _weighted(src_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
-    tgt_cpu = _weighted(tgt_metrics, "current_cpu", "avg_cpu", "avg_cpu_week")
+    # Same time-weighted CPU the engine's gate and scoring use, so the reason
+    # quotes the numbers the decision was actually made on.
+    src_cpu = weighted_cpu(src_metrics, penalty_cfg)
+    tgt_cpu = weighted_cpu(tgt_metrics, penalty_cfg)
     # Memory uses current value directly — it's a step-function resource
     # (only changes with migrations), so blending creates stale phantom values.
     src_mem = src_metrics.get("current_mem", 0)
@@ -213,7 +204,7 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
         factors.append({"factor": "source_mem_trend", "severity": "low", "label": "Source memory trending upward (memory is largely static)"})
 
     # IOWait
-    src_iowait = src_metrics.get("current_iowait", 0)
+    src_iowait = recent_iowait(src_metrics)
     if src_iowait > 15:
         factors.append({
             "factor": "source_iowait",
@@ -263,9 +254,11 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
         dominant = "CPU" if cpu_diff > mem_diff else "memory"
         dominant_value = src_cpu if cpu_diff > mem_diff else src_mem
         severity = _severity_label(dominant_value)
+        src_anchored = src_node.get("anchored_cpu", 0) or 0
+        anchored_note = f", {src_anchored:.0f}% of it unmovable" if dominant == "CPU" and src_anchored >= 1 else ""
         summary = (
             f"{guest_name} should move to {tgt_name} because {src_name} has {severity} {dominant} usage "
-            f"({src_cpu:.0f}% CPU, {src_mem:.0f}% mem{trend_note}), "
+            f"({src_cpu:.0f}% CPU{anchored_note}, {src_mem:.0f}% mem{trend_note}), "
             f"while {tgt_name} has more capacity ({tgt_cpu:.0f}% CPU, {tgt_mem:.0f}% mem)."
         )
 
@@ -386,7 +379,7 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
             continue
 
         metrics = node.get("metrics", {})
-        current_cpu = metrics.get("current_cpu", 0)
+        current_cpu = recent_cpu(metrics)
         current_mem = metrics.get("current_mem", 0)
 
         # Sort by score improvement (highest first) to match automigrate priority
@@ -457,7 +450,7 @@ def detect_migration_conflicts(recommendations: List[Dict[str, Any]], nodes: Dic
             for alt_name, alt_node in nodes.items():
                 if alt_name in (target_node, weakest.get("source_node")) or alt_node.get("status") != "online":
                     continue
-                alt_cpu = alt_node.get("metrics", {}).get("current_cpu", 0)
+                alt_cpu = recent_cpu(alt_node.get("metrics", {}))
                 alt_mem = alt_node.get("metrics", {}).get("current_mem", 0)
                 if alt_cpu < cpu_threshold - 10 and alt_mem < mem_threshold - 10:
                     resolution = f"Consider moving {weakest_label} to {alt_name} instead"

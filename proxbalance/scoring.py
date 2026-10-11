@@ -54,9 +54,9 @@ DEFAULT_PENALTY_CONFIG = {
     "cpu_sustained_high": 40,         # Penalty when 7d avg CPU > 70%
     "cpu_sustained_very_high": 80,    # Penalty when 7d avg CPU > 80%
     "cpu_sustained_critical": 150,    # Penalty when 7d avg CPU > 90%
-    "mem_sustained_high": 10,         # Penalty when 7d avg Memory > 70%
-    "mem_sustained_very_high": 25,    # Penalty when 7d avg Memory > 80%
-    "mem_sustained_critical": 60,     # Penalty when 7d avg Memory > 90%
+    "mem_sustained_high": 10,         # Penalty when 7d avg Memory > 80%
+    "mem_sustained_very_high": 25,    # Penalty when 7d avg Memory > 90%
+    "mem_sustained_critical": 60,     # Penalty when 7d avg Memory > 95%
 
     # IOWait penalties
     "iowait_high_penalty": 20,        # Penalty when immediate IOWait > 10%
@@ -127,6 +127,152 @@ DEFAULT_PENALTY_CONFIG = {
 }
 
 
+# Storage types that live off-node (network/shared). Their fullness is the same from
+# every node and says nothing about a node's load, so node scoring ignores them.
+SHARED_STORAGE_TYPES = {"pbs", "cifs", "nfs", "cephfs", "rbd", "glusterfs", "iscsi", "iscsidirect", "esxi"}
+
+# Cap on how much of a node's CPU anchored guests may claim when normalising load.
+# Keeps the movable-capacity divisor away from zero on a node a single guest saturates.
+MAX_ANCHORED_CPU = 90.0
+
+
+def _with_defaults(penalty_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Overlay a (possibly partial) penalty config on the defaults.
+
+    Every ``.get(key, fallback)`` below then reads the same value the Settings UI shows,
+    instead of a hard-coded fallback that had drifted from DEFAULT_PENALTY_CONFIG.
+    """
+    if not penalty_config:
+        return DEFAULT_PENALTY_CONFIG
+    return {**DEFAULT_PENALTY_CONFIG, **penalty_config}
+
+
+def recent_cpu(metrics: Dict[str, Any]) -> float:
+    """Node CPU over the last ~15 minutes, falling back to the instantaneous reading.
+
+    The collector samples the node once per run. A single sample that lands on a short
+    burst (a NAS scrub, a transcode) used to trigger the full "current load" penalties,
+    so scoring and triggers use this short average instead.
+    """
+    return metrics.get("recent_cpu", metrics.get("current_cpu", 0))
+
+
+def recent_iowait(metrics: Dict[str, Any]) -> float:
+    """Node IOWait over the last ~15 minutes, falling back to the latest sample."""
+    return metrics.get("recent_iowait", metrics.get("current_iowait", 0))
+
+
+def weighted_cpu(metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None) -> float:
+    """Blend recent, 24-hour and 7-day CPU using the configured time weights."""
+    cfg = _with_defaults(penalty_config)
+    if not metrics.get("has_historical"):
+        return recent_cpu(metrics)
+    return (recent_cpu(metrics) * cfg["weight_current"]
+            + metrics.get("avg_cpu", 0) * cfg["weight_24h"]
+            + metrics.get("avg_cpu_week", 0) * cfg["weight_7d"])
+
+
+def weighted_iowait(metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None) -> float:
+    """Blend recent, 24-hour and 7-day IOWait using the configured time weights."""
+    cfg = _with_defaults(penalty_config)
+    if not metrics.get("has_historical"):
+        return recent_iowait(metrics)
+    return (recent_iowait(metrics) * cfg["weight_current"]
+            + metrics.get("avg_iowait", 0) * cfg["weight_24h"]
+            + metrics.get("avg_iowait_week", 0) * cfg["weight_7d"])
+
+
+def local_storage_usage(storage_list: List[Dict[str, Any]]) -> float:
+    """Average usage % of a node's active, node-local storage (shared storage excluded)."""
+    usages = [
+        s.get("usage_pct", 0) for s in storage_list or []
+        if s.get("active", False)
+        and not s.get("shared")
+        and s.get("type") not in SHARED_STORAGE_TYPES
+    ]
+    return sum(usages) / len(usages) if usages else 0
+
+
+# ---------------------------------------------------------------------------
+# Anchored load
+#
+# Some guests can never be moved by ProxBalance: they carry the 'ignore' tag or are
+# pinned by passthrough disks (a NAS VM, a camera recorder). Their CPU is a fixed
+# baseline on their host. Counting it as load ProxBalance could relieve made the host
+# look permanently overloaded, and the engine responded by moving every other guest
+# off it, which never brought the CPU down. Anchored load is still real when the node
+# is a migration *target* (the new guest will contend with it), so it is only taken
+# out when deciding whether a node needs relief and how much a move gives.
+# ---------------------------------------------------------------------------
+
+def is_anchored(guest: Dict[str, Any]) -> bool:
+    """True for a running guest that ProxBalance will not migrate under normal operation."""
+    if guest.get("status") != "running":
+        return False
+    return bool(guest.get("tags", {}).get("has_ignore", False)
+                or guest.get("local_disks", {}).get("is_pinned", False))
+
+
+def guest_node_cpu_share(guest: Dict[str, Any], node: Dict[str, Any]) -> float:
+    """Guest CPU expressed as a percentage of the host node's total CPU.
+
+    Prefers the guest's last-hour average over its instantaneous reading.
+    """
+    guest_cpu = guest.get("cpu_avg_hour", guest.get("cpu_current", 0)) or 0
+    guest_cores = guest.get("cpu_cores", 1) or 1
+    node_cores = node.get("cpu_cores", 1) or 1
+    return guest_cpu * guest_cores / node_cores
+
+
+def annotate_anchored_load(nodes: Dict[str, Any], guests: Dict[str, Any]) -> None:
+    """Set ``anchored_cpu`` (% of node CPU) and ``anchored_guests`` on every node in place."""
+    for node_name, node in nodes.items():
+        total = 0.0
+        anchored = []
+        for guest in guests.values():
+            if guest.get("node") != node_name or not is_anchored(guest):
+                continue
+            share = guest_node_cpu_share(guest, node)
+            total += share
+            if share >= 1.0:
+                anchored.append({"vmid": guest.get("vmid"), "name": guest.get("name"),
+                                 "cpu_share": round(share, 1)})
+        node["anchored_cpu"] = round(min(total, MAX_ANCHORED_CPU), 1)
+        node["anchored_guests"] = sorted(anchored, key=lambda g: -g["cpu_share"])
+
+
+def movable_cpu_share(cpu: float, anchored_cpu: float) -> float:
+    """Re-express node CPU as a share of the capacity anchored guests leave free.
+
+    With 50% of a node held by an anchored NAS, a node reading 60% has 10 of its
+    50 free points in use, i.e. 20% movable load. Equal to ``cpu`` when nothing is anchored.
+    """
+    anchored = min(max(anchored_cpu, 0.0), MAX_ANCHORED_CPU)
+    if anchored <= 0:
+        return cpu
+    return max(0.0, cpu - anchored) / (100.0 - anchored) * 100.0
+
+
+def _anchor_normalized(node: Dict[str, Any]) -> Dict[str, Any]:
+    """Copy of ``node`` whose CPU figures count only the capacity anchored guests leave free.
+
+    Used when scoring a node as a migration *source*. Core count shrinks in proportion,
+    so a guest's predicted CPU relief scales the same way.
+    """
+    anchored = min(node.get("anchored_cpu", 0) or 0, MAX_ANCHORED_CPU)
+    if anchored <= 0:
+        return node
+    m = dict(node.get("metrics", {}))
+    for key in ("current_cpu", "recent_cpu", "avg_cpu", "avg_cpu_week", "max_cpu", "max_cpu_week"):
+        if key in m:
+            m[key] = movable_cpu_share(m[key], anchored)
+    out = dict(node)
+    out["metrics"] = m
+    out["cpu_cores"] = (node.get("cpu_cores", 1) or 1) * (100.0 - anchored) / 100.0
+    out["anchored_cpu"] = 0
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Scoring functions
 # ---------------------------------------------------------------------------
@@ -137,42 +283,17 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
     Considers CPU, Memory, IOWait, Load Average, and Storage pressure.
     Uses configured time period weights.
     """
-    if penalty_config is None:
-        penalty_config = DEFAULT_PENALTY_CONFIG
+    penalty_config = _with_defaults(penalty_config)
 
-    # Load penalty config to get time period weights
-    weight_current = penalty_config.get("weight_current", 0.5)
-    weight_24h = penalty_config.get("weight_24h", 0.3)
-    weight_7d = penalty_config.get("weight_7d", 0.2)
-
-    # Get metrics at different time scales
-    immediate_cpu = metrics.get("current_cpu", 0)
-    immediate_mem = metrics.get("current_mem", 0)
-    immediate_iowait = metrics.get("current_iowait", 0)
-
-    short_cpu = metrics.get("avg_cpu", 0)
-    short_mem = metrics.get("avg_mem", 0)
-    short_iowait = metrics.get("avg_iowait", 0)
-
-    long_cpu = metrics.get("avg_cpu_week", 0)
-    long_mem = metrics.get("avg_mem_week", 0)
-    long_iowait = metrics.get("avg_iowait_week", 0)
-
-    # Calculate weighted metrics using configured weights
     # CPU and IOWait benefit from time-weighted smoothing (transient spikes).
     # Memory is a step-function resource in Proxmox (fixed VM/CT allocations)
     # — it only changes when guests are migrated/started/stopped.  Blending
     # with historical averages creates stale phantom values after migrations:
     # nodes that received VMs appear to have *less* memory than reality,
     # and nodes that lost VMs appear to have *more*.  Use current reading.
-    if metrics.get("has_historical"):
-        cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        mem = immediate_mem
-        iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
-    else:
-        cpu = immediate_cpu
-        mem = immediate_mem
-        iowait = immediate_iowait
+    cpu = weighted_cpu(metrics, penalty_config)
+    mem = metrics.get("current_mem", 0)
+    iowait = weighted_iowait(metrics, penalty_config)
 
     # IOWait exemption: if this node's iowait is structurally driven by a guest on
     # dedicated/passthrough storage (flagged by the collector — e.g. a NAS VM doing a
@@ -184,15 +305,17 @@ def calculate_node_health_score(node: Dict[str, Any], metrics: Dict[str, Any], p
     load = metrics.get("avg_load", 0)
     cores = node.get("cpu_cores", 1)
 
-    # Normalize load average by core count (load per core)
-    load_per_core = (load / cores) * 100 if cores > 0 else 0
+    # Normalize load average by core count (load per core), capped at 100 so a
+    # deep run queue can't outweigh the other components on its own.
+    load_per_core = min((load / cores) * 100 if cores > 0 else 0, 100)
+    # Linux load average also counts tasks blocked on disk. On an iowait-exempt
+    # node those are the exempt guest's (e.g. a NAS on its own disks), so only
+    # the part of load that CPU use accounts for is scored there.
+    if penalty_config.get("iowait_exempt_enabled", True) and node.get("iowait_exempt"):
+        load_per_core = min(load_per_core, cpu)
 
-    # Storage pressure score (average usage across all storage)
-    storage_pressure = 0
-    storage_list = node.get("storage", [])
-    if storage_list:
-        storage_usages = [s.get("usage_pct", 0) for s in storage_list if s.get("active", False)]
-        storage_pressure = sum(storage_usages) / len(storage_usages) if storage_usages else 0
+    # Storage pressure: node-local storage only (shared storage reads the same everywhere)
+    storage_pressure = local_storage_usage(node.get("storage", []))
 
     # Weighted health score
     # CPU dominates because it fluctuates with workload.
@@ -216,42 +339,18 @@ def predict_post_migration_load(node: Dict[str, Any], guest: Dict[str, Any], add
     Returns predicted CPU%, Memory%, and IOWait%.
     Uses configured time period weights.
     """
-    if penalty_config is None:
-        penalty_config = DEFAULT_PENALTY_CONFIG
+    penalty_config = _with_defaults(penalty_config)
 
     metrics = node.get("metrics", {})
 
-    # Load penalty config to get time period weights
-    weight_current = penalty_config.get("weight_current", 0.5)
-    weight_24h = penalty_config.get("weight_24h", 0.3)
-    weight_7d = penalty_config.get("weight_7d", 0.2)
+    # Weighted current state. Memory uses the current value — see note in
+    # calculate_node_health_score.
+    current_cpu = weighted_cpu(metrics, penalty_config)
+    current_mem = metrics.get("current_mem", 0)
+    current_iowait = weighted_iowait(metrics, penalty_config)
 
-    # Get metrics at different time scales
-    immediate_cpu = metrics.get("current_cpu", 0)
-    immediate_mem = metrics.get("current_mem", 0)
-    immediate_iowait = metrics.get("current_iowait", 0)
-
-    short_cpu = metrics.get("avg_cpu", 0)
-    short_mem = metrics.get("avg_mem", 0)
-    short_iowait = metrics.get("avg_iowait", 0)
-
-    long_cpu = metrics.get("avg_cpu_week", 0)
-    long_mem = metrics.get("avg_mem_week", 0)
-    long_iowait = metrics.get("avg_iowait_week", 0)
-
-    # Calculate weighted current state using configured weights
-    # Memory uses immediate value — see note in calculate_node_health_score.
-    if metrics.get("has_historical"):
-        current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = immediate_mem
-        current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
-    else:
-        current_cpu = immediate_cpu
-        current_mem = immediate_mem
-        current_iowait = immediate_iowait
-
-    # Guest resource usage
-    guest_cpu = guest.get("cpu_current", 0)  # Percentage of guest's allocated CPUs
+    # Guest resource usage: % of the guest's allocated CPUs, last-hour average when known
+    guest_cpu = guest.get("cpu_avg_hour", guest.get("cpu_current", 0)) or 0
     guest_mem_gb = guest.get("mem_used_gb", 0)
     guest_disk_io = (guest.get("disk_read_bps", 0) + guest.get("disk_write_bps", 0)) / (1024**2)  # MB/s
 
@@ -309,41 +408,34 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     When return_details=True, returns (score, details_dict) with full penalty breakdown.
     When return_details=False (default), returns just the score float for backward compatibility.
     """
-    if penalty_config is None:
-        penalty_config = DEFAULT_PENALTY_CONFIG
+    penalty_config = _with_defaults(penalty_config)
+
+    # Scoring a node as a migration *source*: count only load ProxBalance could
+    # actually move (see "Anchored load" above). As a target, the anchored load is
+    # real contention for the incoming guest, so totals are kept.
+    if not adding:
+        target_node = _anchor_normalized(target_node)
 
     target_name = target_node.get("name")
     metrics = target_node.get("metrics", {})
 
-    # Weighted time-based scoring: configurable weights from penalty config
-    # This balances responsiveness with stability
-    immediate_cpu = metrics.get("current_cpu", 0)
-    immediate_mem = metrics.get("current_mem", 0)
-    immediate_iowait = metrics.get("current_iowait", 0)
+    weight_24h = penalty_config.get("weight_24h", 0.3)
+    weight_7d = penalty_config.get("weight_7d", 0.2)
 
-    short_cpu = metrics.get("avg_cpu", 0)  # 24-hour average
-    short_mem = metrics.get("avg_mem", 0)
-    short_iowait = metrics.get("avg_iowait", 0)
+    # "Immediate" readings are ~15-minute averages, so one sample that lands on
+    # a short burst can't trigger the current-load penalties by itself.
+    immediate_cpu = recent_cpu(metrics)
+    immediate_mem = metrics.get("current_mem", 0)
+    immediate_iowait = recent_iowait(metrics)
 
     long_cpu = metrics.get("avg_cpu_week", 0)  # 7-day average
     long_mem = metrics.get("avg_mem_week", 0)
     long_iowait = metrics.get("avg_iowait_week", 0)
 
-    # Calculate weighted scores using configurable weights
-    weight_current = penalty_config.get("weight_current", 0.5)
-    weight_24h = penalty_config.get("weight_24h", 0.3)
-    weight_7d = penalty_config.get("weight_7d", 0.2)
-
     # Memory uses immediate value — see note in calculate_node_health_score.
-    if metrics.get("has_historical"):
-        current_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        current_mem = immediate_mem
-        current_iowait = (immediate_iowait * weight_current) + (short_iowait * weight_24h) + (long_iowait * weight_7d)
-    else:
-        # No historical data, use current only
-        current_cpu = immediate_cpu
-        current_mem = immediate_mem
-        current_iowait = immediate_iowait
+    current_cpu = weighted_cpu(metrics, penalty_config)
+    current_mem = immediate_mem
+    current_iowait = weighted_iowait(metrics, penalty_config)
 
     # Get max values over the week to avoid migrating to nodes that spike
     max_cpu_week = metrics.get("max_cpu_week", metrics.get("max_cpu", 0))
@@ -479,19 +571,20 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 elif mem_rate > 0.5:
                     penalty_breakdown["mem_trend"] = base_mem_trend_penalty
 
-            # CPU stability factor: scale CPU-related penalties by node volatility.
-            # Stable nodes get CPU penalties *reduced* (the high reading is likely
-            # transient); volatile nodes get penalties *inflated* (unpredictable).
+            # CPU stability factor: stable nodes get CPU penalties *reduced* (a
+            # high reading is likely transient). Volatile nodes are no longer
+            # inflated: the stability score is a 7-day coefficient of variation,
+            # which also rises with every migration and with a NAS pausing, so in
+            # practice every node read as "volatile" and every CPU penalty was
+            # multiplied by 1.3. Spikes already have their own penalty.
             # NOTE: Stored here but applied AFTER spike/predicted penalties are
             # calculated below, so that all CPU penalties are scaled consistently.
             if node_stability >= 80:
                 cpu_stability_factor = 0.7   # Excellent — reduce CPU penalties 30%
             elif node_stability >= 60:
                 cpu_stability_factor = 0.85  # Good — reduce CPU penalties 15%
-            elif node_stability < 40:
-                cpu_stability_factor = 1.3   # Volatile — inflate CPU penalties 30%
             else:
-                cpu_stability_factor = 1.0   # Moderate — no change
+                cpu_stability_factor = 1.0   # Moderate or volatile — no change
         except Exception:
             _node_trend_data = None
 
@@ -631,13 +724,8 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     headroom_score = 100 - (cpu_headroom * 0.65 + mem_headroom * 0.35)  # Lower = more headroom
 
     # Storage availability score
-    storage_score = 0
-    storage_list = target_node.get("storage", [])
-    if storage_list:
-        # Prefer nodes with more available storage (only count active storage)
-        active_storages = [s for s in storage_list if s.get("active", False)]
-        avg_storage_usage = sum(s.get("usage_pct", 0) for s in active_storages) / len(active_storages) if active_storages else 0
-        storage_score = avg_storage_usage  # Lower = more available
+    # Prefer nodes with more free node-local storage (lower = more available)
+    storage_score = local_storage_usage(target_node.get("storage", []))
 
     # Combined weighted score (lower is better)
     # Current health: 25%, Predicted health: 40%, Headroom: 20%, Storage: 15%

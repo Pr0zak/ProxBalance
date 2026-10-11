@@ -21,6 +21,12 @@ from proxbalance.scoring import (
     calculate_target_node_score,
     calculate_migration_risk,
     DEFAULT_PENALTY_CONFIG,
+    annotate_anchored_load,
+    guest_node_cpu_share,
+    movable_cpu_share,
+    recent_cpu,
+    recent_iowait,
+    weighted_cpu,
 )
 from proxbalance.config_manager import (
     load_penalty_config,
@@ -217,20 +223,13 @@ def _check_cluster_convergence(nodes: Dict[str, Any], penalty_cfg: Dict[str, Any
     if len(online_nodes) < 2:
         return None
 
-    weight_current = penalty_cfg.get('weight_current', 0.5)
-    weight_24h = penalty_cfg.get('weight_24h', 0.3)
-    weight_7d = penalty_cfg.get('weight_7d', 0.2)
-
     cpus = []
     mems = []
     for node in online_nodes.values():
         metrics = node.get('metrics', {})
-        if metrics.get('has_historical'):
-            cpu = (metrics.get('current_cpu', 0) * weight_current +
-                   metrics.get('avg_cpu', 0) * weight_24h +
-                   metrics.get('avg_cpu_week', 0) * weight_7d)
-        else:
-            cpu = metrics.get('current_cpu', 0)
+        # Movable CPU only: a node whose load is mostly an anchored guest (a NAS)
+        # isn't imbalanced in any way a migration could fix.
+        cpu = movable_cpu_share(weighted_cpu(metrics, penalty_cfg), node.get('anchored_cpu', 0))
         # Memory uses current value directly — it's a step-function resource
         # that only changes with migrations, so blending with historical
         # averages would misrepresent the actual spread.
@@ -327,6 +326,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     skipped_guests = []
     pending_target_guests = dict(initial_pending_guests) if initial_pending_guests else {}
 
+    # CPU of guests that ProxBalance won't move (ignored, passthrough-pinned) is a fixed
+    # baseline on their host — see "Anchored load" in scoring.py.
+    annotate_anchored_load(nodes, guests)
+
     # Get Proxmox client for storage compatibility checks (with time-based cache)
     proxmox = None
     storage_cache = {}
@@ -380,7 +383,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             print(f"IOWait trigger: skipping {_nname} (iowait-exempt: {', '.join(g.get('name','?') for g in _ndata.get('iowait_exempt_guests', []))})", file=sys.stderr)
             continue
         _nmetrics = _ndata.get("metrics", {})
-        _current_iow = _nmetrics.get("current_iowait", 0)
+        _current_iow = recent_iowait(_nmetrics)
         _avg_iow = _nmetrics.get("avg_iowait", 0) if _nmetrics.get("has_historical") else _current_iow
         # Require both current AND average to be elevated (avoids reacting to transient spikes)
         if _current_iow > iowait_threshold and _avg_iow > (iowait_threshold * 0.7):
@@ -534,7 +537,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     current_hour = datetime.now(timezone.utc).hour
                     baseline = get_node_seasonal_baseline(score_history_data, src_node_name, current_hour)
                     if baseline and baseline.get("data_points", 0) >= 5:
-                        src_cpu = src_node.get("cpu_percent", 0)
+                        src_cpu = recent_cpu(src_node.get("metrics", {})) if src_node.get("metrics") else src_node.get("cpu_percent", 0)
                         baseline_upper = baseline["avg_cpu"] + (sigma_threshold * baseline["std_cpu"])
                         if src_cpu <= baseline_upper and src_cpu <= cpu_threshold:
                             seasonal_skip_nodes.add(src_node_name)
@@ -552,20 +555,38 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             # when there is no CPU or IOWait pressure. Prevents score-differential
             # churn where VMs get shuffled between nodes that are all comfortably
             # below threshold, especially when memory trend penalties inflate scores.
+            #
+            # CPU here is the time-weighted blend of the ~15-minute, 24-hour and 7-day
+            # averages, not one instantaneous sample: a single sample landing on a NAS
+            # burst used to open this gate and let every guest on the node through.
+            # It is then re-expressed as a share of the capacity anchored guests leave
+            # free, so a host whose CPU is mostly an unmovable NAS isn't "overloaded".
             source_mem_floor = penalty_cfg.get("source_mem_migration_floor", 65)
             src_mem_pct = src_node.get("mem_percent", 0)
-            src_cpu_pct = src_node.get("cpu_percent", 0)
-            src_iowait = src_node.get("metrics", {}).get("current_iowait", 0) if src_node.get("metrics") else 0
+            src_metrics = src_node.get("metrics", {})
+            src_cpu_pct = weighted_cpu(src_metrics, penalty_cfg) if src_metrics else src_node.get("cpu_percent", 0)
+            src_anchored = src_node.get("anchored_cpu", 0)
+            src_movable_cpu = movable_cpu_share(src_cpu_pct, src_anchored)
             if (src_node_name not in maintenance_nodes
                     and src_node_name not in iowait_stressed_nodes
                     and src_mem_pct < source_mem_floor
-                    and src_cpu_pct < cpu_threshold):
-                skipped_guests.append({
-                    "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
-                    "name": guest_name, "type": guest_type, "node": src_node_name,
-                    "reason": "source_memory_healthy",
-                    "detail": f"Source node {src_node_name} memory ({src_mem_pct:.0f}%) is below migration floor ({source_mem_floor}%) and CPU ({src_cpu_pct:.0f}%) is below threshold ({cpu_threshold:.0f}%). No migration needed."
-                })
+                    and src_movable_cpu < cpu_threshold):
+                vmid_out = int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key
+                if src_cpu_pct >= cpu_threshold:
+                    anchors = ", ".join(
+                        f"{a['name']} {a['cpu_share']:.0f}%" for a in src_node.get("anchored_guests", [])[:3]
+                    ) or "ignored/pinned guests"
+                    skipped_guests.append({
+                        "vmid": vmid_out, "name": guest_name, "type": guest_type, "node": src_node_name,
+                        "reason": "source_load_anchored",
+                        "detail": f"Source node {src_node_name} CPU ({src_cpu_pct:.0f}%) is above threshold ({cpu_threshold:.0f}%), but {src_anchored:.0f}% of it is guests that can't move ({anchors}). Movable load is {src_movable_cpu:.0f}% of the remaining capacity, so moving other guests wouldn't help."
+                    })
+                else:
+                    skipped_guests.append({
+                        "vmid": vmid_out, "name": guest_name, "type": guest_type, "node": src_node_name,
+                        "reason": "source_memory_healthy",
+                        "detail": f"Source node {src_node_name} memory ({src_mem_pct:.0f}%) is below migration floor ({source_mem_floor}%) and CPU ({src_cpu_pct:.0f}%) is below threshold ({cpu_threshold:.0f}%). No migration needed."
+                    })
                 continue
 
             # Load guest behavioral profile for profile-aware scoring (Phase 3c)
@@ -665,8 +686,32 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     traceback.print_exc()
                     continue
 
-            # Calculate score improvement
+            # Calculate score improvement.
+            #
+            # current_score - best_target_score compares the two *nodes*; on its own it
+            # gives a guest using 1% CPU the same improvement as one using 30%, so the
+            # cheapest guests were moved first and the source never got better. Scale it
+            # by how much of the source's excess this particular guest would remove.
+            # Maintenance evacuations and IOWait relief keep the full node difference.
             score_improvement = current_score - best_target_score if best_target else 0
+            relief_fraction = 1.0
+            if (best_target and src_node_name not in maintenance_nodes
+                    and src_node_name not in iowait_stressed_nodes):
+                fractions = []
+                cpu_excess = src_movable_cpu - cpu_threshold
+                if cpu_excess > 0:
+                    guest_cpu_relief = movable_cpu_share(
+                        guest_node_cpu_share(guest, src_node) + src_anchored, src_anchored
+                    )
+                    fractions.append(min(1.0, guest_cpu_relief / cpu_excess))
+                mem_excess = src_mem_pct - source_mem_floor
+                if mem_excess > 0:
+                    src_total_mem = src_node.get("total_mem_gb", 0) or 0
+                    guest_mem_relief = (guest.get("mem_used_gb", 0) / src_total_mem * 100) if src_total_mem > 0 else 0
+                    fractions.append(min(1.0, guest_mem_relief / mem_excess))
+                if fractions:
+                    relief_fraction = max(fractions)
+                    score_improvement *= relief_fraction
 
             # Only recommend if improvement is significant
             if best_target and score_improvement >= MIN_SCORE_IMPROVEMENT:
@@ -680,6 +725,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "improvement": score_improvement,
                     "is_maintenance": src_node_name in maintenance_nodes,
                     "is_iowait_triggered": src_node_name in iowait_stressed_nodes,
+                    "relief_fraction": round(relief_fraction, 2),
                     "source_details": src_details,
                     "target_details": best_target_details,
                 })
@@ -695,7 +741,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
                     "name": guest_name, "type": guest_type, "node": src_node_name,
                     "reason": "insufficient_improvement",
-                    "detail": f"Best target ({best_target}) would improve score by only {score_improvement:.1f} points (minimum required: {MIN_SCORE_IMPROVEMENT}).",
+                    "detail": (
+                        f"Best target ({best_target}) would improve score by only {score_improvement:.1f} points (minimum required: {MIN_SCORE_IMPROVEMENT})."
+                        + (f" This guest would remove only {relief_fraction * 100:.0f}% of {src_node_name}'s excess load." if relief_fraction < 1.0 else "")
+                    ),
                     "best_target": best_target,
                     "score_improvement": round(score_improvement, 1),
                     "current_score": round(current_score, 1),

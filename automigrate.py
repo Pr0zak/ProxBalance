@@ -38,6 +38,7 @@ from proxbalance.db import init_db, close_all as db_close_all
 from proxbalance import migration_db
 from proxbalance.forecasting import get_score_history
 from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
+from proxbalance.scoring import recent_cpu
 
 # Logging
 logging.basicConfig(
@@ -524,8 +525,11 @@ def check_target_node_safety(target_node: str, config: Dict[str, Any], cache_dat
         return False, f"Target node {target_node} not found"
 
     node_data = nodes[target_node]
-    cpu_pct = node_data.get('cpu_percent', 0)
-    mem_pct = node_data.get('memory_percent', 0)
+    # ~15-minute CPU average rather than the single collection sample.
+    cpu_pct = recent_cpu(node_data.get('metrics', {})) if node_data.get('metrics') else node_data.get('cpu_percent', 0)
+    # The cache key is mem_percent; this used to read memory_percent, which doesn't
+    # exist, so the memory limit never fired.
+    mem_pct = node_data.get('mem_percent', 0)
 
     max_cpu = safety.get('max_node_cpu_percent', 85)
     max_mem = safety.get('max_node_memory_percent', 90)

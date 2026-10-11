@@ -543,6 +543,18 @@ class ProxmoxAPICollector:
             "has_historical": False
         }
 
+        # Short-window averages (last ~15 one-minute points). Scoring and migration
+        # triggers use these instead of the single instantaneous reading, which
+        # regularly lands on a short burst (a NAS scrub, a transcode).
+        rrd_hour = timeframes['hour']
+        if rrd_hour:
+            recent_cpu_values = self._extract_rrd_values(rrd_hour, "cpu")[-15:]
+            recent_iowait_values = self._extract_rrd_values(rrd_hour, "iowait")[-15:]
+            if recent_cpu_values:
+                metrics["recent_cpu"] = sum(recent_cpu_values) / len(recent_cpu_values)
+            if recent_iowait_values:
+                metrics["recent_iowait"] = sum(recent_iowait_values) / len(recent_iowait_values)
+
         # Calculate 24-hour metrics (detailed)
         rrd_day = timeframes['day']
         if rrd_day:
@@ -780,6 +792,7 @@ class ProxmoxAPICollector:
             disk_write_bps = 0
             net_in_bps = 0
             net_out_bps = 0
+            cpu_avg_hour = None
 
             if not (self.skip_stopped_rrd and guest_status != "running"):
                 # Get RRD data for I/O metrics using configured timeframe
@@ -797,6 +810,8 @@ class ProxmoxAPICollector:
 
                     # Phase 3a: Summarize guest RRD for behavioral profiling
                     guest_rrd_summary = self._summarize_guest_rrd(rrd_data)
+                    if guest_rrd_summary.get("cpu"):
+                        cpu_avg_hour = guest_rrd_summary["cpu"]["avg"]
                     if guest_rrd_summary:
                         try:
                             from proxbalance.guest_profiles import update_guest_profile
@@ -831,6 +846,9 @@ class ProxmoxAPICollector:
                 "node": node_name,
                 "status": guest.get("status", "unknown"),
                 "cpu_current": guest.get("cpu", 0) * 100 if guest.get("cpu") else 0,
+                # Average over the guest RRD window (an hour by default); steadier than
+                # cpu_current for estimating what a move would relieve.
+                **({"cpu_avg_hour": cpu_avg_hour} if cpu_avg_hour is not None else {}),
                 "cpu_cores": config.get("cores") or config.get("cpus") or config.get("cpulimit") or guest.get("maxcpu", 0),
                 "mem_used_gb": guest.get("mem", 0) / (1024**3),
                 "mem_max_gb": guest.get("maxmem", 0) / (1024**3),
@@ -880,16 +898,22 @@ class ProxmoxAPICollector:
     
     def generate_summary(self) -> Dict:
         """Generate cluster summary"""
-        # Calculate committed (allocated) memory per node from RUNNING guest maxmem values.
-        # Stopped guests don't consume physical RAM, so exclude them to avoid
-        # inflating the overcommit ratio and triggering false penalties.
+        # Calculate committed memory per node from RUNNING guests. Stopped guests don't
+        # consume physical RAM, so exclude them to avoid inflating the overcommit ratio.
+        # A VM's allocation is committed (QEMU can touch all of it); a container's memory
+        # setting is only a cgroup ceiling, so count what it actually uses. Summing CT
+        # ceilings rated a node holding many small CTs at 2.5x overcommit while its RAM
+        # was under half used.
         for node_name, node_data in self.nodes.items():
             committed_mem_gb = 0.0
             io_exempt_guests = []
             for vmid in node_data.get("guests", []):
                 guest = self.guests.get(str(vmid), {})
                 if guest.get("status") == "running":
-                    committed_mem_gb += guest.get("mem_max_gb", 0)
+                    if guest.get("type") == "CT":
+                        committed_mem_gb += guest.get("mem_used_gb", 0)
+                    else:
+                        committed_mem_gb += guest.get("mem_max_gb", 0)
                     # A stopped guest generates no iowait, so only running io-exempt
                     # guests exempt the node.
                     if guest.get("io_exempt"):

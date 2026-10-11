@@ -53,6 +53,10 @@ function softHint(skipped) {
       const m = /memory \((\d+)%\) is below migration floor \((\d+)%\)/.exec(skipped.detail || '');
       return m ? `${node} mem ${m[1]}% < ${m[2]}% floor` : `${node} below trigger`;
     }
+    case 'source_load_anchored': {
+      const m = /but (\d+)% of it is guests that can't move/.exec(skipped.detail || '');
+      return m ? `${node} load is ${m[1]}% unmovable guests` : `${node} load is unmovable guests`;
+    }
     case 'seasonal_baseline':
       return `${node} load normal for this hour`;
     case 'insufficient_improvement':

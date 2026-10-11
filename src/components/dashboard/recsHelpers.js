@@ -64,6 +64,7 @@ export function recBadgeTooltip(rec) {
  */
 export const SKIP_REASONS = {
   source_memory_healthy: { label: 'Node healthy — no need to move', tone: 'green' },
+  source_load_anchored: { label: 'Node busy with guests that stay put', tone: 'green' },
   has_ignore_tag: { label: "Tagged 'ignore'", tone: 'gray' },
   stopped: { label: 'Not running', tone: 'gray' },
   insufficient_improvement: { label: 'Move would barely help', tone: 'yellow' },

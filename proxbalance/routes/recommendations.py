@@ -9,7 +9,10 @@ from flask import Blueprint, jsonify, request, current_app
 import json, os, sys, time
 from datetime import datetime
 from proxbalance.config_manager import load_config, load_penalty_config, BASE_PATH
-from proxbalance.scoring import calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns
+from proxbalance.scoring import (
+    calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns,
+    annotate_anchored_load, recent_cpu, weighted_cpu,
+)
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
 
@@ -563,13 +566,13 @@ def node_scores():
     maintenance_nodes = set(req_data.get("maintenance_nodes", []))
 
     nodes = cache_data.get('nodes', {})
+    annotate_anchored_load(nodes, cache_data.get('guests', {}))
     node_scores = {}
+    # Score with the saved penalty settings (this used to fall back to the defaults)
+    penalty_cfg = load_penalty_config()
 
-    # Use a dummy small guest for scoring (1 core, 1GB RAM)
-    dummy_guest = {
-        'cores': 1,
-        'maxmem': 1073741824  # 1GB in bytes
-    }
+    # Score against a small idle guest (1 core, 1 GB) so the result reflects the node
+    dummy_guest = {'cpu_cores': 1, 'cpu_current': 0, 'mem_used_gb': 1.0, 'mem_max_gb': 1.0}
 
     for node_name, node in nodes.items():
         if node.get('status') != 'online':
@@ -598,30 +601,17 @@ def node_scores():
             pending_target_guests={},
             cpu_threshold=cpu_threshold,
             mem_threshold=mem_threshold,
+            penalty_config=penalty_cfg,
             return_details=True
         )
 
-        # Get weighted metrics for display using configured weights
+        # Weighted metrics for display, computed the same way scoring does
         metrics = node.get('metrics', {})
-        immediate_cpu = metrics.get("current_cpu", 0)
+        immediate_cpu = recent_cpu(metrics)
         immediate_mem = metrics.get("current_mem", 0)
-
-        short_cpu = metrics.get("avg_cpu", 0)
-        short_mem = metrics.get("avg_mem", 0)
-
         long_cpu = metrics.get("avg_cpu_week", 0)
         long_mem = metrics.get("avg_mem_week", 0)
-
-        # Use configured weights from penalty config
-        penalty_cfg = load_penalty_config()
-        weight_current = penalty_cfg.get("weight_current", 0.5)
-        weight_24h = penalty_cfg.get("weight_24h", 0.3)
-        weight_7d = penalty_cfg.get("weight_7d", 0.2)
-
-        if metrics.get("has_historical"):
-            weighted_cpu = (immediate_cpu * weight_current) + (short_cpu * weight_24h) + (long_cpu * weight_7d)
-        else:
-            weighted_cpu = immediate_cpu
+        node_weighted_cpu = weighted_cpu(metrics, penalty_cfg)
         # Memory uses current value — it's a step-function resource (see scoring.py).
         weighted_mem = immediate_mem
 
@@ -654,8 +644,8 @@ def node_scores():
                 reason = f'Sustained high CPU ({long_cpu:.1f}% 7-day avg)'
             elif long_mem > 90:
                 reason = f'Sustained high memory ({long_mem:.1f}% 7-day avg)'
-            elif weighted_cpu > cpu_threshold:
-                reason = f'CPU above threshold ({weighted_cpu:.1f}%)'
+            elif node_weighted_cpu > cpu_threshold:
+                reason = f'CPU above threshold ({node_weighted_cpu:.1f}%)'
             elif weighted_mem > mem_threshold:
                 reason = f'Memory above threshold ({weighted_mem:.1f}%)'
             else:
@@ -684,7 +674,7 @@ def node_scores():
             'suitability_rating': suitability_rating,
             'suitable': suitable,
             'reason': reason,
-            'weighted_cpu': round(weighted_cpu, 1),
+            'weighted_cpu': round(node_weighted_cpu, 1),
             'weighted_mem': round(weighted_mem, 1),
             'current_cpu': round(immediate_cpu, 1),
             'current_mem': round(immediate_mem, 1),
@@ -697,6 +687,8 @@ def node_scores():
             'trend_analysis': details.get("trend_analysis") if details else None,
             'overcommit_ratio': node.get("mem_overcommit_ratio", 0),
             'committed_mem_gb': node.get("committed_mem_gb", 0),
+            'anchored_cpu': node.get("anchored_cpu", 0),
+            'anchored_guests': node.get("anchored_guests", []),
         }
 
     return jsonify({
@@ -715,6 +707,7 @@ def guest_migration_options(vmid):
 
     guests = cache_data.get('guests', {})
     nodes = cache_data.get('nodes', {})
+    annotate_anchored_load(nodes, guests)
 
     # Find the guest
     guest = guests.get(str(vmid)) or guests.get(vmid)
@@ -898,6 +891,7 @@ def simulate_penalty_config():
 
     nodes = cache_data.get('nodes', {})
     guests = cache_data.get('guests', {})
+    annotate_anchored_load(nodes, guests)
 
     # Generate recommendations with proposed config
     # Temporarily use proposed config by passing it via the penalty config system
@@ -906,7 +900,7 @@ def simulate_penalty_config():
     # so we simulate by generating node scores with proposed config directly
 
     # Calculate node scores with proposed config
-    dummy_guest = {'cores': 1, 'maxmem': 1073741824}
+    dummy_guest = {'cpu_cores': 1, 'cpu_current': 0, 'mem_used_gb': 1.0, 'mem_max_gb': 1.0}
     proposed_scores = {}
     for node_name, node in nodes.items():
         if node.get('status') != 'online':
