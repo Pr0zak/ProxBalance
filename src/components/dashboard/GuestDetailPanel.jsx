@@ -7,6 +7,7 @@ import MiniTrendChart from './MiniTrendChart.jsx';
 import DetailPanel, { PeriodChips, FactRow, PANEL_PERIODS } from './DetailPanel.jsx';
 import { behaviorTitle } from './workloadBehavior.js';
 import { guestMobility } from './guestMobility.js';
+import { seenCountDetail } from './recommendations/seenCount.js';
 
 const { useState, useEffect } = React;
 
@@ -260,7 +261,8 @@ export default function GuestDetailPanel({
   } else if (mob.key === 'suggested') {
     verdict = {
       tone: 'amber', icon: MoveRight, title: `Suggested: move to ${rec.target_node}`,
-      body: [rec.reason || null],
+      // Plain text rather than a tooltip so phones see it too.
+      body: [rec.reason || null, ...seenCountDetail(rec)],
       action: canMigrate && setConfirmMigration ? { label: 'Review move', run: () => { setSelectedGuestDetails(null); setConfirmMigration(rec); } } : null,
     };
   } else if (mob.key === 'manual') {

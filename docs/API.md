@@ -189,6 +189,18 @@ Each move is estimated on its own: the target side uses the guest's allocated me
 - `outgoing_guests` lists recommended moves off the conflicted node with what they would free. They are reported but not subtracted from the combined load, because automation filters recommendations independently and an outgoing move may not run.
 - Recommendations involved in a conflict carry `has_conflict: true` and `conflict_target`. Automated migrations skip conflicted recommendations (except maintenance evacuations).
 
+**Seen counts (`seen_*`)**: when automation and intelligent migrations are both enabled, each recommendation that automation has observed also carries how settled it is. These fields are read live from automation's tracking on every request (GET and POST); they are not stored in the recommendations cache.
+
+| Field | Meaning |
+|-------|---------|
+| `seen_count` | Consecutive automation runs that recommended moving this guest. Automation acts once it reaches `seen_required`. Counted per guest, not per target: a change of target does not restart it, but a run without the guest does. |
+| `seen_required` | The configured `observation_periods`. |
+| `seen_same_target` | How many of those runs, counting back from the latest, named the current `target_node`. `0` if automation last saw another target; `null` if unknown. |
+| `seen_status` | `observing` or `ready` (count and minimum data time both met). |
+| `seen_last_at` | When automation last saw it (ISO 8601). |
+
+The fields are omitted, never zero-filled, when the count is unknown: automation or intelligent migrations off, the guest never observed or dropped from the last run, maintenance evacuations and distribution balancing (which skip the count), or automation not having refreshed the entry within 3 check intervals (at least 30 minutes).
+
 ### GET /api/recommendations
 
 Returns cached recommendations from the last generation, in the same shape as the POST response. Supports filtering and pagination; see [GET /api/recommendations (with filtering)](#get-apirecommendations-with-filtering).
