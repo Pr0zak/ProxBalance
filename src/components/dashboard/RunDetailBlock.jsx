@@ -1,5 +1,5 @@
 import { CheckCircle, AlertTriangle, Eye, ChevronDown } from '../Icons.jsx';
-import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
+import { formatRelativeTime, runStatusLabel, decisionSkipLabel } from '../../utils/formatters.js';
 
 const { useState } = React;
 
@@ -76,8 +76,15 @@ function DecisionsList({ decisions }) {
                   </div>
                 )}
               </div>
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${ACTION_BADGE[d.action] || 'bg-white dark:bg-slate-800 text-pb-text2 dark:text-gray-400'}`}>
-                {d.action}
+              <span className="flex items-center gap-1">
+                {decisionSkipLabel(d) && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                    {decisionSkipLabel(d)}
+                  </span>
+                )}
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${ACTION_BADGE[d.action] || 'bg-white dark:bg-slate-800 text-pb-text2 dark:text-gray-400'}`}>
+                  {d.action}
+                </span>
               </span>
             </div>
             {(d.selected_reason || d.reason) && (

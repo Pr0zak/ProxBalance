@@ -1,7 +1,7 @@
 import { Info, CheckCircle, AlertTriangle } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
-import { parseTimestamp } from '../../utils/formatters.js';
+import { parseTimestamp, decisionSkipLabel } from '../../utils/formatters.js';
 import { fmtClock, zonedParts } from '../../utils/scheduleWindows.js';
 
 /**
@@ -18,7 +18,7 @@ const pct = (v) => (v == null || Number.isNaN(Number(v)) ? '?' : `${Math.round(N
 function topReasons(decisions, action, n = 3) {
   const counts = {};
   decisions.filter(d => d.action === action).forEach(d => {
-    const r = String(d.reason || 'no reason given').replace(/\s*\(.*$/, '');
+    const r = decisionSkipLabel(d) || String(d.reason || 'no reason given').replace(/\s*\(.*$/, '');
     counts[r] = (counts[r] || 0) + 1;
   });
   return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, n)
@@ -145,6 +145,7 @@ function buildSteps({ automationConfig: c, penaltyConfig: pc, thresholds: t }) {
     {
       id: 'run', title: c.dry_run !== false ? 'Dry run: log the move' : 'Migrate',
       detail: `Best move first, then re-check; up to ${rules.max_migrations_per_run ?? 3} per run, ${rules.grace_period_seconds ?? 30} s apart.`
+        + `${(rules.max_target_inflow_per_cycle ?? 0) > 0 ? ` At most ${rules.max_target_inflow_per_cycle} into any one node per run.` : ''}`
         + `${safety.abort_on_failure !== false ? ' A failure stops the rest.' : ''}${safety.pause_on_failure ? ' A failure turns automation off.' : ''}`,
       no: null,
     },

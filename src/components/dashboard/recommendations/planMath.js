@@ -172,3 +172,30 @@ export function conflictState(conflict, summary, excluded, scope = null) {
 
   return { metric, limit, now, freed, base, total, fits, incoming, active, suggestion, landsAt };
 }
+
+/**
+ * Targets that a plan sends more moves to than the automation's per-node
+ * inflow cap (rules.max_target_inflow_per_cycle) allows in one run.
+ *
+ * Steps are walked in plan order, so the first `cap` moves into a node are
+ * kept and the rest are the overflow. Manual plans are not blocked by the
+ * cap; this only feeds the warning and its "leave out the extra" action.
+ *
+ * @param plan  a plan as returned by subsetPlan()
+ * @param cap   the configured cap; 0 / missing means no limit
+ * @returns [{ target, total, keep: [step], extra: [step] }] sorted by target
+ */
+export function inflowOverCap(plan, cap) {
+  const limit = Number(cap) || 0;
+  if (limit <= 0) return [];
+  const byTarget = new Map();
+  const steps = [...(plan?.ordered_recommendations || [])].sort((a, b) => (a.step || 0) - (b.step || 0));
+  for (const s of steps) {
+    if (!byTarget.has(s.target_node)) byTarget.set(s.target_node, []);
+    byTarget.get(s.target_node).push(s);
+  }
+  return [...byTarget.entries()]
+    .filter(([, list]) => list.length > limit)
+    .map(([target, list]) => ({ target, total: list.length, keep: list.slice(0, limit), extra: list.slice(limit) }))
+    .sort((a, b) => String(a.target).localeCompare(String(b.target)));
+}

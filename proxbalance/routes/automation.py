@@ -5,6 +5,7 @@ from pathlib import Path
 from proxbalance.config_manager import load_config, save_config, CONFIG_FILE, BASE_PATH
 from proxbalance.error_handlers import api_route
 from proxbalance.secret_fields import redact_automation_config, restore_placeholders
+from proxbalance.inflow_cap import CONFIG_KEY as INFLOW_CAP_KEY, validate_target_inflow_cap
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -807,6 +808,12 @@ def automigrate_config():
             # Check if cooldown_minutes is being changed — if so, record a reset timestamp
             # so that the automigrate service ignores older migration history for cooldown checks
             incoming_rules = updates.get('rules', {})
+            if INFLOW_CAP_KEY in incoming_rules:
+                try:
+                    incoming_rules[INFLOW_CAP_KEY] = validate_target_inflow_cap(incoming_rules[INFLOW_CAP_KEY])
+                except ValueError as e:
+                    return jsonify({"success": False, "error": str(e)}), 400
+                updates['rules'] = incoming_rules
             if 'cooldown_minutes' in incoming_rules:
                 current_rules = config.get('automated_migrations', {}).get('rules', {})
                 old_cooldown = current_rules.get('cooldown_minutes')

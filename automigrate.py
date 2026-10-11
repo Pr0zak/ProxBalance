@@ -40,6 +40,10 @@ from proxbalance.forecasting import get_score_history
 from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
 from proxbalance.scoring import recent_cpu
 from proxbalance.rec_observation import same_target_streak
+from proxbalance.inflow_cap import (
+    get_target_inflow_cap, is_target_capped, inflow_cap_reason,
+    SKIP_CODE as TARGET_INFLOW_SKIP_CODE,
+)
 
 # Logging
 logging.basicConfig(
@@ -1417,6 +1421,9 @@ def main():
         max_migrations_per_run = rules.get('max_migrations_per_run', 3)
         max_concurrent = rules.get('max_concurrent_migrations', 3)
         grace_period_seconds = rules.get('grace_period_seconds', 30)  # Default 30 seconds between migrations
+        # Most migrations one target node may receive in this run (0 = no limit).
+        target_inflow_cap = get_target_inflow_cap(rules)
+        target_inflow: Dict[str, int] = {}  # target node -> migrations sent there this run
 
         # Count currently running migrations across the entire cluster
         running_count = 0
@@ -1444,6 +1451,7 @@ def main():
 
         logger.info(f"Currently {running_count} migrations running cluster-wide")
         last_run_summary['safety_checks']['running_migrations'] = running_count
+        last_run_summary['safety_checks']['target_inflow_cap'] = target_inflow_cap
 
         # Calculate how many new migrations we can start
         available_slots = max(0, max_concurrent - running_count)
@@ -1787,6 +1795,17 @@ def main():
                         last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', balance_msg, r))
                         continue
 
+                # Target inflow cap: don't flood one node within a single run.
+                # Applies to every move, maintenance evacuations included.
+                if is_target_capped(target_node, target_inflow, target_inflow_cap):
+                    reason = inflow_cap_reason(target_node, target_inflow.get(target_node, 0), target_inflow_cap)
+                    logger.info(f"Skipping VM {vmid}: {reason}")
+                    filtered_reasons.append(f"{vm_name} ({vmid}): {reason.lower()}")
+                    decision = create_decision(vmid, guest, source_node, target_node, 'skipped', reason, r)
+                    decision['skip_code'] = TARGET_INFLOW_SKIP_CODE
+                    last_run_summary['decisions'].append(decision)
+                    continue
+
                 filtered.append(r)
 
             # Derive activity_log entries from decisions (all filtered/deferred/skipped/observing)
@@ -2082,6 +2101,8 @@ def main():
                 success_count += 1
                 last_run_summary['migrations_successful'] = success_count
 
+                target_inflow[target] = target_inflow.get(target, 0) + 1
+
                 # Phase 2f: Track in-flight migration for batch awareness
                 guest_for_tracking = cache_data.get('guests', {}).get(str(vmid), {})
                 if target not in batch_migrated_guests:
@@ -2159,6 +2180,9 @@ def main():
                                 comp_status = comp_result.get('status', 'completed')
                                 comp_decision['action'] = 'executed'
                                 comp_decision['status'] = comp_status
+                                # Companions land on the same node, so they use up its inflow
+                                # allowance too (they are never held back by it).
+                                target_inflow[target] = target_inflow.get(target, 0) + 1
                                 success_count += 1
                                 last_run_summary['migrations_successful'] = success_count
                                 logger.info(f"Affinity companion {comp_vmid} migrated successfully")
