@@ -560,8 +560,14 @@ def get_guest_metrics_history(vmid):
     hours = request.args.get("hours", 24, type=int)
     samples = get_guest_history(str(vmid), hours=hours)
 
+    def _value(v):
+        # Older samples are aggregated into {min, max, avg, p95}; plot the average.
+        if isinstance(v, dict):
+            v = v.get("avg")
+        return round(v, 2) if isinstance(v, (int, float)) else None
+
     points = [
-        {"time": s.get("ts"), "cpu": round(s.get("cpu", 0) or 0, 2), "mem": round(s.get("memory", 0) or 0, 2)}
+        {"time": s.get("ts"), "cpu": _value(s.get("cpu")), "mem": _value(s.get("memory"))}
         for s in samples if s.get("ts") is not None
     ]
 

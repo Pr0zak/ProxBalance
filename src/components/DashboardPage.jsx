@@ -3,7 +3,7 @@ import {
 } from './Icons.jsx';
 import { BTN_DANGER, BTN_SECONDARY } from '../utils/designTokens.js';
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 import KpiRow from './dashboard/KpiRow.jsx';
 import NeedsAttentionStrip from './dashboard/NeedsAttentionStrip.jsx';
@@ -16,8 +16,8 @@ import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
 import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
-import NodeDetailsModal from './dashboard/NodeDetailsModal.jsx';
-import GuestDetailsModal from './dashboard/GuestDetailsModal.jsx';
+import NodeDetailPanel from './dashboard/NodeDetailPanel.jsx';
+import GuestDetailPanel from './dashboard/GuestDetailPanel.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
 import MigrationModals from './dashboard/MigrationModals.jsx';
 import AIRecommendationsSection from './dashboard/AIRecommendationsSection.jsx';
@@ -98,9 +98,40 @@ export default function DashboardPage({
   // Every path that opens the guest window goes through here, so the window (and
   // the Migrate dialog it opens) always knows which node the guest is on. Rows from
   // the Guests/Nodes tables carry `node`; the map and node window set `currentNode`.
-  const openGuestDetails = (guest) => setSelectedGuestDetails(
-    guest && typeof guest === 'object' ? { ...guest, currentNode: guest.currentNode || guest.node } : guest
-  );
+  // The node and guest panels share the right edge, so opening one closes the other.
+  const openGuestDetails = (guest) => {
+    if (guest) setSelectedNode(null);
+    setSelectedGuestDetails(
+      guest && typeof guest === 'object' ? { ...guest, currentNode: guest.currentNode || guest.node } : guest
+    );
+  };
+  const openNode = (node) => {
+    if (node) setSelectedGuestDetails(null);
+    setSelectedNode(node);
+  };
+  const panelOpen = !!(selectedNode || selectedGuestDetails);
+
+  // Keep the open panel in the address (#/dashboard/<tab>/node/<name> or
+  // .../guest/<vmid>) so it survives a reload and can be linked. replaceState
+  // doesn't fire hashchange, so the page router never sees these segments.
+  const deepLinkRead = useRef(false);
+  useEffect(() => {
+    if (deepLinkRead.current || !data) return;
+    deepLinkRead.current = true;
+    const [, , kind, id] = window.location.hash.replace(/^#\/?/, '').split('/');
+    if (kind === 'node' && id && data.nodes?.[decodeURIComponent(id)]) openNode(data.nodes[decodeURIComponent(id)]);
+    else if (kind === 'guest' && id && data.guests?.[id]) openGuestDetails(data.guests[id]);
+  }, [data]);
+  useEffect(() => {
+    if (!deepLinkRead.current) return;
+    const [page = 'dashboard', sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+    if (page !== 'dashboard') return;
+    const base = `#/dashboard${sub ? `/${sub}` : ''}`;
+    const next = selectedNode ? `${base}/node/${encodeURIComponent(selectedNode.name)}`
+      : selectedGuestDetails ? `${base}/guest/${selectedGuestDetails.vmid}`
+      : base;
+    if (window.location.hash !== next) window.history.replaceState(null, '', next);
+  }, [selectedNode?.name, selectedGuestDetails?.vmid]);
 
   // Section layout — user can promote tabs out of ClusterSection into standalone sections
   const [promotedSections, setPromotedSections] = useState(() => {
@@ -112,7 +143,7 @@ export default function DashboardPage({
   const violations = checkAffinityViolations();
 
   return (<>
-    <div className="p-4 overflow-x-hidden">
+    <div className={`p-4 overflow-x-hidden ${panelOpen ? 'xl:pr-[496px]' : ''}`}>
       <div className="max-w-screen-2xl mx-auto">
         {/* Token Authentication Error Banner */}
         {tokenAuthError && (
@@ -208,7 +239,7 @@ export default function DashboardPage({
           recommendations={recommendations}
           chartPeriod={chartPeriod}
           setChartPeriod={setChartPeriod}
-          setSelectedNode={setSelectedNode}
+          setSelectedNode={openNode}
           setSelectedGuestDetails={openGuestDetails}
           showPoweredOffGuests={showPoweredOffGuests}
           setShowPoweredOffGuests={setShowPoweredOffGuests}
@@ -302,7 +333,7 @@ export default function DashboardPage({
             clusterMapViewMode={clusterMapViewMode}
             setClusterMapViewMode={setClusterMapViewMode}
             maintenanceNodes={maintenanceNodes}
-            setSelectedNode={setSelectedNode}
+            setSelectedNode={openNode}
             setSelectedGuestDetails={openGuestDetails}
             guestsMigrating={guestsMigrating}
             migrationProgress={migrationProgress}
@@ -332,7 +363,7 @@ export default function DashboardPage({
           </>
         )}
 
-        <NodeDetailsModal
+        <NodeDetailPanel
           selectedNode={selectedNode}
           setSelectedNode={setSelectedNode}
           maintenanceNodes={maintenanceNodes}
@@ -349,6 +380,8 @@ export default function DashboardPage({
           API_BASE={API_BASE}
           data={data}
           recommendations={recommendations}
+          guestRecMap={guestRecMap}
+          skippedGuests={recommendationData?.skipped_guests}
           setSelectedGuestDetails={openGuestDetails}
           setConfirmMigration={setConfirmMigration}
           setNodeMaintenance={setNodeMaintenance}
@@ -357,11 +390,14 @@ export default function DashboardPage({
           automationConfig={automationConfig}
         />
 
-        <GuestDetailsModal
+        <GuestDetailPanel
           selectedGuestDetails={selectedGuestDetails}
           setSelectedGuestDetails={setSelectedGuestDetails}
-          guestModalCollapsed={guestModalCollapsed}
-          setGuestModalCollapsed={setGuestModalCollapsed}
+          setSelectedNode={openNode}
+          data={data}
+          nodeScores={nodeScores}
+          guestRecMap={guestRecMap}
+          skippedGuests={recommendationData?.skipped_guests}
           guestMigrationOptions={guestMigrationOptions}
           loadingGuestOptions={loadingGuestOptions}
           fetchGuestMigrationOptions={fetchGuestMigrationOptions}
