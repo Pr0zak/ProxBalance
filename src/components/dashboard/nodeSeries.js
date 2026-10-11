@@ -4,7 +4,7 @@
  */
 
 /**
- * One period control for the whole Charts tab. Each entry carries both the
+ * Period choices for the Charts tab. Each entry carries both the
  * Cluster Health fetch settings (score-history bucket minutes + row limit) and
  * the node-chart RRD mapping (source timeframe + sample window).
  *
@@ -27,31 +27,38 @@ const LEGACY_PERIOD = { '12h': '1d', '24h': '1d', '1y': '1yr' };
 export const periodConfig = (id) =>
   CHART_PERIODS.find(p => p.id === id) || CHART_PERIODS.find(p => p.id === LEGACY_PERIOD[id]) || CHART_PERIODS.find(p => p.id === DEFAULT_PERIOD);
 
-// Shared period state (module-level so the Cluster Health chart and the node
-// charts follow one control without threading props through the tab wrapper).
-const PERIOD_KEY = 'chartsPeriod';
-let currentPeriod = (() => {
-  try {
-    const saved = localStorage.getItem(PERIOD_KEY) || localStorage.getItem('clusterHealthChartPeriod');
-    if (saved) return periodConfig(saved).id;
-  } catch {}
-  return DEFAULT_PERIOD;
-})();
-const periodListeners = new Set();
+// Period state, one per scope: 'health' (Cluster Health Over Time) and 'nodes'
+// (the per-node and compare-by-metric resource charts). Module-level so every
+// chart in a scope follows its control without threading props through the tab
+// wrapper. Each scope falls back to the old shared 'chartsPeriod' key once.
+const PERIOD_KEYS = { health: 'clusterHealthChartPeriod', nodes: 'nodeChartsPeriod' };
+const periodState = {};
+const scopeState = (scope) => {
+  if (!periodState[scope]) {
+    let id = DEFAULT_PERIOD;
+    try {
+      const saved = localStorage.getItem(PERIOD_KEYS[scope]) || localStorage.getItem('chartsPeriod');
+      if (saved) id = periodConfig(saved).id;
+    } catch {}
+    periodState[scope] = { current: id, listeners: new Set() };
+  }
+  return periodState[scope];
+};
 
-/** [period, setPeriod] shared by every chart on the Charts tab. */
-export function useChartPeriod() {
-  const [period, setLocal] = React.useState(currentPeriod);
+/** [period, setPeriod] for one chart scope ('health' or 'nodes'). */
+export function useChartPeriod(scope) {
+  const state = scopeState(scope);
+  const [period, setLocal] = React.useState(state.current);
   React.useEffect(() => {
-    periodListeners.add(setLocal);
-    setLocal(currentPeriod);
-    return () => { periodListeners.delete(setLocal); };
-  }, []);
+    state.listeners.add(setLocal);
+    setLocal(state.current);
+    return () => { state.listeners.delete(setLocal); };
+  }, [scope]);
   const setPeriod = React.useCallback((id) => {
-    currentPeriod = periodConfig(id).id;
-    try { localStorage.setItem(PERIOD_KEY, currentPeriod); } catch {}
-    periodListeners.forEach(fn => fn(currentPeriod));
-  }, []);
+    state.current = periodConfig(id).id;
+    try { localStorage.setItem(PERIOD_KEYS[scope], state.current); } catch {}
+    state.listeners.forEach(fn => fn(state.current));
+  }, [scope]);
   return [period, setPeriod];
 }
 

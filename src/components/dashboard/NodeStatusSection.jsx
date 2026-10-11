@@ -2,7 +2,7 @@ import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from 
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 import MetricCompareCard from './MetricCompareCard.jsx';
-import { NODE_COLORS, RESOURCE_METRICS, hasTrendData, useChartPeriod, periodConfig } from './nodeSeries.js';
+import { NODE_COLORS, RESOURCE_METRICS, hasTrendData, useChartPeriod, CHART_PERIODS } from './nodeSeries.js';
 
 const { useState, useMemo, useEffect } = React;
 
@@ -86,7 +86,7 @@ export default function NodeStatusSection({
     if (!chartJsLoaded && typeof loadChartJs === 'function') loadChartJs();
   }, [chartJsLoaded]);
   // One period for the whole Charts tab; the control lives on the Cluster Health card.
-  const [chartPeriod] = useChartPeriod();
+  const [chartPeriod, setChartPeriod] = useChartPeriod('nodes');
   // Shared crosshair time across all node charts; expanded node for the detail modal.
   const [hoverTime, setHoverTime] = useState(null);
   const [expandedNode, setExpandedNode] = useState(null);
@@ -191,9 +191,22 @@ export default function NodeStatusSection({
                   ))}
                 </div>
               </div>
-              <span className="text-xs text-pb-text2 dark:text-gray-400" title="Change the period on the Cluster Health card above — it sets every chart on this tab">
-                Period <span className="font-semibold text-pb-text dark:text-gray-200">{periodConfig(chartPeriod).label}</span> (set above)
-              </span>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-pb-text2 dark:text-gray-400">Period:</label>
+                <div className="flex flex-wrap items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+                  {CHART_PERIODS.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => setChartPeriod(p.id)}
+                      className={`px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors ${
+                        chartPeriod === p.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
                 <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">

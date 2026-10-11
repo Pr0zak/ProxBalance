@@ -4,7 +4,7 @@ import { NODE_COLORS, CHART_PERIODS, periodConfig, useChartPeriod } from './node
 
 const { useState, useEffect, useRef } = React;
 
-// The period list is shared with the node charts (one control for the Charts tab).
+// Same period list as the node charts, but this card has its own selection.
 // Each period declares its backend bucket size (minutes): 0 = raw rows.
 const PERIODS = CHART_PERIODS;
 
@@ -124,7 +124,7 @@ const binTitle = (items) => {
  * markers (status-colored triangles) overlay all views.
  */
 export default function ClusterHealthChart({ scoreHistory, migrationHistory, fetchScoreHistory }) {
-  const [period, setPeriod] = useChartPeriod();
+  const [period, setPeriod] = useChartPeriod('health');
   const [view, setViewState] = useState(() => {
     const s = lsGet('clusterHealthChartView', 'cluster');
     return VIEW_MODES.find(v => v.id === s) ? s : 'cluster';
