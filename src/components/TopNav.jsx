@@ -72,7 +72,7 @@ export default function TopNav({
               <button
                 onClick={onShowUpdate}
                 className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700/30 hover:bg-yellow-50 dark:hover:bg-yellow-900/50 transition-colors"
-                title={`${systemInfo.commits_behind} update(s) available`}
+                title={`Update available: ${systemInfo.latest_version || 'new version'}`}
               >
                 <RefreshCw size={12} />
                 Update

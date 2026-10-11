@@ -1,6 +1,10 @@
 {
   "api_key": "",
   "_comment_api_key": "Optional API key to protect all /api/ endpoints. Leave empty to disable authentication.",
+  "updates": {
+    "channel": "stable"
+  },
+  "_comment_updates": "Which updates the in-app updater offers: \"stable\" (tested releases, default), \"beta\" (releases including pre-releases) or \"dev\" (follow the checked-out branch; for development and staging).",
   "cors_origins": [],
   "_comment_cors_origins": "List of allowed CORS origins, e.g. [\"https://myserver.local\"]. Empty list restricts to same-origin only.",
   "collection_interval_minutes": 60,

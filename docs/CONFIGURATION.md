@@ -25,6 +25,7 @@ All ProxBalance settings are stored in `config.json`. Most settings can be manag
 | `collection_interval_minutes` | int | `60` | How often the collector gathers cluster data (1-240) |
 | `ui_refresh_interval_minutes` | int | `15` | How often the dashboard auto-refreshes (Settings > Connection, "Dashboard auto-refresh") |
 | `api_key` | string | `""` | Optional key required on every `/api/` call except `/api/health`, sent as `X-API-Key` or `Authorization: Bearer`. Empty disables the check |
+| `updates.channel` | string | `"stable"` | Which updates the updater offers: `stable` (tested releases), `beta` (releases and pre-releases) or `dev` (every commit on the checked-out branch). See [Releasing and updating](RELEASING.md) |
 | `cors_origins` | array | `[]` | Allowed CORS origins. Empty restricts to same-origin |
 
 ---

@@ -1004,13 +1004,24 @@ install_dependencies() {
 install_proxbalance() {
   msg_info "Installing ProxBalance"
 
-  # Allow override via environment variable, otherwise use main branch
+  # Default: install the newest tested release and follow the stable update
+  # channel. Setting PROXBALANCE_BRANCH installs that branch instead and puts
+  # the install on the dev channel (it then follows every commit).
   if [ -z "${PROXBALANCE_BRANCH:-}" ]; then
     PROXBALANCE_BRANCH="main"
+    PROXBALANCE_USE_RELEASE=1
+    PROXBALANCE_CHANNEL="stable"
+  else
+    PROXBALANCE_USE_RELEASE=0
+    PROXBALANCE_CHANNEL="dev"
   fi
 
   msg_info "════════════════════════════════════════════════════════════════"
-  msg_ok "Installing from branch: $PROXBALANCE_BRANCH"
+  if [ "$PROXBALANCE_USE_RELEASE" = "1" ]; then
+    msg_ok "Installing the latest release (stable update channel)"
+  else
+    msg_ok "Installing from branch: $PROXBALANCE_BRANCH (dev update channel)"
+  fi
   msg_info "════════════════════════════════════════════════════════════════"
   echo ""
 
@@ -1039,6 +1050,18 @@ if ! git clone -b "${PROXBALANCE_BRANCH}" https://github.com/Pr0zak/ProxBalance.
 fi
 
 cd proxmox-balance-manager
+
+# Release install: check out the newest stable release tag (vX.Y.Z, no
+# pre-release suffix). Falls back to main if the repository has no release.
+if [ "${PROXBALANCE_USE_RELEASE}" = "1" ]; then
+  LATEST_TAG=\$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+\$' | head -1)
+  if [ -n "\${LATEST_TAG}" ]; then
+    git checkout -q --detach "refs/tags/\${LATEST_TAG}"
+    echo "✓ Checked out release \${LATEST_TAG}"
+  else
+    echo "No release tag found; installing main"
+  fi
+fi
 
 # Verify correct branch was cloned
 CLONED_BRANCH=\$(git branch --show-current)
@@ -1177,6 +1200,9 @@ cat > /opt/proxmox-balance-manager/config.json <<CONFIGEOF
   "proxmox_username": "proxbalance@pam",
   "proxmox_password": "",
   "proxmox_verify_ssl": false,
+  "updates": {
+    "channel": "${PROXBALANCE_CHANNEL:-stable}"
+  },
   "ai_provider": "none",
   "ai_recommendations_enabled": false,
   "ai_config": {

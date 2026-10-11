@@ -17,6 +17,8 @@ from typing import Dict, List, Optional, Tuple
 from urllib.request import urlopen
 from urllib.error import URLError
 
+import release_updater
+
 
 # Valid branch name pattern: alphanumeric, hyphens, underscores, slashes, dots
 _BRANCH_NAME_RE = re.compile(r'^[a-zA-Z0-9._/\-]+$')
@@ -434,55 +436,93 @@ class UpdateManager:
     # Update check
     # ------------------------------------------------------------------
 
-    def check_for_updates(self, config: Dict = None) -> Dict:
-        """Check if updates are available based on release/branch status.
+    def check_for_updates(self, config: Dict = None, force: bool = False) -> Dict:
+        """Check whether an update is available on the configured channel.
+
+        The stable and beta channels compare the install against published
+        GitHub releases (cached, see release_updater.get_releases). A release
+        only exists once the release pipeline has passed the tests, so these
+        channels never offer untested commits. The dev channel follows the
+        checked-out branch, as installs did before channels existed.
 
         Args:
-            config: Optional application config for sending notifications.
+            config: Application config. Supplies ``updates.channel`` and is used
+                to send an "update available" notification once per version.
+            force: Bypass the release cache (the "Check now" button).
         """
         try:
+            channel = release_updater.normalize_channel(
+                ((config or {}).get('updates') or {}).get('channel'))
             version_info = self.get_version_info()
 
-            # Fetch latest from remote
-            try:
-                self.git.fetch()
-            except GitError:
-                pass  # Non-fatal: we can still compare with whatever we have
-
-            if version_info['on_release']:
-                result = self._check_release_update(version_info)
-            else:
-                result = self._check_branch_update(version_info)
-
-            # Send update available notification
-            if result.get('update_available') and config:
+            if channel == 'dev':
                 try:
-                    from notifications import send_notification
-                    send_notification(config, 'update_available', {
-                        'current_version': result.get('current_version', '?'),
-                        'latest_version': result.get('latest_version', '?'),
-                        'commits_behind': result.get('commits_behind', 0),
-                    })
-                except Exception:
-                    pass  # Non-fatal
+                    self.git.fetch()
+                except GitError:
+                    pass  # Non-fatal: we can still compare with whatever we have
+                result = self._check_branch_update(version_info)
+            else:
+                result = self._check_release_channel(version_info, channel, force)
+            result['channel'] = channel
+
+            if result.get('update_available') and config:
+                self._notify_update_once(config, result)
 
             return result
         except Exception as e:
             print(f'Error checking for updates: {e}')
             return {'error': str(e), 'update_available': False}
 
-    def _check_release_update(self, version_info: Dict) -> Dict:
-        tags = self.git.tags_sorted()
-        if tags and version_info['latest_tag']:
-            newest_tag = tags[0]
-            return {
-                'update_available': newest_tag != version_info['latest_tag'],
-                'current_version': version_info['latest_tag'],
-                'latest_version': newest_tag,
-                'update_type': 'release',
-                'branch': None,
-            }
-        return self._no_update_response(version_info)
+    def _check_release_channel(self, version_info: Dict, channel: str, force: bool) -> Dict:
+        data = release_updater.get_releases(self.repo_path, force=force)
+        latest = release_updater.summarize_release(
+            release_updater.select_latest_release(data.get('releases', []), channel))
+        current = version_info['latest_tag'] if version_info['on_release'] else version_info['version']
+        result = {
+            'update_available': False,
+            'current_version': current,
+            'latest_version': latest['tag'] if latest else None,
+            'update_type': 'release',
+            'branch': version_info['branch'],
+            'release': latest,
+            'error': data.get('error'),
+        }
+        if not latest:
+            return result
+        if version_info['on_release']:
+            result['update_available'] = release_updater.is_newer(latest['tag'], version_info['latest_tag'])
+        else:
+            # Following a branch or a commit between releases: offer the
+            # tested release, even when it is older than this commit.
+            result['update_available'] = True
+            result['update_type'] = 'switch_to_release'
+        return result
+
+    def _notify_update_once(self, config: Dict, result: Dict) -> None:
+        """Send the update-available notification once per new version.
+
+        The check runs on every dashboard load, so without this every page
+        view would send another notification.
+        """
+        latest = result.get('latest_version') or '?'
+        marker = os.path.join(self.repo_path, '.update_notified.json')
+        try:
+            with open(marker) as f:
+                if json.load(f).get('version') == latest:
+                    return
+        except (OSError, ValueError):
+            pass
+        try:
+            from notifications import send_notification
+            send_notification(config, 'update_available', {
+                'current_version': result.get('current_version', '?'),
+                'latest_version': latest,
+                'commits_behind': result.get('commits_behind', 0),
+            })
+            with open(marker, 'w') as f:
+                json.dump({'version': latest}, f)
+        except Exception:
+            pass  # Non-fatal
 
     def _check_branch_update(self, version_info: Dict) -> Dict:
         branch = version_info['branch']
@@ -523,111 +563,33 @@ class UpdateManager:
     # Perform update
     # ------------------------------------------------------------------
 
-    def perform_update(self) -> Dict:
-        """Update ProxBalance to latest version (release or branch commit)."""
-        if not self._acquire_lock():
-            return {'success': False, 'error': 'Another update or branch switch is in progress'}
+    def perform_update(self, config: Dict = None) -> Dict:
+        """Start an update to the newest version on the configured channel.
 
-        log: List[str] = []
-        try:
-            version_info = self.get_version_info()
-            pre_update_branch = version_info['branch']
+        The work happens in release_updater's runner, in its own systemd unit,
+        so it survives the API restart and can roll back. Poll
+        ``update_status()`` for progress.
+        """
+        if self.is_locked:
+            return {'success': False, 'error': 'A branch switch is in progress'}
+        check = self.check_for_updates(config=config, force=True)
+        if check.get('error') and not check.get('latest_version'):
+            return {'success': False, 'error': check['error']}
+        if not check.get('update_available'):
+            return {'success': True, 'started': False, 'message': 'Already up to date'}
 
-            # Fetch latest
-            log.append('Fetching latest changes from GitHub...')
-            self.git.fetch()
+        if check.get('channel') == 'dev':
+            target = {'branch': check.get('branch')}
+        else:
+            target = {'tag': check['latest_version']}
+        result = release_updater.start_update(target, self.repo_path)
+        if result.get('success'):
+            result.update(started=True, target=target.get('tag') or target.get('branch'))
+        return result
 
-            if version_info['on_release']:
-                self._update_release(version_info, log)
-            else:
-                self._update_branch(version_info, log)
-
-            # Common post-update steps
-            log.append('Code updated successfully')
-            self._run_build(log)
-            self._update_dependencies(log)
-
-            # Restart with health check; lock is released by the verify thread
-            self._restart_services(log, rollback_branch=None)
-
-            new_commit = self.git.current_commit_short()
-            log.append(f'Update complete! Now at commit: {new_commit}')
-
-            return {
-                'success': True,
-                'message': 'Update completed successfully',
-                'log': log,
-                'updated': True,
-                'new_commit': new_commit,
-            }
-        except Exception as e:
-            import traceback
-            print(f'Update error: {e}', flush=True)
-            traceback.print_exc()
-            self._release_lock()
-            return {'success': False, 'error': str(e), 'log': log}
-
-    def _update_release(self, version_info: Dict, log: List[str]) -> None:
-        log.append('On release version - checking for newer releases...')
-        tags = self.git.tags_sorted()
-        if not tags:
-            log.append('No release tags found')
-            return
-
-        newest_tag = tags[0]
-        current_tag = version_info['latest_tag']
-
-        if newest_tag == current_tag:
-            log.append(f'Already on latest release: {current_tag}')
-            return
-
-        log.append(f'Updating from {current_tag} to {newest_tag}...')
-        self.git.checkout(newest_tag)
-        log.append(f'Checked out release {newest_tag}')
-
-    def _update_branch(self, version_info: Dict, log: List[str]) -> None:
-        branch = version_info['branch']
-        if not branch or branch == 'HEAD':
-            raise Exception('Not on a named branch, cannot update')
-
-        log.append(f"On branch '{branch}' - checking for new commits...")
-
-        commits_to_pull = self.git.commits_behind(branch)
-        if commits_to_pull == 0:
-            log.append(f'Already up to date on branch {branch}')
-            return
-
-        log.append(f'Pulling {commits_to_pull} new commit(s) from branch: {branch}')
-
-        # Stash local changes before pulling
-        stashed = self.git.stash(include_untracked=True)
-        if stashed:
-            log.append('Stashed local changes (including build artifacts)')
-
-        # Try fast-forward first
-        result = self.git.pull_ff_only(branch)
-        if result.returncode != 0:
-            stderr = result.stderr or ''
-            divergent_markers = [
-                'divergent branches',
-                'Need to specify how to reconcile',
-                'Not possible to fast-forward',
-            ]
-            if any(marker in stderr for marker in divergent_markers):
-                log.append('Detected divergent branches - resetting to remote...')
-                self.git.reset_hard(f'origin/{branch}')
-                log.append('Reset to match remote branch')
-            else:
-                raise Exception(f'Git pull failed: {stderr}')
-
-        # Restore stashed runtime data files (score_history, profiles, etc.)
-        if stashed:
-            if self.git.stash_pop():
-                log.append('Restored stashed local files')
-            else:
-                log.append('Warning: could not restore stashed files (conflicts possible)')
-
-        log.append(f'Updated to latest commit on {branch}')
+    def update_status(self) -> Dict:
+        """Return the progress or result of the last update run."""
+        return release_updater.read_status(self.repo_path)
 
     # ------------------------------------------------------------------
     # Build

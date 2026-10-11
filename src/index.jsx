@@ -295,6 +295,8 @@ const ProxmoxBalanceManager = () => {
       updating={updates.updating} updateLog={updates.updateLog} setUpdateLog={updates.setUpdateLog}
       updateResult={updates.updateResult} setUpdateResult={updates.setUpdateResult} updateError={updates.updateError}
       handleUpdate={updates.handleUpdate}
+      checkForUpdates={updates.checkForUpdates} checkingUpdates={updates.checkingUpdates}
+      setUpdateChannel={updates.setUpdateChannel} savingChannel={updates.savingChannel}
       systemInfo={updates.systemInfo}
       showBranchModal={updates.showBranchModal} setShowBranchModal={updates.setShowBranchModal}
       loadingBranches={updates.loadingBranches} availableBranches={updates.availableBranches}

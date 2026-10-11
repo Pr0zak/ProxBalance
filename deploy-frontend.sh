@@ -11,8 +11,16 @@ REPO_DIR="${1:-/opt/proxmox-balance-manager}"
 WEBROOT="${2:-/var/www/html}"
 cd "$REPO_DIR"
 
+# PROXBALANCE_PREBUILT=1 means the updater already installed the tested bundle from the
+# GitHub release (assets/js/app.js and assets/css/tailwind.css, checksum-verified), so
+# there is nothing to build and Node isn't needed.
+PREBUILT=0
+if [ "${PROXBALANCE_PREBUILT:-0}" = "1" ] && [ -s assets/js/app.js ] && [ -s assets/css/tailwind.css ]; then
+  PREBUILT=1
+fi
+
 # esbuild needs Node >= 18 — install LTS if Node is missing entirely.
-if ! command -v node >/dev/null 2>&1; then
+if [ "$PREBUILT" = "0" ] && ! command -v node >/dev/null 2>&1; then
   echo "  → Node.js not found — installing Node.js 20 LTS..."
   export DEBIAN_FRONTEND=noninteractive
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null 2>&1
@@ -21,7 +29,9 @@ fi
 
 # Build from source when JSX is present; otherwise fall back to a committed pre-built
 # bundle (the pre-compiled distribution model).
-if { [ -f index.html ] && grep -q 'type="text/babel"' index.html; } \
+if [ "$PREBUILT" = "1" ]; then
+  echo "  → Using the prebuilt web bundle from the release."
+elif { [ -f index.html ] && grep -q 'type="text/babel"' index.html; } \
    || [ -f src/index.jsx ] || [ -f src/app.jsx ]; then
   echo "  → Building frontend (esbuild + Tailwind)..."
   [ -f package.json ] || npm init -y >/dev/null 2>&1

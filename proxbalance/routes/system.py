@@ -293,8 +293,12 @@ def system_info():
         "latest_version": update_info.get('latest_version'),
         "commits_behind": update_info.get('commits_behind', 0),
         "changelog": update_info.get('changelog', []),
+        "update_channel": update_info.get('channel'),
+        "latest_release": update_info.get('release'),
+        "update_check_error": update_info.get('error'),
         "previous_branch": update_manager._load_previous_branch(),
-        "update_in_progress": update_manager.is_locked
+        "update_in_progress": (update_manager.is_locked
+                               or update_manager.update_status().get('state') == 'running')
     }
 
     return jsonify(system_data)
@@ -305,7 +309,9 @@ def check_update():
     try:
         update_manager = current_app.config['update_manager']
         config = load_config()
-        update_info = update_manager.check_for_updates(config=config if not config.get('error') else None)
+        force = request.args.get('force') in ('1', 'true', 'yes')
+        update_info = update_manager.check_for_updates(
+            config=config if not config.get('error') else None, force=force)
         return jsonify(update_info)
     except Exception as e:
         return jsonify({
@@ -315,11 +321,45 @@ def check_update():
 
 @system_bp.route("/api/system/update", methods=["POST"])
 def update_system():
-    """Update ProxBalance to latest version (release or branch commit)"""
+    """Start an update to the newest version on the configured channel.
+
+    Returns as soon as the update runner has started; poll
+    /api/system/update-status for progress. The runner restarts the API, so
+    expect that endpoint to be briefly unreachable.
+    """
     update_manager = current_app.config['update_manager']
-    result = update_manager.perform_update()
+    config = load_config()
+    result = update_manager.perform_update(config=config if not config.get('error') else None)
     status_code = 200 if result.get('success', False) else 500
     return jsonify(result), status_code
+
+
+@system_bp.route("/api/system/update-status", methods=["GET"])
+def update_status():
+    """Progress or result of the last update run (state: idle, running,
+    succeeded, failed or rolled_back, plus the finished steps)."""
+    update_manager = current_app.config['update_manager']
+    return jsonify(update_manager.update_status())
+
+
+@system_bp.route("/api/system/update-channel", methods=["POST"])
+@api_route
+def set_update_channel():
+    """Choose which updates this install receives: stable, beta or dev."""
+    import release_updater
+    channel = (request.get_json(silent=True) or {}).get('channel')
+    if channel not in release_updater.CHANNELS:
+        return jsonify({"success": False, "error": True,
+                        "message": f"Channel must be one of: {', '.join(release_updater.CHANNELS)}"}), 400
+    config = load_config()
+    if config.get('error'):
+        return jsonify({"success": False, "error": True, "message": config.get('message', 'Config unreadable')}), 500
+    config.setdefault('updates', {})['channel'] = channel
+    if not save_config(config):
+        return jsonify({"success": False, "error": True, "message": "Could not save config.json"}), 500
+    update_manager = current_app.config['update_manager']
+    return jsonify({"success": True, "channel": channel,
+                    "update": update_manager.check_for_updates(config=config, force=True)})
 
 @system_bp.route("/api/system/branches", methods=["GET"])
 @api_route

@@ -1,0 +1,66 @@
+# Tests and builds every push and pull request. The release workflow calls
+# this same workflow first, so a release can only be published from a commit
+# that passes it.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to test (defaults to the triggering commit)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          # Debian 12 (the LXC template) ships Python 3.11.
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest flake8
+
+      - name: Lint (syntax errors and undefined names)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv,node_modules,.git,.claude,dev-cache
+
+      - name: Python tests
+        run: python -m pytest tests/ -q
+
+      - name: Shell script syntax
+        run: for f in *.sh tools/*.sh; do bash -n "$f"; done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install build tools
+        # Pinned to the versions production builds with.
+        run: npm install --no-save --no-audit --no-fund esbuild@0.28.0 tailwindcss@3.4.19
+
+      - name: Build the web bundle
+        run: bash build.sh
+
+      - name: Check the bundle
+        run: |
+          size=$(stat -c%s assets/js/app.js)
+          echo "app.js: $size bytes"
+          test "$size" -gt 10000
+          test -s assets/css/tailwind.css
+
+      - name: JavaScript tests
+        run: node tests/js/schedule-agree.mjs

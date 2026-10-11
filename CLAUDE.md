@@ -29,7 +29,8 @@ ProxBalance/
 ├── ai_provider.py               # AI provider abstraction (OpenAI/Anthropic/Ollama)
 ├── notifications.py             # Multi-provider notification system
 ├── automigrate.py               # Automated migration orchestrator (~1,500 lines)
-├── update_manager.py            # Update checking and branch management
+├── update_manager.py            # Version info, update checks per channel, branch management
+├── release_updater.py           # Release-based updater: GitHub releases, backup, verified bundle, rollback (runs as systemd unit proxbalance-update)
 ├── update_timer.py              # Update timer helper
 ├── generate_recommendations.py  # Background recommendation generation
 ├── set_cluster_preset.py        # Cluster size preset configuration
@@ -409,12 +410,11 @@ The Flask API exposes 48+ REST endpoints under `/api/`, organized into 10 Bluepr
 
 ## Testing
 
-Limited formal testing infrastructure:
+Run `venv/bin/python -m pytest tests/` (all Python tests; `tests/conftest.py` keeps the script-style `test_scoring_improvements.py` out of collection and `test_scoring_script.py` runs it) and `node tests/js/schedule-agree.mjs`. CI runs both. Also:
 
 - **`test-page-load.js`** — Puppeteer-based page load performance test (measures TTFB, render time, grades performance)
 - **`test_api_token.sh`** — API token validation script
 - **Manual testing** — Start services and verify via logs: `journalctl -u proxmox-balance -n 50`
-- No pytest/jest test suites currently in the repository
 
 ## Deployment
 
@@ -448,7 +448,7 @@ ProxBalance deploys as an **unprivileged LXC container** within Proxmox VE:
 - **Error handling pattern** — Both backend and frontend return `{ error: true, message: "..." }` objects rather than throwing exceptions. Follow this pattern. The root React component is wrapped in an `ErrorBoundary` that prevents white-screen crashes.
 - **Python dependencies are pinned** — `requirements.txt` uses exact versions (`==`). Update versions explicitly when upgrading.
 - **Branch workflow** — Development happens on `DEV`, merged to `main` for releases.
-- **No CI/CD** — No GitHub Actions or other CI configuration. No linting config files committed. Use `black` and `flake8` manually.
+- **CI and releases** — `.github/workflows/ci.yml` runs flake8 (syntax/undefined names), `pytest tests/`, shell syntax checks, the pinned web build and the JS tests on every push. `release.yml` publishes a GitHub release only after CI passes on the tag, and attaches the tested web bundle + `SHA256SUMS`. Installs update only to published releases (`release_updater.py`, channels stable/beta/dev). See `docs/RELEASING.md`.
 - **Line ending enforcement** — `.gitattributes` enforces LF line endings for all text files.
 - **Backward-compatible re-exports** — When modules are extracted, original modules re-export the moved functions to avoid breaking existing imports (e.g., `config_manager.py` re-exports from `constants.py`).
 - **All domain modules are type-hinted** — All core domain modules have 100% function signature type hints using `typing` module.

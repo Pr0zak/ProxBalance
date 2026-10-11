@@ -1,8 +1,21 @@
 import { AlertTriangle, RefreshCw, CheckCircle, X, GitBranch, ArrowLeft } from '../Icons.jsx';
-import { MODAL_OVERLAY, MODAL_CONTAINER } from '../../utils/designTokens.js';
+import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, INNER_CARD } from '../../utils/designTokens.js';
+
+const CHANNELS = [
+  { id: 'stable', label: 'Stable', help: 'Tested releases only' },
+  { id: 'beta', label: 'Beta', help: 'Releases and pre-releases' },
+  { id: 'dev', label: 'Development', help: 'Every commit on the current branch' },
+];
+
+const formatDate = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
 
 const SystemModals = ({
   showUpdateModal, setShowUpdateModal, updating, updateLog, setUpdateLog, updateResult, setUpdateResult, updateError, handleUpdate,
+  checkForUpdates, checkingUpdates, setUpdateChannel, savingChannel,
   systemInfo,
   showBranchModal, setShowBranchModal, loadingBranches, availableBranches, branchPreview, setBranchPreview, loadingPreview, switchingBranch, rollingBack, fetchBranches, switchBranch, rollbackBranch, clearTestingMode, fetchBranchPreview
 }) => {
@@ -32,89 +45,154 @@ const SystemModals = ({
             )}
           </div>
 
-          {systemInfo && !updating && updateResult === null && (
+          {systemInfo && !updating && updateResult === null && (() => {
+            const channel = systemInfo.update_channel || 'stable';
+            const release = systemInfo.latest_release;
+            const isDev = systemInfo.update_type === 'branch';
+            const available = systemInfo.updates_available;
+            return (
             <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0">
-                    <RefreshCw size={24} className="text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Update Available</h3>
-                    <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                      <p><span className="font-medium">Current Branch:</span> {systemInfo.branch}</p>
-                      <p><span className="font-medium">Current Commit:</span> {systemInfo.commit}</p>
-                      <p><span className="font-medium">Commits Behind:</span> {systemInfo.commits_behind}</p>
-                      <p><span className="font-medium">Last Updated:</span> {systemInfo.last_commit_date}</p>
-                    </div>
-                  </div>
+              {/* Channel */}
+              <div className={`${INNER_CARD} p-3 space-y-2`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-pb-text dark:text-white">Update channel</span>
+                  <button onClick={checkForUpdates} disabled={checkingUpdates || savingChannel} className={BTN_SECONDARY}>
+                    <RefreshCw size={14} className={checkingUpdates ? 'animate-spin' : ''} /> {checkingUpdates ? 'Checking…' : 'Check now'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Update channel">
+                  {CHANNELS.map(c => (
+                    <button key={c.id} role="radio" aria-checked={channel === c.id} disabled={savingChannel}
+                      onClick={() => channel !== c.id && setUpdateChannel(c.id)}
+                      className={`text-left rounded-lg border px-3 py-2 transition-colors ${channel === c.id
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500'
+                        : 'border-pb-border dark:border-slate-600 hover:bg-pb-surface2 dark:hover:bg-slate-700/40'}`}>
+                      <div className="text-sm font-medium text-pb-text dark:text-white">{c.label}</div>
+                      <div className="text-xs text-pb-text2 dark:text-gray-400">{c.help}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {systemInfo.changelog && systemInfo.changelog.length > 0 && (
-                <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded p-4">
-                  <h3 className="font-semibold text-green-800 dark:text-green-200 mb-3 flex items-center gap-2">
-                    <span>📋 What's New</span>
-                    <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 rounded-full">
-                      {systemInfo.changelog.length} update{systemInfo.changelog.length > 1 ? 's' : ''}
-                    </span>
-                  </h3>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {systemInfo.changelog.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm">
-                        <span className="text-green-600 dark:text-green-400 flex-shrink-0">●</span>
-                        <div className="flex-1">
-                          <span className="text-green-100">{item.message}</span>
-                          <span className="ml-2 text-xs font-mono text-green-600 dark:text-green-400">
-                            ({item.commit})
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+              {/* Versions */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className={`${INNER_CARD} p-3`}>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400">Running</div>
+                  <div className="font-mono text-pb-text dark:text-white break-all">{systemInfo.current_version || systemInfo.version}</div>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400">{systemInfo.on_release ? 'release' : `branch ${systemInfo.branch || '—'}`}</div>
+                </div>
+                <div className={`${INNER_CARD} p-3`}>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400">{isDev ? 'Latest commit' : 'Latest release'}</div>
+                  <div className="font-mono text-pb-text dark:text-white break-all">{systemInfo.latest_version || '—'}</div>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400">{isDev ? `${systemInfo.commits_behind || 0} commit(s) ahead` : formatDate(release?.published_at)}</div>
+                </div>
+              </div>
+
+              {systemInfo.update_check_error && (
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">{systemInfo.update_check_error}</p>
+              )}
+
+              {!available && (
+                <p className="text-sm text-pb-text2 dark:text-gray-400 flex items-center gap-2">
+                  <CheckCircle size={16} className="text-green-600 dark:text-green-400" /> You're on the latest version for this channel.
+                </p>
+              )}
+
+              {available && systemInfo.update_type === 'switch_to_release' && (
+                <p className="text-sm text-pb-text dark:text-gray-200">
+                  This install follows <span className="font-mono">{systemInfo.branch}</span> rather than a release. Updating moves it to the tested release <span className="font-mono">{systemInfo.latest_version}</span>; after that it only updates to new releases.
+                </p>
+              )}
+
+              {/* Release notes */}
+              {available && release && !isDev && (
+                <div className={`${INNER_CARD} p-3 space-y-2`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="text-sm font-semibold text-pb-text dark:text-white">{release.name}</h3>
+                    {release.url && <a href={release.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">View on GitHub</a>}
                   </div>
+                  <div className="text-sm text-pb-text dark:text-gray-200 whitespace-pre-wrap max-h-64 overflow-y-auto break-words">{release.notes || 'No release notes.'}</div>
                 </div>
               )}
 
-              <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-4">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                    <p className="font-semibold mb-1">This will:</p>
-                    <ul className="list-disc ml-4 space-y-1">
-                      <li>Pull the latest code from branch: <span className="font-mono">{systemInfo.branch}</span></li>
-                      <li>Update Python dependencies</li>
-                      <li>Restart ProxBalance services</li>
-                      <li>The page will automatically reload after update</li>
-                    </ul>
-                  </div>
+              {/* Branch commits (dev channel) */}
+              {available && isDev && systemInfo.changelog && systemInfo.changelog.length > 0 && (
+                <div className={`${INNER_CARD} p-3`}>
+                  <h3 className="text-sm font-semibold text-pb-text dark:text-white mb-2">New commits on {systemInfo.branch}</h3>
+                  <ul className="space-y-1 max-h-48 overflow-y-auto text-sm">
+                    {systemInfo.changelog.map((item, idx) => (
+                      <li key={idx} className="text-pb-text dark:text-gray-200">
+                        {item.message} <span className="font-mono text-xs text-pb-text2 dark:text-gray-400">{item.commit}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
+              )}
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowUpdateModal(false)}
-                  className="flex-1 px-4 py-2 border border-pb-border dark:border-slate-600 text-pb-text dark:text-gray-300 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700 flex items-center justify-center gap-1.5"
-                >
-                  <X size={14} /> Cancel
+              {available && (
+                <div className="text-sm text-pb-text2 dark:text-gray-400">
+                  <p className="font-medium text-pb-text dark:text-gray-200 mb-1">Updating will:</p>
+                  <ul className="list-disc ml-5 space-y-0.5">
+                    <li>Back up the database, settings and current web files</li>
+                    <li>{isDev ? `Move to the latest commit on ${systemInfo.branch}` : `Install ${systemInfo.latest_version}${release?.prebuilt ? ' with its tested web bundle' : ''}`}</li>
+                    <li>Restart ProxBalance and check it reports healthy</li>
+                    <li>Go back to {systemInfo.current_version || systemInfo.version} automatically if it doesn't</li>
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setShowUpdateModal(false)} className={BTN_SECONDARY}>
+                  <X size={14} /> {available ? 'Cancel' : 'Close'}
                 </button>
-                <button
-                  onClick={handleUpdate}
-                  disabled={systemInfo && systemInfo.update_in_progress}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <RefreshCw size={18} />
-                  {systemInfo && systemInfo.update_in_progress ? 'Operation in progress...' : 'Update Now'}
-                </button>
+                {available && (
+                  <button onClick={handleUpdate} disabled={systemInfo.update_in_progress} className={BTN_PRIMARY}>
+                    <RefreshCw size={16} />
+                    {systemInfo.update_in_progress ? 'Update in progress…' : `Update to ${systemInfo.latest_version}`}
+                  </button>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {updating && (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <RefreshCw size={40} className="text-blue-600 dark:text-blue-400 animate-spin" />
               <div className="text-center">
                 <p className="text-lg font-semibold text-pb-text dark:text-white">Updating ProxBalance...</p>
-                <p className="text-sm text-pb-text2 dark:text-gray-400 mt-1">This may take a minute.</p>
+                <p className="text-sm text-pb-text2 dark:text-gray-400 mt-1">This may take a minute. The page may briefly lose connection while ProxBalance restarts.</p>
+              </div>
+              {updateLog.length > 0 && (
+                <ul className="w-full text-sm font-mono space-y-1">
+                  {updateLog.map((line, idx) => (
+                    <li key={idx} className={line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {!updating && updateResult === 'rolled-back' && (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Update failed; ProxBalance went back to the previous version</h3>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 whitespace-pre-wrap">{updateError}</p>
+                  </div>
+                </div>
+              </div>
+              <ul className="text-sm font-mono space-y-1 max-h-64 overflow-y-auto">
+                {updateLog.map((line, idx) => (
+                  <li key={idx} className={line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{line}</li>
+                ))}
+              </ul>
+              <div className="flex justify-end">
+                <button onClick={() => window.location.reload()} className={BTN_PRIMARY}>
+                  <RefreshCw size={16} /> Close & Reload
+                </button>
               </div>
             </div>
           )}

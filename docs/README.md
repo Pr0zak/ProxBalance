@@ -12,6 +12,7 @@ Complete documentation for ProxBalance - cluster monitoring and automated load b
 ## Reference
 
 - **[Configuration Reference](CONFIGURATION.md)** - All config.json options with descriptions
+- **[Releasing and Updating](RELEASING.md)** - Update channels, how updates run and roll back, and how to cut a release
 - **[API Reference](API.md)** - REST API endpoints for automation and scripting
 - **[Scoring Algorithm](SCORING_ALGORITHM.md)** - Penalty-based scoring system internals
 

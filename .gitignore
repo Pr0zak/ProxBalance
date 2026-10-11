@@ -94,3 +94,10 @@ assets/css/tailwind.css
 notification_status.json
 notification_status.json.lock
 notification_status.json.tmp
+
+# Updater state (release_updater.py)
+.release_cache.json
+.update_notified.json
+update_status.json
+update_status.json.tmp
+backups/

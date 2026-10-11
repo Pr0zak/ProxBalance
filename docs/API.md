@@ -829,15 +829,23 @@ Returns the available providers, the default notification config and, for the sa
 
 ### GET /api/system/info
 
-Returns system version, branch, and update status.
+Returns the running version, branch and update status. Update fields: `updates_available`, `update_type` (`release`, `switch_to_release` or `branch`), `current_version`, `latest_version`, `update_channel`, `latest_release` (`tag`, `name`, `url`, `published_at`, `notes`, `prerelease`, `prebuilt`), `update_check_error`, and `update_in_progress`.
 
 ### GET /api/system/check-update
 
-Checks for available updates. Sends an `update_available` notification when one is found and that event is enabled.
+Checks for an update on the install's channel (see [Releasing and updating](RELEASING.md)). The stable and beta channels read published GitHub releases, cached for 30 minutes; add `?force=1` to bypass the cache. Sends one `update_available` notification per new version when that event is enabled.
 
 ### POST /api/system/update
 
-Updates to the latest version (release or branch commit). After pulling, it runs `post_update.sh`, which rebuilds the frontend with `deploy-frontend.sh`, copies it to the nginx web root (`/var/www/html`) and installs the systemd unit files; the updater then restarts the services. Returns `500` with a log on failure.
+Starts an update to the newest version on the channel and returns immediately with `{"success": true, "started": true, "target": "v2.16.0"}`, or `{"started": false, "message": "Already up to date"}`. The update runs in its own systemd unit (`proxbalance-update`): backup, checkout, web bundle (checksum-verified, or built locally), dependencies, restart and health check, with automatic rollback on failure. The API restarts during the update, so poll `GET /api/system/update-status`.
+
+### GET /api/system/update-status
+
+Progress or result of the last update: `state` (`idle`, `running`, `succeeded`, `failed`, `rolled_back`), `target`, `from`, `steps` (`name`, `ok`, `detail`, `at`), `error`, `backup` (backup folder), `started_at`, `finished_at`.
+
+### POST /api/system/update-channel
+
+Sets `updates.channel` to `stable`, `beta` or `dev`. Body: `{"channel": "beta"}`. Returns the new channel and a fresh update check.
 
 ### GET /api/system/branches
 

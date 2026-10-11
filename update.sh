@@ -1,11 +1,22 @@
 #!/bin/bash
 # ProxBalance Update Script
-# Shows what's new before updating
-# Runs from the Proxmox host and reaches into the LXC container via pct exec
+# Runs from the Proxmox host and reaches into the LXC container via pct exec.
+#
+# Usage: update.sh <container-id> [-y]
+#
+# Installs on the stable or beta channel update to the newest published
+# release through release_updater.py, the same runner the in-app updater
+# uses: it backs up the database and settings, installs the tested web
+# bundle, restarts the services and rolls back if ProxBalance doesn't come
+# back healthy. Installs on the dev channel move to the latest commit on
+# their branch. Older installs without release_updater.py use the legacy
+# git pull path below.
 
 set -euo pipefail
 
 CTID=${1:-336}
+ASSUME_YES=0
+[ "${2:-}" = "-y" ] && ASSUME_YES=1
 
 if [ -z "$CTID" ]; then
     echo "Usage: $0 <container-id>"
@@ -19,6 +30,65 @@ echo "║                 ProxBalance Update Script                      ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
+PY="$REPO_PATH/venv/bin/python3"
+
+if pct exec "$CTID" -- test -f "$REPO_PATH/release_updater.py"; then
+    CHANNEL=$(pct exec "$CTID" -- bash -c "jq -r '.updates.channel // \"stable\"' $REPO_PATH/config.json 2>/dev/null || echo stable")
+    case "$CHANNEL" in stable|beta|dev) ;; *) CHANNEL=stable ;; esac
+    CURRENT=$(pct exec "$CTID" -- git -C "$REPO_PATH" describe --tags --always)
+    echo "Update channel: $CHANNEL"
+    echo "Running:        $CURRENT"
+
+    if [ "$CHANNEL" = "dev" ]; then
+        BRANCH=$(pct exec "$CTID" -- git -C "$REPO_PATH" rev-parse --abbrev-ref HEAD)
+        if [ "$BRANCH" = "HEAD" ]; then
+            echo "✗ The dev channel needs a checked-out branch, but this install is on a release tag."
+            echo "  Switch the channel to stable in the web UI, or check out a branch first."
+            exit 1
+        fi
+        TARGET_ARGS=(--branch "$BRANCH")
+        echo "Target:         latest commit on $BRANCH"
+    else
+        CHECK=$(pct exec "$CTID" -- "$PY" "$REPO_PATH/release_updater.py" check --channel "$CHANNEL" --force)
+        LATEST=$(echo "$CHECK" | jq -r '.latest.tag // empty')
+        if [ -z "$LATEST" ]; then
+            echo "✗ No $CHANNEL release found. $(echo "$CHECK" | jq -r '.error // empty')"
+            exit 1
+        fi
+        echo "Latest release: $LATEST — $(echo "$CHECK" | jq -r '.latest.name')"
+        if [ "$LATEST" = "$CURRENT" ]; then
+            echo ""
+            echo "✓ Already up to date."
+            exit 0
+        fi
+        echo ""
+        echo "$CHECK" | jq -r '.latest.notes' | head -40
+        echo ""
+        TARGET_ARGS=(--tag "$LATEST")
+    fi
+
+    if [ "$ASSUME_YES" != "1" ]; then
+        read -r -p "Update now? [y/N] " answer
+        case "$answer" in y|Y|yes|YES) ;; *) echo "Cancelled."; exit 0 ;; esac
+    fi
+
+    echo ""
+    echo "Updating (backup, install, restart, health check; rolls back on failure)..."
+    if pct exec "$CTID" -- "$PY" "$REPO_PATH/release_updater.py" apply "${TARGET_ARGS[@]}"; then
+        echo ""
+        echo "✓ Update complete: now running $(pct exec "$CTID" -- git -C "$REPO_PATH" describe --tags --always)"
+    else
+        echo ""
+        echo "✗ Update failed. Details:"
+        pct exec "$CTID" -- "$PY" "$REPO_PATH/release_updater.py" status | jq -r '.steps[] | "  \(if .ok then "✓" else "✗" end) \(.name) \(.detail)"'
+        exit 1
+    fi
+    echo ""
+    echo "Access ProxBalance: http://$(pct exec "$CTID" -- hostname -I | awk '{print $1}')"
+    exit 0
+fi
+
+# ── Legacy path: installs from before release_updater.py ──────────────────
 # Detect current branch inside the container
 BRANCH=$(pct exec $CTID -- bash -c "cd $REPO_PATH && git rev-parse --abbrev-ref HEAD")
 echo "Branch: $BRANCH"

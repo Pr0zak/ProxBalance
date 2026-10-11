@@ -1,0 +1,103 @@
+# Publishes a GitHub release when a version tag is pushed.
+#
+# The release is created only after the full CI workflow passes on the
+# tagged commit, and it carries the tested web bundle plus SHA256SUMS. The
+# in-app updater (release_updater.py) only offers published releases, so an
+# install can never update to a commit that didn't pass these checks.
+#
+# Stable tags (vX.Y.Z) must point at a commit on main. Pre-release tags
+# (vX.Y.Z-rc.N, -beta.N) may come from any branch and are published as
+# pre-releases, which only installs on the beta channel see.
+#
+# Run it manually with an existing tag to attach the web bundle to a release
+# that was published before this pipeline existed.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and attach the web bundle to
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+
+  release:
+    name: Publish release
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Check the tag
+        id: tag
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$TAG' is not a release tag (expected vX.Y.Z or vX.Y.Z-rc.N)"
+            exit 1
+          fi
+          git fetch --force origin main:refs/remotes/origin/main "refs/tags/$TAG:refs/tags/$TAG"
+          if [[ "$TAG" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            if ! git merge-base --is-ancestor "$TAG^{commit}" origin/main; then
+              echo "::error::Stable tag $TAG is not on main. Merge first, or use a pre-release tag such as $TAG-rc.1."
+              exit 1
+            fi
+          fi
+          subject="$(git tag -l --format='%(contents:subject)' "$TAG")"
+          echo "title=${subject:-$TAG}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build the web bundle
+        run: |
+          npm install --no-save --no-audit --no-fund esbuild@0.28.0 tailwindcss@3.4.19
+          bash build.sh
+
+      - name: Package
+        run: bash tools/package-web-bundle.sh "$TAG" dist
+
+      - name: Publish
+        env:
+          TITLE: ${{ steps.tag.outputs.title }}
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Release already exists (published by hand before this pipeline):
+            # attach the bundle, keep its notes.
+            gh release upload "$TAG" dist/* --clobber
+            exit 0
+          fi
+          args=(--title "$TITLE" --verify-tag)
+          if [ -f "docs/releases/$TAG.md" ]; then
+            args+=(--notes-file "docs/releases/$TAG.md")
+          else
+            args+=(--generate-notes)
+          fi
+          [ "$PRERELEASE" = "true" ] && args+=(--prerelease)
+          gh release create "$TAG" dist/* "${args[@]}"
