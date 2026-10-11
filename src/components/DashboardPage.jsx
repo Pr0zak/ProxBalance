@@ -175,6 +175,7 @@ export default function DashboardPage({
           automationStatus={automationStatus}
           maintenanceNodes={maintenanceNodes}
           nodeScores={nodeScores}
+          onCollect={handleRefresh}
         />
 
         {/* KPI Summary Row */}

@@ -1,8 +1,12 @@
 import { AlertTriangle, ChevronRight } from '../Icons.jsx';
 import { parseTimestamp, runStatusLabel, runFailureReason } from '../../utils/formatters.js';
 import { DetailModal } from './RunHistoryDisplay.jsx';
+import { LogViewer, unitState, STATE_TEXT } from '../settings/AdvancedSystemSettings.jsx';
+import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY } from '../../utils/designTokens.js';
+import { API_BASE } from '../../utils/constants.js';
+import { X, RefreshCw } from '../Icons.jsx';
 
-const { useState } = React;
+const { useState, useEffect } = React;
 import { tightestNode, toNodeSet } from '../../utils/nodeCondition.js';
 
 // Below this headroom a node is called out even if nothing else is wrong.
@@ -33,8 +37,9 @@ export function attentionItems({ data, config, automationStatus, maintenanceNode
       items.push({
         id: 'stale',
         label: `Data ${ago(collected)} old`,
-        detail: `Last collection ${collected.toLocaleString()}; the collector runs every ${intervalMin} min, so it has missed at least one run.`,
-        href: '#/settings/collection',
+        detail: `Data on this page was collected ${collected.toLocaleString()}; the collector runs every ${intervalMin} min. Click for the collector's status and log.`,
+        href: '#/settings/system',
+        collector: true,
         tone: ageMin > 6 * intervalMin ? 'error' : 'warn',
       });
     }
@@ -91,6 +96,62 @@ export function attentionItems({ data, config, automationStatus, maintenanceNode
   return items;
 }
 
+/**
+ * Opened from the "Data N old" item: whether the collector is running, how
+ * its last run ended, when the next is due, and its log, with a button to
+ * collect now. The page's data can be old because the collector stopped or
+ * failed, or only because this page has not reloaded; this tells them apart.
+ */
+function CollectorModal({ collectedAt, onClose, onCollect }) {
+  const [unit, setUnit] = useState(undefined);
+  const [collecting, setCollecting] = useState(false);
+  const load = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/system/services`);
+      const body = await res.json();
+      setUnit(body?.success ? body.services?.['proxmox-collector'] || null : null);
+    } catch (e) { setUnit(null); }
+  };
+  useEffect(() => { load(); }, []);
+  const state = unitState(unit);
+  const collect = async () => {
+    setCollecting(true);
+    try { await onCollect?.(); } finally { setCollecting(false); load(); }
+  };
+  return (
+    <div className={MODAL_OVERLAY} onClick={onClose}>
+      <div className={`${MODAL_CONTAINER} max-w-3xl`} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-pb-text dark:text-white">Data collector</h3>
+          <button onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={18} /></button>
+        </div>
+        <div className="text-sm space-y-1 mb-3">
+          <p className="text-pb-text2 dark:text-gray-400">
+            Data on this page: collected {collectedAt ? collectedAt.toLocaleString() : '—'}
+          </p>
+          <p className={state ? STATE_TEXT[state.tone] : 'text-pb-text2 dark:text-gray-400'}>
+            Collector: {unit === undefined ? 'checking…' : state ? state.text : 'status unavailable'}
+          </p>
+          {state?.tone === 'green' && (
+            <p className="text-pb-text2 dark:text-gray-400">The collector is running normally, so only this page's copy is old. Collect now reloads it.</p>
+          )}
+        </div>
+        <div className="flex gap-2 mb-3">
+          {onCollect && (
+            <button onClick={collect} disabled={collecting} className={BTN_PRIMARY}>
+              <RefreshCw size={14} className={collecting ? 'animate-spin' : ''} /> {collecting ? 'Collecting…' : 'Collect now'}
+            </button>
+          )}
+          <a href="#/settings/system" onClick={onClose} className={BTN_SECONDARY}>All services</a>
+        </div>
+        <div className="-mx-4">
+          <LogViewer service="proxmox-collector" onClose={onClose} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TONE = {
   warn: 'text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/15',
   error: 'text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/15',
@@ -99,6 +160,7 @@ const TONE = {
 /** One-line strip above the KPIs, rendered only when something needs attention. */
 export default function NeedsAttentionStrip(props) {
   const [openRun, setOpenRun] = useState(null);
+  const [showCollector, setShowCollector] = useState(false);
   const items = attentionItems(props);
   if (items.length === 0) return null;
   const anyError = items.some(i => i.tone === 'error');
@@ -127,7 +189,7 @@ export default function NeedsAttentionStrip(props) {
           {i > 0 && <span className="text-pb-text2 dark:text-gray-600 shrink-0" aria-hidden="true">·</span>}
           <a
             href={item.href}
-            onClick={(e) => { e.preventDefault(); if (item.run) setOpenRun(item.run); else go(item.href); }}
+            onClick={(e) => { e.preventDefault(); if (item.run) setOpenRun(item.run); else if (item.collector) setShowCollector(true); else go(item.href); }}
             title={item.detail}
             className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded shrink-0 transition-colors ${TONE[item.tone]}`}
           >
@@ -138,6 +200,13 @@ export default function NeedsAttentionStrip(props) {
       ))}
     </div>
     {openRun && <DetailModal run={openRun} onClose={() => setOpenRun(null)} />}
+    {showCollector && (
+      <CollectorModal
+        collectedAt={parseTimestamp(props.data?.collected_at)}
+        onCollect={props.onCollect}
+        onClose={() => setShowCollector(false)}
+      />
+    )}
     </>
   );
 }

@@ -50,7 +50,7 @@ function ActionRow({ title, detail, children, below }) {
 }
 
 /** Tail of a service's journal (GET /api/logs/download returns its last 1000 lines). */
-function LogViewer({ service, onClose }) {
+export function LogViewer({ service, onClose }) {
   const [text, setText] = useState(null);
   const [error, setLogError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -217,7 +217,7 @@ function untilText(iso) {
 }
 
 /** One-line state of a unit from GET /api/system/services, or null. */
-function unitState(st) {
+export function unitState(st) {
   if (!st) return null;
   const rel = (iso) => formatRelativeTime(iso).replace('Just now', 'just now');
   if (!st.timer) {
@@ -240,7 +240,7 @@ function unitState(st) {
   return { tone, text: parts.join(' · ') };
 }
 
-const STATE_TEXT = {
+export const STATE_TEXT = {
   green: 'text-emerald-600 dark:text-emerald-400',
   red: 'text-red-600 dark:text-red-400',
   yellow: 'text-amber-600 dark:text-amber-400',

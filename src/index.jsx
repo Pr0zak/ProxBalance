@@ -6,7 +6,7 @@ import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
 import useIsMobile from './utils/useIsMobile.js';
-import { formatLocalTime, getTimezoneAbbr } from './utils/formatters.js';
+import { formatLocalTime, getTimezoneAbbr, parseTimestamp } from './utils/formatters.js';
 import { useUIState } from './hooks/useUIState.js';
 import { useDarkMode } from './hooks/useDarkMode.js';
 import { useAuth } from './hooks/useAuth.js';
@@ -29,7 +29,7 @@ import MobileTabBar from './components/MobileTabBar.jsx';
 import { Toaster, notifyError } from './components/Toast.jsx';
 import { AppStatusContext } from './components/AppStatus.jsx';
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const ProxmoxBalanceManager = () => {
   const isMobile = useIsMobile(640);
@@ -107,12 +107,30 @@ const ProxmoxBalanceManager = () => {
 
   // Auto-fetch on initial data load
   useEffect(() => { cluster.fetchAnalysis(); }, []);
+  // Reload at least as often as the collector writes new data; otherwise the
+  // page's copy ages past the "data is stale" threshold (2x the collection
+  // interval) between reloads and flags a healthy collector.
+  const collectionMs = (Number(configHook.config?.collection_interval_minutes) || 0) * 60000;
+  const dataRefreshMs = collectionMs > 0 ? Math.min(configHook.autoRefreshInterval, collectionMs) : configHook.autoRefreshInterval;
   useEffect(() => {
     const interval = setInterval(() => {
       cluster.fetchAnalysis();
-    }, configHook.autoRefreshInterval);
+    }, dataRefreshMs);
     return () => clearInterval(interval);
-  }, [configHook.autoRefreshInterval]);
+  }, [dataRefreshMs]);
+  // Timers are throttled while the tab or installed app is in the background,
+  // so reload on return if the data is older than one refresh period.
+  const collectedAtRef = useRef(null);
+  collectedAtRef.current = cluster.data?.collected_at;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const t = parseTimestamp(collectedAtRef.current)?.getTime();
+      if (!t || Date.now() - t > dataRefreshMs) cluster.fetchAnalysis();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [dataRefreshMs]);
 
   // Auto-fetch recommendations when data or thresholds change. Wait until the
   // automation config has loaded (or failed): maintenance nodes come from it, and
