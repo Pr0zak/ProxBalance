@@ -1,10 +1,10 @@
 import {
   Clock, AlertCircle, RefreshCw
 } from './Icons.jsx';
+import TabBar from './TabBar.jsx';
 import { useAppStatus } from './AppStatus.jsx';
 import {
   GLASS_CARD, TEXT_HEADING, TEXT_SUBHEADING,
-  SUB_TAB, SUB_TAB_ACTIVE, SUB_TAB_INACTIVE
 } from '../utils/designTokens.js';
 
 import QuickSetupSection from './automation/QuickSetupSection.jsx';
@@ -187,18 +187,8 @@ export default function AutomationPage(props) {
           fetchMigrationSettingsAction={fetchMigrationSettingsAction}
         />
 
-        {/* Horizontal sub-tabs */}
-        <div className="flex items-center gap-0 border-b border-pb-border dark:border-slate-700/50 mb-4 overflow-x-auto">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`${SUB_TAB} ${activeTab === tab.id ? SUB_TAB_ACTIVE : SUB_TAB_INACTIVE}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Sub-tabs (wrap on phones so every tab stays visible) */}
+        <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} className="mb-4" />
 
         {/* Tab content — every section spans full width to match Quick Setup */}
         <div hidden={activeTab !== 'schedule'}>{(

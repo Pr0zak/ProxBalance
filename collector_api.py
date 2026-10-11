@@ -933,6 +933,15 @@ class ProxmoxAPICollector:
             node_data["iowait_exempt"] = bool(io_exempt_guests)
             node_data["iowait_exempt_guests"] = io_exempt_guests
 
+        # Unmovable CPU per node (anchored_cpu, anchored_guests): load from running
+        # ignored/passthrough-pinned guests. Stored here so the dashboard can show it;
+        # the recommendation engine recomputes it from the same guests.
+        try:
+            from proxbalance.scoring import annotate_anchored_load
+            annotate_anchored_load(self.nodes, self.guests)
+        except Exception as e:
+            print(f"Warning: anchored load annotation failed: {e}", file=sys.stderr)
+
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])

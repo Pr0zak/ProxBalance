@@ -1,3 +1,5 @@
+import { INNER_CARD } from '../utils/designTokens.js';
+
 export default function Toggle({ checked, onChange, color = 'green' }) {
   const colorClass = color === 'yellow' ? 'peer-checked:bg-yellow-600' : 'peer-checked:bg-green-600';
 
@@ -14,17 +16,34 @@ export default function Toggle({ checked, onChange, color = 'green' }) {
   );
 }
 
-export function ToggleRow({ label, description, checked, onChange, color, children }) {
+/**
+ * One setting: label and help text on the left, its control on the right.
+ * Built on INNER_CARD so settings read like the rest of the glass UI. Pass
+ * `control` for a non-toggle control (number input, select, button).
+ */
+export function SettingRow({ label, description, control, children }) {
   return (
-    <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg">
-      <div className="flex items-center justify-between p-4">
-        <div>
-          <div className="font-semibold text-pb-text dark:text-white">{label}</div>
-          <div className="text-sm text-pb-text2 dark:text-gray-400">{description}</div>
+    <div className={INNER_CARD}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="font-medium text-pb-text dark:text-white">{label}</div>
+          {description && <div className="text-sm text-pb-text2 dark:text-gray-400">{description}</div>}
         </div>
-        <Toggle checked={checked} onChange={onChange} color={color} />
+        {control}
       </div>
       {children}
     </div>
+  );
+}
+
+export function ToggleRow({ label, description, checked, onChange, color, children }) {
+  return (
+    <SettingRow
+      label={label}
+      description={description}
+      control={<Toggle checked={checked} onChange={onChange} color={color} />}
+    >
+      {children}
+    </SettingRow>
   );
 }
