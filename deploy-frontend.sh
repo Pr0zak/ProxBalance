@@ -44,6 +44,10 @@ cp index.html "$WEBROOT/index.html"
 cp assets/js/app.js "$WEBROOT/assets/js/app.js"
 cp assets/css/tailwind.css "$WEBROOT/assets/css/tailwind.css" 2>/dev/null || true
 cp assets/*.svg "$WEBROOT/assets/" 2>/dev/null || true
+# PWA: manifest + service worker live at the web root (the worker's scope is its own
+# directory, so it must be served from / to control the whole app); icons in assets/.
+cp assets/icon-*.png assets/apple-touch-icon.png "$WEBROOT/assets/" 2>/dev/null || true
+cp manifest.json sw.js "$WEBROOT/" 2>/dev/null || true
 
 # React/ReactDOM are referenced locally by index.html — fetch if missing.
 for lib in react react-dom; do

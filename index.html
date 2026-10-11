@@ -12,6 +12,15 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=5">
 
+    <!-- Installable app (PWA) -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="ProxBalance">
+
     <!-- Critical CSS - Loads instantly for splash screen -->
     <style>
       /* Reset and base styles */
@@ -51,6 +60,14 @@
           clearInterval(checkReactReady);
         }
       }, 100);
+
+      // Service worker: required for the browser's "Install app" prompt.
+      // Needs a secure context (HTTPS or localhost); silently skipped on plain HTTP.
+      if ('serviceWorker' in navigator && window.isSecureContext) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('SW registration failed:', err));
+        });
+      }
     </script>
 </body>
 </html>
