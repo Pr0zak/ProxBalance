@@ -12,6 +12,7 @@
  * week = 336 x 30 min, month = 1440 x 30 min, year = ~1440 x 6 h.
  */
 export const CHART_PERIODS = [
+  { id: '1h',   label: '1h',  ms: 3600 * 1000,            bucket: 0,    limit: 300, rrd: 'hour',  sample: 1 },
   { id: '6h',   label: '6h',  ms: 6 * 3600 * 1000,        bucket: 0,    limit: 300, rrd: 'day',   sample: 2 },
   { id: '1d',   label: '1d',  ms: 24 * 3600 * 1000,       bucket: 0,    limit: 300, rrd: 'day',   sample: 8 },
   { id: '7d',   label: '7d',  ms: 7 * 86400 * 1000,       bucket: 30,   limit: 400, rrd: 'week',  sample: 2 },
@@ -22,7 +23,7 @@ export const CHART_PERIODS = [
 ];
 const DEFAULT_PERIOD = '1d';
 // Older per-node select ids map onto the shared list.
-const LEGACY_PERIOD = { '1h': '6h', '12h': '1d', '24h': '1d', '1y': '1yr' };
+const LEGACY_PERIOD = { '12h': '1d', '24h': '1d', '1y': '1yr' };
 export const periodConfig = (id) =>
   CHART_PERIODS.find(p => p.id === id) || CHART_PERIODS.find(p => p.id === LEGACY_PERIOD[id]) || CHART_PERIODS.find(p => p.id === DEFAULT_PERIOD);
 
