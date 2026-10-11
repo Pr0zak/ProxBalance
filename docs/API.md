@@ -56,6 +56,8 @@ curl http://<host>/api/analyze
 
 Returns a summary of cluster state (node count, guest count, resource totals).
 
+Includes `cluster_spread` (also added to `GET /api/analyze` data and the `POST /api/node-scores` response): for `memory` and `cpu`, the `min`/`max` (with `min_node`/`max_node`), `spread` (max − min, percentage points), `mean`, `cv` (population std-dev ÷ mean) and `nodes` counted, over online nodes only. CPU is the ~15-minute `recent_cpu` that scoring uses. A metric with fewer than two readings is `null`.
+
 ### GET /api/nodes-only
 
 Returns node data without guest details.
@@ -210,7 +212,10 @@ curl -X POST http://<host>/api/node-scores \
   -d '{"cpu_threshold": 60, "mem_threshold": 70, "iowait_threshold": 30}'
 ```
 
-Response: `{"success": true, "scores": {"<node>": {...}}}`, including each node's `penalty_breakdown`.
+Response: `{"success": true, "scores": {"<node>": {...}}, "cluster_spread": {...}}`, including each node's `penalty_breakdown` and two explanation fields:
+
+- `penalty_items` — every non-zero penalty, largest first: `key`, `category`, `label`, `value` (the reading), `threshold` (the tier it crossed), `unit` (`%`, `x` or `%/day`), `base_points`, `points` (after adjustments) and `adjustments` (e.g. the stable-CPU factor or the 60-point memory cap). `value`/`threshold` are `null` for label-based penalties (a "rising" trend). The `points` add up to `score_breakdown.penalty_points`.
+- `score_breakdown` — `base` (each weighted component: `value`, `weight`, `points`), `base_points`, `penalty_points`, `score`, `headroom` (= `suitability_rating`), `capped` and `notes`. `base_points + penalty_points = score`; `headroom = 100 − min(score, 100)`.
 
 ### POST /api/guest/{vmid}/migration-options
 

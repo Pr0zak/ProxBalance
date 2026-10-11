@@ -468,53 +468,71 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     mem_offset_1 = penalty_config.get("mem_threshold_offset_1", 10)
     mem_offset_2 = penalty_config.get("mem_threshold_offset_2", 20)
 
-    # Current load penalty - heavily penalize nodes with high current load
-    if immediate_cpu > (cpu_threshold + cpu_offset_2):
-        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_extreme_penalty", 100)
-    elif immediate_cpu > (cpu_threshold + cpu_offset_1):
-        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_very_high_penalty", 50)
-    elif immediate_cpu > cpu_threshold:
-        penalty_breakdown["current_cpu"] = penalty_config.get("cpu_high_penalty", 20)
+    # What each penalty looked at, for the itemised breakdown (see build_penalty_items).
+    penalty_inputs: Dict[str, Dict[str, Any]] = {}
 
-    if immediate_mem > (mem_threshold + mem_offset_2):
-        penalty_breakdown["current_mem"] = penalty_config.get("mem_extreme_penalty", 100)
-    elif immediate_mem > (mem_threshold + mem_offset_1):
-        penalty_breakdown["current_mem"] = penalty_config.get("mem_very_high_penalty", 50)
-    elif immediate_mem > mem_threshold:
-        penalty_breakdown["current_mem"] = penalty_config.get("mem_high_penalty", 20)
+    def apply_tier(key: str, value: float, tiers: List[Tuple[float, str]], label: str, unit: str = "%") -> None:
+        """Set ``penalty_breakdown[key]`` from the highest tier ``value`` exceeds.
+
+        ``tiers`` is ``[(threshold, penalty_config_key), ...]`` ordered highest first;
+        comparisons are strict (``value > threshold``), matching the original chains.
+        """
+        for threshold, cfg_key in tiers:
+            if value > threshold:
+                points = penalty_config.get(cfg_key, 0)
+                penalty_breakdown[key] = points
+                penalty_inputs[key] = {"label": label, "value": value, "threshold": threshold,
+                                       "unit": unit, "base_points": points, "adjustments": []}
+                return
+
+    def record_input(key: str, label: str, value: Optional[float], threshold: Optional[float], unit: str = "%") -> None:
+        """Note what a penalty set outside ``apply_tier`` looked at (no-op when it is 0)."""
+        points = penalty_breakdown.get(key, 0)
+        if points:
+            penalty_inputs[key] = {"label": label, "value": value, "threshold": threshold,
+                                   "unit": unit, "base_points": points, "adjustments": []}
+
+    # Current load penalty - heavily penalize nodes with high current load
+    apply_tier("current_cpu", immediate_cpu, [
+        (cpu_threshold + cpu_offset_2, "cpu_extreme_penalty"),
+        (cpu_threshold + cpu_offset_1, "cpu_very_high_penalty"),
+        (cpu_threshold, "cpu_high_penalty"),
+    ], "CPU now (15-min avg)")
+
+    apply_tier("current_mem", immediate_mem, [
+        (mem_threshold + mem_offset_2, "mem_extreme_penalty"),
+        (mem_threshold + mem_offset_1, "mem_very_high_penalty"),
+        (mem_threshold, "mem_high_penalty"),
+    ], "Memory now")
 
     # Sustained load penalties - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
-        if long_cpu > 90:
-            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_critical", 150)
-        elif long_cpu > 80:
-            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_very_high", 80)
-        elif long_cpu > 70:
-            penalty_breakdown["sustained_cpu"] = penalty_config.get("cpu_sustained_high", 40)
+        apply_tier("sustained_cpu", long_cpu, [
+            (90, "cpu_sustained_critical"),
+            (80, "cpu_sustained_very_high"),
+            (70, "cpu_sustained_high"),
+        ], "CPU 7-day avg")
 
-        if long_mem > 95:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_critical", 60)
-        elif long_mem > 90:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_very_high", 25)
-        elif long_mem > 80:
-            penalty_breakdown["sustained_mem"] = penalty_config.get("mem_sustained_high", 10)
+        apply_tier("sustained_mem", long_mem, [
+            (95, "mem_sustained_critical"),
+            (90, "mem_sustained_very_high"),
+            (80, "mem_sustained_high"),
+        ], "Memory 7-day avg")
 
     # IOWait penalty - penalize high disk wait times (current always applies)
-    if immediate_iowait > 30:
-        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_extreme_penalty", 80)
-    elif immediate_iowait > 20:
-        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_very_high_penalty", 40)
-    elif immediate_iowait > 10:
-        penalty_breakdown["iowait_current"] = penalty_config.get("iowait_high_penalty", 20)
+    apply_tier("iowait_current", immediate_iowait, [
+        (30, "iowait_extreme_penalty"),
+        (20, "iowait_very_high_penalty"),
+        (10, "iowait_high_penalty"),
+    ], "IOWait now (15-min avg)")
 
     # Sustained IOWait penalties - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
-        if long_iowait > 20:
-            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_critical", 60)
-        elif long_iowait > 15:
-            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_high", 30)
-        elif long_iowait > 10:
-            penalty_breakdown["iowait_sustained"] = penalty_config.get("iowait_sustained_elevated", 15)
+        apply_tier("iowait_sustained", long_iowait, [
+            (20, "iowait_sustained_critical"),
+            (15, "iowait_sustained_high"),
+            (10, "iowait_sustained_elevated"),
+        ], "IOWait 7-day avg")
 
     # IOWait exemption: a node whose iowait is structurally from a passthrough/dedicated-
     # storage guest (collector-flagged) shouldn't be treated as a poor migration target on
@@ -557,6 +575,8 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 penalty_breakdown["cpu_trend"] = int(base_trend_penalty * 2)
             elif cpu_rate > 0.5:
                 penalty_breakdown["cpu_trend"] = base_trend_penalty
+            record_input("cpu_trend", "CPU trend", cpu_rate,
+                         3.0 if cpu_rate > 3.0 else 1.0 if cpu_rate > 1.0 else 0.5, "%/day")
 
             # Memory trend penalties are disabled by default (mem_trend_rising_penalty=0)
             # because memory trends in Proxmox reflect migration history, not workload
@@ -570,6 +590,8 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                     penalty_breakdown["mem_trend"] = int(base_mem_trend_penalty * 2)
                 elif mem_rate > 0.5:
                     penalty_breakdown["mem_trend"] = base_mem_trend_penalty
+                record_input("mem_trend", "Memory trend", mem_rate,
+                             3.0 if mem_rate > 3.0 else 1.0 if mem_rate > 1.0 else 0.5, "%/day")
 
             # CPU stability factor: stable nodes get CPU penalties *reduced* (a
             # high reading is likely transient). Volatile nodes are no longer
@@ -592,29 +614,27 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
     if _node_trend_data is None and (weight_24h > 0 or weight_7d > 0):
         if cpu_trend == "rising":
             penalty_breakdown["cpu_trend"] = penalty_config.get("cpu_trend_rising_penalty", 15)
+            record_input("cpu_trend", "CPU trend rising", None, None, "")
         # Memory trend penalty disabled by default — see note above.
         if mem_trend == "rising":
             penalty_breakdown["mem_trend"] = penalty_config.get("mem_trend_rising_penalty", 0)
+            record_input("mem_trend", "Memory trend rising", None, None, "")
 
     # Max spike penalty - only apply if using weekly historical data (7d weight > 0)
     if weight_7d > 0:
-        if max_cpu_week > 95:
-            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_extreme", 30)
-        elif max_cpu_week > 90:
-            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_very_high", 20)
-        elif max_cpu_week > 80:
-            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_high", 10)
-        elif max_cpu_week > 70:
-            penalty_breakdown["cpu_spikes"] = penalty_config.get("cpu_spike_moderate", 5)
+        apply_tier("cpu_spikes", max_cpu_week, [
+            (95, "cpu_spike_extreme"),
+            (90, "cpu_spike_very_high"),
+            (80, "cpu_spike_high"),
+            (70, "cpu_spike_moderate"),
+        ], "CPU peak this week")
 
-        if max_mem_week > 98:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_extreme", 20)
-        elif max_mem_week > 95:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_very_high", 10)
-        elif max_mem_week > 90:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_high", 5)
-        elif max_mem_week > 85:
-            penalty_breakdown["mem_spikes"] = penalty_config.get("mem_spike_moderate", 5)
+        apply_tier("mem_spikes", max_mem_week, [
+            (98, "mem_spike_extreme"),
+            (95, "mem_spike_very_high"),
+            (90, "mem_spike_high"),
+            (85, "mem_spike_moderate"),
+        ], "Memory peak this week")
 
     # Predict post-migration load
     predicted = predict_post_migration_load(target_node, guest, adding=adding, penalty_config=penalty_config, guest_profile=guest_profile)
@@ -632,19 +652,17 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             )
 
     # Penalize if predicted load exceeds thresholds (don't disqualify)
-    if predicted["cpu"] > (cpu_threshold + cpu_offset_2):
-        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_extreme_penalty", 100)
-    elif predicted["cpu"] > (cpu_threshold + cpu_offset_1):
-        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_high_penalty", 50)
-    elif predicted["cpu"] > cpu_threshold:
-        penalty_breakdown["predicted_cpu"] = penalty_config.get("predicted_cpu_over_penalty", 25)
+    apply_tier("predicted_cpu", predicted["cpu"], [
+        (cpu_threshold + cpu_offset_2, "predicted_cpu_extreme_penalty"),
+        (cpu_threshold + cpu_offset_1, "predicted_cpu_high_penalty"),
+        (cpu_threshold, "predicted_cpu_over_penalty"),
+    ], "CPU forecast after the move")
 
-    if predicted["mem"] > (mem_threshold + mem_offset_2):
-        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_extreme_penalty", 100)
-    elif predicted["mem"] > (mem_threshold + mem_offset_1):
-        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_high_penalty", 50)
-    elif predicted["mem"] > mem_threshold:
-        penalty_breakdown["predicted_mem"] = penalty_config.get("predicted_mem_over_penalty", 25)
+    apply_tier("predicted_mem", predicted["mem"], [
+        (mem_threshold + mem_offset_2, "predicted_mem_extreme_penalty"),
+        (mem_threshold + mem_offset_1, "predicted_mem_high_penalty"),
+        (mem_threshold, "predicted_mem_over_penalty"),
+    ], "Memory forecast after the move")
 
     # Apply CPU stability factor now that all CPU penalties (including spikes
     # and predicted) have been calculated.
@@ -655,6 +673,9 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 penalty_breakdown[_cpu_key] = int(
                     round(penalty_breakdown[_cpu_key] * cpu_stability_factor)
                 )
+                if _cpu_key in penalty_inputs:
+                    penalty_inputs[_cpu_key]["adjustments"].append(
+                        f"x{cpu_stability_factor:g} (steady CPU this week)")
 
     # Memory overcommit penalty — running guests' allocated memory exceeds physical RAM.
     # Proxmox commonly overcommits via ballooning, so use relaxed thresholds:
@@ -684,6 +705,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         penalty_breakdown["mem_overcommit"] = int(round(
             min_oc_penalty + scale * (max_oc_penalty - min_oc_penalty)
         ))
+        record_input("mem_overcommit", "RAM allocated to running guests", overcommit_ratio, 1.2, "x")
 
     # Cap total memory penalties to prevent memory from dominating the score.
     # Memory is mostly static in Proxmox (fixed allocations), so it should not
@@ -699,6 +721,9 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
         for k in mem_penalty_keys:
             if k in penalty_breakdown and penalty_breakdown[k] > 0:
                 penalty_breakdown[k] = int(round(penalty_breakdown[k] * scale))
+                if k in penalty_inputs:
+                    penalty_inputs[k]["adjustments"].append(
+                        f"x{scale:.2f} (memory penalties capped at {mem_penalty_cap} pts)")
 
     # Sum all penalties
     penalties = sum(penalty_breakdown.values())
@@ -775,6 +800,20 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             "max_mem_week": round(max_mem_week, 1),
         },
         "total_score": round(total_score, 1),
+        "penalty_items": build_penalty_items(penalty_breakdown, penalty_inputs),
+        "score_breakdown": build_score_breakdown(
+            total_score=total_score,
+            penalties=penalties,
+            components={
+                "health": health_score,
+                "predicted": predicted_health,
+                "headroom": headroom_score,
+                "storage": storage_score,
+            },
+            notes=(["IOWait not scored: it comes from a guest on its own disks"]
+                   if penalty_config.get("iowait_exempt_enabled", True) and target_node.get("iowait_exempt")
+                   else []),
+        ),
     }
 
     # Attach trend analysis data when available for UI transparency
@@ -795,6 +834,171 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
 
     return total_score, details
 
+
+# ---------------------------------------------------------------------------
+# Score breakdown (explains a headroom figure line by line)
+# ---------------------------------------------------------------------------
+
+# penalty_breakdown key -> resource category (matches the UI's penalty_categories).
+PENALTY_ITEM_CATEGORY = {
+    "current_cpu": "cpu", "sustained_cpu": "cpu", "predicted_cpu": "cpu",
+    "current_mem": "memory", "sustained_mem": "memory", "predicted_mem": "memory",
+    "mem_overcommit": "memory",
+    "iowait_current": "iowait", "iowait_sustained": "iowait",
+    "cpu_trend": "trends", "mem_trend": "trends",
+    "cpu_spikes": "spikes", "mem_spikes": "spikes",
+}
+
+# Score components -> (label, weight). The weights are the ones in
+# calculate_target_node_score's ``total_score`` formula.
+SCORE_COMPONENTS = {
+    "health": ("Current load (CPU, RAM, IOWait, load, disk)", 0.25),
+    "predicted": ("Load after taking a small guest", 0.40),
+    "headroom": ("Capacity in use (CPU 65%, RAM 35%)", 0.20),
+    "storage": ("Local storage fill", 0.15),
+}
+
+
+def _round_or_none(value: Optional[float], ndigits: int = 1) -> Optional[float]:
+    """Round a number, passing ``None`` through (missing data stays missing)."""
+    return None if value is None else round(float(value), ndigits)
+
+
+def build_penalty_items(penalty_breakdown: Dict[str, Any],
+                        penalty_inputs: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """List every non-zero penalty with the reading that triggered it.
+
+    Args:
+        penalty_breakdown: Final points per penalty key (after stability scaling and
+            the memory cap), exactly the values summed into the score.
+        penalty_inputs: Per key, what the penalty looked at: label, value, threshold,
+            unit, points before adjustments and the adjustments applied.
+
+    Returns:
+        Items sorted by points, largest first. ``points`` sum to the score's total
+        penalty points. ``value``/``threshold`` are ``None`` when the penalty came
+        from a label (e.g. a "rising" trend) rather than a number.
+    """
+    items = []
+    for key, points in penalty_breakdown.items():
+        if not points:
+            continue
+        info = penalty_inputs.get(key, {})
+        digits = 2 if info.get("unit") == "x" else 1
+        items.append({
+            "key": key,
+            "category": PENALTY_ITEM_CATEGORY.get(key, "other"),
+            "label": info.get("label", key.replace("_", " ")),
+            "value": _round_or_none(info.get("value"), digits),
+            "threshold": _round_or_none(info.get("threshold"), digits),
+            "unit": info.get("unit", ""),
+            "base_points": info.get("base_points", points),
+            "points": points,
+            "adjustments": list(info.get("adjustments", [])),
+        })
+    items.sort(key=lambda i: -i["points"])
+    return items
+
+
+def build_score_breakdown(total_score: float, penalties: float, components: Dict[str, float],
+                          notes: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Show how a node's score and headroom are put together.
+
+    ``score = sum(component * weight) + penalty points`` and
+    ``headroom = 100 - min(score, 100)``, floored at 0. ``base_points`` is the
+    weighted-component part, derived as ``score - penalty_points`` so that
+    ``base_points + penalty_points == score`` holds after rounding.
+
+    Args:
+        total_score: The unrounded score from calculate_target_node_score.
+        penalties: Sum of all penalty points.
+        components: Unweighted component values keyed as in SCORE_COMPONENTS.
+        notes: Optional plain-language caveats (e.g. the IOWait exemption).
+
+    Returns:
+        Dict with ``base`` (per-component value, weight and points), ``base_points``,
+        ``penalty_points``, ``score``, ``headroom``, ``capped`` (score above 100, so
+        headroom bottoms out at 0) and ``notes``.
+    """
+    base = []
+    for key, (label, weight) in SCORE_COMPONENTS.items():
+        value = components.get(key)
+        base.append({
+            "key": key,
+            "label": label,
+            "value": _round_or_none(value),
+            "weight": weight,
+            "points": _round_or_none(None if value is None else value * weight, 2),
+        })
+    score = round(total_score, 1)
+    penalty_points = round(penalties, 2)
+    return {
+        "base": base,
+        "base_points": round(score - penalty_points, 1),
+        "penalty_points": penalty_points,
+        "score": score,
+        "headroom": round(max(0.0, 100 - min(total_score, 100)), 1),
+        "capped": total_score > 100,
+        "notes": notes or [],
+    }
+
+
+def _spread_stats(values: List[Tuple[str, float]]) -> Optional[Dict[str, Any]]:
+    """min/max/spread/mean/coefficient of variation for (node, value) pairs; None if < 2."""
+    if len(values) < 2:
+        return None
+    nums = [v for _, v in values]
+    lo_node, lo = min(values, key=lambda nv: nv[1])
+    hi_node, hi = max(values, key=lambda nv: nv[1])
+    mean = sum(nums) / len(nums)
+    variance = sum((v - mean) ** 2 for v in nums) / len(nums)
+    cv = (variance ** 0.5) / mean if mean > 0 else None
+    return {
+        "min": round(lo, 1), "min_node": lo_node,
+        "max": round(hi, 1), "max_node": hi_node,
+        "spread": round(hi - lo, 1),
+        "mean": round(mean, 1),
+        "cv": None if cv is None else round(cv, 3),
+        "nodes": len(nums),
+    }
+
+
+def cluster_spread(nodes: Dict[str, Any]) -> Dict[str, Any]:
+    """How unevenly memory and CPU are spread across the online nodes.
+
+    CPU uses :func:`recent_cpu` (the ~15-minute average scoring uses), memory the
+    current reading. Offline nodes and nodes with no reading are left out; a metric
+    with fewer than two readings is ``None`` (shown as a dash, never 0).
+
+    Args:
+        nodes: ``cluster_cache.json``'s ``nodes`` mapping.
+
+    Returns:
+        ``{"memory": stats|None, "cpu": stats|None, "online_nodes": int}``. Stats hold
+        ``min``, ``max``, ``spread`` (max - min, percentage points), ``mean``, ``cv``
+        (population std-dev / mean, ``None`` when the mean is 0), the node at each end
+        and how many nodes were counted.
+    """
+    mem_vals: List[Tuple[str, float]] = []
+    cpu_vals: List[Tuple[str, float]] = []
+    online = 0
+    for name, node in (nodes or {}).items():
+        if not isinstance(node, dict) or node.get("status") != "online":
+            continue
+        online += 1
+        label = node.get("name", name)
+        m = node.get("metrics") or {}
+        mem = m.get("current_mem", node.get("mem_percent"))
+        if isinstance(mem, (int, float)) and not isinstance(mem, bool):
+            mem_vals.append((label, float(mem)))
+        cpu = recent_cpu(m) if ("recent_cpu" in m or "current_cpu" in m) else node.get("cpu_percent")
+        if isinstance(cpu, (int, float)) and not isinstance(cpu, bool):
+            cpu_vals.append((label, float(cpu)))
+    return {
+        "memory": _spread_stats(mem_vals),
+        "cpu": _spread_stats(cpu_vals),
+        "online_nodes": online,
+    }
 
 # ---------------------------------------------------------------------------
 # Migration risk scoring

@@ -1,5 +1,8 @@
 import { MODAL_OVERLAY, MODAL_CONTAINER, scoreColor } from '../../utils/designTokens.js';
-import { X } from '../Icons.jsx';
+import { X, ChevronDown } from '../Icons.jsx';
+import { ScoreBreakdown, SpreadFigure } from './ScoreBreakdown.jsx';
+
+const { useState } = React;
 
 const PENALTY_SEGMENTS = [
   { key: 'cpu',     label: 'CPU',     color: 'bg-red-500',    text: 'text-red-700 dark:text-red-300' },
@@ -46,6 +49,7 @@ function PenaltyBar({ cats }) {
 }
 
 function NodeCard({ name, rating, score, isWorst }) {
+  const [open, setOpen] = useState(false);
   const stab = StabilityLabel(score?.trend_analysis?.stability_score);
   const oc = score?.overcommit_ratio;
   const ocColor = oc > 1.2 ? 'text-red-600 dark:text-red-400' : oc > 1.0 ? 'text-orange-600 dark:text-orange-400' : oc > 0.85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
@@ -70,12 +74,26 @@ function NodeCard({ name, rating, score, isWorst }) {
             OC {(oc * 100).toFixed(0)}%
           </span>
         )}
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          className="ml-auto flex items-center gap-1 py-1 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
+        >
+          Why {rating.toFixed(0)}?
+          <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
       </div>
+      {open && (
+        <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700/60">
+          <ScoreBreakdown score={score} compact />
+        </div>
+      )}
     </div>
   );
 }
 
-export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeScores, healthSource, tightest = null }) {
+export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeScores, healthSource, tightest = null, spread = null }) {
   if (!open) return null;
   const entries = Object.entries(nodeScores || {})
     .filter(([_, v]) => typeof v?.suitability_rating === 'number')
@@ -136,6 +154,11 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
             </div>
           )}
 
+          {/* How evenly load sits across the online nodes */}
+          <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50">
+            <SpreadFigure spread={spread} />
+          </div>
+
           {entries.length === 0 && (
             <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4 text-center">No node ratings available yet.</div>
           )}
@@ -152,7 +175,7 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
           ))}
 
           <div className="text-[11px] text-pb-text2 dark:text-gray-500 px-1 pt-1">
-            Click a node row in the Cluster section's Nodes tab for full metric detail.
+            Tap "Why" on a node for each penalty and the arithmetic; tap a node row in the Cluster section's Nodes tab for full metric detail.
           </div>
         </div>
       </div>

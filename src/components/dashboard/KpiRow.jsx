@@ -1,6 +1,7 @@
 import { KPI_CARD, scoreColor, headroomLevel } from '../../utils/designTokens.js';
 import { Server, Activity, Clock, MoveRight } from '../Icons.jsx';
 import ClusterHealthBreakdown from './ClusterHealthBreakdown.jsx';
+import { spreadText } from './ScoreBreakdown.jsx';
 import InFlightModal, { inFlightMigrations } from './InFlightModal.jsx';
 import { getStatus, getNextCheck } from './AutoStatusPill.jsx';
 import { tightestNode, toNodeSet } from '../../utils/nodeCondition.js';
@@ -135,6 +136,7 @@ export default function KpiRow({
         tightest={busiest}
         nodeScores={nodeScores}
         healthSource={healthSource}
+        spread={data.cluster_spread}
       />
       <InFlightModal
         open={showInFlight}
@@ -202,6 +204,7 @@ export default function KpiRow({
           {busiest
             ? <Sub>Busiest: <span className="text-pb-text dark:text-gray-300">{busiest.name}</span> · headroom <span className="tabular-nums">{healthVal}</span></Sub>
             : healthVal !== null && <Sub>headroom {healthVal}</Sub>}
+          {data.cluster_spread && <Sub title="Max − min across online nodes">{spreadText(data.cluster_spread)}</Sub>}
         </div>
       </Tile>
 

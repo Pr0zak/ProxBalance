@@ -267,4 +267,21 @@ Result: node2 = 100%, node3 = 0%. No hard disqualification means evacuation alwa
 
 ---
 
+## Explaining a headroom figure
+
+The headroom shown on the dashboard is `100 − min(score, 100)`, where
+`score = base load + penalty points` and the base load is
+`current load × 25% + load after a small guest × 40% + capacity in use × 20% + local storage fill × 15%`.
+`/api/node-scores` returns this itemised (`penalty_items`, `score_breakdown`) and the
+dashboard lists it in the Cluster Health breakdown ("Why N?") and the node side panel,
+e.g. `CPU peak this week 82% (over 80%) → +10`. Penalties scaled by the stable-CPU factor
+or the 60-point memory cap show the adjustment next to them, so the lines always add up
+to the score.
+
+The cluster summary also reports a **spread**: max − min across online nodes for memory %
+and CPU % (the 15-minute average), with the coefficient of variation. It is shown next to
+the health figure and is informational; it does not change any score.
+
+---
+
 [Back to Documentation](README.md)
