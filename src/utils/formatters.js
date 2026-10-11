@@ -44,11 +44,35 @@ export function runFailureReason(run) {
   return null;
 }
 
+/**
+ * Readable labels for the machine-readable `skip_code` automigrate stores on
+ * some decisions (the free-text `reason` stays the detailed explanation).
+ */
+export const SKIP_CODE_LABELS = {
+  target_inflow_cap: 'Per-node inflow cap',
+};
+
+/** Short label for a decision's skip code, or null when it has none. */
+export function decisionSkipLabel(decision) {
+  const code = decision && decision.skip_code;
+  if (!code) return null;
+  return SKIP_CODE_LABELS[code] || String(code).replace(/_/g, ' ');
+}
+
+/** Distinct guests in a run held back by the per-node inflow cap. */
+export function inflowCappedCount(run) {
+  const decisions = Array.isArray(run?.decisions) ? run.decisions : [];
+  return new Set(decisions.filter(d => d.skip_code === 'target_inflow_cap').map(d => String(d.vmid))).size;
+}
+
+const inflowCapNote = (n) => `${n} move${n === 1 ? '' : 's'} held back by the per-node inflow cap; reconsidered next run.`;
+
 export function runStatusLabel(run) {
   if (!run) return { label: '—', tone: 'neutral', banner: null };
   const status = run.status;
-  if (status === 'success') return { label: 'Success', tone: 'success', banner: null };
-  if (status === 'partial') return { label: 'Partial', tone: 'warn', banner: null };
+  const capped = inflowCappedCount(run);
+  if (status === 'success') return { label: 'Success', tone: 'success', banner: capped ? inflowCapNote(capped) : null };
+  if (status === 'partial') return { label: 'Partial', tone: 'warn', banner: capped ? inflowCapNote(capped) : null };
   if (status === 'failed')  return { label: 'Failed',  tone: 'error', banner: runFailureReason(run) };
   if (status === 'skipped') {
     const why = run.safety_checks?.cluster_health || run.safety_checks?.migration_window;
@@ -59,19 +83,20 @@ export function runStatusLabel(run) {
   // no_action — figure out *why*
   const decisions = Array.isArray(run.decisions) ? run.decisions : [];
   const observing = decisions.filter(d => d.action === 'observing').length;
-  const filtered  = decisions.filter(d => d.action === 'filtered' || d.action === 'skipped').length;
+  const filtered  = decisions.filter(d => (d.action === 'filtered' || d.action === 'skipped') && d.skip_code !== 'target_inflow_cap').length;
 
-  if (observing > 0 && filtered === 0) {
+  if (observing > 0 && filtered === 0 && !capped) {
     return {
       label: 'Awaiting Observations',
       tone: 'info',
       banner: `${observing} candidate${observing === 1 ? '' : 's'} in observation window — Intelligent mode is collecting data before acting.`,
     };
   }
-  if (filtered > 0 || observing > 0) {
+  if (filtered > 0 || observing > 0 || capped > 0) {
     const parts = [];
     if (observing) parts.push(`${observing} observing`);
     if (filtered)  parts.push(`${filtered} filtered`);
+    if (capped)    parts.push(`${capped} held by the per-node inflow cap`);
     return {
       label: 'No Action',
       tone: 'info',

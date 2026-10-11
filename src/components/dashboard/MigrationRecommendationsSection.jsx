@@ -13,7 +13,8 @@ import SkippedGuests from './recommendations/SkippedGuests.jsx';
 import ImpactStrip from './recommendations/ImpactStrip.jsx';
 import ConflictResolver from './recommendations/ConflictResolver.jsx';
 import { SelectionToolbar, SelectionActionBar } from './recommendations/SelectionControls.jsx';
-import { vkey, subsetPlan, planWaves, simulateImpact, conflictState } from './recommendations/planMath.js';
+import { vkey, subsetPlan, planWaves, simulateImpact, conflictState, inflowOverCap } from './recommendations/planMath.js';
+import InflowCapWarning from './recommendations/InflowCapWarning.jsx';
 import EngineDiagnostics from './recommendations/insights/EngineDiagnostics.jsx';
 import { Info, AlertCircle } from '../Icons.jsx';
 import { useAppStatus } from '../AppStatus.jsx';
@@ -141,6 +142,11 @@ export default function MigrationRecommendationsSection({
     scopeLabel = `If the ${activeRecs.length} remaining run (${deferredRecs.length} left out)`;
   }
   const impact = simulateImpact(summary, impactScope, fallbackLimits);
+
+  // Automation's per-node inflow cap, applied to the plan the user would run
+  // (the selection, else everything not deferred). Warns; does not block.
+  const inflowCap = automationConfig?.rules?.max_target_inflow_per_cycle ?? 0;
+  const inflowOver = inflowOverCap(subsetPlan(enginePlan, selectedRecs.length ? selectedRecs : runnableRecs), inflowCap);
   const overTargets = new Set((impact?.nodes || []).filter(n => n.overCpu || n.overMem).map(n => n.name));
 
   // --- Selection ---
@@ -434,6 +440,16 @@ export default function MigrationRecommendationsSection({
               canMigrate={canMigrate}
             />
           ))}
+
+          {/* Plan sends more moves into one node than automation's inflow cap */}
+          {!loadingRecommendations && inflowOver.length > 0 && (
+            <InflowCapWarning
+              over={inflowOver}
+              cap={inflowCap}
+              scoped={selectedRecs.length > 0}
+              onDeferMany={setDeferredMany}
+            />
+          )}
 
           {/* Alerts: capacity advisories + trend forecasts */}
           {!loadingRecommendations && (

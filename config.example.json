@@ -72,6 +72,7 @@
       "min_confidence_score": 75,
       "max_migrations_per_run": 3,
       "max_concurrent_migrations": 1,
+      "max_target_inflow_per_cycle": 0,
       "cooldown_minutes": 30,
       "respect_ignore_tags": true,
       "respect_exclude_tags": true,

@@ -211,6 +211,7 @@ Blackout windows always take priority over migration windows. If the `migration_
 | `min_confidence_score` | int | `75` | Minimum suitability rating to execute (1-100) |
 | `max_migrations_per_run` | int | `3` | Maximum migrations per automation cycle (1-10) |
 | `max_concurrent_migrations` | int | `1` | Concurrent migration limit |
+| `max_target_inflow_per_cycle` | int | `0` | Most migrations one target node may receive in a single automation run (0-5, `0` = no limit). See [Target inflow cap](AUTOMATION.md#target-inflow-cap) |
 | `cooldown_minutes` | int | `30` | Time between migrations for the same guest (1-1440) |
 | `respect_ignore_tags` | bool | `true` | Honor `ignore` tags (skip tagged guests) |
 | `respect_exclude_tags` | bool | `true` | Honor `exclude_*` tags (anti-affinity) |

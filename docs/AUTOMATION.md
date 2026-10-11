@@ -58,6 +58,7 @@ Quick Setup shows one status line (state, the reason, the last run and its resul
 | Min Confidence Score | `75` | Minimum suitability rating (0-100) |
 | Max Migrations Per Run | `3` | Rate limit per cycle |
 | Max Concurrent | `1` | Concurrent migration limit |
+| Max Into One Node Per Run | `0` (off) | Most migrations one target node may receive in a run (0-5). See [Target inflow cap](#target-inflow-cap) |
 | Cooldown | `30 min` | Time between migrations per guest |
 
 ### Sensitivity
@@ -144,6 +145,18 @@ Safety checks run before every migration. If any check fails, the migration is s
 | Max node memory | `90%` | Rejects target nodes above this memory threshold |
 | Max node CPU | `85%` | Rejects target nodes above this CPU threshold |
 | Abort on failure | `true` | Disables automation after a migration failure |
+
+### Target inflow cap
+
+`rules.max_target_inflow_per_cycle` (Automation page, What to Migrate > Limits, "Max into one node per run") caps how many migrations a single run may send to the same target node. Without it, a run with `max_migrations_per_run: 3` can move three guests onto the emptiest node before the scores are re-read, which often overshoots and starts the next run moving guests back out.
+
+- `0` (default) turns the cap off. Valid values are 0-5; the API rejects anything else with HTTP 400, and an out-of-range value edited into `config.json` by hand is clamped.
+- Each successful migration to a node counts, and so does every affinity companion that follows it there. Companions are never held back by the cap, because the group has to stay together.
+- A recommendation whose target is at the cap is skipped with the reason "Target inflow cap: <node> already received N migrations this run" and `skip_code: "target_inflow_cap"` on its decision. The run then takes the next eligible recommendation for a different node, so the cap redistributes moves rather than only cutting them.
+- The cap applies to maintenance evacuations too: draining a node takes more runs, but the receiving nodes are not flooded.
+- Only migrations started by the current run are counted. Migrations still running from an earlier run or started by hand are covered by `max_concurrent_migrations`, not by this cap.
+
+Manual plans on the dashboard (Suggestions > Run plan) are not blocked by the cap, in the same way `max_migrations_per_run` does not limit them. When the plan you are about to run sends more guests to one node than the cap allows, the Suggestions tab shows a warning naming the node and offers to leave the extra moves out of this run; you can still run the plan as it is.
 
 ### Duplicate migration prevention
 
@@ -329,6 +342,7 @@ Check the run decisions (History & Logs) or the journal for skip reasons:
 - "Outside all migration windows" -- scheduling restriction (also shown when every migration window is disabled)
 - "In blackout: <name>" -- blocked by a blackout window
 - "Migration conflict on target <node>" -- several moves into one node would exceed the safety limits
+- "Target inflow cap: <node> already received N migrations this run" -- the node reached `max_target_inflow_per_cycle` this run; the guest is reconsidered next run
 - "Cluster not quorate" -- safety check
 - "Maximum concurrent migrations already running" -- concurrency limit
 - Mode `dry_run` -- simulation mode, nothing is executed

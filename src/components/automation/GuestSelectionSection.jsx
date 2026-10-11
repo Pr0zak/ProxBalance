@@ -39,7 +39,7 @@ export default function GuestSelectionSection({
           {/* ── Limits ── */}
           <div className="border-t border-pb-border dark:border-slate-700 pt-4">
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Limits</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <NumberRow
                 label="Minimum confidence"
                 description="Skip moves the engine is less sure of"
@@ -60,6 +60,13 @@ export default function GuestSelectionSection({
                 min="1" max="10"
                 value={automationConfig.rules?.max_concurrent_migrations ?? 3}
                 onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
+              />
+              <NumberRow
+                label="Max into one node per run"
+                description="Max migrations into one node per run (0 = no limit)"
+                min="0" max="5"
+                value={automationConfig.rules?.max_target_inflow_per_cycle ?? 0}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_target_inflow_per_cycle: Math.max(0, Math.min(5, val)) } })}
               />
             </div>
           </div>
