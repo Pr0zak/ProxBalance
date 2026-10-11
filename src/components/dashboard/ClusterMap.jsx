@@ -1,6 +1,6 @@
 import {
   Server, ChevronDown, Cpu, MemoryStick, Database, Zap, Globe,
-  RefreshCw, CheckCircle, Folder, MoveRight, Search, X
+  RefreshCw, CheckCircle, MoveRight, Search, X
 } from '../Icons.jsx';
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
@@ -10,6 +10,7 @@ import {
   QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration,
 } from './clusterMapHelpers.js';
 import { MovePreviewPanel, MoveToSheet } from './MovePreview.jsx';
+import { GuestFlagTray, GuestFlagList, GuestFlagLegend } from './GuestFlags.jsx';
 
 const { useState, useRef, useEffect, useLayoutEffect } = React;
 
@@ -615,7 +616,7 @@ export default function ClusterMap({
                   )}
 
                   {/* Guests */}
-                  <div className="flex flex-wrap gap-2.5 justify-center w-full">
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-4 justify-center w-full">
                     {nodeGuests.map(guest => {
                       const cpuUsage = guest.cpu_current || 0;
                       const memPercent = guest.mem_max_gb > 0 ? ((guest.mem_used_gb || 0) / guest.mem_max_gb) * 100 : 0;
@@ -656,7 +657,7 @@ export default function ClusterMap({
                               setDrag({ vmid: guest.vmid });
                             }}
                             onDragEnd={endDrag}
-                            className={`rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${matched || isPreviewed ? 'ring-[3px] ring-sky-400 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark' : ''} ${isStopped && !matched && !isPreviewed ? 'opacity-40' : ''} ${canDrag ? 'active:cursor-grabbing' : ''}`}
+                            className={`relative rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${matched || isPreviewed ? 'ring-[3px] ring-sky-400 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark' : ''} ${isStopped && !matched && !isPreviewed ? 'opacity-40' : ''} ${canDrag ? 'active:cursor-grabbing' : ''}`}
                             style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`, ...(colorMode === 'load' ? { background: heatHex(sizeRatio) } : {})}}
                             onClick={() => {
                               if (isMigrating) return;
@@ -666,9 +667,10 @@ export default function ClusterMap({
                             aria-label={guest.name || `Guest ${guest.vmid}`}
                           >
                             {guest.vmid}
+                            {!isMigrating && !isCompleted && <GuestFlagTray guest={guest} />}
                           </div>
                           {matched && (
-                            <div className="mt-1 max-w-[84px] truncate text-[10px] font-semibold text-sky-700 dark:text-sky-300" title={guest.name}>
+                            <div className="mt-2.5 max-w-[84px] truncate text-[10px] font-semibold text-sky-700 dark:text-sky-300" title={guest.name}>
                               {guest.name || `Guest ${guest.vmid}`}
                             </div>
                           )}
@@ -686,37 +688,9 @@ export default function ClusterMap({
                             </div>
                           )}
 
-                          {/* Mount Point Indicator - Square Tag (Top Right) */}
-                          {guest.mount_points?.has_mount_points && !isMigrating && !isCompleted && (
-                            <div
-                              className={`absolute -top-0.5 -right-0.5 ${
-                                guest.mount_points.has_unshared_bind_mount
-                                  ? 'bg-orange-500'
-                                  : 'bg-cyan-400'
-                              } rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800`}
-                              title={`${guest.mount_points.mount_count} mount point(s)${guest.mount_points.has_shared_mount ? ' (shared - safe to migrate)' : ' (requires manual migration)'}`}
-                            />
-                          )}
-
-                          {/* Pinned Disk Indicator - Square Tag (Top Left) */}
-                          {guest.local_disks?.is_pinned && !isMigrating && !isCompleted && (
-                            <div
-                              className="absolute -top-0.5 -left-0.5 bg-red-500 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
-                              title={`Cannot migrate: ${guest.local_disks.pinned_reason} (${guest.local_disks.total_pinned_disks} disk(s))`}
-                            />
-                          )}
-
-                          {/* IOWait-exempt Indicator - Square Tag (Bottom Left) */}
-                          {guest.io_exempt && !isMigrating && !isCompleted && (
-                            <div
-                              className="absolute -bottom-0.5 -left-0.5 bg-amber-400 rounded-[2px] w-3 h-3 shadow-lg ring-2 ring-gray-800"
-                              title={`IOWait-exempt (${guest.io_exempt_reason || 'tag'}) — this guest's IOWait is excluded from its node's scoring`}
-                            />
-                          )}
-
                           {/* Guest tooltip */}
-                          <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-2xl border border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10 ${isTouch || drag ? 'hidden' : ''}`}>
-                            <div className="font-bold text-sm mb-2 text-blue-600 dark:text-blue-400 border-b border-gray-700 pb-2">
+                          <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-pb-surface dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-10 ${isTouch || drag ? 'hidden' : ''}`}>
+                            <div className="font-bold text-sm mb-2 text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-gray-700 pb-2">
                               {guest.name || `Guest ${guest.vmid}`}
                               <span className="ml-2 text-pb-text2 dark:text-gray-400 font-normal text-xs">
                                 ({((guest.type || '').toUpperCase() === 'VM' || (guest.type || '').toUpperCase() === 'QEMU') ? 'VM' : 'CT'})
@@ -769,7 +743,7 @@ export default function ClusterMap({
                                 </span>
                               </div>
 
-                              <div className="border-t border-gray-700 pt-1.5 mt-1.5 space-y-1">
+                              <div className="border-t border-gray-200 dark:border-gray-700 pt-1.5 mt-1.5 space-y-1">
                                 <div className="flex justify-between gap-4">
                                   <span className="text-pb-text dark:text-gray-300">Disk Read:</span>
                                   <span className="font-semibold text-cyan-600 dark:text-cyan-400">{((guest.disk_read_bps || 0) / (1024 * 1024)).toFixed(2)} MB/s</span>
@@ -788,21 +762,7 @@ export default function ClusterMap({
                                 </div>
                               </div>
 
-                              {/* Mount Point Info */}
-                              {guest.mount_points?.has_mount_points && (
-                                <div className={`border-t border-gray-700 pt-1.5 mt-1.5 flex items-center gap-2 ${
-                                  guest.mount_points.has_unshared_bind_mount ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'
-                                } bg-gray-800/50 px-2 py-1 rounded`}>
-                                  <Folder size={14} />
-                                  <div className="flex flex-col">
-                                    <span className="text-xs font-semibold">
-                                      {guest.mount_points.mount_count} mount point{guest.mount_points.mount_count > 1 ? 's' : ''}
-                                      {guest.mount_points.has_shared_mount && ' (shared)'}
-                                      {guest.mount_points.has_unshared_bind_mount && ' (manual migration required)'}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
+                              <GuestFlagList guest={guest} className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-1.5 max-w-[240px]" />
                             </div>
                           </div>
                         </div>
@@ -858,10 +818,7 @@ export default function ClusterMap({
               )}
             </div>
             <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-cyan-400 ring-1 ring-gray-500" />shared mount</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-orange-500 ring-1 ring-gray-500" />unshared bind mount</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-red-500 ring-1 ring-gray-500" />pinned — cannot migrate</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[2px] bg-amber-400 ring-1 ring-gray-500" />IOWait-exempt</span>
+              <GuestFlagLegend />
             </div>
           </div>
         </div>

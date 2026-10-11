@@ -3,6 +3,7 @@ import {
   INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, ICON, MODAL_OVERLAY, MODAL_CONTAINER,
 } from '../../utils/designTokens.js';
 import { nodePreview, CPU_WARN, MEM_WARN } from './clusterMapHelpers.js';
+import { GuestFlagList } from './GuestFlags.jsx';
 
 const pct = (v) => `${Math.round(v || 0)}%`;
 
@@ -152,6 +153,9 @@ export function MoveToSheet({
             <XCircle size={22} className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300" />
           </button>
         </div>
+
+        {/* Flags shown as chips on the map bubble, spelled out (phones have no hover) */}
+        <GuestFlagList guest={guest} className="mb-3" />
 
         {target ? (
           <>
