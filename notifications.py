@@ -8,6 +8,7 @@ Telegram, Discord, Slack, and generic Webhooks.
 
 import json
 import logging
+import os
 import smtplib
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -341,6 +342,79 @@ PROVIDER_REGISTRY: Dict[str, type] = {
 }
 
 
+
+# ---------------------------------------------------------------------------
+# Delivery status (last successful / failed send per channel)
+# ---------------------------------------------------------------------------
+# A small JSON file next to config.json. It holds only channel names, event
+# types and timestamps, never message text, errors or credentials. Every
+# process that sends (API, automigrate, collector, recommendations) updates
+# it under an exclusive lock.
+
+STATUS_FILE: Optional[str] = None  # tests may point this elsewhere
+
+
+def _status_path() -> str:
+    if STATUS_FILE:
+        return STATUS_FILE
+    try:
+        from proxbalance.constants import BASE_PATH
+    except Exception:
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(BASE_PATH, "notification_status.json")
+
+
+def _read_status_file(path: str) -> Dict[str, Any]:
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def update_send_status(updates: Dict[str, Dict[str, Any]], meta: Optional[Dict[str, Any]] = None) -> None:
+    """Merge per-channel fields into the status file. Never raises.
+
+    Args:
+        updates: channel name -> fields to set (e.g. last_sent_at).
+        meta: optional top-level fields (e.g. {"backfilled": True}).
+    """
+    path = _status_path()
+    try:
+        import fcntl
+        with open(path + ".lock", "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            data = _read_status_file(path)
+            channels = data.get("channels") if isinstance(data.get("channels"), dict) else {}
+            for name, fields in updates.items():
+                entry = channels.get(name) if isinstance(channels.get(name), dict) else {}
+                entry.update(fields)
+                channels[name] = entry
+            data["channels"] = channels
+            if meta:
+                data.update(meta)
+            tmp = path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp, path)
+    except Exception as e:  # status is best effort; sending must not fail
+        logger.debug(f"Could not update notification status: {e}")
+
+
+def record_send(channel: str, event_type: str, success: bool) -> None:
+    """Remember the outcome of one send to one channel."""
+    now = datetime.now(timezone.utc).isoformat()
+    fields = ({"last_sent_at": now, "last_sent_event": event_type} if success
+              else {"last_failed_at": now, "last_failed_event": event_type})
+    update_send_status({channel: fields})
+
+
+def get_send_status() -> Dict[str, Any]:
+    """Return the whole status file ({"channels": {...}, ...}), {} if none."""
+    return _read_status_file(_status_path())
+
+
 # ---------------------------------------------------------------------------
 # NotificationManager
 # ---------------------------------------------------------------------------
@@ -452,12 +526,14 @@ class NotificationManager:
 
         title, message, priority = self._format_event(event_type, data)
 
-        for provider in self.providers:
+        for name, provider in self.named_providers.items():
             try:
                 provider.send(title, message, priority)
                 logger.info(f"Sent {event_type} notification via {provider.__class__.__name__}")
+                record_send(name, event_type, True)
             except Exception as e:
                 logger.error(f"Failed to send {event_type} notification via {provider.__class__.__name__}: {e}")
+                record_send(name, event_type, False)
 
     def test(self, only: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -479,8 +555,10 @@ class NotificationManager:
             try:
                 provider.send(title, message, "normal")
                 results[name] = {"success": True}
+                record_send(name, "test", True)
             except Exception as e:
                 results[name] = {"success": False, "error": self._scrub(str(e))}
+                record_send(name, "test", False)
 
         return results
 

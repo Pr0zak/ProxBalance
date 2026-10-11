@@ -9,6 +9,14 @@
  * label with a combined tooltip (each node keeps its own thin tick). Nodes below
  * the slider minimum (or above its maximum) are drawn as an edge marker with a
  * "<10%" / ">95%" label rather than silently pinned to the end.
+ *
+ * Nodes the engine won't act on are marked, not counted as "will target":
+ *  - IOWait: nodes flagged `iowait_exempt` (passthrough / NAS storage) are
+ *    drawn muted with "· exempt" and left out of the over-now / 24h lists.
+ *  - CPU: a node over the threshold only because of guests ProxBalance won't
+ *    move (`anchored_cpu`) is called out as such. Same rule as the engine:
+ *    movable CPU = (cpu - anchored) / (100 - anchored), and memory under the
+ *    source floor (docs/SCORING_ALGORITHM.md, "Anchored Load").
  */
 
 const { useState, useEffect, useRef } = React;
@@ -48,14 +56,14 @@ const valueText = (n, min, max) => (n.now < min ? `<${min}%` : n.now > max ? `>$
 
 /** Label for a group of nodes that share one tick. */
 function groupLabel(items, min, max) {
-  if (items.length === 1) return `${items[0].name} ${valueText(items[0], min, max)}`;
+  if (items.length === 1) return `${items[0].name} ${valueText(items[0], min, max)}${items[0].exempt ? ' · exempt' : ''}`;
   const lo = items[0];
   const hi = items[items.length - 1];
   const range = valueText(lo, min, max) === valueText(hi, min, max)
     ? valueText(lo, min, max)
     : `${valueText(lo, min, max)}–${valueText(hi, min, max)}`;
   const names = items.length === 2 ? items.map(n => n.name).join(', ') : `${items.length} nodes`;
-  return `${names} ${range}`;
+  return `${names} ${range}${items.every(n => n.exempt) ? ' · exempt' : ''}`;
 }
 
 /**
@@ -99,7 +107,7 @@ function groupNodes(list, min, max, width) {
   return groups;
 }
 
-export default function ThresholdSlider({ label, value, onChange, min, max, step = 5, nodes, metric, description }) {
+export default function ThresholdSlider({ label, value, onChange, min, max, step = 5, nodes, metric, description, memFloor = 65 }) {
   const [trackRef, width] = useWidth();
   const keys = METRIC_KEYS[metric];
   const frac = v => Math.max(0, Math.min(1, (v - min) / (max - min)));
@@ -108,17 +116,34 @@ export default function ThresholdSlider({ label, value, onChange, min, max, step
     .map(n => {
       const now = Number(keys.now(n.metrics)) || 0;
       const peak = Number(keys.peak(n.metrics)) || 0;
-      return { name: n.name, now, peak, f: frac(now), below: now < min, above: now > max, over: now > value, peakOver: peak > value };
+      const exempt = metric === 'iowait' && n.iowait_exempt === true;
+      // CPU from guests ProxBalance won't move (ignore-tagged, passthrough).
+      const anchored = metric === 'cpu' ? Math.min(90, Number(n.anchored_cpu) || 0) : 0;
+      const movable = anchored > 0 ? ((now - anchored) / (100 - anchored)) * 100 : now;
+      const memNow = Number(n.metrics.current_mem) || 0;
+      const over = now > value;
+      const anchoredOnly = over && anchored > 0 && movable < value && memNow < memFloor;
+      const anchoredNames = (n.anchored_guests || []).map(g => g.name).filter(Boolean);
+      return {
+        name: n.name, now, peak, f: frac(now), below: now < min, above: now > max,
+        over, peakOver: peak > value, exempt, anchoredOnly, anchoredNames,
+      };
     })
     .sort((a, b) => a.now - b.now);
 
   const groups = groupNodes(list, min, max, width);
-  const overNow = list.filter(n => n.over);
-  const peakOnly = list.filter(n => !n.over && n.peakOver);
-  const highest = list[list.length - 1];
+  // Only nodes the engine would actually act on count as "will target".
+  const counted = list.filter(n => !n.exempt);
+  const overNow = counted.filter(n => n.over && !n.anchoredOnly);
+  const anchoredOver = counted.filter(n => n.anchoredOnly);
+  const exemptOver = list.filter(n => n.exempt && n.over);
+  const peakOnly = counted.filter(n => !n.over && n.peakOver);
+  const highest = counted[counted.length - 1];
 
   const tooltip = g => g.items.map(n =>
     `${n.name}: ${pct(n.now)} now${n.below ? ` (below the ${min}% scale)` : n.above ? ` (above the ${max}% scale)` : ''}, ${pct(n.peak)} 24h peak`
+    + (n.exempt ? ' (exempt: IOWait comes from passthrough/NAS storage, moving guests won\'t lower it)' : '')
+    + (n.anchoredOnly ? ` (over only because of guests that don't move${n.anchoredNames.length ? `: ${n.anchoredNames.join(', ')}` : ''})` : '')
   ).join('\n');
 
   return (
@@ -130,7 +155,7 @@ export default function ThresholdSlider({ label, value, onChange, min, max, step
       {/* Node labels: one row, overlapping ones collapsed into a group */}
       <div ref={trackRef} className="relative h-4" aria-hidden={list.length === 0}>
         {width > 0 && groups.map(g => {
-          const anyOver = g.items.some(n => n.over);
+          const anyOver = g.items.some(n => n.over && !n.exempt && !n.anchoredOnly);
           return (
             <span
               key={g.items.map(n => n.name).join('|')}
@@ -157,12 +182,14 @@ export default function ThresholdSlider({ label, value, onChange, min, max, step
                 key={n.name}
                 className={`absolute top-1/2 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent ${n.below
                   ? 'left-0 border-r-[6px] border-r-slate-500 dark:border-r-slate-200'
-                  : `right-0 border-l-[6px] ${n.over ? 'border-l-amber-500' : 'border-l-slate-500 dark:border-l-slate-200'}`}`}
+                  : `right-0 border-l-[6px] ${n.over && !n.exempt && !n.anchoredOnly ? 'border-l-amber-500' : 'border-l-slate-500 dark:border-l-slate-200'}`}`}
               />
             ) : (
               <div
                 key={n.name}
-                className={`absolute top-0.5 bottom-0.5 w-1 -ml-0.5 rounded-sm ${n.over ? 'bg-amber-500' : 'bg-slate-500 dark:bg-slate-200'}`}
+                className={`absolute top-0.5 bottom-0.5 w-1 -ml-0.5 rounded-sm ${n.exempt || n.anchoredOnly
+                  ? 'bg-slate-400/60 dark:bg-slate-400/50'
+                  : n.over ? 'bg-amber-500' : 'bg-slate-500 dark:bg-slate-200'}`}
                 style={{ left: trackLeft(n.f) }}
               />
             )))}
@@ -193,8 +220,18 @@ export default function ThresholdSlider({ label, value, onChange, min, max, step
             <span className="font-semibold text-amber-600 dark:text-amber-400">
               Over {value}% now: {overNow.map(n => `${n.name} (${pct(n.now)})`).join(', ')}. Recommendations will target {overNow.length === 1 ? 'it' : 'them'}.
             </span>
-          ) : (
-            <span>No node is over {value}% right now (highest: {highest.name} at {pct(highest.now)}).</span>
+          ) : highest ? (
+            <span>No node is over {value}% right now{anchoredOver.length === 0 ? ` (highest: ${highest.name} at ${pct(highest.now)})` : ''}.</span>
+          ) : null}
+          {anchoredOver.map(n => (
+            <span key={n.name} className="ml-1">
+              {n.name} is at {pct(n.now)} only because of guests that don't move{n.anchoredNames.length ? ` (${n.anchoredNames.slice(0, 3).join(', ')})` : ''}, so it won't be a source.
+            </span>
+          ))}
+          {exemptOver.length > 0 && (
+            <span className="ml-1">
+              {exemptOver.map(n => `${n.name} (${pct(n.now)})`).join(', ')} {exemptOver.length === 1 ? 'is' : 'are'} exempt: that IOWait comes from passthrough or NAS storage, which moving guests can't fix.
+            </span>
           )}
           {peakOnly.length > 0 && (
             <span className="ml-1">

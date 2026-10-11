@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, send_file, current_app
 import json, os, sys, subprocess
 from datetime import datetime
+from typing import Optional
 from proxbalance.config_manager import load_config, save_config, get_proxmox_client, CONFIG_FILE, BASE_PATH
 from proxbalance.error_handlers import api_route
 
@@ -897,7 +898,7 @@ def download_logs():
     service = request.args.get('service', 'proxmox-balance')
 
     # Validate service name
-    valid_services = ['proxmox-balance', 'proxmox-collector']
+    valid_services = list(SERVICE_UNITS)
     if service not in valid_services:
         return jsonify({
             "success": False,
@@ -941,3 +942,133 @@ def download_logs():
         as_attachment=True,
         download_name=filename
     )
+
+
+# Fixed set of ProxBalance units the System page reports on. Requests name a
+# key of this dict; the value is never built from user input.
+SERVICE_UNITS = {
+    'proxmox-balance': {'timer': False},
+    'proxmox-collector': {'timer': True},
+    'proxmox-balance-automigrate': {'timer': True},
+    'proxmox-balance-recommendations': {'timer': True},
+}
+# Timer-driven units that "Run now" may start (the API restarts via restart-service).
+RUNNABLE_UNITS = ('proxmox-collector', 'proxmox-balance-automigrate', 'proxmox-balance-recommendations')
+_SYSTEMCTL = '/usr/bin/systemctl' if os.path.exists('/usr/bin/systemctl') else '/bin/systemctl'
+
+
+def _usec_to_iso(value) -> Optional[str]:
+    """systemd microseconds since epoch -> UTC ISO string (None for 0/missing)."""
+    try:
+        usec = int(value)
+    except (TypeError, ValueError):
+        return None
+    if usec <= 0:
+        return None
+    from datetime import timezone
+    return datetime.fromtimestamp(usec / 1e6, timezone.utc).isoformat()
+
+
+def _unix_to_iso(value: str) -> Optional[str]:
+    """'@1791703872' (systemctl show --timestamp=unix) -> UTC ISO string."""
+    if not value or not value.startswith('@'):
+        return None
+    try:
+        return _usec_to_iso(int(value[1:]) * 1_000_000)
+    except ValueError:
+        return None
+
+
+def _systemctl_show(units: list, props: str) -> dict:
+    """Parse `systemctl show` for several units into {Id: {prop: value}}."""
+    result = subprocess.run(
+        [_SYSTEMCTL, 'show', '--timestamp=unix', '-p', props, *units],
+        capture_output=True, text=True, timeout=10,
+    )
+    out, cur = {}, {}
+    for line in (result.stdout + '\n').splitlines():
+        if not line.strip():
+            if cur.get('Id'):
+                out[cur['Id']] = cur
+            cur = {}
+            continue
+        key, _, value = line.partition('=')
+        cur[key] = value
+    return out
+
+
+@system_bp.route("/api/system/services", methods=["GET"])
+@api_route
+def services_status():
+    """State of each ProxBalance service and timer.
+
+    Per unit: active state, result of the last run (success/failed), when
+    the last run started and finished and, for timer-driven units, when the
+    next run is due. Times are UTC ISO-8601 or null.
+    """
+    if not os.path.exists(_SYSTEMCTL):
+        return jsonify({"success": False, "error": "systemctl is not available here"}), 503
+
+    names = list(SERVICE_UNITS)
+    svc = _systemctl_show(
+        [f'{n}.service' for n in names],
+        'Id,ActiveState,SubState,Result,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,ActiveEnterTimestamp',
+    )
+    timers = {}
+    try:
+        lt = subprocess.run(
+            [_SYSTEMCTL, 'list-timers', '--all', '--output=json'],
+            capture_output=True, text=True, timeout=10,
+        )
+        for t in json.loads(lt.stdout or '[]'):
+            timers[t.get('unit')] = t
+    except (ValueError, subprocess.SubprocessError, OSError):
+        pass
+    timer_state = _systemctl_show([f'{n}.timer' for n in names if SERVICE_UNITS[n]['timer']], 'Id,ActiveState')
+
+    services = {}
+    for name in names:
+        s = svc.get(f'{name}.service', {})
+        active = s.get('ActiveState') or 'unknown'
+        result = s.get('Result') or None
+        entry = {
+            "active_state": active,
+            "sub_state": s.get('SubState') or None,
+            "result": 'running' if active in ('active', 'activating') and SERVICE_UNITS[name]['timer']
+                      else ('success' if result == 'success' else ('failed' if result else None)),
+            "exit_status": s.get('ExecMainStatus') or None,
+            "last_start": _unix_to_iso(s.get('ExecMainStartTimestamp', '')),
+            "last_end": _unix_to_iso(s.get('ExecMainExitTimestamp', '')),
+            "since": _unix_to_iso(s.get('ActiveEnterTimestamp', '')),
+            "timer": None,
+        }
+        if SERVICE_UNITS[name]['timer']:
+            t = timers.get(f'{name}.timer', {})
+            entry["timer"] = {
+                "active": timer_state.get(f'{name}.timer', {}).get('ActiveState') == 'active',
+                "next": _usec_to_iso(t.get('next')),
+                "last_trigger": _usec_to_iso(t.get('last')),
+            }
+        services[name] = entry
+
+    return jsonify({"success": True, "services": services})
+
+
+@system_bp.route("/api/system/run-service", methods=["POST"])
+@api_route
+def run_service_now():
+    """Start one run of a timer-driven unit now, without waiting for it."""
+    data = request.get_json(silent=True) or {}
+    service = data.get('service')
+    if service not in RUNNABLE_UNITS:
+        return jsonify({
+            "success": False,
+            "error": f"Invalid service. Must be one of: {', '.join(RUNNABLE_UNITS)}"
+        }), 400
+    result = subprocess.run(
+        [_SYSTEMCTL, 'start', '--no-block', f'{service}.service'],
+        capture_output=True, text=True, timeout=10,
+    )
+    if result.returncode != 0:
+        return jsonify({"success": False, "error": (result.stderr or 'systemctl failed').strip()[:300]}), 500
+    return jsonify({"success": True, "message": f"{service} started"})

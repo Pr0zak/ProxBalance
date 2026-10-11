@@ -7,6 +7,7 @@ import {
   MODAL_OVERLAY, MODAL_CONTAINER, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, statusBadge, headroomTextColor } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
+import { behaviorTitle } from './workloadBehavior.js';
 
 const { useState, useEffect } = React;
 
@@ -375,7 +376,7 @@ export default function GuestDetailsModal({
                 {profile && (() => {
                   const meta = BEHAVIOR_META[profile.behavior] || BEHAVIOR_META.unknown;
                   return (
-                    <span className={`px-2 py-0.5 rounded font-medium ${meta.cls}`} title={`Confidence: ${profile.confidence} · ${profile.data_points} samples · peak ${profile.peak_multiplier?.toFixed(1)}×`}>
+                    <span className={`px-2 py-0.5 rounded font-medium ${meta.cls}`} title={behaviorTitle(profile)}>
                       {meta.label}{profile.confidence && profile.confidence !== 'low' ? '' : ' (low confidence)'}
                     </span>
                   );

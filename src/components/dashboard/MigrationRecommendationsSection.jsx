@@ -192,7 +192,7 @@ export default function MigrationRecommendationsSection({
     openRunPlan({
       plan: subsetPlan(enginePlan, recs),
       recommendations: recs,
-      maxConcurrent: automationConfig?.rules?.max_concurrent_migrations || 1,
+      maxConcurrent: automationConfig?.rules?.max_concurrent_migrations ?? 3,
       outsideWindow,
     });
   };

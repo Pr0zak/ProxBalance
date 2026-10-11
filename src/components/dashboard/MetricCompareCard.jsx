@@ -1,6 +1,6 @@
 import { INNER_CARD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE } from '../../utils/designTokens.js';
 import {
-  buildNodeSeries, timeLabel, migrationAnnotations, thresholdAxis, chartTheme, withAlpha,
+  buildNodeSeries, r1, timeLabel, migrationAnnotations, thresholdAxis, chartTheme, withAlpha,
   useIsDark, useCrosshair,
 } from './nodeSeries.js';
 
@@ -33,7 +33,7 @@ const sampleAt = (pts, t, tol) => {
 export default function MetricCompareCard({ metric, nodes, threshold, focusNode, onFocusNode, showEnvelope, ...chartProps }) {
   const ranked = nodes.slice().sort((a, b) => b.current - a.current);
   const hasThreshold = typeof threshold === 'number';
-  const envelopeNote = showEnvelope && (!focusNode ? 'Pick a node to see its min/max band' : chartProps.chartPeriod === '1h' ? 'No min/max band at 1 hour (raw samples)' : null);
+  const envelopeNote = showEnvelope && !focusNode ? 'Pick a node to see its min/max band' : null;
   return (
     <div className={INNER_CARD}>
       <div className="flex items-baseline justify-between mb-2">
@@ -95,7 +95,7 @@ function MetricCompareChart({ metricKey, nodes, chartPeriod, chartReady, thresho
       const samples = times.map(t => sampleAt(s.pts, t, tol));
       datasets.push({
         label: n.name,
-        data: samples.map(p => (p ? +p[metricKey].avg.toFixed(1) : null)),
+        data: samples.map(p => (p ? r1(p[metricKey].avg) : null)),
         borderColor: dim ? withAlpha(n.color, 0.18) : n.color,
         backgroundColor: n.color,
         borderWidth: focused ? 2.5 : 1.5,
@@ -104,8 +104,8 @@ function MetricCompareChart({ metricKey, nodes, chartPeriod, chartReady, thresho
       });
       // Min/max band only for the focused node — four overlapping bands are noise.
       if (focused && showEnvelope && s.step > 1) {
-        datasets.push({ label: '__band_max', data: samples.map(p => (p ? +p[metricKey].max.toFixed(1) : null)), borderColor: 'transparent', backgroundColor: withAlpha(n.color, 0.22), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, order: 2, spanGaps: true });
-        datasets.push({ label: '__band_min', data: samples.map(p => (p ? +p[metricKey].min.toFixed(1) : null)), borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, order: 2, spanGaps: true });
+        datasets.push({ label: '__band_max', data: samples.map(p => (p ? r1(p[metricKey].max) : null)), borderColor: 'transparent', backgroundColor: withAlpha(n.color, 0.22), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, order: 2, spanGaps: true });
+        datasets.push({ label: '__band_min', data: samples.map(p => (p ? r1(p[metricKey].min) : null)), borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, order: 2, spanGaps: true });
       }
     });
 

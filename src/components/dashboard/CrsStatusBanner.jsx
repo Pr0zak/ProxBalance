@@ -13,6 +13,12 @@ const CRS_METHOD_LABEL = {
   topsis: 'TOPSIS (memory-weighted)',
 };
 
+/** True when Proxmox's own dynamic load balancer is (or is set to be) running. */
+export function crsDynamicActive(pveCrs) {
+  if (!pveCrs || typeof pveCrs !== 'object') return false;
+  return !!pveCrs.dynamic_balancer_active || pveCrs.ha === 'dynamic';
+}
+
 /**
  * Surfaces the live PVE Cluster Resource Scheduler (CRS) config alongside
  * ProxBalance's own state. Two states:

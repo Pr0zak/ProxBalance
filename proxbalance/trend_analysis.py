@@ -224,6 +224,44 @@ def _analyze_metric_trend(
     }
 
 
+def _hourly_swing_pts(samples: List[Dict], field: str) -> Optional[float]:
+    """Typical hour-to-hour change of a metric, in percentage points.
+
+    Samples are averaged per clock hour; the result is the median absolute
+    change between consecutive hours. Only truly adjacent hours are compared,
+    so a collection gap is never read as a jump. Unlike the coefficient of
+    variation behind ``stability_score``, a one-off level shift (a migration,
+    a NAS pausing) moves this by a single step, not for the whole window.
+
+    Returns:
+        Median swing rounded to 0.1, or None with fewer than 3 hour pairs.
+    """
+    buckets: Dict[int, List[float]] = {}
+    for sample in samples:
+        val = get_metric_value(sample, field)
+        ts = sample.get("ts", 0)
+        if val is None or not ts or ts <= 0:
+            continue
+        buckets.setdefault(int(ts // 3600), []).append(val)
+    hours = sorted(buckets)
+    means = {h: statistics.mean(buckets[h]) for h in hours}
+    diffs = [abs(means[h] - means[h - 1]) for h in hours if (h - 1) in means]
+    if len(diffs) < 3:
+        return None
+    return round(statistics.median(diffs), 1)
+
+
+def _swing_label(swing: Optional[float]) -> Optional[str]:
+    """steady (< 5 pts), variable (5-12), spiky (> 12); None when unknown."""
+    if swing is None:
+        return None
+    if swing < 5:
+        return "steady"
+    if swing <= 12:
+        return "variable"
+    return "spiky"
+
+
 # ---------------------------------------------------------------------------
 # Baseline and anomaly detection
 # ---------------------------------------------------------------------------
@@ -308,6 +346,7 @@ def analyze_node_trends(
     mem_baseline = _compute_baseline(samples, "memory", current_hour)
 
     cpu_sigma = _anomaly_sigma(cpu_trend["current_avg"], cpu_baseline)
+    cpu_swing = _hourly_swing_pts(samples, "cpu")
     mem_sigma = _anomaly_sigma(mem_trend["current_avg"], mem_baseline)
 
     # Overall stability (weighted average)
@@ -346,6 +385,9 @@ def analyze_node_trends(
         "overall_stability": overall_stability,
         "overall_stability_label": _stability_label(overall_stability),
         "overall_direction": overall_direction,
+        # Hour-to-hour CPU swing (display only; scoring keeps stability_score).
+        "cpu_hourly_swing_pts": cpu_swing,
+        "cpu_swing_label": _swing_label(cpu_swing),
     }
 
 

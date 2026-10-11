@@ -25,7 +25,7 @@ export function useAutomation(API_BASE, deps = {}) {
   const [logRefreshTime, setLogRefreshTime] = useState(null);
   const [migrationLogsTab, setMigrationLogsTab] = useState('history');
   const [migrationHistoryPage, setMigrationHistoryPage] = useState(1);
-  const [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState(5);
+  const [migrationHistoryPageSize, setMigrationHistoryPageSize] = useState(25);
 
   // Time windows form state
   const [showTimeWindowForm, setShowTimeWindowForm] = useState(false);

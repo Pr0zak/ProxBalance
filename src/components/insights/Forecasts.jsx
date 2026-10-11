@@ -3,6 +3,30 @@ import { INNER_CARD } from '../../utils/designTokens.js';
 import { fetchForecasts } from '../../api/client.js';
 import { RANGE_ADJ, formatHorizon, trendCrossings, useLoad, Loading, Failed } from './shared.jsx';
 
+/**
+ * True once both sources have loaded and neither projects anything — the
+ * Insights page then shows the one-line ForecastsClear strip instead.
+ */
+export function forecastsEmpty(trendsState, engineState, thresholds) {
+  if (trendsState.loading || engineState.loading || engineState.error) return false;
+  const trendReady = trendsState.data?.data_available && !trendsState.error;
+  if (!trendReady) return false;
+  return trendCrossings(trendsState.data, thresholds).length === 0 && (engineState.data?.forecasts || []).length === 0;
+}
+
+/** One-line Forecasts summary used when nothing is projected. */
+export function ForecastsClear({ days }) {
+  return (
+    <div className="flex items-start sm:items-center gap-2 text-sm text-pb-text2 dark:text-gray-400">
+      <CheckCircle size={16} className="shrink-0 mt-0.5 sm:mt-0 text-green-600 dark:text-green-400" />
+      <span>
+        <span className="font-semibold text-pb-text dark:text-white">Forecasts:</span>{' '}
+        no node is on course to cross a threshold — not on the {RANGE_ADJ[days]} trend within a year, nor in the engine's next 48 h.
+      </span>
+    </div>
+  );
+}
+
 const SUBHEAD = 'text-xs font-semibold uppercase tracking-wide text-pb-text3 dark:text-gray-500';
 
 function AllClear({ children }) {
@@ -22,8 +46,9 @@ function AllClear({ children }) {
  *  2. The recommendation engine's cached alerts, which always fit the last
  *     7 days of score history and look 48 hours ahead.
  */
-export default function Forecasts({ trendsState, days, thresholds }) {
-  const [{ loading, data, error }] = useLoad(() => fetchForecasts());
+export default function Forecasts({ trendsState, days, thresholds, engineState }) {
+  const [ownState] = useLoad(() => (engineState ? Promise.resolve({ success: true }) : fetchForecasts()));
+  const { loading, data, error } = engineState || ownState;
   const trendReady = trendsState.data?.data_available && !trendsState.error;
   const crossings = trendReady ? trendCrossings(trendsState.data, thresholds) : [];
   const engine = data?.forecasts || [];

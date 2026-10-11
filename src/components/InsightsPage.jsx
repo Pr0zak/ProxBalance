@@ -1,12 +1,12 @@
 import { Activity, TrendingUp, Clock, CheckCircle } from './Icons.jsx';
 import { GLASS_CARD } from '../utils/designTokens.js';
 import SectionHeader from './SectionHeader.jsx';
-import MigrationOutcomes from './dashboard/recommendations/insights/MigrationOutcomes.jsx';
+import OutcomesByDay from './insights/OutcomesByDay.jsx';
 import NodeTrends, { RangePicker } from './insights/NodeTrends.jsx';
-import Forecasts from './insights/Forecasts.jsx';
+import Forecasts, { ForecastsClear, forecastsEmpty } from './insights/Forecasts.jsx';
 import RhythmHeatmap, { MetricPicker } from './insights/RhythmHeatmap.jsx';
 import { RANGES, useLoad } from './insights/shared.jsx';
-import { fetchNodeTrends, fetchWorkloadPatterns } from '../api/client.js';
+import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts } from '../api/client.js';
 
 const { useState } = React;
 
@@ -54,6 +54,9 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
     [trendDays, cpuThreshold, memThreshold]
   );
   const thresholds = { cpu: cpuThreshold, memory: memThreshold, iowait: iowaitThreshold };
+  const [engineState] = useLoad(() => fetchForecasts());
+  // Nothing projected: Forecasts shrinks to one line and the rhythm card takes the full width.
+  const noForecasts = forecastsEmpty(trendsState, engineState, thresholds);
 
   return (
     <div className="pb-4 sm:pb-0">
@@ -63,11 +66,17 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
             <SectionHeader title="Node trends" icon={Activity} accent={['blue', 'cyan']} right={<RangePicker value={trendDays} onChange={changeRange} />} />
             <NodeTrends state={trendsState} days={trendDays} thresholds={thresholds} clusterNodes={clusterNodes} />
           </div>
-          <div className={GLASS_CARD}>
-            <SectionHeader title="Forecasts" icon={TrendingUp} accent={['orange', 'red']} />
-            <Forecasts trendsState={trendsState} days={trendDays} thresholds={thresholds} />
-          </div>
-          <div className={GLASS_CARD}>
+          {noForecasts ? (
+            <div className={`${GLASS_CARD} xl:col-span-2 !py-3`}>
+              <ForecastsClear days={trendDays} />
+            </div>
+          ) : (
+            <div className={GLASS_CARD}>
+              <SectionHeader title="Forecasts" icon={TrendingUp} accent={['orange', 'red']} />
+              <Forecasts trendsState={trendsState} days={trendDays} thresholds={thresholds} engineState={engineState} />
+            </div>
+          )}
+          <div className={`${GLASS_CARD} ${noForecasts ? 'xl:col-span-2' : ''}`}>
             <SectionHeader title="Workload rhythm" icon={Clock} accent={['indigo', 'violet']} right={<MetricPicker value={rhythmMetric} onChange={setRhythmMetric} />} />
             <WorkloadRhythm
               clusterNodes={clusterNodes}
@@ -79,7 +88,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
           <div className={`${GLASS_CARD} xl:col-span-2`}>
             <SectionHeader title="Migration outcomes" icon={CheckCircle} accent={['emerald', 'green']} />
             <p className="text-sm text-pb-text2 dark:text-gray-400 -mt-2 mb-3">Did recent migrations actually relieve the source node?</p>
-            <MigrationOutcomes active limit={20} />
+            <OutcomesByDay />
           </div>
         </div>
       </div>

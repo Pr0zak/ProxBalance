@@ -85,6 +85,22 @@ function Spark({ series, threshold, rgb, label, windowLabel }) {
   );
 }
 
+const hasSwing = (n) => n && Object.prototype.hasOwnProperty.call(n, 'cpu_hourly_swing_pts');
+const SWING_TITLE = 'Typical change in CPU from one hour to the next (median, percentage points). steady < 5 · variable 5–12 · spiky > 12';
+
+/** "steady · 3.2 pts/h", or "—" when the window is too coarse to measure. */
+function Swing({ n }) {
+  const v = n.cpu_hourly_swing_pts;
+  if (typeof v !== 'number') return <span title="Not enough hour-by-hour samples in this window">—</span>;
+  const tone = n.cpu_swing_label === 'spiky' ? 'text-orange-600 dark:text-orange-400' : n.cpu_swing_label === 'variable' ? 'text-pb-text dark:text-gray-200' : 'text-pb-text2 dark:text-gray-400';
+  return (
+    <span title={SWING_TITLE}>
+      <span className={tone}>{n.cpu_swing_label}</span>
+      <span className="tabular-nums"> · {v.toFixed(1)} pts/h</span>
+    </span>
+  );
+}
+
 export function RangePicker({ value, onChange }) {
   return (
     <div className="flex items-center gap-1.5" role="group" aria-label="Trend window">
@@ -145,6 +161,8 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
 
   const nodes = Object.values(data.nodes || {}).sort((a, b) => a.node.localeCompare(b.node));
   const approaching = trendCrossings(data, thresholds);
+  // Old backends lack the swing field: hide the column rather than show the old CV label.
+  const showSwing = nodes.some(hasSwing);
   const anySeries = nodes.map(n => windowSeries(clusterNodes?.[n.node]?.trend_data, 'cpu', days)).find(Boolean);
   const bucket = bucketLabel(anySeries?.bucket);
   const cellProps = (n, k, label) => ({
@@ -181,7 +199,7 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
           <div key={n.node} className="py-2.5 first:pt-0">
             <div className="flex items-baseline justify-between gap-2 mb-1.5">
               <span className="font-medium text-pb-text dark:text-white">{n.node}</span>
-              <span className="text-[11px] text-pb-text3 dark:text-gray-500">{n.overall_stability_label} · {n.data_quality?.coverage_days} d of data</span>
+              <span className="text-[11px] text-pb-text3 dark:text-gray-500">{showSwing && <>CPU <Swing n={n} /> · </>}{n.data_quality?.coverage_days} d of data</span>
             </div>
             <div className="space-y-2">
               {METRICS.map(([k, label]) => (
@@ -201,7 +219,7 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
             <tr className="text-left text-xs text-pb-text2 dark:text-gray-400">
               <th className="px-2 py-1.5 font-medium">Node</th>
               {METRICS.map(([k, l]) => <th key={k} className="px-2 py-1.5 font-medium">{l}</th>)}
-              <th className="px-2 py-1.5 font-medium hidden md:table-cell">Stability</th>
+              {showSwing && <th className="px-2 py-1.5 font-medium hidden md:table-cell" title={SWING_TITLE}>CPU swing</th>}
             </tr>
           </thead>
           <tbody>
@@ -211,10 +229,12 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
                 {METRICS.map(([k, label]) => (
                   <td key={k} className="px-2 py-2"><MetricCell {...cellProps(n, k, label)} /></td>
                 ))}
-                <td className="px-2 py-2 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400">
-                  {n.overall_stability_label} ({n.overall_stability}/100)
-                  <div className="text-pb-text3 dark:text-gray-500">{n.data_quality?.coverage_days} days of data</div>
-                </td>
+                {showSwing && (
+                  <td className="px-2 py-2 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400">
+                    <Swing n={n} />
+                    <div className="text-pb-text3 dark:text-gray-500">{n.data_quality?.coverage_days} days of data</div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -225,6 +245,7 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
         <span>Sparklines: last {RANGE_LABEL[days]}{bucket ? `, ${bucket} averages` : ''}</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 border-t border-dashed border-red-500/70" /> recommendation threshold</span>
         <span>Faded rate = no clear trend (noise outweighs the slope)</span>
+        {showSwing && <span>CPU swing = typical hour-to-hour change: steady &lt; 5 pts, variable 5–12, spiky &gt; 12</span>}
       </p>
     </div>
   );

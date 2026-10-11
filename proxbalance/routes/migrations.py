@@ -250,6 +250,8 @@ def get_migration_outcomes():
 
     # Return most recent first, limited
     outcomes = list(reversed(outcomes))[:limit]
+    from proxbalance.outcomes import attach_guest_names
+    outcomes = attach_guest_names(outcomes)
 
     return jsonify({
         "success": True,

@@ -3,13 +3,56 @@
  * (NodeChart) and the cross-node metric comparison (MetricCompareCard).
  */
 
-export const SOURCE_TIMEFRAME = { '1h': 'hour', '6h': 'day', '12h': 'day', '24h': 'day', '7d': 'week', '30d': 'month', '1y': 'year' };
-export const PERIOD_SECONDS = { '1h': 3600, '6h': 6 * 3600, '12h': 12 * 3600, '24h': 24 * 3600, '7d': 7 * 24 * 3600, '30d': 30 * 24 * 3600, '1y': 365 * 24 * 3600 };
-// Sample windows sized so each period renders ~150-180 points from the (already
-// downsampled) RRD source. Each rendered point also carries the window's min/max
-// for the envelope band.
-export const SAMPLE_RATE = { '1h': 1, '6h': 2, '12h': 4, '24h': 8, '7d': 2, '30d': 8, '1y': 5 };
-export const MULTI_DAY = ['7d', '30d', '1y'];
+/**
+ * One period control for the whole Charts tab. Each entry carries both the
+ * Cluster Health fetch settings (score-history bucket minutes + row limit) and
+ * the node-chart RRD mapping (source timeframe + sample window).
+ *
+ * Proxmox RRD sources as collected: hour = 60 x 1 min, day = 1440 x 1 min,
+ * week = 336 x 30 min, month = 1440 x 30 min, year = ~1440 x 6 h.
+ */
+export const CHART_PERIODS = [
+  { id: '6h',   label: '6h',  ms: 6 * 3600 * 1000,        bucket: 0,    limit: 300, rrd: 'day',   sample: 2 },
+  { id: '1d',   label: '1d',  ms: 24 * 3600 * 1000,       bucket: 0,    limit: 300, rrd: 'day',   sample: 8 },
+  { id: '7d',   label: '7d',  ms: 7 * 86400 * 1000,       bucket: 30,   limit: 400, rrd: 'week',  sample: 2 },
+  { id: '30d',  label: '30d', ms: 30 * 86400 * 1000,      bucket: 60,   limit: 800, rrd: 'month', sample: 8 },
+  { id: '90d',  label: '90d', ms: 90 * 86400 * 1000,      bucket: 360,  limit: 400, rrd: 'year',  sample: 2 },
+  { id: '180d', label: '180d', ms: 180 * 86400 * 1000,    bucket: 720,  limit: 400, rrd: 'year',  sample: 4 },
+  { id: '1yr',  label: '1yr', ms: 365 * 86400 * 1000,     bucket: 1440, limit: 400, rrd: 'year',  sample: 8 },
+];
+const DEFAULT_PERIOD = '1d';
+// Older per-node select ids map onto the shared list.
+const LEGACY_PERIOD = { '1h': '6h', '12h': '1d', '24h': '1d', '1y': '1yr' };
+export const periodConfig = (id) =>
+  CHART_PERIODS.find(p => p.id === id) || CHART_PERIODS.find(p => p.id === LEGACY_PERIOD[id]) || CHART_PERIODS.find(p => p.id === DEFAULT_PERIOD);
+
+// Shared period state (module-level so the Cluster Health chart and the node
+// charts follow one control without threading props through the tab wrapper).
+const PERIOD_KEY = 'chartsPeriod';
+let currentPeriod = (() => {
+  try {
+    const saved = localStorage.getItem(PERIOD_KEY) || localStorage.getItem('clusterHealthChartPeriod');
+    if (saved) return periodConfig(saved).id;
+  } catch {}
+  return DEFAULT_PERIOD;
+})();
+const periodListeners = new Set();
+
+/** [period, setPeriod] shared by every chart on the Charts tab. */
+export function useChartPeriod() {
+  const [period, setLocal] = React.useState(currentPeriod);
+  React.useEffect(() => {
+    periodListeners.add(setLocal);
+    setLocal(currentPeriod);
+    return () => { periodListeners.delete(setLocal); };
+  }, []);
+  const setPeriod = React.useCallback((id) => {
+    currentPeriod = periodConfig(id).id;
+    try { localStorage.setItem(PERIOD_KEY, currentPeriod); } catch {}
+    periodListeners.forEach(fn => fn(currentPeriod));
+  }, []);
+  return [period, setPeriod];
+}
 
 // Distinct per-node colors, shared with the Cluster Health chart so a node keeps
 // the same color in every view (cycled if there are more nodes than colors).
@@ -31,11 +74,16 @@ export const withAlpha = (hex, a) => {
 export const hasTrendData = (node) =>
   !!node?.trend_data && typeof node.trend_data === 'object' && Object.keys(node.trend_data).length > 0;
 
+// Missing samples stay missing: an all-empty window yields nulls (a gap in the
+// line), never zeros.
 const aggWindow = (pts, key) => {
-  const vals = pts.map(p => (key === 'iowait' ? (p.iowait || 0) : p[key])).filter(v => typeof v === 'number');
-  if (!vals.length) return { avg: 0, min: 0, max: 0 };
+  const vals = pts.map(p => p[key]).filter(v => typeof v === 'number' && isFinite(v));
+  if (!vals.length) return { avg: null, min: null, max: null };
   return { avg: vals.reduce((a, b) => a + b, 0) / vals.length, min: Math.min(...vals), max: Math.max(...vals) };
 };
+
+/** One decimal, or null for a missing value. */
+export const r1 = (v) => (typeof v === 'number' ? +v.toFixed(1) : null);
 
 /**
  * Window-aggregate a node's RRD trend data for the selected period.
@@ -46,8 +94,9 @@ const aggWindow = (pts, key) => {
  */
 export function buildNodeSeries(trendData, chartPeriod) {
   if (!trendData || typeof trendData !== 'object') return null;
-  const periodSeconds = PERIOD_SECONDS[chartPeriod] || 24 * 3600;
-  let raw = trendData[SOURCE_TIMEFRAME[chartPeriod] || 'day'] || [];
+  const cfg = periodConfig(chartPeriod);
+  const periodSeconds = cfg.ms / 1000;
+  let raw = trendData[cfg.rrd] || [];
   if (raw.length === 0) raw = trendData.day || [];
   if (raw.length === 0) return null;
 
@@ -55,7 +104,7 @@ export function buildNodeSeries(trendData, chartPeriod) {
   const filtered = raw.filter(p => (latestTime - p.time) <= periodSeconds);
   if (filtered.length === 0) return null;
 
-  const step = Math.max(1, SAMPLE_RATE[chartPeriod] || 1);
+  const step = Math.max(1, cfg.sample || 1);
   const pts = [];
   for (let i = 0; i < filtered.length; i += step) {
     const win = filtered.slice(i, Math.min(filtered.length, i + step));
@@ -65,7 +114,7 @@ export function buildNodeSeries(trendData, chartPeriod) {
   if (pts[pts.length - 1].time !== last.time) {
     pts.push({ time: last.time, cpu: aggWindow([last], 'cpu'), mem: aggWindow([last], 'mem'), iowait: aggWindow([last], 'iowait') });
   }
-  return { pts, step, latestTime, periodSeconds, multiDay: MULTI_DAY.includes(chartPeriod) };
+  return { pts, step, latestTime, periodSeconds, multiDay: cfg.ms > 2 * 86400 * 1000 };
 }
 
 export const timeLabel = (unixSeconds, multiDay) => {

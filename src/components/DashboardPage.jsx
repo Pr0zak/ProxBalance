@@ -9,7 +9,7 @@ import KpiRow from './dashboard/KpiRow.jsx';
 import NeedsAttentionStrip from './dashboard/NeedsAttentionStrip.jsx';
 import ClusterSection from './dashboard/ClusterSection.jsx';
 import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
-import CrsStatusBanner from './dashboard/CrsStatusBanner.jsx';
+import CrsStatusBanner, { crsDynamicActive } from './dashboard/CrsStatusBanner.jsx';
 import CrsEditorModal from './dashboard/CrsEditorModal.jsx';
 import ClusterMap from './dashboard/ClusterMap.jsx';
 import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
@@ -109,10 +109,6 @@ export default function DashboardPage({
   });
   useEffect(() => { localStorage.setItem('promotedSections', JSON.stringify(promotedSections)); }, [promotedSections]);
 
-  const ignoredGuests = Object.values(data.guests || {}).filter(g => g.tags?.has_ignore);
-  const excludeGuests = Object.values(data.guests || {}).filter(g => g.tags?.exclude_groups?.length > 0);
-  const affinityGuests = Object.values(data.guests || {}).filter(g => (g.tags?.affinity_groups?.length > 0) || g.tags?.all_tags?.some(t => t.startsWith('affinity_')));
-  const autoMigrateOkGuests = Object.values(data.guests || {}).filter(g => g.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok'));
   const violations = checkAffinityViolations();
 
   return (<>
@@ -157,11 +153,9 @@ export default function DashboardPage({
           automationStatus={automationStatus}
           recommendations={recommendations}
           recommendationData={recommendationData}
-          ignoredGuests={ignoredGuests}
-          autoMigrateOkGuests={autoMigrateOkGuests}
-          affinityGuests={affinityGuests}
-          excludeGuests={excludeGuests}
+          automationConfig={automationConfig}
           onNavigate={onRouteTab}
+          onOpenAutomation={() => setCurrentPage('automation')}
           maintenanceNodes={maintenanceNodes}
           guestsMigrating={guestsMigrating}
           migrationProgress={migrationProgress}
@@ -184,12 +178,16 @@ export default function DashboardPage({
           />
         </div>
 
-        {/* PVE Cluster Resource Scheduler — surfaces native CRS config + warns on duels */}
-        <CrsStatusBanner
-          pveCrs={data?.pve_crs}
-          automationEnabled={automationStatus?.enabled}
-          onEdit={() => setShowCrsEditor(true)}
-        />
+        {/* PVE Cluster Resource Scheduler — on the dashboard only while Proxmox's
+            own dynamic balancer is running (it can fight ProxBalance); otherwise
+            it lives under Automation → Behavior. */}
+        {crsDynamicActive(data?.pve_crs) && (
+          <CrsStatusBanner
+            pveCrs={data?.pve_crs}
+            automationEnabled={automationStatus?.enabled}
+            onEdit={() => setShowCrsEditor(true)}
+          />
+        )}
         {showCrsEditor && (
           <CrsEditorModal
             pveCrs={data?.pve_crs}

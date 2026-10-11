@@ -3,7 +3,7 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, statusBadge } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, INNER_CARD, statusBadge } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
 const { useState, useEffect } = React;
 
@@ -15,11 +15,29 @@ const SUMMARY_TONE = {
   error: 'text-red-600 dark:text-red-400',
 };
 
+const EVENT_LABELS = {
+  action: 'migration', start: 'run started', complete: 'run summary', failure: 'safety check failure',
+  node_status: 'node status', resource_threshold: 'resource alert', recommendations: 'suggestions',
+  evacuation: 'evacuation', collector_status: 'collector', update_available: 'update', test: 'test',
+};
+const eventLabel = (e) => EVENT_LABELS[e] || String(e || '').replace(/_/g, ' ');
+
+/** "8:31 PM" today, otherwise "10 Oct 8:31 PM". */
+function whenText(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  if (d.toDateString() === new Date().toDateString()) return timeOf(d);
+  return `${d.getDate()} ${d.toLocaleDateString('en-US', { month: 'short' })} ${timeOf(d)}`;
+}
+
 /**
  * One channel's state. `ready` comes from the server's validate_config() on
- * the saved settings ({ ready, reason }); `result` is this channel's last test.
+ * the saved settings ({ ready, reason }); `result` is this channel's last test
+ * in this browser; `sent` is the server's record of real deliveries
+ * ({ last_sent_at, last_sent_event, last_failed_at, last_failed_event }).
+ * A real successful send counts as a passed test.
  */
-function ChannelStatus({ conf, ready, result, dirty }) {
+function ChannelStatus({ conf, ready, result, sent, dirty }) {
   if (!conf?.enabled) return null;
   if (result?.skipped || (!dirty && ready && ready.ready === false)) {
     const reason = result?.skipped ? result.reason : ready.reason;
@@ -37,6 +55,22 @@ function ChannelStatus({ conf, ready, result, dirty }) {
       </span>
     );
   }
+  const okAt = sent?.last_sent_at || '';
+  const failAt = sent?.last_failed_at || '';
+  if (failAt && failAt > okAt) {
+    return (
+      <span className={statusBadge('red')} title={okAt ? `Last successful send ${whenText(okAt)}` : 'No successful send recorded'}>
+        <AlertCircle size={12} className="shrink-0" /> Last send failed · {whenText(failAt)} · {eventLabel(sent.last_failed_event)}
+      </span>
+    );
+  }
+  if (okAt) {
+    return (
+      <span className={statusBadge('green')} title="Last message this channel delivered">
+        <CheckCircle size={12} className="shrink-0" /> Last sent {whenText(okAt)} · {eventLabel(sent.last_sent_event)}
+      </span>
+    );
+  }
   if (dirty) return <span className={statusBadge('gray')}>Save to test</span>;
   return <span className={statusBadge('gray')}>Not tested yet</span>;
 }
@@ -46,6 +80,14 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
   const [readiness, setReadiness] = useState({}); // channel -> { ready, reason } for the saved settings
   const [testing, setTesting] = useState(null);   // channel name, 'all', or null
   const [summary, setSummary] = useState(null);   // last "test all": { text, tone, at, perChannel }
+  const [delivery, setDelivery] = useState({});   // channel -> last real send/failure, from the server
+  const loadDelivery = () => {
+    fetch(`${API_BASE}/notifications/status`)
+      .then(r => r.json())
+      .then(body => { if (body?.channels) setDelivery(body.channels); })
+      .catch(() => {}); // older backend: badges fall back to this browser's tests
+  };
+  useEffect(() => { loadDelivery(); }, []);
   const providers = automationConfig.notifications?.providers || {};
   const enabledChannels = Object.keys(providers).filter(k => providers[k]?.enabled);
   const dirty = !!testDisabledReason;
@@ -110,6 +152,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
       fail(`The test could not be sent: ${err.message}`);
     } finally {
       setTesting(null);
+      loadDelivery();
     }
   };
 
@@ -126,7 +169,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
   ) : null;
 
   const status = (channel) => (
-    <ChannelStatus conf={providers[channel]} ready={readiness[channel]} result={tests[channel]} dirty={dirty} />
+    <ChannelStatus conf={providers[channel]} ready={readiness[channel]} result={tests[channel]} sent={delivery[channel]} dirty={dirty} />
   );
 
   return (
@@ -145,7 +188,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                       {automationConfig.notifications?.enabled && (
                       <div className="space-y-4 mt-4">
                         {/* Migration Events */}
-                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className={INNER_CARD}>
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">Migration Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer">
@@ -193,7 +236,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Cluster Events */}
-                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className={INNER_CARD}>
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">Cluster Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer" title="Alert when a node goes offline or comes back online">
@@ -218,7 +261,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* System Events */}
-                        <div className="p-3 bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600">
+                        <div className={INNER_CARD}>
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">System Events</div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer" title="Alert when new migration recommendations are generated">
@@ -243,7 +286,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Pushover */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-pushover'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
@@ -344,7 +387,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Email (SMTP) */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-email'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
@@ -451,7 +494,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Telegram */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-telegram'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
@@ -501,7 +544,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Discord */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-discord'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
@@ -538,7 +581,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Slack */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-slack'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
@@ -575,7 +618,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                         </div>
 
                         {/* Generic Webhook */}
-                        <div className="bg-pb-surface2 dark:bg-gray-800/50 rounded border border-pb-border dark:border-slate-600 overflow-hidden hover:shadow-md transition-all duration-200">
+                        <div className={`${INNER_CARD} !p-0 overflow-hidden`}>
                           <div className="flex items-center justify-between gap-3 p-3 cursor-pointer"
                             onClick={() => { const el = document.getElementById('settings-notif-webhook'); if (el) el.classList.toggle('hidden'); }}>
                             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">

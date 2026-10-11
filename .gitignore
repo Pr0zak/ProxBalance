@@ -89,3 +89,8 @@ package.json
 .babelrc
 assets/js/app.js
 assets/css/tailwind.css
+
+# Notification delivery status (written at runtime)
+notification_status.json
+notification_status.json.lock
+notification_status.json.tmp

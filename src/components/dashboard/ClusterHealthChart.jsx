@@ -1,20 +1,12 @@
 import { GLASS_CARD, INNER_CARD, BTN_ICON, ICON } from '../../utils/designTokens.js';
 import { X, ChevronLeft, ChevronRight } from '../Icons.jsx';
-import { NODE_COLORS } from './nodeSeries.js';
+import { NODE_COLORS, CHART_PERIODS, periodConfig, useChartPeriod } from './nodeSeries.js';
 
 const { useState, useEffect, useRef } = React;
 
-// Each period also declares its preferred backend bucket size (minutes).
-//   bucket=0  → raw rows (no aggregation, server caps via `limit`)
-//   bucket=60 → hourly average
-const PERIODS = [
-  { id: '1d',   label: '1d',   ms: 1 * 24 * 60 * 60 * 1000,   bucket: 0,    limit: 300 },
-  { id: '7d',   label: '7d',   ms: 7 * 24 * 60 * 60 * 1000,   bucket: 30,   limit: 400 },
-  { id: '30d',  label: '30d',  ms: 30 * 24 * 60 * 60 * 1000,  bucket: 60,   limit: 800 },
-  { id: '90d',  label: '90d',  ms: 90 * 24 * 60 * 60 * 1000,  bucket: 360,  limit: 400 },
-  { id: '180d', label: '180d', ms: 180 * 24 * 60 * 60 * 1000, bucket: 720,  limit: 400 },
-  { id: '1yr',  label: '1yr',  ms: 365 * 24 * 60 * 60 * 1000, bucket: 1440, limit: 400 },
-];
+// The period list is shared with the node charts (one control for the Charts tab).
+// Each period declares its backend bucket size (minutes): 0 = raw rows.
+const PERIODS = CHART_PERIODS;
 
 const VIEW_MODES = [
   { id: 'cluster', label: 'Cluster' },
@@ -43,18 +35,41 @@ function decimate(arr, maxN) {
   if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]);
   return out;
 }
-// Centered moving average. Nulls are skipped (so offline-node gaps don't poison neighbours).
+// Centered moving average that never reaches across a null (a data gap or an
+// offline node), so values on either side of a gap don't bleed into each other.
 function smooth(vals, window) {
   if (window <= 1) return vals;
   const half = Math.floor(window / 2);
   return vals.map((v, i) => {
     if (v == null) return null;
-    let s = 0, n = 0;
-    for (let j = Math.max(0, i - half); j <= Math.min(vals.length - 1, i + half); j++) {
-      if (vals[j] != null) { s += vals[j]; n++; }
-    }
-    return n ? s / n : null;
+    let s = v, n = 1;
+    for (let j = i - 1; j >= Math.max(0, i - half) && vals[j] != null; j--) { s += vals[j]; n++; }
+    for (let j = i + 1; j <= Math.min(vals.length - 1, i + half) && vals[j] != null; j++) { s += vals[j]; n++; }
+    return s / n;
   });
+}
+
+// Samples further apart than this are not joined: the line breaks and the span
+// is shaded "no data". At least 2h, or 3x the median spacing for coarse buckets.
+function gapThresholdMs(entries) {
+  if (entries.length < 3) return Infinity;
+  const d = [];
+  for (let i = 1; i < entries.length; i++) d.push(entries[i].t - entries[i - 1].t);
+  d.sort((a, b) => a - b);
+  const median = d[Math.floor(d.length / 2)];
+  return Math.max(2 * 3600000, 3 * median);
+}
+
+// Split index range into runs of real (non-gap) samples.
+function segmentsOf(ent) {
+  const out = [];
+  let cur = [];
+  ent.forEach((e, i) => {
+    if (e.gap) { if (cur.length) out.push(cur); cur = []; }
+    else cur.push(i);
+  });
+  if (cur.length) out.push(cur);
+  return out;
 }
 
 const lsGet = (k, fallback) => { try { return localStorage.getItem(k) || fallback; } catch { return fallback; } };
@@ -109,10 +124,7 @@ const binTitle = (items) => {
  * markers (status-colored triangles) overlay all views.
  */
 export default function ClusterHealthChart({ scoreHistory, migrationHistory, fetchScoreHistory }) {
-  const [period, setPeriodState] = useState(() => {
-    const saved = lsGet('clusterHealthChartPeriod', '30d');
-    return PERIODS.find(p => p.id === saved) ? saved : '30d';
-  });
+  const [period, setPeriod] = useChartPeriod();
   const [view, setViewState] = useState(() => {
     const s = lsGet('clusterHealthChartView', 'cluster');
     return VIEW_MODES.find(v => v.id === s) ? s : 'cluster';
@@ -121,7 +133,6 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const smoothId = 'med';
   const detailId = 'full';
   const [showMarkers, setShowMarkersState] = useState(() => lsGet('clusterHealthChartMarkers', '1') !== '0');
-  const setPeriod = (id) => { setPeriodState(id); lsSet('clusterHealthChartPeriod', id); };
   const setView = (id) => { setViewState(id); lsSet('clusterHealthChartView', id); };
   const setShowMarkers = (v) => { setShowMarkersState(v); lsSet('clusterHealthChartMarkers', v ? '1' : '0'); };
 
@@ -149,11 +160,11 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
   useEffect(() => {
     if (typeof fetchScoreHistory !== 'function') return;
-    const cfg = PERIODS.find(p => p.id === period) || PERIODS[2];
+    const cfg = periodConfig(period);
     fetchScoreHistory(cfg.limit, cfg.bucket);
   }, [period, fetchScoreHistory]);
 
-  const periodCfg = PERIODS.find(p => p.id === period) || PERIODS[2];
+  const periodCfg = periodConfig(period);
   const smWindow = (SMOOTHING.find(s => s.id === smoothId) || SMOOTHING[0]).window;
   const detailMax = (DETAIL.find(d => d.id === detailId) || DETAIL[0]).max;
 
@@ -163,8 +174,6 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     .filter(e => !isNaN(e.t) && typeof e.cluster === 'number')
     .sort((a, b) => a.t - b.t);
   const allMigTs = (migrationHistory || []).map(m => new Date(m.timestamp).getTime()).filter(t => !isNaN(t));
-
-  if (allEntries.length === 0 && allMigTs.length === 0) return null;
 
   const latestT = Math.max(
     allEntries.length ? allEntries[allEntries.length - 1].t : 0,
@@ -176,7 +185,20 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
   // ---- Series (windowed → decimated → smoothed) ----
   const windowed = allEntries.filter(e => e.t >= tStart && e.t <= tEnd);
-  const ent = decimate(windowed, detailMax);
+  const decimated = decimate(windowed, detailMax);
+  // Gaps: a null sentinel between samples too far apart breaks every line there.
+  const gapMs = gapThresholdMs(decimated);
+  const gaps = [];
+  const ent = [];
+  decimated.forEach((e, i) => {
+    const prev = decimated[i - 1];
+    if (prev && e.t - prev.t > gapMs) {
+      gaps.push({ t0: prev.t, t1: e.t });
+      ent.push({ t: (prev.t + e.t) / 2, cluster: null, nodes: {}, gap: true });
+    }
+    ent.push(e);
+  });
+  const segments = segmentsOf(ent);
   const ts = ent.map(e => e.t);
   const nodeNames = Array.from(new Set(windowed.flatMap(e => Object.keys(e.nodes)))).sort();
 
@@ -207,7 +229,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
   // ---- Per-mode geometry ----
   const colorFor = (i) => NODE_COLORS[i % NODE_COLORS.length];
-  const hasData = ts.length >= 2;
+  const hasData = decimated.length >= 2;
 
   // Cluster: dynamic min/max zoom (preserves original behaviour).
   const cMin = clusterVals.length ? Math.min(...clusterVals.filter(v => v != null)) : 0;
@@ -224,11 +246,16 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const yStack = (v) => h - pad - (v / stackMax) * (h - 2 * pad);
 
   const clusterStops = (view === 'cluster' && hasData) ? healthStops(cMin, cMax) : [];
-  let clusterLine = '', clusterArea = '';
+  // One line + area per run of samples, so a gap is left empty instead of bridged.
+  const clusterSegs = [];
   if (view === 'cluster' && hasData) {
-    const pts = ts.map((t, i) => clusterVals[i] != null ? `${xFor(t).toFixed(2)},${yCluster(clusterVals[i]).toFixed(2)}` : null).filter(Boolean);
-    clusterLine = pts.join(' ');
-    clusterArea = `${xFor(ts[0]).toFixed(2)},${h - pad} ${clusterLine} ${xFor(ts[ts.length - 1]).toFixed(2)},${h - pad}`;
+    segments.forEach(idx => {
+      const real = idx.filter(i => clusterVals[i] != null);
+      if (!real.length) return;
+      const line = real.map(i => `${xFor(ts[i]).toFixed(2)},${yCluster(clusterVals[i]).toFixed(2)}`).join(' ');
+      const area = `${xFor(ts[real[0]]).toFixed(2)},${h - pad} ${line} ${xFor(ts[real[real.length - 1]]).toFixed(2)},${h - pad}`;
+      clusterSegs.push({ line, area, single: real.length === 1, x: xFor(ts[real[0]]), y: yCluster(clusterVals[real[0]]), v: clusterVals[real[0]] });
+    });
   }
 
   const nodeLines = (view === 'lines' && hasData) ? nodeNames.map((n, k) => {
@@ -246,18 +273,22 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
 
   const stackBands = [];
   if (view === 'stacked' && hasData) {
-    let below = ts.map(() => 0);
-    nodeNames.forEach((n, k) => {
-      const top = ts.map((_, i) => below[i] + (nodeVals[n][i] ?? 0));
-      const topPts = ts.map((t, i) => `${xFor(t).toFixed(2)},${yStack(top[i]).toFixed(2)}`);
-      const botPts = ts.map((t, i) => `${xFor(t).toFixed(2)},${yStack(below[i]).toFixed(2)}`).reverse();
-      stackBands.push({ name: n, color: colorFor(k), poly: [...topPts, ...botPts].join(' ') });
-      below = top;
+    segments.forEach((idx, si) => {
+      let below = idx.map(() => 0);
+      nodeNames.forEach((n, k) => {
+        const top = idx.map((i, j) => below[j] + (nodeVals[n][i] ?? 0));
+        const topPts = idx.map((i, j) => `${xFor(ts[i]).toFixed(2)},${yStack(top[j]).toFixed(2)}`);
+        const botPts = idx.map((i, j) => `${xFor(ts[i]).toFixed(2)},${yStack(below[j]).toFixed(2)}`).reverse();
+        stackBands.push({ key: `${n}-${si}`, name: n, color: colorFor(k), poly: [...topPts, ...botPts].join(' ') });
+        below = top;
+      });
     });
   }
 
-  const latest = clusterVals.length ? clusterVals[clusterVals.length - 1] : null;
-  const trend = clusterVals.length > 1 ? (latest - clusterVals[0]) : null;
+  const realVals = clusterVals.filter(v => v != null);
+  const latest = realVals.length ? realVals[realVals.length - 1] : null;
+  const trend = realVals.length > 1 ? (latest - realVals[0]) : null;
+  const gapBoxes = hasData ? gaps.map(g => ({ ...g, x0: xFor(g.t0), x1: xFor(g.t1) })) : [];
 
   // ---- Hover (snap to a nearby migration marker, else the nearest decimated index) ----
   // Markers are magnetic: within SNAP_PX screen pixels (wider for touch) the cursor
@@ -281,13 +312,15 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     if (vbX < pad - 2 || vbX > w - pad + 2) { setHover(null); return; }
     const snapBin = findSnapBin(pxX, rect.width, lastPointerRef.current);
     const targetX = snapBin != null ? markerBins[snapBin].x : vbX;
+    const gap = snapBin == null ? gapBoxes.find(g => vbX > g.x0 && vbX < g.x1) || null : null;
     let bi = 0, bd = Infinity;
     for (let i = 0; i < ts.length; i++) {
+      if (ent[i].gap) continue;
       const d = Math.abs(xFor(ts[i]) - targetX);
       if (d < bd) { bd = d; bi = i; }
     }
     const pixelX = snapBin != null ? (targetX / w) * rect.width : pxX;
-    setHover({ idx: bi, snapBin, pixelX, pixelY: pxY, containerW: rect.width });
+    setHover({ idx: bi, snapBin, gap, pixelX, pixelY: pxY, containerW: rect.width });
   };
 
   // Hover index can outlive the data it was computed against (period switch,
@@ -297,7 +330,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   // ---- Pin (click / tap) ----
   const nearestIdx = (t) => {
     let bi = 0, bd = Infinity;
-    for (let i = 0; i < ts.length; i++) { const d = Math.abs(ts[i] - t); if (d < bd) { bd = d; bi = i; } }
+    for (let i = 0; i < ts.length; i++) { if (ent[i].gap) continue; const d = Math.abs(ts[i] - t); if (d < bd) { bd = d; bi = i; } }
     return bi;
   };
   const pinInWindow = pinnedT != null && hasData && pinnedT >= tStart && pinnedT <= tEnd;
@@ -360,7 +393,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   const yOnLine = (binX) => {
     if (!hasData) return h - pad;
     let bi = 0, bd = Infinity;
-    for (let i = 0; i < ts.length; i++) { const d = Math.abs(xFor(ts[i]) - binX); if (d < bd) { bd = d; bi = i; } }
+    for (let i = 0; i < ts.length; i++) { if (ent[i].gap) continue; const d = Math.abs(xFor(ts[i]) - binX); if (d < bd) { bd = d; bi = i; } }
     const v = clusterVals[bi];
     return v != null ? yCluster(v) : h - pad;
   };
@@ -472,16 +505,24 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             <line key={`day-${i}`} x1={m.x} y1={pad} x2={m.x} y2={h - pad} stroke="currentColor" className="text-gray-400/50 dark:text-slate-600/50" strokeWidth="0.5" strokeDasharray="1,3" />
           ))}
 
-          {view === 'cluster' && hasData && (
-            <>
+          {/* Spans with no samples: shaded, never bridged by a line. */}
+          {gapBoxes.map((g, i) => (
+            <rect key={`gap-${i}`} x={g.x0} y={pad} width={Math.max(0.5, g.x1 - g.x0)} height={h - 2 * pad} fill="currentColor" className="text-slate-400/15 dark:text-slate-500/15" pointerEvents="none">
+              <title>{`No data ${new Date(g.t0).toLocaleString()} – ${new Date(g.t1).toLocaleString()}`}</title>
+            </rect>
+          ))}
+
+          {view === 'cluster' && hasData && clusterSegs.map((sg, i) => (
+            <g key={`cs-${i}`}>
               {/* Area + line gently tinted by health value (green healthy → red critical). */}
-              <polygon points={clusterArea} fill="url(#clusterHealthGrad)" fillOpacity="0.12" />
-              <polyline points={clusterLine} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2" strokeOpacity="0.9" strokeLinejoin="round" />
-            </>
-          )}
+              <polygon points={sg.area} fill="url(#clusterHealthGrad)" fillOpacity="0.12" />
+              <polyline points={sg.line} fill="none" stroke="url(#clusterHealthGrad)" strokeWidth="2" strokeOpacity="0.9" strokeLinejoin="round" />
+              {sg.single && <line x1={sg.x - 1.5} y1={sg.y} x2={sg.x + 1.5} y2={sg.y} stroke={healthColor(sg.v)} strokeWidth="2" />}
+            </g>
+          ))}
 
           {view === 'stacked' && stackBands.map((b, i) => (
-            <polygon key={b.name} points={b.poly} fill={b.color} fillOpacity="0.78" stroke={b.color} strokeWidth="0.4">
+            <polygon key={b.key} points={b.poly} fill={b.color} fillOpacity="0.78" stroke={b.color} strokeWidth="0.4">
               <title>{b.name}</title>
             </polygon>
           ))}
@@ -522,7 +563,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             <line x1={xFor(pinnedT)} y1={0} x2={xFor(pinnedT)} y2={h} stroke="#3b82f6" strokeWidth="1.5" pointerEvents="none" />
           )}
 
-          {hoverOk && (
+          {hoverOk && !hover.gap && (
             <line
               x1={hoverBin ? hoverBin.x : xFor(ts[hover.idx])} y1={pad} x2={hoverBin ? hoverBin.x : xFor(ts[hover.idx])} y2={h - pad}
               stroke={hoverBin ? binColor(hoverBin.items) : 'currentColor'} className="text-pb-text dark:text-white"
@@ -545,6 +586,17 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             ))}
           </div>
         )}
+
+        {/* "no data" labels for wide gaps, HTML so the text isn't stretched. */}
+        {gapBoxes.filter(g => (g.x1 - g.x0) >= 36).map((g, i) => (
+          <span
+            key={`gl-${i}`}
+            className="absolute pointer-events-none text-[10px] leading-none text-pb-text2 dark:text-gray-500 whitespace-nowrap"
+            style={{ left: `${(((g.x0 + g.x1) / 2) / w) * 100}%`, top: '38px', transform: 'translateX(-50%)' }}
+          >
+            no data
+          </span>
+        ))}
 
         {/* Count badges as HTML so digits stay crisp (SVG text is stretched by
             preserveAspectRatio="none"). Vertical viewBox units map 1:1 to px (88/88). */}
@@ -571,6 +623,14 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             ? { right: Math.max(0, hover.containerW - hover.pixelX + 12), top: Math.max(0, hover.pixelY - 50) }
             : { left: hover.pixelX + 12, top: Math.max(0, hover.pixelY - 50) };
           const i = hover.idx;
+          if (hover.gap) {
+            return (
+              <div className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px] max-w-[260px]" style={style}>
+                <div className="font-semibold text-pb-text dark:text-white">No data</div>
+                <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap">{fmtHoverTime(hover.gap.t0)} – {fmtHoverTime(hover.gap.t1)}</div>
+              </div>
+            );
+          }
           return (
             <div className="absolute pointer-events-none z-10 px-2 py-1.5 rounded-md bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-[11px] max-w-[260px]" style={style}>
               <div className="text-pb-text2 dark:text-gray-400 whitespace-nowrap mb-0.5">{fmtHoverTime(hoverBin ? hoverBin.items[0].t : ts[i])}</div>

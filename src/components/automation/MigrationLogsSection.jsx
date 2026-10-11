@@ -1,10 +1,87 @@
 import {
-  ArrowRight, CheckCircle, ClipboardList, Clock, Download, Info,
-  RefreshCw, XCircle
+  ArrowRight, ChevronDown, ClipboardList, Download, RefreshCw, Search,
 } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, SELECT_FIELD, headroomTextColor } from '../../utils/designTokens.js';
+import {
+  GLASS_CARD, INNER_CARD, BTN_SECONDARY, INPUT_FIELD, SELECT_FIELD, TABLE_HEADER, TABLE_ROW,
+  statusBadge, headroomTextColor,
+} from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
+import TabBar from '../TabBar.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
+import { API_BASE } from '../../utils/constants.js';
+
+const { useState, useEffect, useMemo } = React;
+
+const LOG_TABS = [
+  { id: 'history', label: 'Migration History' },
+  { id: 'logs', label: 'Script Logs' },
+];
+
+const STATUS_COLOR = { completed: 'green', failed: 'red', timeout: 'orange', running: 'blue', pending: 'blue' };
+
+const tsOf = (m) => parseTimestamp(m.timestamp)?.getTime() || 0;
+
+function fmtWhen(m) {
+  const d = parseTimestamp(m.timestamp);
+  if (!d) return m.timestamp || '';
+  const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleString(undefined, opts);
+}
+
+function fmtDuration(sec) {
+  if (sec == null || Number.isNaN(Number(sec))) return '–';
+  const s = Math.round(Number(sec));
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+}
+
+/** Who started the migration: automation run or a person. */
+function startedBy(m) {
+  const v = String(m.initiated_by || m.trigger || '').toLowerCase();
+  if (!v) return null;
+  if (v.startsWith('auto') || v === 'scheduler' || v === 'timer') return 'Automation';
+  if (v === 'manual' || v === 'user' || v === 'ui' || v === 'api') return 'Manual';
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+const guestName = (m) => m.name || m.guest_name || `Guest ${m.vmid}`;
+
+function StatusBadge({ m }) {
+  return (
+    <span className="inline-flex items-center gap-1 flex-wrap">
+      <span className={statusBadge(STATUS_COLOR[m.status] || 'gray')}>{m.status || 'unknown'}</span>
+      {m.dry_run && <span className={statusBadge('yellow')}>dry run</span>}
+    </span>
+  );
+}
+
+/** Extra facts shown when a row is expanded. */
+function Details({ m }) {
+  const headroom = m.suitability_rating !== undefined
+    ? m.suitability_rating
+    : (m.target_node_score !== undefined && m.target_node_score !== null
+      ? Math.max(0, Math.round(100 - Math.min(m.target_node_score || 0, 100))) : null);
+  const confidence = m.confidence_score ?? m.confidence;
+  const facts = [
+    headroom != null && ['Target headroom', <span className={`font-semibold ${headroomTextColor(headroom)}`}>{headroom}/100</span>],
+    confidence != null && ['Confidence', `${Math.round(confidence)}%`],
+    m.reasoning?.score_improvement != null && ['Score gain', `${Math.round(m.reasoning.score_improvement)} points`],
+    m.window_name && ['Window', m.window_name],
+    m.task_id && ['Task', <span className="font-mono break-all">{m.task_id}</span>],
+  ].filter(Boolean);
+  return (
+    <div className="text-xs space-y-1.5">
+      <p className="text-pb-text dark:text-gray-200 whitespace-pre-wrap break-words">{m.reason || 'No reason recorded.'}</p>
+      {m.error_message && <p className="text-red-600 dark:text-red-400 break-words">Error: {m.error_message}</p>}
+      {facts.length > 0 && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-pb-text2 dark:text-gray-400">
+          {facts.map(([k, v]) => <span key={k}>{k}: <span className="text-pb-text dark:text-gray-200">{v}</span></span>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MigrationLogsSection({
   automationStatus, automigrateLogs,
@@ -12,350 +89,288 @@ export default function MigrationLogsSection({
   migrationHistoryPageSize, setMigrationHistoryPageSize,
   migrationLogsTab, setMigrationLogsTab,
   setAutomigrateLogs, logRefreshTime, setLogRefreshTime,
-  fetchAutomationStatus, setCurrentPage,
-  collapsedSections, setCollapsedSections, automationConfig
+  fetchAutomationStatus, active = true,
 }) {
-  return (<>
-        {/* Migration Logs & History */}
-        <div className={GLASS_CARD + ' overflow-hidden'}>
-          <SectionHeader
-            title="Migration Logs & History"
-            icon={ClipboardList}
-            accent={['green', 'emerald']}
-            right={
-              <span className="relative group inline-block">
-                <Info size={16} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
-                <div className="absolute top-full right-0 mt-2 px-4 py-3 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700" style={{minWidth: '280px'}}>
-                  <div className="font-semibold mb-2 text-blue-600 dark:text-blue-400 border-b border-pb-border dark:border-gray-700 pb-2">Migration Scoring System</div>
-                  <div className="text-[11px] space-y-1">
-                    <div className="text-pb-text dark:text-gray-300">Migrations are scored using a penalty-based system:</div>
-                    <div className="mt-2 space-y-0.5">
-                      <div>• <span className="text-blue-700 dark:text-blue-300">CPU Load</span> × 30%</div>
-                      <div>• <span className="text-blue-700 dark:text-blue-300">Memory Load</span> × 30%</div>
-                      <div>• <span className="text-blue-700 dark:text-blue-300">IOWait</span> × 20%</div>
-                      <div>• <span className="text-blue-700 dark:text-blue-300">Load Average</span> × 10%</div>
-                      <div>• <span className="text-blue-700 dark:text-blue-300">Storage Pressure</span> × 10%</div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-pb-border dark:border-gray-700">
-                      <div className="text-pb-text2 dark:text-gray-400">Lower penalty score = better target</div>
-                      <div className="text-pb-text2 dark:text-gray-400">Plus penalties for high usage & trends</div>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-pb-border dark:border-gray-700">
-                      <div><span className="text-green-600 dark:text-green-400 font-semibold">70%+</span> = Excellent</div>
-                      <div><span className="text-yellow-600 dark:text-yellow-400 font-semibold">50-69%</span> = Good</div>
-                      <div><span className="text-orange-600 dark:text-orange-400 font-semibold">30-49%</span> = Fair</div>
-                      <div><span className="text-red-600 dark:text-red-400 font-semibold">&lt;30%</span> = Poor</div>
-                    </div>
-                  </div>
-                </div>
-              </span>
-            }
-          />
+  // Full history (all time) is loaded when the tab is first opened; until
+  // then (or if it fails) the status endpoint's last 7 days are shown.
+  const [fullHistory, setFullHistory] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [query, setQuery] = useState('');
+  const [nodeFilter, setNodeFilter] = useState('');
+  const [expanded, setExpanded] = useState(() => new Set());
 
-          {/* Tabs */}
-          <div className="border-b border-pb-border dark:border-slate-700 mb-4">
-            <div className="flex gap-4">
-              <button
-                onClick={() => setMigrationLogsTab('history')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  migrationLogsTab === 'history'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
-                }`}
-              >
-                Migration History
-              </button>
-              <button
-                onClick={() => setMigrationLogsTab('logs')}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  migrationLogsTab === 'logs'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300'
-                }`}
-              >
-                Script Logs
-              </button>
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`${API_BASE}/automigrate/history?type=migrations&limit=5000`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.migrations)) setFullHistory(data.migrations);
+    } catch (err) {
+      console.error('Failed to load migration history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (active && fullHistory === null && !loadingHistory) loadHistory();
+  }, [active]);
+
+  const source = fullHistory || automationStatus.recent_migrations || [];
+  // Newest first, whatever order the API returns.
+  const sorted = useMemo(() => source.slice().sort((a, b) => tsOf(b) - tsOf(a)), [source]);
+  const nodes = useMemo(() => {
+    const set = new Set();
+    sorted.forEach(m => { if (m.source_node) set.add(m.source_node); if (m.target_node) set.add(m.target_node); });
+    return [...set].sort();
+  }, [sorted]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return sorted.filter(m => {
+      if (nodeFilter && m.source_node !== nodeFilter && m.target_node !== nodeFilter) return false;
+      if (!q) return true;
+      return guestName(m).toLowerCase().includes(q) || String(m.vmid ?? '').includes(q);
+    });
+  }, [sorted, query, nodeFilter]);
+
+  const pageSize = migrationHistoryPageSize || 25;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(Math.max(1, migrationHistoryPage), pageCount);
+  const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const setPage = (p) => setMigrationHistoryPage(Math.min(Math.max(1, p), pageCount));
+
+  const keyOf = (m, i) => m.id || m.migration_id || `${m.vmid}-${m.timestamp}-${i}`;
+  const toggle = (k) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
+
+  const refresh = () => { fetchAutomationStatus?.(); loadHistory(); };
+
+  return (
+    <div className={GLASS_CARD + ' overflow-hidden'}>
+      <SectionHeader title="Migration Logs & History" icon={ClipboardList} accent={['green', 'emerald']} />
+
+      <TabBar tabs={LOG_TABS} active={migrationLogsTab} onChange={setMigrationLogsTab} className="mb-4" />
+
+      {migrationLogsTab === 'history' && (
+        <div>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="relative flex-1 min-w-[10rem] sm:max-w-xs">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-pb-text2 dark:text-gray-500 pointer-events-none" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setMigrationHistoryPage(1); }}
+                placeholder="Guest name or ID"
+                className={`${INPUT_FIELD} !pl-8 !py-1.5`}
+                aria-label="Filter by guest"
+              />
             </div>
+            <select
+              value={nodeFilter}
+              onChange={(e) => { setNodeFilter(e.target.value); setMigrationHistoryPage(1); }}
+              className={`${SELECT_FIELD} !py-1.5 text-xs`}
+              aria-label="Filter by node"
+            >
+              <option value="">All nodes</option>
+              {nodes.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <select
+              value={pageSize}
+              onChange={(e) => { setMigrationHistoryPageSize(Number(e.target.value)); setMigrationHistoryPage(1); }}
+              className={`${SELECT_FIELD} !py-1.5 text-xs`}
+              aria-label="Rows per page"
+            >
+              {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+            </select>
+            <button onClick={refresh} className={`${BTN_SECONDARY} !px-3 !py-1.5 ml-auto`} title="Refresh">
+              <RefreshCw size={14} className={loadingHistory ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
           </div>
 
-          {/* Migration History Table */}
-          {migrationLogsTab === 'history' && (
-            <div>
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
-                <div className="flex items-center gap-3 min-w-0 flex-wrap">
-                  <div className="text-sm text-pb-text2 dark:text-gray-400">
-                    {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0
-                      ? `Showing ${((migrationHistoryPage - 1) * migrationHistoryPageSize) + 1}-${Math.min(migrationHistoryPage * migrationHistoryPageSize, automationStatus.recent_migrations.length)} of ${automationStatus.recent_migrations.length} migrations`
-                      : 'No migrations'}
-                  </div>
-                  <select
-                    value={migrationHistoryPageSize}
-                    onChange={(e) => {
-                      setMigrationHistoryPageSize(Number(e.target.value));
-                      setMigrationHistoryPage(1);
-                    }}
-                    className={`${SELECT_FIELD} px-2 py-1 text-xs`}
-                  >
-                    <option value={5}>5 per page</option>
-                    <option value={10}>10 per page</option>
-                    <option value={25}>25 per page</option>
-                    <option value={50}>50 per page</option>
-                    <option value={100}>100 per page</option>
-                  </select>
-                </div>
+          <div className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
+            {filtered.length === 0
+              ? (source.length === 0 ? (loadingHistory ? 'Loading…' : 'No migrations recorded') : 'No migrations match')
+              : `${filtered.length.toLocaleString()} migration${filtered.length === 1 ? '' : 's'}${fullHistory ? '' : ' in the last 7 days'}, newest first · tap one for the full reason`}
+          </div>
+
+          {/* Phone: one card per migration */}
+          <div className="sm:hidden space-y-2">
+            {rows.map((m, i) => {
+              const k = keyOf(m, i);
+              const open = expanded.has(k);
+              const by = startedBy(m);
+              return (
                 <button
-                  onClick={fetchAutomationStatus}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
+                  key={k}
+                  onClick={() => toggle(k)}
+                  aria-expanded={open}
+                  className={`${INNER_CARD} !p-3 w-full text-left block`}
                 >
-                  <RefreshCw size={14} />
-                  Refresh
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-pb-surface2 dark:bg-slate-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Time</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">VM</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Migration</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300" title="Target node headroom at decision time (higher = more room)">Target headroom</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Reason</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-pb-text dark:text-gray-300">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 ? (
-                      (() => {
-                        const reversedMigrations = automationStatus.recent_migrations.slice().reverse();
-                        const startIndex = (migrationHistoryPage - 1) * migrationHistoryPageSize;
-                        const endIndex = startIndex + migrationHistoryPageSize;
-                        const paginatedMigrations = reversedMigrations.slice(startIndex, endIndex);
-                        return paginatedMigrations.map((migration) => {
-                        // Format timestamp
-                        let timeDisplay = '';
-                        if (migration.timestamp) {
-                          try {
-                            const migrationDate = parseTimestamp(migration.timestamp);
-                            timeDisplay = migrationDate ? migrationDate.toLocaleString() : migration.timestamp;
-                          } catch (e) {
-                            timeDisplay = migration.timestamp;
-                          }
-                        }
-
-                        // Format duration
-                        const durationDisplay = migration.duration_seconds
-                          ? `${Math.floor(migration.duration_seconds / 60)}m ${migration.duration_seconds % 60}s`
-                          : '-';
-
-                        return (
-                          <tr key={migration.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
-                            <td className="px-4 py-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">
-                              {timeDisplay}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-pb-text dark:text-white">
-                                {migration.name}
-                              </div>
-                              <div className="text-xs text-pb-text2 dark:text-gray-400">
-                                ID: {migration.vmid}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              <div className="flex items-center gap-1 text-pb-text2 dark:text-gray-400">
-                                <span className="font-mono">{migration.source_node}</span>
-                                <ArrowRight size={12} />
-                                <span className="font-mono">{migration.target_node}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              {(migration.suitability_rating !== undefined || migration.target_node_score !== undefined) ? (
-                                (() => {
-                                  // Convert raw penalty score to suitability percentage
-                                  const suitabilityPercent = migration.suitability_rating !== undefined
-                                    ? migration.suitability_rating
-                                    : Math.max(0, Math.round(100 - Math.min(migration.target_node_score || 0, 100)));
-
-                                  return (
-                                <div className="flex items-center gap-1">
-                                  <span className={`font-semibold ${headroomTextColor(suitabilityPercent)}`}>
-                                    {suitabilityPercent}<span className="text-[10px] opacity-70">/100</span>
-                                  </span>
-                                  <span className="relative group inline-block">
-                                    <Info size={12} className="text-pb-text2 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 cursor-help" />
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-gray-800 text-pb-text dark:text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-pb-border dark:border-gray-700">
-                                      <div className="font-semibold mb-1 text-blue-600 dark:text-blue-400">Scoring Breakdown</div>
-                                      <div className="text-[10px] space-y-0.5">
-                                        <div>Target: {migration.target_node}</div>
-                                        <div>Penalty Score: {migration.target_node_score?.toFixed(1) || 'N/A'}</div>
-                                        <div>Target headroom: {suitabilityPercent}/100</div>
-                                        <div className="border-t border-pb-border dark:border-gray-700 pt-1 mt-1">
-                                          <div className="text-pb-text2 dark:text-gray-400">Lower penalty = better target</div>
-                                          <div>• CPU Load × 30%</div>
-                                          <div>• Memory Load × 30%</div>
-                                          <div>• IOWait × 20%</div>
-                                          <div>• Load Avg × 10%</div>
-                                          <div>• Storage Pressure × 10%</div>
-                                          <div className="mt-1 text-pb-text2 dark:text-gray-400">+ Penalties for high usage/trends</div>
-                                        </div>
-                                        {migration.target_node_score > 100 && (
-                                          <div className="border-t border-pb-border dark:border-gray-700 pt-1 mt-1 text-red-600 dark:text-red-400">
-                                            ⚠ Penalty score &gt;100 indicates heavy load/trends
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </span>
-                                </div>
-                                  );
-                                })()
-                              ) : (
-                                <span className="text-pb-text2 dark:text-gray-400">N/A</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-pb-text2 dark:text-gray-400 max-w-xs">
-                              <div className="truncate" title={migration.reason}>
-                                {migration.reason}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded text-xs font-semibold inline-flex items-center gap-1 ${
-                                  migration.status === 'completed'
-                                    ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                    : migration.status === 'failed'
-                                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                                    : migration.status === 'timeout'
-                                    ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
-                                    : 'bg-gray-900/30 text-pb-text2 dark:text-gray-400'
-                                }`}>
-                                  {migration.status === 'completed' && <CheckCircle size={12} />}
-                                  {migration.status === 'failed' && <XCircle size={12} />}
-                                  {migration.status === 'timeout' && <Clock size={12} />}
-                                  {migration.status}
-                                </span>
-                                {migration.dry_run && (
-                                  <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
-                                    DRY RUN
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">
-                              {durationDisplay}
-                            </td>
-                          </tr>
-                        );
-                      });
-                      })()
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-pb-text dark:text-white truncate">
+                        {guestName(m)} <span className="font-normal text-pb-text2 dark:text-gray-400">{m.vmid}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-mono text-pb-text2 dark:text-gray-400">
+                        {m.source_node} <ArrowRight size={12} /> {m.target_node}
+                      </div>
+                    </div>
+                    <StatusBadge m={m} />
+                  </div>
+                  <div className="text-xs text-pb-text2 dark:text-gray-400 mt-1 tabular-nums">
+                    {fmtWhen(m)} · {fmtDuration(m.duration_seconds)}{by ? ` · ${by}` : ''}
+                  </div>
+                  <div className="mt-1.5 flex items-start gap-1">
+                    {open ? (
+                      <div className="flex-1 min-w-0"><Details m={m} /></div>
                     ) : (
-                      <tr>
-                        <td colSpan="7" className="px-4 py-8 text-center text-sm text-pb-text2 dark:text-gray-400">
-                          No migration history available
-                        </td>
-                      </tr>
+                      <p className="flex-1 min-w-0 text-xs text-pb-text dark:text-gray-300 line-clamp-2">{m.reason || 'No reason recorded.'}</p>
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Controls */}
-              {automationStatus.recent_migrations && automationStatus.recent_migrations.length > 0 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-pb-border dark:border-slate-700">
-                  <div className="text-sm text-pb-text2 dark:text-gray-400">
-                    Page {migrationHistoryPage} of {Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
+                    <ChevronDown size={14} className={`shrink-0 mt-0.5 text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setMigrationHistoryPage(1)}
-                      disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
-                    >
-                      First
-                    </button>
-                    <button
-                      onClick={() => setMigrationHistoryPage(migrationHistoryPage - 1)}
-                      disabled={migrationHistoryPage === 1}
-                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setMigrationHistoryPage(migrationHistoryPage + 1)}
-                      disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
-                    >
-                      Next
-                    </button>
-                    <button
-                      onClick={() => setMigrationHistoryPage(Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize))}
-                      disabled={migrationHistoryPage >= Math.ceil(automationStatus.recent_migrations.length / migrationHistoryPageSize)}
-                      className="px-3 py-1.5 text-sm border border-pb-border dark:border-gray-600 rounded hover:bg-pb-surface2 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-pb-text dark:text-gray-300"
-                    >
-                      Last
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* Script Logs */}
-          {migrationLogsTab === 'logs' && (
-            <div>
-              <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
-                <div className="text-xs text-pb-text2 dark:text-gray-400 min-w-0">
-                  {logRefreshTime && `Last updated: ${logRefreshTime}`}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap shrink-0">
-                  <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/automigrate/logs?lines=500');
-                        const data = await response.json();
-                        if (data.success) {
-                          setAutomigrateLogs(data.logs);
-                          setLogRefreshTime(new Date().toLocaleTimeString());
-                        }
-                      } catch (error) {
-                        console.error('Error fetching logs:', error);
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium flex items-center gap-2"
-                    title="Refresh Logs"
-                  >
-                    <RefreshCw size={14} />
-                    <span className="hidden sm:inline">Refresh</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!automigrateLogs) return;
-                      const blob = new Blob([automigrateLogs], { type: 'text/plain' });
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `automigrate-logs-${new Date().toISOString().split('T')[0]}.txt`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      window.URL.revokeObjectURL(url);
-                    }}
-                    disabled={!automigrateLogs}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-2"
-                  >
-                    <Download size={14} />
-                    Download
-                  </button>
-                </div>
-              </div>
-              <div className="bg-black rounded border border-gray-700 p-4 max-h-96 overflow-y-auto">
-                <pre className="text-xs text-green-600 dark:text-green-400 font-mono whitespace-pre-wrap">
-                  {automigrateLogs || 'Click "Refresh" to load logs...'}
-                </pre>
+          {/* Desktop: table, click a row to expand */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border border-slate-200 dark:border-pb-border-dark">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className={TABLE_HEADER}>When</th>
+                  <th className={TABLE_HEADER}>Guest</th>
+                  <th className={TABLE_HEADER}>Move</th>
+                  <th className={TABLE_HEADER}>Status</th>
+                  <th className={`${TABLE_HEADER} whitespace-nowrap`}>Started by</th>
+                  <th className={TABLE_HEADER}>Duration</th>
+                  <th className={`${TABLE_HEADER} w-full`}>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((m, i) => {
+                  const k = keyOf(m, i);
+                  const open = expanded.has(k);
+                  return [
+                    <tr
+                      key={k}
+                      onClick={() => toggle(k)}
+                      aria-expanded={open}
+                      className={`${TABLE_ROW} cursor-pointer align-top`}
+                    >
+                      <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap tabular-nums">{fmtWhen(m)}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        <span className="font-medium text-pb-text dark:text-white">{guestName(m)}</span>
+                        <span className="ml-1.5 text-xs text-pb-text2 dark:text-gray-400">{m.vmid}</span>
+                      </td>
+                      <td className="p-3 text-xs whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 font-mono text-pb-text2 dark:text-gray-400">
+                          {m.source_node} <ArrowRight size={12} /> {m.target_node}
+                        </span>
+                      </td>
+                      <td className="p-3 whitespace-nowrap"><StatusBadge m={m} /></td>
+                      <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">{startedBy(m) || '–'}</td>
+                      <td className="p-3 text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap tabular-nums">{fmtDuration(m.duration_seconds)}</td>
+                      <td className="p-3 text-xs text-pb-text dark:text-gray-300 max-w-0 w-full">
+                        <div className="flex items-start gap-1">
+                          <span className={`flex-1 min-w-0 ${open ? 'text-pb-text2 dark:text-gray-500' : 'truncate'}`}>{open ? 'Details below' : (m.reason || '–')}</span>
+                          <ChevronDown size={14} className={`shrink-0 text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                        </div>
+                      </td>
+                    </tr>,
+                    open && (
+                      <tr key={`${k}-d`} className="border-b border-slate-100 dark:border-pb-border-dark/70 bg-slate-50/60 dark:bg-pb-surface2-dark/40">
+                        <td colSpan={7} className="px-3 pb-3 pt-1"><Details m={m} /></td>
+                      </tr>
+                    ),
+                  ];
+                })}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-pb-text2 dark:text-gray-400">
+                      {loadingHistory ? 'Loading…' : 'No migrations to show'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filtered.length > pageSize && (
+            <div className="flex items-center justify-between gap-2 mt-3">
+              <span className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">Page {page} of {pageCount}</span>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setPage(1)} disabled={page === 1} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs hidden sm:inline-flex`}>Newest</button>
+                <button onClick={() => setPage(page - 1)} disabled={page === 1} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Newer</button>
+                <button onClick={() => setPage(page + 1)} disabled={page >= pageCount} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Older</button>
+                <button onClick={() => setPage(pageCount)} disabled={page >= pageCount} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs hidden sm:inline-flex`}>Oldest</button>
               </div>
             </div>
           )}
         </div>
+      )}
 
-  </>);
+      {/* Script Logs */}
+      {migrationLogsTab === 'logs' && (
+        <div>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-y-3">
+            <div className="text-xs text-pb-text2 dark:text-gray-400 min-w-0">
+              {logRefreshTime && `Last updated: ${logRefreshTime}`}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`${API_BASE}/automigrate/logs?lines=500`);
+                    const data = await response.json();
+                    if (data.success) {
+                      setAutomigrateLogs(data.logs);
+                      setLogRefreshTime(new Date().toLocaleTimeString());
+                    }
+                  } catch (error) {
+                    console.error('Error fetching logs:', error);
+                  }
+                }}
+                className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+                title="Refresh logs"
+              >
+                <RefreshCw size={14} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!automigrateLogs) return;
+                  const blob = new Blob([automigrateLogs], { type: 'text/plain' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `automigrate-logs-${new Date().toISOString().split('T')[0]}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                }}
+                disabled={!automigrateLogs}
+                className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+              >
+                <Download size={14} />
+                Download
+              </button>
+            </div>
+          </div>
+          <div className="bg-slate-900 dark:bg-black rounded-lg border border-slate-700 p-4 max-h-96 overflow-y-auto">
+            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+              {automigrateLogs || 'Click "Refresh" to load logs...'}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

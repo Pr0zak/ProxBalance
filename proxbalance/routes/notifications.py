@@ -1,3 +1,9 @@
+import json
+import re
+import subprocess
+from datetime import datetime, timezone
+from typing import Any, Dict
+
 from flask import Blueprint, jsonify, request
 from proxbalance.config_manager import load_config
 from proxbalance.error_handlers import api_route
@@ -97,4 +103,84 @@ def get_notification_providers():
         "providers": list(defaults["providers"].keys()),
         "defaults": defaults,
         "channels": channels,
+    })
+
+
+# Units whose journal may hold "Sent <event> notification via <Class>" lines
+# from before delivery status was recorded. Fixed list; never user input.
+_JOURNAL_UNITS = (
+    "proxmox-balance-automigrate", "proxmox-collector",
+    "proxmox-balance-recommendations", "proxmox-balance",
+)
+_SEND_LINE = re.compile(r"\b(Sent|Failed to send) (\w+) notification via (\w+)Provider\b")
+
+
+def _backfill_from_journal() -> None:
+    """Seed the status file once from the last 30 days of service journals,
+    so sends made before status tracking existed still show up."""
+    from notifications import PROVIDER_REGISTRY, get_send_status, update_send_status
+
+    if get_send_status().get("backfilled"):
+        return
+    by_class = {cls.__name__.replace("Provider", ""): name for name, cls in PROVIDER_REGISTRY.items()}
+    found: Dict[str, Dict[str, Any]] = {}
+    try:
+        cmd = ["/bin/journalctl", "--no-pager", "--since", "-30d", "-g", "notification via",
+               "-o", "json", "--output-fields=MESSAGE"]
+        for unit in _JOURNAL_UNITS:
+            cmd += ["-u", unit]
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        out = ""
+    for line in out.splitlines():
+        try:
+            entry = json.loads(line)
+            m = _SEND_LINE.search(entry.get("MESSAGE") or "")
+            if not m or m.group(3) not in by_class:
+                continue
+            at = datetime.fromtimestamp(int(entry["__REALTIME_TIMESTAMP"]) / 1e6, timezone.utc).isoformat()
+        except (ValueError, KeyError, TypeError):
+            continue
+        ok = m.group(1) == "Sent"
+        fields = found.setdefault(by_class[m.group(3)], {})
+        key = "last_sent" if ok else "last_failed"
+        if at > fields.get(f"{key}_at", ""):  # journal is oldest first; keep newest
+            fields[f"{key}_at"] = at
+            fields[f"{key}_event"] = m.group(2)
+    # Never overwrite something recorded live since tracking began.
+    current = get_send_status().get("channels") or {}
+    updates = {}
+    for name, fields in found.items():
+        have = current.get(name) or {}
+        keep = {}
+        for key in ("last_sent", "last_failed"):
+            at = fields.get(f"{key}_at")
+            if at and at > (have.get(f"{key}_at") or ""):
+                keep[f"{key}_at"] = at
+                keep[f"{key}_event"] = fields[f"{key}_event"]
+        if keep:
+            updates[name] = keep
+    update_send_status(updates, meta={"backfilled": True})
+
+
+@notifications_bp.route("/api/notifications/status", methods=["GET"])
+@api_route
+def notification_status():
+    """Last successful and last failed send per channel.
+
+    Returns {"channels": {name: {last_sent_at, last_sent_event,
+    last_failed_at, last_failed_event}}}. Timestamps are UTC ISO-8601;
+    events are names such as "action", "complete" or "test". No message
+    text, errors or credentials are stored or returned.
+    """
+    from notifications import get_send_status
+
+    if not get_send_status().get("backfilled"):
+        _backfill_from_journal()
+    channels = get_send_status().get("channels") or {}
+    allowed = ("last_sent_at", "last_sent_event", "last_failed_at", "last_failed_event")
+    return jsonify({
+        "success": True,
+        "channels": {name: {k: v for k, v in entry.items() if k in allowed}
+                     for name, entry in channels.items() if isinstance(entry, dict)},
     })

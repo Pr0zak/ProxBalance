@@ -4,6 +4,7 @@ import {
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
+import NumberRow from './NumberRow.jsx';
 
 const { useState } = React;
 
@@ -111,7 +112,7 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                         className={`relative text-left p-3 rounded-lg border-2 transition-all ${
                           isSelected
                             ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
-                            : 'border-pb-border dark:border-slate-600 hover:border-blue-500 bg-pb-surface2 dark:bg-gray-700'
+                            : 'border-slate-200 dark:border-pb-border-dark hover:border-blue-500 dark:hover:border-blue-500 bg-slate-50 dark:bg-pb-surface2-dark'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -134,37 +135,21 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
               </div>
 
               {/* Main tuning controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                    Required Observation Periods
-                  </label>
-                  <NumberField
-                    min="2"
-                    max="10"
-                    value={obsPeriods}
-                    onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } })}
-                    className={INPUT_FIELD}
-                  />
-                  <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                    Consecutive times a recommendation must appear before acting
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                    Minimum Data Collection (hours)
-                  </label>
-                  <NumberField
-                    min="0"
-                    max="72"
-                    value={minDataHours}
-                    onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } })}
-                    className={INPUT_FIELD}
-                  />
-                  <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                    How long the system must observe before first migration (0 = no minimum)
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <NumberRow
+                  label="Observation periods"
+                  description="Times in a row a move must be recommended before acting"
+                  min="2" max="10"
+                  value={obsPeriods}
+                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } })}
+                />
+                <NumberRow
+                  label="Minimum data collection"
+                  description="Watch this long before the first migration (0 = no minimum)"
+                  unit="h" min="0" max="72"
+                  value={minDataHours}
+                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } })}
+                />
               </div>
 
               <p className="text-xs text-pb-text2 dark:text-gray-400">

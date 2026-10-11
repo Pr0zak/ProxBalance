@@ -15,7 +15,7 @@ const { useState, useEffect, useMemo } = React;
  *  - 'strip'  : medium horizontal strip
  */
 
-function getStatus(automationStatus) {
+export function getStatus(automationStatus) {
   if (!automationStatus) return { label: 'Unknown', color: 'gray', dotColor: 'bg-gray-500' };
   if (!automationStatus.enabled) return { label: 'Off', color: 'gray', dotColor: 'bg-gray-500' };
   if (automationStatus.dry_run) return { label: 'Dry-Run', color: 'yellow', dotColor: 'bg-yellow-400' };
@@ -27,7 +27,7 @@ function getStatus(automationStatus) {
   return { label: 'Active', color: 'green', dotColor: 'bg-green-400' };
 }
 
-function getNextCheck(automationStatus) {
+export function getNextCheck(automationStatus) {
   if (!automationStatus?.next_check) {
     if (automationStatus?.check_interval_minutes) return `every ${automationStatus.check_interval_minutes}m`;
     return null;
@@ -253,7 +253,7 @@ export default function AutoStatusPill({
         )}
       </div>
       {size === 'banner' && automationStatus.enabled && (lastMove || watching.length > 0) && (
-        <div className="px-4 pb-2 -mt-0.5">
+        <div className="hidden sm:block px-4 pb-2 -mt-0.5">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
             {lastMove && (
               <span className="inline-flex items-center gap-1.5 min-w-0" title={lastMove.reason || undefined}>

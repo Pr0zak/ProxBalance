@@ -75,7 +75,7 @@ export function attentionItems({ data, config, automationStatus, maintenanceNode
     items.push({
       id: 'low-headroom',
       label: low.length === 1
-        ? `${t.name} headroom ${Math.round(t.rating)}${t.top ? ` · ${t.top.label}` : ''}`
+        ? `${t.name} is short on room (headroom ${Math.round(t.rating)})${t.top ? ` — mostly: ${t.top.description}` : ''}`
         : `${low.length} nodes under ${LOW_HEADROOM} headroom`,
       detail: low.map(([n, s]) => `${n}: ${Math.round(s.suitability_rating)}`).join(', '),
       href: '#/dashboard/nodes',

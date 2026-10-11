@@ -1,26 +1,13 @@
 import {
   GLASS_CARD, TABLE_HEADER, TABLE_ROW, PROGRESS_BAR_BG,
   metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON,
-  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE
 } from '../../utils/designTokens.js';
 import { ChevronDown, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
-import { HEADROOM_HINT } from '../../utils/constants.js';
-import { topPenalty, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
+import { HEADROOM_HINT, DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IOWAIT_THRESHOLD } from '../../utils/constants.js';
+import { penaltyList, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
 
 const { useState, useMemo } = React;
-
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'vm', label: 'VMs' },
-  { id: 'lxc', label: 'LXCs' },
-  { id: 'running', label: 'Running' },
-  { id: 'stopped', label: 'Stopped' },
-  { id: 'ignored', label: 'Ignored' },
-  { id: 'auto_migrate', label: 'Auto-Migrate' },
-  { id: 'affinity', label: 'Affinity' },
-  { id: 'anti_affinity', label: 'Anti-Affinity' },
-];
 
 const WORKLOAD_BADGE_COLORS = {
   steady: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300',
@@ -29,14 +16,7 @@ const WORKLOAD_BADGE_COLORS = {
   cyclical: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
 };
 
-function guestHasAnyTag(guest) {
-  return !!(guest.tags?.has_ignore
-    || guest.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok')
-    || guest.tags?.exclude_groups?.length > 0
-    || guest.tags?.affinity_groups?.length > 0);
-}
-
-const TOTAL_COLS = 11;
+const TOTAL_COLS = 12;
 
 /** Inline progress bar with label */
 function MetricBar({ pct, detail, title }) {
@@ -55,6 +35,104 @@ function MetricBar({ pct, detail, title }) {
           style={{ width: `${clampedPct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+/** CPU bar split into the share held by guests ProxBalance won't move
+ *  (ignored / passthrough-pinned — muted, hatched) and the movable rest. */
+function CpuBar({ pct, anchored, anchoredGuests, detail, nodeName }) {
+  const total = Math.min(100, Math.max(0, pct || 0));
+  const fixed = Math.min(total, Math.max(0, anchored || 0));
+  const movable = total - fixed;
+  const names = (anchoredGuests || []).filter(g => (g.cpu_share || 0) >= 0.5);
+  const title = fixed >= 0.5
+    ? `${Math.round(total)}% CPU in use on ${nodeName}.\n`
+      + `${names.length ? names.map(g => g.name).join(', ') : 'Guests that stay put'} ${names.length === 1 ? 'holds' : 'hold'} ${Math.round(fixed)}% — can't be moved`
+      + (names.length > 1 ? ` (${names.map(g => `${g.name} ${Math.round(g.cpu_share)}%`).join(', ')})` : '')
+      + `.\nThe other ${Math.round(movable)}% is guests ProxBalance can move.`
+    : `${Math.round(total)}% CPU in use on ${nodeName}`;
+  return (
+    <div className="min-w-[56px] md:min-w-[120px]" title={title}>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className={`text-xs font-mono tabular-nums ${metricTextColor(total)}`}>{Math.round(total)}%</span>
+        {fixed >= 0.5
+          ? <span className="text-[10px] text-pb-text2 dark:text-gray-500 ml-1 hidden xl:inline tabular-nums">{Math.round(fixed)}% fixed</span>
+          : detail && <span className="text-[10px] text-pb-text2 dark:text-gray-500 ml-1 hidden xl:inline">{detail}</span>}
+      </div>
+      <div className={`${PROGRESS_BAR_BG} flex`}>
+        {fixed > 0 && (
+          <div
+            className="h-full bg-slate-400 dark:bg-slate-500"
+            style={{ width: `${fixed}%`, backgroundImage: HATCH }}
+          />
+        )}
+        {movable > 0 && (
+          <div
+            className={`h-full ${metricColor(total)} ${fixed > 0 ? 'border-l-2 border-white dark:border-pb-surface-dark' : ''}`}
+            style={{ width: `${movable}%` }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+const HATCH = 'repeating-linear-gradient(135deg, rgba(255,255,255,0.45) 0 2px, transparent 2px 4px)';
+
+/** Last-24h CPU line from the node's RRD trend data. Renders nothing with
+ *  fewer than two points (no placeholder chart). */
+function CpuSparkline({ trendData, nodeName }) {
+  const [hover, setHover] = useState(null);
+  const series = useMemo(() => {
+    const raw = trendData?.day || [];
+    if (raw.length < 2) return null;
+    const latest = raw.reduce((m, p) => Math.max(m, p.time || 0), 0);
+    const pts = raw.filter(p => typeof p.cpu === 'number' && latest - p.time <= 86400).sort((a, b) => a.time - b.time);
+    if (pts.length < 2) return null;
+    // ~72 buckets (20 min each over a day): averaged, so a single sample can't dominate
+    const n = Math.min(72, pts.length);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const win = pts.slice(Math.floor(i * pts.length / n), Math.floor((i + 1) * pts.length / n));
+      if (!win.length) continue;
+      out.push({ time: win[win.length - 1].time, cpu: win.reduce((s, p) => s + p.cpu, 0) / win.length });
+    }
+    return out.length >= 2 ? out : null;
+  }, [trendData]);
+  if (!series) return null;
+
+  const W = 120, H = 28, PAD = 2;
+  const max = Math.max(...series.map(p => p.cpu));
+  const yMax = Math.max(25, Math.ceil(max / 25) * 25);
+  const x = (i) => PAD + (i / (series.length - 1)) * (W - 2 * PAD);
+  const y = (v) => H - PAD - (v / yMax) * (H - 2 * PAD);
+  const line = series.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.cpu).toFixed(1)}`).join('');
+  const area = `${line}L${x(series.length - 1).toFixed(1)},${H - PAD}L${x(0).toFixed(1)},${H - PAD}Z`;
+  const avg = series.reduce((s, p) => s + p.cpu, 0) / series.length;
+  const h = hover != null ? series[hover] : null;
+  const onMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const i = Math.round(((e.clientX - r.left) / r.width) * (series.length - 1));
+    setHover(Math.max(0, Math.min(series.length - 1, i)));
+  };
+  const fmt = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return (
+    <div className="flex items-center gap-2" title={`${nodeName} CPU, last 24 h: average ${Math.round(avg)}%, peak ${Math.round(max)}% (20-min averages, scale 0–${yMax}%)`}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="text-blue-500 dark:text-blue-400 shrink-0 cursor-crosshair"
+        onMouseMove={onMove} onMouseLeave={() => setHover(null)} onClick={(e) => e.stopPropagation()} role="img" aria-label={`${nodeName} CPU over the last 24 hours`}>
+        <path d={area} fill="currentColor" opacity="0.12" />
+        <path d={line} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        {h && (
+          <>
+            <line x1={x(hover)} x2={x(hover)} y1={0} y2={H} className="stroke-slate-400 dark:stroke-slate-500" strokeWidth="1" />
+            <circle cx={x(hover)} cy={y(h.cpu)} r="2.5" fill="currentColor" className="stroke-white dark:stroke-pb-surface-dark" strokeWidth="1" />
+          </>
+        )}
+      </svg>
+      <span className="text-[10px] tabular-nums text-pb-text2 dark:text-gray-500 w-14 leading-tight">
+        {h ? <>{fmt(h.time)}<br /><span className="text-pb-text dark:text-gray-300">{Math.round(h.cpu)}%</span></> : <>peak<br /><span className="text-pb-text dark:text-gray-300">{Math.round(max)}%</span></>}
+      </span>
     </div>
   );
 }
@@ -87,48 +165,74 @@ function fullestLocalPool(storageArr) {
 }
 
 /** IOWait cell — different scale than CPU/Mem (5% is fine, 30% is critical) so
- *  we don't use the standard MetricBar coloring. Shows current with 24h-avg
- *  tooltip. */
-function IOWaitCell({ pct, avg }) {
+ *  we don't use the standard MetricBar coloring. On io-exempt nodes (a guest
+ *  with passthrough disks or an io-exempt tag) IOWait doesn't count toward the
+ *  score, so it stays neutral with an "exempt" badge. */
+function IOWaitCell({ pct, avg, exempt, exemptGuests }) {
   const v = pct || 0;
-  const cls = v > 30 ? 'text-red-600 dark:text-red-400'
+  const cls = exempt ? 'text-pb-text2 dark:text-gray-400'
+            : v > 30 ? 'text-red-600 dark:text-red-400'
             : v > 15 ? 'text-orange-600 dark:text-orange-400'
             : v > 5  ? 'text-yellow-600 dark:text-yellow-400'
             : 'text-pb-text2 dark:text-gray-400';
+  const who = (exemptGuests || []).map(g => g.name).join(', ') || 'a passthrough guest';
   return (
-    <span className={`text-xs font-mono tabular-nums ${cls}`} title={`24h avg ${(avg || 0).toFixed(1)}%`}>
-      {v.toFixed(1)}%
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`text-xs font-mono tabular-nums ${cls}`} title={`24h avg ${(avg || 0).toFixed(1)}%`}>
+        {v.toFixed(1)}%
+      </span>
+      {exempt && (
+        <span
+          className="text-[9px] font-semibold px-1 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300"
+          title={`Not counted against this node: the IOWait comes from ${who}, which has its own disks.`}
+        >exempt</span>
+      )}
     </span>
   );
 }
 
 const CHIP = 'inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded border whitespace-nowrap';
 
-/** Condition: Offline / Maintenance when true, else the node's largest
- *  headroom penalty as a chip, else OK. */
-function ConditionCell({ online, maintenance, top, tooltip }) {
+/** Condition: Offline / Maintenance, else what is over its threshold
+ *  (CPU / memory / IOWait — the same thresholds that trigger suggestions),
+ *  else OK. Scoring penalties such as one weekly CPU peak are not a
+ *  condition; they live in the expanded row. */
+function ConditionCell({ online, maintenance, over }) {
   if (!online) {
     return <span className={`${CHIP} bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40`}>Offline</span>;
   }
   if (maintenance) {
     return <span className={`${CHIP} bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/40`} title="In maintenance: guests are being moved off, not onto, this node">Maintenance</span>;
   }
-  if (top) {
-    const tone = top.pts >= 50
-      ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/40'
-      : top.pts >= 20
-        ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/40'
-        : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/40';
+  if (over.length > 0) {
     return (
-      <span className={`${CHIP} ${tone}`} title={`Largest penalty on headroom\n${tooltip}`}>
-        {top.label} <span className="tabular-nums">+{top.pts}</span>
+      <span
+        className={`${CHIP} bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/40`}
+        title={over.map(o => `${o.label} ${o.value.toFixed(0)}% — over the ${o.threshold}% threshold`).join('\n')}
+      >
+        {over[0].label} high{over.length > 1 && <span className="tabular-nums"> +{over.length - 1}</span>}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400" title="No penalties on headroom">
-      <span className="w-2 h-2 rounded-full bg-green-400" />OK
+    <span className="inline-flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400" title="Under the CPU, memory and IOWait thresholds">
+      <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />OK
     </span>
+  );
+}
+
+/** What lowers a node's headroom, in plain words — shown in the expanded row. */
+function HeadroomBreakdown({ score, list }) {
+  if (score == null) return null;
+  return (
+    <div className="px-3 pt-1 pb-2 text-[11px] text-pb-text2 dark:text-gray-400">
+      <span className="text-pb-text dark:text-gray-300">Headroom {Math.round(score)}</span>
+      {list.length === 0
+        ? ' — nothing is lowering it'
+        : <> — lowered by: {list.map((p, i) => (
+            <span key={p.key}>{i > 0 && ', '}{p.description} <span className="tabular-nums">−{p.pts}</span></span>
+          ))}</>}
+    </div>
   );
 }
 
@@ -442,6 +546,8 @@ export default function NodeSummaryTable({
   nodeRecCounts, guestRecMap, setConfirmMigration,
   // Nodes in maintenance (Set or array of names), for the Condition column
   maintenanceNodes,
+  // Thresholds that define "over" in the Condition column
+  recommendationData,
 }) {
   const openTagModal = setTagModalGuest && setShowTagModal
     ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
@@ -451,47 +557,25 @@ export default function NodeSummaryTable({
   const collapsed = embedded ? false : collapsedSections?.nodeOverview;
   const [sortField, setSortField] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
   const [expandedNodes, setExpandedNodes] = useState(() => new Set());
 
-  // Per-node guests with search + filter applied
-  const { guestsByNode, totalFiltered } = useMemo(() => {
-    if (!data?.guests) return { guestsByNode: {}, totalFiltered: 0 };
+  // Per-node guests
+  const guestsByNode = useMemo(() => {
     const byNode = {};
-    let total = 0;
-    Object.values(data.guests).forEach(guest => {
-      if (search) {
-        const q = search.toLowerCase();
-        const name = (guest.name || '').toLowerCase();
-        const vmid = String(guest.vmid || '');
-        if (!name.includes(q) && !vmid.includes(q)) return;
-      }
-      if (filter === 'vm' && guest.type !== 'VM') return;
-      if (filter === 'lxc' && guest.type !== 'LXC') return;
-      if (filter === 'running' && guest.status !== 'running') return;
-      if (filter === 'stopped' && guest.status !== 'stopped') return;
-      if (filter === 'ignored' && !guest.tags?.has_ignore) return;
-      if (filter === 'auto_migrate' && !guest.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok')) return;
-      if (filter === 'affinity' && !(guest.tags?.affinity_groups?.length > 0)) return;
-      if (filter === 'anti_affinity' && !(guest.tags?.exclude_groups?.length > 0)) return;
+    Object.values(data?.guests || {}).forEach(guest => {
       const nodeName = guest.node || 'unknown';
-      if (!byNode[nodeName]) byNode[nodeName] = [];
-      byNode[nodeName].push(guest);
-      total++;
+      (byNode[nodeName] = byNode[nodeName] || []).push(guest);
     });
     Object.values(byNode).forEach(arr => arr.sort((a, b) => (a.vmid || 0) - (b.vmid || 0)));
-    return { guestsByNode: byNode, totalFiltered: total };
-  }, [data, search, filter]);
+    return byNode;
+  }, [data]);
 
-  const filterActive = search.trim() !== '' || filter !== 'all';
-
-  // When filter is active, expand every node that has matches.
-  // Otherwise honor what the user clicked open.
-  const effectiveExpanded = useMemo(() => {
-    if (filterActive) return new Set(Object.keys(guestsByNode));
-    return expandedNodes;
-  }, [filterActive, guestsByNode, expandedNodes]);
+  const params = recommendationData?.parameters || {};
+  const thresholds = {
+    cpu: Number(params.cpu_threshold) || DEFAULT_CPU_THRESHOLD,
+    mem: Number(params.mem_threshold) || DEFAULT_MEM_THRESHOLD,
+    iowait: Number(params.iowait_threshold) || DEFAULT_IOWAIT_THRESHOLD,
+  };
 
   const toggleNode = (name) => {
     setExpandedNodes(prev => {
@@ -521,8 +605,14 @@ export default function NodeSummaryTable({
 
       const nodeScore = nodeScores?.[node.name];
       const score = nodeScore?.suitability_rating;
-      const top = topPenalty(nodeScore);
+      const penalties = penaltyList(nodeScore);
       const penaltyTip = penaltyTooltip(nodeScore);
+      const iowaitExempt = !!node.iowait_exempt;
+      const over = [
+        cpuPct >= thresholds.cpu && { label: 'CPU', value: cpuPct, threshold: thresholds.cpu },
+        memPct >= thresholds.mem && { label: 'Memory', value: memPct, threshold: thresholds.mem },
+        !iowaitExempt && iowaitPct >= thresholds.iowait && { label: 'IOWait', value: iowaitPct, threshold: thresholds.iowait },
+      ].filter(Boolean);
 
       const guestVmids = node.guests || [];
       let vms = 0, cts = 0;
@@ -540,7 +630,7 @@ export default function NodeSummaryTable({
         online: node.status === 'online',
         uptime: node.uptime,
         maintenance: maintSet.has(node.name),
-        cpuPct, memPct, iowaitPct, iowaitAvg, disk, score, top, penaltyTip, vms, cts,
+        cpuPct, memPct, iowaitPct, iowaitAvg, disk, score, penalties, penaltyTip, over, iowaitExempt, vms, cts,
         cpuDetail: `${node.cpu_cores || 0} cores`,
         memDetail: `${usedMemGB.toFixed(1)}/${totalMemGB.toFixed(0)} GB`,
         iowaitDetail: `24h avg ${iowaitAvg.toFixed(1)}%`,
@@ -555,7 +645,7 @@ export default function NodeSummaryTable({
       if (sortField === 'iowait') return (a.iowaitPct - b.iowaitPct) * v;
       return 0;
     });
-  }, [data, nodeScores, sortField, sortDir, maintSet]);
+  }, [data, nodeScores, sortField, sortDir, maintSet, thresholds.cpu, thresholds.mem, thresholds.iowait]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -635,41 +725,16 @@ export default function NodeSummaryTable({
 
       {!collapsed && (
         <>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-3">
-            <input
-              type="text"
-              placeholder="Search guests by name or VMID..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`${INPUT_FIELD} sm:max-w-xs`}
-            />
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-              {FILTERS.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`${FILTER_CHIP} ${filter === f.id ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {filterActive && (
-              <span className="text-xs text-pb-text2 dark:text-gray-500 sm:ml-auto tabular-nums">
-                {totalFiltered} guest{totalFiltered !== 1 ? 's' : ''} match
-              </span>
-            )}
-          </div>
-
           <div className="overflow-x-auto -mx-4 sm:-mx-5">
             <table className="w-full md:min-w-[700px]">
               <thead>
                 <tr className="border-b border-pb-border dark:border-slate-700/50">
                   <th className={`${TABLE_HEADER} w-8`}></th>
                   <SortHeader field="name">Node</SortHeader>
-                  <th className={`${TABLE_HEADER} hidden md:table-cell`} title="Offline or Maintenance when true; otherwise the largest penalty on this node's headroom, or OK">Condition</th>
+                  <th className={`${TABLE_HEADER} hidden md:table-cell`} title={`Offline, Maintenance, or what is over its threshold (CPU ${thresholds.cpu}%, memory ${thresholds.mem}%, IOWait ${thresholds.iowait}%); otherwise OK`}>Condition</th>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`}>Uptime</th>
                   <SortHeader field="cpu">CPU</SortHeader>
+                  <th className={`${TABLE_HEADER} hidden lg:table-cell`} title="CPU over the last 24 hours (20-minute averages). Hover the line for a time.">CPU · 24h</th>
                   <SortHeader field="mem">Memory</SortHeader>
                   <SortHeader field="iowait" className="hidden md:table-cell">IOWait</SortHeader>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`} title="Fullest local storage pool on the node. Shared storage (CIFS/NFS/PBS/Ceph) is left out: it shows the same fill on every node.">Local disk</th>
@@ -680,7 +745,7 @@ export default function NodeSummaryTable({
               </thead>
               <tbody>
                 {nodes.map(node => {
-                  const isExpanded = effectiveExpanded.has(node.name);
+                  const isExpanded = expandedNodes.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
                   const recs = nodeRecCounts?.[node.name];
                   return (
@@ -724,14 +789,19 @@ export default function NodeSummaryTable({
                           </div>
                         </td>
                         <td className="p-3 hidden md:table-cell">
-                          <ConditionCell online={node.online} maintenance={node.maintenance} top={node.top} tooltip={node.penaltyTip} />
+                          <ConditionCell online={node.online} maintenance={node.maintenance} over={node.over} />
                         </td>
                         <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
-                        <td className="p-3"><MetricBar pct={node.cpuPct} detail={node.cpuDetail} /></td>
+                        <td className="p-3">
+                          <CpuBar pct={node.cpuPct} anchored={node.raw.anchored_cpu} anchoredGuests={node.raw.anchored_guests} detail={node.cpuDetail} nodeName={node.name} />
+                        </td>
+                        <td className="p-3 hidden lg:table-cell">
+                          <CpuSparkline trendData={node.raw.trend_data} nodeName={node.name} />
+                        </td>
                         <td className="p-3">
                           <MetricBar pct={node.memPct} detail={node.memDetail} />
                         </td>
-                        <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} /></td>
+                        <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} exempt={node.iowaitExempt} exemptGuests={node.raw.iowait_exempt_guests} /></td>
                         <td className="p-3 hidden md:table-cell">
                           {node.disk ? (
                             <MetricBar pct={node.disk.pct} detail={node.disk.name} title={node.disk.title} />
@@ -756,10 +826,10 @@ export default function NodeSummaryTable({
                           <td colSpan={TOTAL_COLS} className="px-3 pb-3 pt-1">
                             {/* w-0 + min-w-full: fill the row without letting the guest grid widen the table on phones */}
                             <div className="w-0 min-w-full">
+                            <HeadroomBreakdown score={node.score} list={node.penalties} />
                             <GuestList
                               guests={nodeGuests}
                               node={node.raw}
-                              forceShowStopped={filterActive}
                               onGuestClick={onGuestClick}
                               canMigrate={canMigrate}
                               guestProfiles={guestProfiles}
@@ -778,12 +848,13 @@ export default function NodeSummaryTable({
               </tbody>
             </table>
           </div>
-
-          {filterActive && totalFiltered === 0 && (
-            <div className="text-center py-6 text-pb-text2 dark:text-gray-500 text-sm">
-              No guests match your filters
+          {nodes.some(n => (n.raw.anchored_cpu || 0) >= 0.5) && (
+            <div className="flex items-center gap-1.5 pt-2 text-[11px] text-pb-text2 dark:text-gray-500">
+              <span className="inline-block w-4 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
+              CPU used by guests ProxBalance won't move (ignored, or tied to the host's hardware)<span className="hidden sm:inline"> — hover a bar for names</span>
             </div>
           )}
+
         </>
       )}
     </Wrapper>

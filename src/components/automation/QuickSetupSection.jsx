@@ -2,8 +2,7 @@ import {
   AlertTriangle, X, Power
 } from '../Icons.jsx';
 import {
-  GLASS_CARD, INNER_CARD, ICON, iconBadge, statusBadge,
-  FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE,
+  GLASS_CARD, INNER_CARD, ICON, iconBadge, statusBadge, BTN_SECONDARY,
 } from '../../utils/designTokens.js';
 import Toggle from '../Toggle.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
@@ -11,19 +10,7 @@ import {
   scheduleOutlook, nextCheckInfo, reasonPhrase, flipPhrase, fmtDuration, fmtClock, zonedParts, useNow,
 } from '../../utils/scheduleWindows.js';
 
-const { useState, useEffect } = React;
-
-const SENSITIVITY_LABELS = { 1: 'Conservative', 2: 'Balanced', 3: 'Aggressive' };
-const SENSITIVITY_SHORT = {
-  1: 'Only clear, sustained problems',
-  2: 'Acts when trends show growing problems',
-  3: 'Rebalances proactively for modest gains',
-};
-const SENSITIVITY_DESCRIPTIONS = {
-  1: 'High bar for migrations. Only recommends moves with clear, sustained problems. Best for production clusters where stability is paramount.',
-  2: 'Moderate sensitivity. Recommends migrations when trends show growing problems. Suitable for most clusters.',
-  3: 'Low bar for migrations. Recommends moves proactively for even modest improvements. Best for clusters that benefit from frequent rebalancing.',
-};
+const { useState } = React;
 
 // Clock time in the schedule timezone, matching the schedule tab.
 const fmtTime = (d, tz) => fmtClock(zonedParts(d, tz).minute);
@@ -78,27 +65,9 @@ function nextCheckText(automationStatus, automationConfig, now) {
 
 export default function QuickSetupSection({
   automationConfig, saveAutomationConfig, automationStatus,
-  migrationSettings, setMigrationSettings,
-  savingMigrationSettings, migrationSettingsSaved,
-  saveMigrationSettingsAction, resetMigrationSettingsAction,
-  fetchMigrationSettingsAction,
 }) {
   const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
-
-  useEffect(() => {
-    if (!migrationSettings && fetchMigrationSettingsAction) {
-      fetchMigrationSettingsAction();
-    }
-  }, []);
-
-  const settings = migrationSettings || { sensitivity: 2 };
-
-  const updateSetting = (key, value) => {
-    if (setMigrationSettings) {
-      setMigrationSettings(prev => ({ ...prev, [key]: value }));
-    }
-  };
 
   const now = useNow(30000);
   const status = describeStatus(automationStatus, automationConfig, now);
@@ -109,26 +78,30 @@ export default function QuickSetupSection({
 
   return (
     <div className={GLASS_CARD}>
-      {/* Header: title + live status on one line */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
-        <div className={iconBadge('blue', 'cyan')}><Power size={ICON.section} /></div>
-        <h2 className="text-xl font-bold text-pb-text dark:text-white">Quick Setup</h2>
+      {/* Status: on phones a single line (badge + detail); desktop adds the
+          title and last-run / next-check line. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
+        <div className={`${iconBadge('blue', 'cyan')} hidden sm:block`}><Power size={ICON.section} /></div>
+        <h2 className="hidden sm:block text-xl font-bold text-pb-text dark:text-white">Quick Setup</h2>
         <span className={statusBadge(status.color)}>
           <span className="w-1.5 h-1.5 rounded-full bg-current" />
           {status.label}
         </span>
-        <span className="text-sm text-pb-text2 dark:text-gray-400">{status.detail}</span>
+        <span className="flex-1 sm:flex-none min-w-0 text-xs sm:text-sm text-pb-text2 dark:text-gray-400">{status.detail}</span>
         {meta && (
-          <span className="w-full lg:w-auto lg:ml-auto text-xs text-pb-text2 dark:text-gray-500 tabular-nums">{meta}</span>
+          <span className="hidden sm:inline w-full lg:w-auto lg:ml-auto text-xs text-pb-text2 dark:text-gray-500 tabular-nums">{meta}</span>
         )}
       </div>
 
-      {/* Controls: three compact tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1.6fr] gap-3">
-        <div className={`${INNER_CARD} flex items-center justify-between gap-3`}>
+      {/* The two master switches, side by side at every width */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className={`${INNER_CARD} !py-2 sm:!py-3 flex items-center justify-between gap-2`}>
           <div className="min-w-0">
-            <div className="font-semibold text-sm text-pb-text dark:text-white">Automated migrations</div>
-            <div className="text-xs text-pb-text2 dark:text-gray-400">
+            <div className="font-semibold text-sm text-pb-text dark:text-white leading-tight">
+              <span className="sm:hidden">Automation</span>
+              <span className="hidden sm:inline">Automated migrations</span>
+            </div>
+            <div className="hidden sm:block text-xs text-pb-text2 dark:text-gray-400">
               {enabled ? `On · checks every ${automationConfig.check_interval_minutes || 5} min` : 'Off · nothing moves on its own'}
             </div>
           </div>
@@ -144,10 +117,10 @@ export default function QuickSetupSection({
           />
         </div>
 
-        <div className={`${INNER_CARD} flex items-center justify-between gap-3`}>
+        <div className={`${INNER_CARD} !py-2 sm:!py-3 flex items-center justify-between gap-2`}>
           <div className="min-w-0">
-            <div className="font-semibold text-sm text-pb-text dark:text-white">Dry run</div>
-            <div className={`text-xs ${dryRun ? 'text-pb-text2 dark:text-gray-400' : 'text-amber-600 dark:text-amber-400 font-medium'}`}>
+            <div className="font-semibold text-sm text-pb-text dark:text-white leading-tight">Dry run</div>
+            <div className={`hidden sm:block text-xs ${dryRun ? 'text-pb-text2 dark:text-gray-400' : 'text-amber-600 dark:text-amber-400 font-medium'}`}>
               {dryRun ? 'On · decisions are logged, nothing moves' : 'Off · migrations are real'}
             </div>
           </div>
@@ -162,27 +135,6 @@ export default function QuickSetupSection({
               }
             }}
           />
-        </div>
-
-        <div className={`${INNER_CARD} md:col-span-2 lg:col-span-1`} title={SENSITIVITY_DESCRIPTIONS[settings.sensitivity]}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold text-sm text-pb-text dark:text-white">Sensitivity</div>
-            <div className="flex gap-1.5" role="radiogroup" aria-label="Migration sensitivity">
-              {[1, 2, 3].map((level) => (
-                <button
-                  key={level}
-                  role="radio"
-                  aria-checked={settings.sensitivity === level}
-                  onClick={() => updateSetting('sensitivity', level)}
-                  disabled={savingMigrationSettings}
-                  className={`${FILTER_CHIP} ${settings.sensitivity === level ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
-                >
-                  {SENSITIVITY_LABELS[level]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="text-xs text-pb-text2 dark:text-gray-400 mt-1">{SENSITIVITY_SHORT[settings.sensitivity]}</div>
         </div>
       </div>
 
@@ -210,7 +162,7 @@ export default function QuickSetupSection({
                   </button>
                   <button
                     onClick={() => setConfirmEnableAutomation(false)}
-                    className="px-3 py-1.5 bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-200 rounded text-sm hover:bg-gray-600 flex items-center justify-center gap-1.5"
+                    className={`${BTN_SECONDARY} !px-3 !py-1.5`}
                   >
                     <X size={14} />
                     Cancel
@@ -246,7 +198,7 @@ export default function QuickSetupSection({
                   </button>
                   <button
                     onClick={() => setConfirmDisableDryRun(false)}
-                    className="px-3 py-1.5 bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-200 rounded text-sm hover:bg-gray-600 font-medium flex items-center justify-center gap-1.5"
+                    className={`${BTN_SECONDARY} !px-3 !py-1.5`}
                   >
                     <X size={14} />
                     Cancel (Keep Dry Run On)

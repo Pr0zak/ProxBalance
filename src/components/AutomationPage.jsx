@@ -168,9 +168,9 @@ export default function AutomationPage(props) {
       {errorCard}
       <div className="max-w-screen-2xl mx-auto p-4">
         {/* Page header */}
-        <div className="mb-4">
-          <h1 className={TEXT_HEADING}>Automation Configuration</h1>
-          <p className={`${TEXT_SUBHEADING} mt-1`}>Configure automated migration scheduling and behavior</p>
+        <div className="mb-3 sm:mb-4">
+          <h1 className={TEXT_HEADING}>Automation</h1>
+          <p className={`${TEXT_SUBHEADING} mt-1 hidden sm:block`}>When, what and how ProxBalance migrates on its own</p>
         </div>
 
         {/* Quick Setup — always visible above tabs */}
@@ -178,13 +178,6 @@ export default function AutomationPage(props) {
           automationConfig={automationConfig}
           automationStatus={automationStatus}
           saveAutomationConfig={saveAutomationConfig}
-          migrationSettings={migrationSettings}
-          setMigrationSettings={setMigrationSettings}
-          savingMigrationSettings={savingMigrationSettings}
-          migrationSettingsSaved={migrationSettingsSaved}
-          saveMigrationSettingsAction={saveMigrationSettingsAction}
-          resetMigrationSettingsAction={resetMigrationSettingsAction}
-          fetchMigrationSettingsAction={fetchMigrationSettingsAction}
         />
 
         {/* Sub-tabs (wrap on phones so every tab stays visible) */}
@@ -207,6 +200,7 @@ export default function AutomationPage(props) {
           <GuestSelectionSection
             automationConfig={draftConfig}
             nodes={props.clusterData?.nodes}
+            memFloor={effectivePenaltyConfig?.source_mem_migration_floor ?? savedPenaltyConfig?.source_mem_migration_floor ?? 65}
             saveAutomationConfig={stageAutomationConfig}
             config={config}
             fetchConfig={fetchConfig}
@@ -247,6 +241,9 @@ export default function AutomationPage(props) {
             saveMigrationSettingsAction={saveMigrationSettingsAction}
             resetMigrationSettingsAction={resetMigrationSettingsAction}
             fetchMigrationSettingsAction={fetchMigrationSettingsAction}
+            savedMigrationSettings={savedMigrationSettings}
+            savedPenaltyConfig={savedPenaltyConfig}
+            pveCrs={props.clusterData?.pve_crs}
           />
         )}</div>
 
@@ -264,13 +261,17 @@ export default function AutomationPage(props) {
             logRefreshTime={logRefreshTime}
             setLogRefreshTime={setLogRefreshTime}
             fetchAutomationStatus={fetchAutomationStatus}
+            active={activeTab === 'history'}
           />
         )}</div>
 
         <div hidden={activeTab !== 'reference'}>{(
           <DecisionTreeFlowchart
-            collapsedSections={collapsedSections}
-            setCollapsedSections={setCollapsedSections}
+            automationConfig={automationConfig}
+            automationStatus={automationStatus}
+            penaltyConfig={savedPenaltyConfig}
+            thresholds={{ cpu: cpuThreshold, mem: memThreshold, iowait: iowaitThreshold }}
+            setActiveTab={setActiveTab}
           />
         )}</div>
 

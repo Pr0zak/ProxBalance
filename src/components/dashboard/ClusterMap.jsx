@@ -26,6 +26,45 @@ const heatHex = (ratio) => ratio < 0.4 ? '#22c55e' : ratio < 0.7 ? '#eab308' : r
 // Narrowest a node column may get before the grid wraps to another row.
 const NODE_COL_MIN = 196;
 
+// Diagonal hatch for the part of a CPU bar used by guests that won't move.
+const HATCH = 'repeating-linear-gradient(135deg, rgba(255,255,255,0.45) 0 2px, transparent 2px 5px)';
+
+// Short reason a guest is in the node's unmovable CPU share.
+const anchorReason = (g) => {
+  if (!g) return "won't be moved";
+  if (g.local_disks?.is_pinned) return "can't be moved";
+  if (g.tags?.has_ignore) return "ignored, won't be moved";
+  return "won't be moved";
+};
+
+// Unmovable CPU for a node: { pct, guests: [{ name, share, reason }] } or null.
+// `pct` is clamped to the node's current CPU (the two come from slightly
+// different samples, so the anchored share can briefly read higher).
+function anchoredCpu(node, guestsById) {
+  const raw = Number(node.anchored_cpu);
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  const guests = (node.anchored_guests || [])
+    .slice()
+    .sort((a, b) => (b.cpu_share || 0) - (a.cpu_share || 0))
+    .map(a => ({
+      name: a.name || `Guest ${a.vmid}`,
+      share: a.cpu_share || 0,
+      reason: anchorReason(guestsById[String(a.vmid)]),
+    }));
+  return { pct: Math.min(raw, Math.max(0, node.cpu_percent || 0)), guests };
+}
+
+function anchoredTitle(node, anch) {
+  const fmt = (v) => (v < 10 ? v.toFixed(1) : Math.round(v));
+  const lines = anch.guests.map(g => `${g.name} ${fmt(g.share)}% · ${g.reason}`);
+  const movable = Math.max(0, (node.cpu_percent || 0) - anch.pct);
+  return [
+    `About ${fmt(anch.pct)}% of ${node.name}'s CPU is guests ProxBalance won't move:`,
+    ...lines,
+    `Movable load: about ${fmt(movable)}%`,
+  ].join('\n');
+}
+
 // Striped overlay on a meter showing where the value would go (move preview).
 function GhostSegment({ from, to }) {
   const a = Math.min(100, Math.max(0, from));
@@ -44,12 +83,14 @@ function GhostSegment({ from, to }) {
 }
 
 // One labelled node meter: "CPU  6 vCPU / 4c  15%". `ghost` draws the
-// projected value during a move preview.
-function NodeMeter({ label, pct, barClass, detail, dim = false, badge = null, ghost = null }) {
+// projected value during a move preview. `anchored` (CPU only) draws the
+// share used by guests that won't move as a muted, hatched first segment.
+function NodeMeter({ label, pct, barClass, detail, dim = false, badge = null, ghost = null, anchored = 0, title }) {
   const v = Math.max(0, pct || 0);
-  const solid = ghost != null ? Math.min(v, ghost) : v;
+  const solid = Math.min(100, ghost != null ? Math.min(v, ghost) : v);
+  const anch = Math.min(Math.max(0, anchored || 0), solid);
   return (
-    <div>
+    <div title={title}>
       <div className="flex items-baseline justify-between gap-1 text-[11px] leading-4">
         <span className="flex items-center gap-1 font-medium text-pb-text2 dark:text-gray-400">{label}{badge}</span>
         <span className="tabular-nums">
@@ -59,7 +100,16 @@ function NodeMeter({ label, pct, barClass, detail, dim = false, badge = null, gh
       </div>
       <div className="relative w-full h-2 bg-pb-surface2 dark:bg-slate-700 rounded-full overflow-hidden mt-0.5">
         {ghost != null && <GhostSegment from={v} to={ghost} />}
-        <div className={`relative h-full rounded-full transition-all duration-500 ${barClass} ${dim ? 'opacity-40' : ''}`} style={{ width: `${Math.min(100, solid)}%` }} />
+        {anch > 0 && (
+          <div
+            className="absolute inset-y-0 left-0 bg-slate-400 dark:bg-slate-500 transition-all duration-500"
+            style={{ width: `${anch}%`, backgroundImage: HATCH }}
+          />
+        )}
+        <div
+          className={`absolute inset-y-0 transition-all duration-500 ${anch > 0 ? 'rounded-r-full' : 'rounded-full'} ${barClass} ${dim ? 'opacity-40' : ''}`}
+          style={{ left: `${anch}%`, width: `${solid - anch}%` }}
+        />
       </div>
     </div>
   );
@@ -157,6 +207,16 @@ export default function ClusterMap({
   };
   const endDrag = () => { setDrag(null); setDragOver(null); };
 
+  // Per node: is its "+N stopped" chip expanded into bubbles?
+  const [openStopped, setOpenStopped] = useState(() => new Set());
+  const toggleStopped = (name) => setOpenStopped(prev => {
+    const next = new Set(prev);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    return next;
+  });
+  const guestsById = {};
+  allGuests.forEach(g => { guestsById[String(g.vmid)] = g; });
+
   const mapAreaRef = useRef(null);
   const nodeRefs = useRef({});
   const guestRefs = useRef({});
@@ -196,7 +256,7 @@ export default function ClusterMap({
     const t = setTimeout(measure, 80);
     window.addEventListener('resize', measure);
     return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
-  }, [showPlan, recommendations, clusterMapViewMode, showPoweredOffGuests, colorMode, collapsedSections, data]);
+  }, [showPlan, recommendations, clusterMapViewMode, showPoweredOffGuests, openStopped, colorMode, collapsedSections, data]);
 
   // When embedded, the parent owns the section card and header.
   const Wrapper = embedded ? React.Fragment : 'div';
@@ -449,13 +509,21 @@ export default function ClusterMap({
           >
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
               const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);
-              const poweredOffCount = allNodeGuests.filter(g => g.status !== 'running').length;
-              const nodeGuests = (showPoweredOffGuests
-                ? allNodeGuests
-                : allNodeGuests.filter(g => g.status === 'running'))
-                .slice()
-                .sort((a, b) => guestMetric(b, clusterMapViewMode) - guestMetric(a, clusterMapViewMode) || a.vmid - b.vmid);
+              const bySize = (a, b) => guestMetric(b, clusterMapViewMode) - guestMetric(a, clusterMapViewMode) || a.vmid - b.vmid;
               const runningGuests = allNodeGuests.filter(g => g.status === 'running');
+              const stoppedGuests = allNodeGuests.filter(g => g.status !== 'running');
+              const poweredOffCount = stoppedGuests.length;
+              // Stopped guests collapse into one "+N stopped" chip per node so a
+              // node with many powered-off guests doesn't tower over the rest.
+              // A stopped guest still shows when the search finds it or it is
+              // being previewed.
+              const stoppedOpen = openStopped.has(node.name);
+              const shownStopped = !showPoweredOffGuests ? []
+                : stoppedOpen ? stoppedGuests
+                : stoppedGuests.filter(g => (findActive && isMatch(g)) || g.vmid === previewVmid);
+              const collapsedStopped = showPoweredOffGuests ? stoppedGuests.length - shownStopped.length : 0;
+              const nodeGuests = [...runningGuests.slice().sort(bySize), ...shownStopped.slice().sort(bySize)];
+              const anch = anchoredCpu(node, guestsById);
               const vcpus = runningGuests.reduce((sum, g) => sum + (g.cpu_cores || 0), 0);
               const memUsedGb = (node.mem_percent || 0) / 100 * (node.total_mem_gb || 0);
               const maxResources = Math.max(...Object.values(data.guests || {})
@@ -540,7 +608,7 @@ export default function ClusterMap({
                           </div>
                         )}
                         <div className="text-xs text-pb-text2 dark:text-gray-400">
-                          {nodeGuests.length} guests
+                          {runningGuests.length} running
                           {!showPoweredOffGuests && poweredOffCount > 0 && (
                             <span className="text-pb-text2 dark:text-gray-500"> (+{poweredOffCount} off)</span>
                           )}
@@ -555,7 +623,21 @@ export default function ClusterMap({
                           detail={`${vcpus} vCPU / ${node.cpu_cores || 0}c`}
                           barClass={(node.cpu_percent || 0) > 80 ? 'bg-red-500' : (node.cpu_percent || 0) > 60 ? 'bg-yellow-500' : 'bg-green-500'}
                           ghost={pv && !pv.blocked ? pv.cpu : null}
+                          anchored={anch ? anch.pct : 0}
+                          title={anch ? anchoredTitle(node, anch) : undefined}
                         />
+                        {anch && anch.pct >= 5 && (
+                          <div
+                            className="flex items-center gap-1 text-[10px] leading-3 text-pb-text2 dark:text-gray-500 min-w-0"
+                            title={anchoredTitle(node, anch)}
+                          >
+                            <span className="inline-block w-2.5 h-2 rounded-sm shrink-0 bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
+                            <span className="truncate">
+                              {Math.round(anch.pct)}% can't move{anch.guests[0] ? `: ${anch.guests[0].name}` : ''}
+                              {anch.guests.length > 1 ? ` +${anch.guests.length - 1}` : ''}
+                            </span>
+                          </div>
+                        )}
                         <NodeMeter
                           label="MEM"
                           pct={node.mem_percent}
@@ -606,13 +688,15 @@ export default function ClusterMap({
                   )}
 
                   {/* Connection line */}
-                  {nodeGuests.length > 0 && (
+                  {(nodeGuests.length > 0 || collapsedStopped > 0) && (
                     <div className="w-0.5 h-8 bg-gradient-to-b from-blue-600 to-transparent"></div>
                   )}
 
                   {/* No guests label */}
                   {nodeGuests.length === 0 && (
-                    <div className="text-xs text-pb-text2 dark:text-gray-500 italic mt-2">No guests</div>
+                    <div className="text-xs text-pb-text2 dark:text-gray-500 italic mt-2">
+                      {collapsedStopped > 0 ? 'No running guests' : 'No guests'}
+                    </div>
                   )}
 
                   {/* Guests */}
@@ -769,6 +853,20 @@ export default function ClusterMap({
                       );
                     })}
                   </div>
+
+                  {/* Powered-off guests: one chip per node, expands in place */}
+                  {showPoweredOffGuests && (stoppedOpen || collapsedStopped > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleStopped(node.name)}
+                      aria-expanded={stoppedOpen}
+                      className={`${FILTER_CHIP} ${stoppedOpen ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE} !py-1 -mt-1 inline-flex items-center gap-1`}
+                      title={stoppedOpen ? `Collapse ${node.name}'s powered-off guests` : `Show ${node.name}'s powered-off guests`}
+                    >
+                      {stoppedOpen ? `Hide ${poweredOffCount} stopped` : `+${collapsedStopped} stopped`}
+                      <ChevronDown size={12} className={`transition-transform duration-200 ${stoppedOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -818,6 +916,10 @@ export default function ClusterMap({
               )}
             </div>
             <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-5 h-2 rounded-full bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
+                CPU used by guests ProxBalance won't move
+              </span>
               <GuestFlagLegend />
             </div>
           </div>

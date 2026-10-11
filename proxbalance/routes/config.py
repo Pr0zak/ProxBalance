@@ -8,7 +8,7 @@ from proxbalance.config_manager import (
     load_config, save_config, get_proxmox_client, validate_config_structure,
     CONFIG_FILE, BASE_PATH,
 )
-from proxbalance.secret_fields import redact_config, restore_placeholders
+from proxbalance.secret_fields import SECRET_PLACEHOLDER, redact_config, restore_placeholders
 
 config_bp = Blueprint("config", __name__, url_prefix=None)
 
@@ -132,7 +132,10 @@ def get_config():
             "error": config.get('message')
         }), 500
 
-    return jsonify({"success": True, "config": _redact_config(config)})
+    redacted = _redact_config(config)
+    # Non-secret flag so the UI can say "saved" without seeing the secret.
+    redacted["proxmox_api_token_secret_set"] = bool(config.get("proxmox_api_token_secret"))
+    return jsonify({"success": True, "config": redacted})
 
 
 @config_bp.route("/api/config", methods=["POST"])
@@ -489,12 +492,6 @@ def validate_token():
     token_id = data.get('proxmox_api_token_id', '')
     token_secret = data.get('proxmox_api_token_secret', '')
 
-    if not token_id or not token_secret:
-        return jsonify({
-            "success": False,
-            "error": "Token ID and secret are required"
-        }), 400
-
     # Load config to get host information
     config = load_config()
     if config.get('error'):
@@ -502,6 +499,17 @@ def validate_token():
             "success": False,
             "error": "Failed to load configuration"
         }), 500
+
+    # The UI sends the placeholder (or nothing) when it never saw the stored
+    # secret; validate with the saved one. The secret is never returned.
+    if token_secret in ('', SECRET_PLACEHOLDER):
+        token_secret = config.get('proxmox_api_token_secret', '')
+
+    if not token_id or not token_secret:
+        return jsonify({
+            "success": False,
+            "error": "Token ID and secret are required"
+        }), 400
 
     # Parse token ID to extract user and token name
     # Format: user@realm!tokenname

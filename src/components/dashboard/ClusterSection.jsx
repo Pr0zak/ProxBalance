@@ -1,6 +1,7 @@
 import { GLASS_CARD, iconBadge, ICON } from '../../utils/designTokens.js';
 import { Server, Settings } from '../Icons.jsx';
 import NodeSummaryTable from './NodeSummaryTable.jsx';
+import TabBar from '../TabBar.jsx';
 import GuestsTable from './GuestsTable.jsx';
 import ClusterMap from './ClusterMap.jsx';
 import NodeStatusSection from './NodeStatusSection.jsx';
@@ -41,7 +42,7 @@ export default function ClusterSection(props) {
   const TABS = ALL_TABS
     .filter(t => !t.promoteKey || !promoted[t.promoteKey])
     .map(t => t.id === 'recommendations'
-      ? { ...t, label: `Suggestions${recCount > 0 ? ` (${recCount})` : ''}`, accent: recCount > 0 }
+      ? { ...t, badge: recCount > 0 ? recCount : null }
       : t);
 
   // The URL (#/dashboard/<slug>) wins when present; otherwise fall back to the
@@ -76,60 +77,44 @@ export default function ClusterSection(props) {
 
   return (
     <div id="cluster-section" className={`${GLASS_CARD} scroll-mt-16`}>
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <div className="flex items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-3">
           <div className={iconBadge('teal', 'cyan')}>
             <Server size={ICON.section} className="text-pb-text dark:text-white" />
           </div>
           <h2 className="text-xl font-bold text-pb-text dark:text-white">Cluster</h2>
         </div>
-        <div className="flex items-center gap-2 min-w-0 max-w-full">
-          <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-1 overflow-x-auto min-w-0">
-            {TABS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
-                  effectiveTab === t.id
-                    ? 'bg-blue-600 text-white shadow'
-                    : t.accent
-                      ? 'text-orange-700 dark:text-orange-300 hover:text-orange-800 dark:hover:text-orange-200'
-                      : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setLayoutMenuOpen(o => !o)}
-              className="p-1.5 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40"
-              title="Layout — promote tabs to standalone sections"
-              aria-label="Section layout"
-            >
-              <Settings size={14} />
-            </button>
-            {layoutMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 rounded-lg shadow-xl z-20 p-3">
-                <div className="text-xs uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-2">Show as standalone section</div>
-                {PROMOTABLE.map(p => (
-                  <label key={p.key} className="flex items-center gap-2 py-1.5 text-sm text-pb-text dark:text-gray-200 cursor-pointer hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 rounded px-2 -mx-2">
-                    <input
-                      type="checkbox"
-                      checked={!!promoted[p.key]}
-                      onChange={(e) => setPromoted({ ...promoted, [p.key]: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    {p.label}
-                  </label>
-                ))}
-                <div className="text-[10px] text-pb-text2 dark:text-gray-500 mt-2">When checked, the tab moves to its own collapsible section below.</div>
-              </div>
-            )}
-          </div>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setLayoutMenuOpen(o => !o)}
+            className="p-1.5 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40"
+            title="Layout — show a tab as its own section"
+            aria-label="Section layout"
+          >
+            <Settings size={14} />
+          </button>
+          {layoutMenuOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-pb-border dark:border-slate-700 rounded-lg shadow-xl z-20 p-3">
+              <div className="text-xs uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-2">Show as standalone section</div>
+              {PROMOTABLE.map(p => (
+                <label key={p.key} className="flex items-center gap-2 py-1.5 text-sm text-pb-text dark:text-gray-200 cursor-pointer hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 rounded px-2 -mx-2">
+                  <input
+                    type="checkbox"
+                    checked={!!promoted[p.key]}
+                    onChange={(e) => setPromoted({ ...promoted, [p.key]: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  {p.label}
+                </label>
+              ))}
+              <div className="text-[10px] text-pb-text2 dark:text-gray-500 mt-2">When checked, the tab moves to its own collapsible section below.</div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Wraps onto a second line on phones instead of hiding tabs off-screen */}
+      <TabBar tabs={TABS} active={effectiveTab} onChange={setTab} className="mb-3 -mx-1" />
 
       {effectiveTab === 'table' && (
         <NodeSummaryTable
@@ -147,6 +132,7 @@ export default function ClusterSection(props) {
           guestRecMap={props.guestRecMap}
           setConfirmMigration={props.setConfirmMigration}
           maintenanceNodes={props.maintenanceNodes}
+          recommendationData={props.recommendationData}
         />
       )}
       {effectiveTab === 'guests' && (

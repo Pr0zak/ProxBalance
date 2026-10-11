@@ -1,16 +1,38 @@
 import { ChevronDown, Save, RotateCcw, CheckCircle, RefreshCw, Eye, Shield, AlertTriangle } from '../Icons.jsx';
-import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
+import {
+  GLASS_CARD, INNER_CARD, BTN_SECONDARY, INPUT_FIELD,
+  FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE,
+} from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect, useCallback } = React;
 
 const SENSITIVITY_LABELS = { 1: 'Conservative', 2: 'Balanced', 3: 'Aggressive' };
-const SENSITIVITY_DESCRIPTIONS = {
-  1: 'High bar for migrations. Only recommends moves with clear, sustained problems. Best for production clusters where stability is paramount.',
-  2: 'Moderate sensitivity. Recommends migrations when trends show growing problems. Suitable for most clusters.',
-  3: 'Low bar for migrations. Recommends moves proactively for even modest improvements. Best for clusters that benefit from frequent rebalancing.',
+const SENSITIVITY_SHORT = {
+  1: 'Only clear, sustained problems; a move must gain 25+ points.',
+  2: 'Acts when trends show a growing problem; a move must gain 15+ points.',
+  3: 'Rebalances early for modest gains; a move must gain 8+ points.',
 };
+
+/**
+ * Time weights the backend derives from trend_weight when it saves the
+ * simplified settings (proxbalance/settings_mapper.py, same formula).
+ */
+function weightsFromTrend(trendWeight) {
+  const t = Math.max(0, Math.min(100, Number(trendWeight) || 0)) / 100;
+  const r = v => Math.round(v * 100) / 100;
+  let now = r(0.9 - 0.75 * t);
+  const day = r(0.1 + 0.25 * t);
+  const week = r(0.5 * t);
+  if (Math.abs(now + day + week - 1) > 0.01) now = r(1 - day - week);
+  return { now, day, week };
+}
+const weightsOf = cfg => (cfg && cfg.weight_current != null
+  ? { now: cfg.weight_current, day: cfg.weight_24h, week: cfg.weight_7d } : null);
+const sameWeights = (a, b) => !!a && !!b
+  && Math.abs(a.now - b.now) < 0.005 && Math.abs(a.day - b.day) < 0.005 && Math.abs(a.week - b.week) < 0.005;
+const fmtWeights = w => `Now ${Math.round(w.now * 100)}% · last day ${Math.round(w.day * 100)}% · last week ${Math.round(w.week * 100)}%`;
 const LOOKBACK_OPTIONS = [
   { value: 1, label: '1 day' },
   { value: 3, label: '3 days' },
@@ -35,8 +57,9 @@ export default function PenaltyScoringSection({
   saveMigrationSettingsAction, resetMigrationSettingsAction,
   fetchMigrationSettingsAction,
   embedded,
-  hideSensitivity,
+  savedMigrationSettings, savedPenaltyConfig,
 }) {
+  const [showCustom, setShowCustom] = useState(false);
   const [showExpertMode, setShowExpertMode] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
   const [simulatorResult, setSimulatorResult] = useState(null);
@@ -96,6 +119,25 @@ export default function PenaltyScoringSection({
   const isSaving = savingMigrationSettings || savingPenaltyConfig;
   const isSaved = migrationSettingsSaved || penaltyConfigSaved;
 
+  // Time weights: what's in use now, or what saving will write. Saving any
+  // simplified setting rewrites the weights from trend_weight (unless expert
+  // overrides are set), so a staged change there previews the mapped values.
+  const msDirty = !!savedMigrationSettings && JSON.stringify(migrationSettings) !== JSON.stringify(savedMigrationSettings);
+  const pcWeights = weightsOf(penaltyConfig);
+  const savedPcWeights = weightsOf(savedPenaltyConfig) || pcWeights;
+  let shownWeights = pcWeights;
+  let weightsPending = !!pcWeights && !!savedPcWeights && !sameWeights(pcWeights, savedPcWeights);
+  if (msDirty) {
+    shownWeights = weightsOf(settings.expert_overrides) || weightsFromTrend(settings.trend_weight);
+    weightsPending = !sameWeights(shownWeights, savedPcWeights);
+  }
+  const defaults = migrationSettingsDefaults || { trend_weight: 60, lookback_days: 7 };
+  const customized = settings.trend_weight !== defaults.trend_weight
+    || settings.lookback_days !== defaults.lookback_days
+    || settings.min_score_improvement != null
+    || !!hasExpertOverrides
+    || (!!savedPcWeights && !sameWeights(savedPcWeights, weightsFromTrend(settings.trend_weight)));
+
   const outerClass = embedded
     ? ''
     : GLASS_CARD + ' overflow-hidden';
@@ -107,61 +149,56 @@ export default function PenaltyScoringSection({
 
   return (<>
     <div id="penalty-config-section" className={outerClass}>
-      <div className="w-full flex items-center justify-between mb-4 flex-wrap gap-y-3">
-        <HeadingTag className={headingClass}>Scoring & Sensitivity</HeadingTag>
-      </div>
+      <HeadingTag className={headingClass}>Sensitivity</HeadingTag>
+      <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">How readily ProxBalance recommends a move.</p>
 
-      {(
-        <div className="space-y-4">
-          <p className="text-sm text-pb-text2 dark:text-gray-400">
-            Configure how ProxBalance analyzes performance trends and decides when to recommend migrations.
-          </p>
-
-          {/* Migration Sensitivity (hidden when rendered in QuickSetup) */}
-          {!hideSensitivity && (
-          <div>
-            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Migration Sensitivity</label>
-            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-3">
-              Controls how aggressively ProxBalance recommends migrations. {SENSITIVITY_DESCRIPTIONS[settings.sensitivity]}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[1, 2, 3].map((level) => {
-                const isActive = settings.sensitivity === level;
-                const colors = {
-                  1: isActive ? 'bg-green-600 text-white ring-2 ring-green-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-600',
-                  2: isActive ? 'bg-blue-600 text-white ring-2 ring-blue-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-600',
-                  3: isActive ? 'bg-orange-600 text-white ring-2 ring-orange-700' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-600',
-                };
-                return (
-                  <button
-                    key={level}
-                    onClick={() => updateSetting('sensitivity', level)}
-                    disabled={isSaving}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm ${colors[level]}`}
-                  >
-                    {SENSITIVITY_LABELS[level]}
-                    {isActive && <span className="ml-1.5 text-xs opacity-80">(active)</span>}
-                  </button>
-                );
-              })}
-            </div>
+      <div className="space-y-4">
+        <div className={INNER_CARD}>
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Migration sensitivity">
+            {[1, 2, 3].map((level) => (
+              <button
+                key={level}
+                role="radio"
+                aria-checked={settings.sensitivity === level}
+                onClick={() => updateSetting('sensitivity', level)}
+                disabled={isSaving}
+                className={`${FILTER_CHIP} ${settings.sensitivity === level ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
+              >
+                {SENSITIVITY_LABELS[level]}
+              </button>
+            ))}
+            <button
+              onClick={() => setShowCustom(v => !v)}
+              aria-expanded={showCustom}
+              className={`${FILTER_CHIP} ${showCustom ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE} inline-flex items-center gap-1`}
+            >
+              Custom
+              <ChevronDown size={12} className={`transition-transform duration-200 ${showCustom ? 'rotate-180' : ''}`} />
+            </button>
           </div>
+          <div className="text-xs text-pb-text2 dark:text-gray-400 mt-2">
+            {SENSITIVITY_SHORT[settings.sensitivity] || SENSITIVITY_SHORT[2]}
+            {settings.min_score_improvement != null && ` Custom minimum gain: ${settings.min_score_improvement} points.`}
+          </div>
+          {shownWeights && (
+            <div className="text-xs mt-1 text-pb-text dark:text-gray-300 tabular-nums">
+              <span className="text-pb-text2 dark:text-gray-400">Load is judged on: </span>{fmtWeights(shownWeights)}
+              {weightsPending && <span className="text-amber-600 dark:text-amber-400"> (after saving)</span>}
+              {!weightsPending && customized && <span className="text-pb-text2 dark:text-gray-400"> · customized</span>}
+            </div>
           )}
+        </div>
 
+        {showCustom && (
+        <div className="space-y-4">
           {/* Trend Weight */}
           <div>
-            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Trend Weight</label>
-            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-3">
-              Controls how much historical trends matter vs. current snapshot. Higher values give more weight to sustained patterns over time.
-              {' '}
-              {settings.trend_weight <= 20 ? 'Currently: mostly snapshot-based.' :
-               settings.trend_weight <= 45 ? 'Currently: snapshot-leaning.' :
-               settings.trend_weight <= 65 ? 'Currently: balanced mix.' :
-               settings.trend_weight <= 85 ? 'Currently: trend-leaning.' :
-               'Currently: mostly trend-based.'}
+            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Trend weight</label>
+            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
+              Higher means sustained load over the last day and week counts more than the current reading.
             </p>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap w-16">Snapshot</span>
+              <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">Now</span>
               <input
                 type="range"
                 min={0}
@@ -169,37 +206,34 @@ export default function PenaltyScoringSection({
                 step={5}
                 value={settings.trend_weight}
                 onChange={(e) => updateSetting('trend_weight', parseInt(e.target.value))}
-                className="flex-1 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="flex-1 min-w-0 h-2 bg-slate-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                aria-label="Trend weight"
               />
-              <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap w-12 text-right">Trends</span>
+              <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">History</span>
               <span className="text-xs font-mono text-pb-text dark:text-gray-300 w-10 text-right">{settings.trend_weight}%</span>
             </div>
+            <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1 tabular-nums">
+              Saving sets: {fmtWeights(weightsFromTrend(settings.trend_weight))}
+            </p>
           </div>
 
           {/* Analysis Lookback */}
           <div>
-            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Analysis Lookback</label>
-            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-3">
-              How many days of performance history to analyze when detecting trends. Longer periods provide more stable analysis but are slower to react to changes.
+            <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">History to analyze</label>
+            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
+              Days of history used to spot trends. Longer is steadier but slower to react.
             </p>
-            <div className="flex flex-wrap gap-2">
-              {LOOKBACK_OPTIONS.map(({ value, label }) => {
-                const isActive = settings.lookback_days === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => updateSetting('lookback_days', value)}
-                    disabled={isSaving}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-700'
-                        : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-gray-600 border border-gray-600'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap gap-1.5">
+              {LOOKBACK_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => updateSetting('lookback_days', value)}
+                  disabled={isSaving}
+                  className={`${FILTER_CHIP} ${settings.lookback_days === value ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -253,7 +287,7 @@ export default function PenaltyScoringSection({
               />
 
               {/* What-If Simulator */}
-              <div className="p-4 bg-pb-surface2 dark:bg-slate-700 rounded-lg">
+              <div className={INNER_CARD}>
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">What-If Simulator</label>
@@ -544,7 +578,8 @@ export default function PenaltyScoringSection({
             </button>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   </>);
 }

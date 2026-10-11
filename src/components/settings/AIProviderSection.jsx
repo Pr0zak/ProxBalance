@@ -1,6 +1,6 @@
 import { RefreshCw } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, INNER_CARD } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
 
 export default function AIProviderSection({
@@ -41,7 +41,7 @@ export default function AIProviderSection({
                         </div>
 
                         {aiProvider === 'openai' && (
-                          <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
+                          <div className={`${INNER_CARD} space-y-3`}>
                             <h4 className="font-medium text-pb-text dark:text-white">OpenAI Configuration</h4>
                             <div>
                               <label className="block text-sm text-pb-text dark:text-gray-300 mb-1">
@@ -74,7 +74,7 @@ export default function AIProviderSection({
                         )}
 
                         {aiProvider === 'anthropic' && (
-                          <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
+                          <div className={`${INNER_CARD} space-y-3`}>
                             <h4 className="font-medium text-pb-text dark:text-white">Anthropic Configuration</h4>
                             <div>
                               <label className="block text-sm text-pb-text dark:text-gray-300 mb-1">
@@ -107,7 +107,7 @@ export default function AIProviderSection({
                         )}
 
                         {aiProvider === 'local' && (
-                          <div className="space-y-3 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
+                          <div className={`${INNER_CARD} space-y-3`}>
                             <h4 className="font-medium text-pb-text dark:text-white">Local LLM (Ollama) Configuration</h4>
                             <div>
                               <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">

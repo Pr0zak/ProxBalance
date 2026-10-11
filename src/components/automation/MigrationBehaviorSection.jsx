@@ -1,7 +1,12 @@
 import { Settings } from '../Icons.jsx';
-import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
-import NumberField from '../NumberField.jsx';
+import { GLASS_CARD } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
+import NumberRow from './NumberRow.jsx';
+import CrsStatusBanner from '../dashboard/CrsStatusBanner.jsx';
+import CrsEditorModal from '../dashboard/CrsEditorModal.jsx';
+import { API_BASE } from '../../utils/constants.js';
+
+const { useState } = React;
 import SmartMigrationsSection from './SmartMigrationsSection.jsx';
 import PenaltyScoringSection from './PenaltyScoringSection.jsx';
 import SectionHeader from '../SectionHeader.jsx';
@@ -22,7 +27,15 @@ export default function MigrationBehaviorSection({
   savingMigrationSettings, migrationSettingsSaved,
   saveMigrationSettingsAction, resetMigrationSettingsAction,
   fetchMigrationSettingsAction,
+  savedMigrationSettings, savedPenaltyConfig,
+  pveCrs,
 }) {
+  // PVE CRS config as last read from the cluster; an edit here updates it
+  // locally until the next data refresh brings the same value back.
+  const [crsOverride, setCrsOverride] = useState(null);
+  const [showCrsEditor, setShowCrsEditor] = useState(false);
+  const crs = crsOverride || pveCrs;
+
   return (
     <div className={GLASS_CARD + ' overflow-hidden'}>
       <SectionHeader
@@ -50,36 +63,26 @@ export default function MigrationBehaviorSection({
             <div className="space-y-3">
               <ToggleRow
                 label="Check Cluster Health Before Migrating"
-                description="Verifies cluster has quorum and node resources are within limits before migrating."
+                description="Checks the cluster has quorum before each run."
                 checked={automationConfig.safety_checks?.check_cluster_health !== false}
                 onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                    Max Node CPU %
-                  </label>
-                  <NumberField
-                    min="50"
-                    max="100"
-                    value={automationConfig.safety_checks?.max_node_cpu_percent || 85}
-                    onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } })}
-                    className={INPUT_FIELD}
-                  />
-                </div>
-                <div className="bg-pb-surface2 dark:bg-slate-700 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                    Max Node Memory %
-                  </label>
-                  <NumberField
-                    min="50"
-                    max="100"
-                    value={automationConfig.safety_checks?.max_node_memory_percent || 90}
-                    onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } })}
-                    className={INPUT_FIELD}
-                  />
-                </div>
+                <NumberRow
+                  label="Max target CPU"
+                  description="Never move a guest onto a node above this"
+                  unit="%" min="50" max="100"
+                  value={automationConfig.safety_checks?.max_node_cpu_percent || 85}
+                  onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } })}
+                />
+                <NumberRow
+                  label="Max target memory"
+                  description="Never move a guest onto a node above this"
+                  unit="%" min="50" max="100"
+                  value={automationConfig.safety_checks?.max_node_memory_percent || 90}
+                  onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } })}
+                />
               </div>
 
               <ToggleRow
@@ -108,7 +111,8 @@ export default function MigrationBehaviorSection({
           <div className="border-t border-pb-border dark:border-slate-700 pt-4">
             <PenaltyScoringSection
               embedded
-              hideSensitivity
+              savedMigrationSettings={savedMigrationSettings}
+              savedPenaltyConfig={savedPenaltyConfig}
               collapsedSections={collapsedSections}
               setCollapsedSections={setCollapsedSections}
               penaltyConfig={penaltyConfig}
@@ -137,6 +141,28 @@ export default function MigrationBehaviorSection({
               fetchMigrationSettingsAction={fetchMigrationSettingsAction}
             />
           </div>
+
+          {/* ── Proxmox's own balancer (moved here from the dashboard) ── */}
+          {crs && typeof crs === 'object' && (
+            <div className="border-t border-pb-border dark:border-slate-700 pt-4">
+              <h3 className="text-base font-bold text-pb-text dark:text-white">Proxmox balancer (CRS)</h3>
+              <p className="text-sm text-pb-text2 dark:text-gray-400 mb-2">What Proxmox's built-in scheduler does with HA guests, so the two don't fight over them.</p>
+              <CrsStatusBanner
+                pveCrs={crs}
+                automationEnabled={automationStatus?.enabled ?? automationConfig.enabled}
+                onEdit={() => setShowCrsEditor(true)}
+              />
+              {showCrsEditor && (
+                <CrsEditorModal
+                  pveCrs={crs}
+                  automationEnabled={automationStatus?.enabled ?? automationConfig.enabled}
+                  API_BASE={API_BASE}
+                  onClose={() => setShowCrsEditor(false)}
+                  onSaved={(normalized) => setCrsOverride(normalized)}
+                />
+              )}
+            </div>
+          )}
 
         </div>
       )}

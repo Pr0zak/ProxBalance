@@ -2,7 +2,7 @@ import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from 
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 import MetricCompareCard from './MetricCompareCard.jsx';
-import { NODE_COLORS, RESOURCE_METRICS, hasTrendData } from './nodeSeries.js';
+import { NODE_COLORS, RESOURCE_METRICS, hasTrendData, useChartPeriod, periodConfig } from './nodeSeries.js';
 
 const { useState, useMemo, useEffect } = React;
 
@@ -42,7 +42,32 @@ function MetricChips({ node, hidden, onToggle, thresholds }) {
           </button>
         );
       })}
+      <AnchoredChip node={node} />
     </div>
+  );
+}
+
+/**
+ * Legend chip for the shaded "unmovable" band on the node charts: CPU used right
+ * now by guests ProxBalance won't move (ignored or passthrough-pinned).
+ */
+function AnchoredChip({ node }) {
+  const v = node?.anchored_cpu;
+  if (typeof v !== 'number' || v < 0.5) return null;
+  const guests = (node.anchored_guests || []).slice().sort((a, b) => (b.cpu_share || 0) - (a.cpu_share || 0));
+  const names = guests.map(g => g.name || `VM/CT ${g.vmid}`);
+  const short = names.length ? `${names[0]}${names.length > 1 ? '…' : ''}` : '';
+  const detail = guests.map(g => `${g.name || g.vmid} ${typeof g.cpu_share === 'number' ? g.cpu_share.toFixed(1) + '%' : ''}`.trim()).join(', ');
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-400"
+      title={`Shaded band at the bottom of the CPU chart: CPU used now by guests ProxBalance won't move${detail ? ` (${detail})` : ''}. Current value only, drawn flat.`}
+    >
+      <span className="inline-block w-3 h-2.5 rounded-sm bg-slate-500/25 dark:bg-slate-400/25 border-t border-slate-500/60 dark:border-slate-400/60" />
+      unmovable{short && ` (${short})`}
+      <span className="font-semibold tabular-nums text-pb-text dark:text-white">{v.toFixed(0)}%</span>
+      <span className="text-[10px]">now</span>
+    </span>
   );
 }
 
@@ -51,7 +76,6 @@ export default function NodeStatusSection({
   collapsedSections, toggleSection,
   recommendationData, recommendations,
   nodeGridColumns, setNodeGridColumns,
-  chartPeriod, setChartPeriod,
   nodeScores,
   migrationHistory,
   chartJsLoaded, loadChartJs,
@@ -61,6 +85,8 @@ export default function NodeStatusSection({
   useEffect(() => {
     if (!chartJsLoaded && typeof loadChartJs === 'function') loadChartJs();
   }, [chartJsLoaded]);
+  // One period for the whole Charts tab; the control lives on the Cluster Health card.
+  const [chartPeriod] = useChartPeriod();
   // Shared crosshair time across all node charts; expanded node for the detail modal.
   const [hoverTime, setHoverTime] = useState(null);
   const [expandedNode, setExpandedNode] = useState(null);
@@ -165,22 +191,9 @@ export default function NodeStatusSection({
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-pb-text2 dark:text-gray-400">Chart Period:</label>
-                <select
-                  value={chartPeriod}
-                  onChange={(e) => setChartPeriod(e.target.value)}
-                  className={SELECT_FIELD}
-                >
-                  <option value="1h">1 Hour</option>
-                  <option value="6h">6 Hours</option>
-                  <option value="12h">12 Hours</option>
-                  <option value="24h">24 Hours</option>
-                  <option value="7d">7 Days</option>
-                  <option value="30d">30 Days</option>
-                  <option value="1y">1 Year</option>
-                </select>
-              </div>
+              <span className="text-xs text-pb-text2 dark:text-gray-400" title="Change the period on the Cluster Health card above — it sets every chart on this tab">
+                Period <span className="font-semibold text-pb-text dark:text-gray-200">{periodConfig(chartPeriod).label}</span> (set above)
+              </span>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
                 <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
@@ -474,6 +487,7 @@ export default function NodeStatusSection({
                     <NodeChart
                       nodeName={node.name}
                       trendData={node.trend_data}
+                      anchoredCpu={node.anchored_cpu}
                       chartPeriod={chartPeriod}
                       migrationHistory={migrationHistory}
                       thresholds={thresholds}
@@ -505,6 +519,7 @@ export default function NodeStatusSection({
                     <NodeChart
                       nodeName={expandedNode}
                       trendData={data.nodes[expandedNode].trend_data}
+                      anchoredCpu={data.nodes[expandedNode].anchored_cpu}
                       chartPeriod={chartPeriod}
                       migrationHistory={migrationHistory}
                       thresholds={thresholds}

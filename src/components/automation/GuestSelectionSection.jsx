@@ -1,10 +1,10 @@
 import {
   AlertTriangle, ChevronDown, X, Filter
 } from '../Icons.jsx';
-import { GLASS_CARD, INPUT_FIELD } from '../../utils/designTokens.js';
-import NumberField from '../NumberField.jsx';
+import { GLASS_CARD, BTN_SECONDARY } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
-import RecommendationThresholdsSection from '../settings/RecommendationThresholdsSection.jsx';
+import NumberRow from './NumberRow.jsx';
+import TriggerThresholds from './TriggerThresholds.jsx';
 import DistributionBalancingSection from './DistributionBalancingSection.jsx';
 import SectionHeader from '../SectionHeader.jsx';
 
@@ -14,7 +14,7 @@ export default function GuestSelectionSection({
   automationConfig, saveAutomationConfig,
   config, fetchConfig, setConfig,
   collapsedSections, setCollapsedSections,
-  nodes,
+  nodes, memFloor,
 }) {
   const [confirmAllowContainerRestarts, setConfirmAllowContainerRestarts] = useState(false);
 
@@ -31,60 +31,36 @@ export default function GuestSelectionSection({
 
           {/* ── Triggers ── */}
           <div>
-            <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Triggers</h3>
-            <RecommendationThresholdsSection
-              embedded
-              nodes={nodes}
-              config={config}
-              fetchConfig={fetchConfig}
-              collapsedSections={collapsedSections}
-              setCollapsedSections={setCollapsedSections}
-            />
+            <h3 className="text-base font-bold text-pb-text dark:text-white">Triggers</h3>
+            <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">A node that stays above a line becomes a source; lower lines mean earlier moves.</p>
+            <TriggerThresholds nodes={nodes} fetchConfig={fetchConfig} memFloor={memFloor} />
           </div>
 
           {/* ── Limits ── */}
           <div className="border-t border-pb-border dark:border-slate-700 pt-4">
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Limits</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                  Minimum Confidence Score
-                </label>
-                <NumberField
-                  min="0"
-                  max="100"
-                  value={automationConfig.rules?.min_confidence_score || 75}
-                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, min_confidence_score: val } })}
-                  className={INPUT_FIELD}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                  Max Migrations Per Run
-                </label>
-                <NumberField
-                  min="1"
-                  max="20"
-                  value={automationConfig.rules?.max_migrations_per_run || 3}
-                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_migrations_per_run: val } })}
-                  className={INPUT_FIELD}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-2">
-                  Max Concurrent Migrations
-                </label>
-                <NumberField
-                  min="1"
-                  max="10"
-                  value={automationConfig.rules?.max_concurrent_migrations || 1}
-                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
-                  className={INPUT_FIELD}
-                />
-                <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                  Maximum simultaneous migrations
-                </p>
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <NumberRow
+                label="Minimum confidence"
+                description="Skip moves the engine is less sure of"
+                unit="%" min="0" max="100"
+                value={automationConfig.rules?.min_confidence_score || 75}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, min_confidence_score: val } })}
+              />
+              <NumberRow
+                label="Max migrations per run"
+                description="Moves started in one check"
+                min="1" max="20"
+                value={automationConfig.rules?.max_migrations_per_run || 3}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_migrations_per_run: val } })}
+              />
+              <NumberRow
+                label="Max at the same time"
+                description="Migrations running at once, cluster-wide"
+                min="1" max="10"
+                value={automationConfig.rules?.max_concurrent_migrations ?? 3}
+                onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_concurrent_migrations: val } })}
+              />
             </div>
           </div>
 
@@ -152,7 +128,7 @@ export default function GuestSelectionSection({
                             </button>
                             <button
                               onClick={() => setConfirmAllowContainerRestarts(false)}
-                              className="px-2 py-1 bg-pb-surface2 dark:bg-gray-700 text-pb-text dark:text-gray-200 rounded text-xs hover:bg-gray-600 flex items-center justify-center gap-1"
+                              className={`${BTN_SECONDARY} !px-2 !py-1 !text-xs`}
                             >
                               <X size={14} />
                               Cancel

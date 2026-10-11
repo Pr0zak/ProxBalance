@@ -1,13 +1,12 @@
 import {
-  ChevronDown, Save, CheckCircle, AlertCircle, AlertTriangle,
-  RefreshCw, Download, Upload, Server, Terminal, X
+  Save, CheckCircle, AlertCircle, AlertTriangle,
+  RefreshCw, Download, Upload, Server, Terminal, X, Lock, Play
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import {
-  GLASS_CARD, INPUT_FIELD, ICON, INNER_CARD, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN,
+  INPUT_FIELD, ICON, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN, statusBadge,
 } from '../../utils/designTokens.js';
 import { formatRelativeTime } from '../../utils/formatters.js';
-import SectionHeader from '../SectionHeader.jsx';
 const { useState, useEffect, useRef } = React;
 
 const BTN_ROW = `${BTN_SECONDARY} !px-3 !py-1.5 !gap-1.5 text-xs`;
@@ -177,23 +176,85 @@ const SERVICES = [
     title: 'API service',
     name: 'the API service',
     about: 'serves this dashboard and the REST API',
-    restartEffect: 'The dashboard stops answering for a few seconds while it restarts.',
+    action: 'restart',
+    confirm: 'The dashboard stops answering for a few seconds while it restarts.',
   },
   {
     id: 'proxmox-collector',
     title: 'Data collector',
     name: 'the data collector',
-    about: null, // filled with last run, duration and interval
-    restartEffect: 'A collection in progress is cut short and starts again.',
+    about: 'gathers metrics from Proxmox',
+    action: 'run',
+  },
+  {
+    id: 'proxmox-balance-automigrate',
+    title: 'Automated migrations',
+    name: 'the automated migration check',
+    about: 'checks the cluster and migrates guests when automation is on',
+    action: 'run',
+    confirm: 'If automation is on and not in dry-run mode, this can start migrations right away.',
+  },
+  {
+    id: 'proxmox-balance-recommendations',
+    title: 'Suggestions',
+    name: 'the suggestion generator',
+    about: 'refreshes migration suggestions',
+    action: 'run',
   },
 ];
+
+const clock = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+/** "in 12m" / "in 2h" / "now" for a future ISO time. */
+function untilText(iso) {
+  const ms = new Date(iso) - Date.now();
+  if (!Number.isFinite(ms)) return '';
+  if (ms < 60000) return 'any moment';
+  const m = Math.round(ms / 60000);
+  if (m < 60) return `in ${m}m`;
+  const h = Math.floor(m / 60);
+  return `in ${h}h${m % 60 ? ` ${m % 60}m` : ''}`;
+}
+
+/** One-line state of a unit from GET /api/system/services, or null. */
+function unitState(st) {
+  if (!st) return null;
+  const rel = (iso) => formatRelativeTime(iso).replace('Just now', 'just now');
+  if (!st.timer) {
+    const up = st.active_state === 'active';
+    return {
+      tone: up ? 'green' : 'red',
+      text: up ? `Running${st.since ? ` since ${rel(st.since)}` : ''}` : `Not running (${st.active_state})`,
+    };
+  }
+  const parts = [];
+  let tone = 'gray';
+  if (st.result === 'running') { parts.push('Running now'); tone = 'blue'; }
+  else if (st.last_start) {
+    const failed = st.result === 'failed';
+    tone = failed ? 'red' : 'green';
+    parts.push(`Last run ${rel(st.last_end || st.last_start)} · ${failed ? `failed${st.exit_status && st.exit_status !== '0' ? ` (exit ${st.exit_status})` : ''}` : 'succeeded'}`);
+  } else parts.push('No run since boot');
+  if (!st.timer.active) { parts.push('timer off'); tone = 'yellow'; }
+  else if (st.timer.next) parts.push(`next ${untilText(st.timer.next)}`);
+  return { tone, text: parts.join(' · ') };
+}
+
+const STATE_TEXT = {
+  green: 'text-emerald-600 dark:text-emerald-400',
+  red: 'text-red-600 dark:text-red-400',
+  yellow: 'text-amber-600 dark:text-amber-400',
+  blue: 'text-pb-accent dark:text-pb-accent-dark',
+  gray: 'text-pb-text2 dark:text-gray-400',
+};
 
 /** Settings → System: service logs and restarts, data export, config backup and restore. */
 function SystemActions({ data, config }) {
   const [openLog, setOpenLog] = useState(null);
-  const [confirmRestart, setConfirmRestart] = useState(null); // service id
-  const [restarting, setRestarting] = useState(null);
-  const [restartNotice, setRestartNotice] = useState({});     // service id -> notice
+  const [confirmAction, setConfirmAction] = useState(null);   // service id awaiting confirmation
+  const [busy, setBusy] = useState(null);
+  const [actionNotice, setActionNotice] = useState({});       // service id -> notice
+  const [unitStatus, setUnitStatus] = useState(null);         // GET /api/system/services → services
   const [importFile, setImportFile] = useState(null);         // File awaiting confirmation
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState(null);
@@ -201,42 +262,61 @@ function SystemActions({ data, config }) {
   const [backupNotice, setBackupNotice] = useState(null);
   const importRef = useRef(null);
 
+  const loadStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/system/services`);
+      const body = await res.json();
+      if (body?.success && body.services) setUnitStatus(body.services);
+    } catch (e) { /* older backend or offline: rows fall back to static text */ }
+  };
+  useEffect(() => {
+    loadStatus();
+    const t = setInterval(loadStatus, 60000);
+    return () => clearInterval(t);
+  }, []);
+  // A run takes a few seconds; look again shortly after starting one.
+  const refreshSoon = () => { setTimeout(loadStatus, 3000); setTimeout(loadStatus, 15000); };
+
   const perf = data?.performance;
   const interval = config?.collection_interval_minutes;
   const guestCount = data?.guests ? Object.keys(data.guests).length : 0;
-  const collectorDetail = [
-    'proxmox-collector',
-    data?.collected_at ? `last run ${formatRelativeTime(data.collected_at).toLowerCase()}` : 'no run yet',
-    perf?.total_time != null && `took ${perf.total_time}s`,
-    interval && `every ${interval} min`,
-  ].filter(Boolean).join(' · ');
+  const detailFor = (svc) => {
+    if (svc.id !== 'proxmox-collector') return `${svc.id} · ${svc.about}`;
+    return [
+      svc.id,
+      perf?.total_time != null && `last took ${perf.total_time}s`,
+      interval && `every ${interval} min`,
+    ].filter(Boolean).join(' · ');
+  };
 
-  const restart = async (svc) => {
-    setRestarting(svc.id);
+  const runAction = async (svc) => {
+    setBusy(svc.id);
+    const restart = svc.action === 'restart';
     try {
-      const response = await fetch(`${API_BASE}/system/restart-service`, {
+      const response = await fetch(`${API_BASE}/system/${restart ? 'restart-service' : 'run-service'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ service: svc.id }),
       });
       const result = await response.json().catch(() => ({}));
-      setRestartNotice(prev => ({
+      setActionNotice(prev => ({
         ...prev,
         [svc.id]: result.success
-          ? { tone: 'ok', text: `${svc.title} restarted at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.` }
-          : { tone: 'error', text: `Restart failed: ${result.error || `HTTP ${response.status}`}` },
+          ? { tone: 'ok', text: restart ? `${svc.title} restarted at ${clock(new Date())}.` : `${svc.title} started at ${clock(new Date())}. Its log shows the result.` }
+          : { tone: 'error', text: `${restart ? 'Restart' : 'Run'} failed: ${result.error || `HTTP ${response.status}`}` },
       }));
+      if (result.success) refreshSoon();
     } catch (err) {
       // Restarting the API can drop the very request that asked for it.
-      setRestartNotice(prev => ({
+      setActionNotice(prev => ({
         ...prev,
         [svc.id]: svc.id === 'proxmox-balance'
           ? { tone: 'warn', text: 'Restart sent. The API dropped the connection while restarting; the dashboard reconnects on its next refresh.' }
-          : { tone: 'error', text: `Restart failed: ${err.message}` },
+          : { tone: 'error', text: `${restart ? 'Restart' : 'Run'} failed: ${err.message}` },
       }));
     } finally {
-      setRestarting(null);
-      setConfirmRestart(null);
+      setBusy(null);
+      setConfirmAction(null);
     }
   };
 
@@ -307,38 +387,49 @@ function SystemActions({ data, config }) {
 
   return (
     <div className="space-y-6">
-      <ActionGroup title="Services" note="Check a service's log before restarting it.">
-        {SERVICES.map(svc => (
-          <ActionRow
-            key={svc.id}
-            title={svc.title}
-            detail={svc.about ? `${svc.id} · ${svc.about}` : collectorDetail}
-            below={<>
-              {confirmRestart === svc.id && (
-                <ConfirmStrip
-                  text={`Restart ${svc.name}? ${svc.restartEffect}`}
-                  confirmLabel="Restart now"
-                  busy={restarting === svc.id}
-                  onConfirm={() => restart(svc)}
-                  onCancel={() => setConfirmRestart(null)}
-                />
-              )}
-              <Notice notice={restartNotice[svc.id]} onDismiss={() => setRestartNotice(prev => ({ ...prev, [svc.id]: null }))} />
-              {openLog === svc.id && <LogViewer service={svc.id} onClose={() => setOpenLog(null)} />}
-            </>}
-          >
-            <button onClick={() => setOpenLog(prev => (prev === svc.id ? null : svc.id))} className={BTN_ROW} aria-expanded={openLog === svc.id}>
-              <Terminal size={12} /> {openLog === svc.id ? 'Hide log' : 'View log'}
-            </button>
-            <button
-              onClick={() => { setRestartNotice(prev => ({ ...prev, [svc.id]: null })); setConfirmRestart(svc.id); }}
-              disabled={!!restarting || confirmRestart === svc.id}
-              className={BTN_ROW_CAUTION}
+      <ActionGroup title="Services" note="Check a service's log before restarting it. Times update every minute.">
+        {SERVICES.map(svc => {
+          const state = unitState(unitStatus?.[svc.id]);
+          const ActionIcon = svc.action === 'restart' ? RefreshCw : Play;
+          return (
+            <ActionRow
+              key={svc.id}
+              title={svc.title}
+              detail={<>
+                {state && <span className={`block ${STATE_TEXT[state.tone]}`}>{state.text}</span>}
+                <span className="block break-words">{detailFor(svc)}</span>
+              </>}
+              below={<>
+                {confirmAction === svc.id && (
+                  <ConfirmStrip
+                    text={`${svc.action === 'restart' ? 'Restart' : 'Run'} ${svc.name} now? ${svc.confirm}`}
+                    confirmLabel={svc.action === 'restart' ? 'Restart now' : 'Run now'}
+                    busy={busy === svc.id}
+                    onConfirm={() => runAction(svc)}
+                    onCancel={() => setConfirmAction(null)}
+                  />
+                )}
+                <Notice notice={actionNotice[svc.id]} onDismiss={() => setActionNotice(prev => ({ ...prev, [svc.id]: null }))} />
+                {openLog === svc.id && <LogViewer service={svc.id} onClose={() => setOpenLog(null)} />}
+              </>}
             >
-              <RefreshCw size={12} /> Restart
-            </button>
-          </ActionRow>
-        ))}
+              <button onClick={() => setOpenLog(prev => (prev === svc.id ? null : svc.id))} className={BTN_ROW} aria-expanded={openLog === svc.id}>
+                <Terminal size={12} /> {openLog === svc.id ? 'Hide log' : 'View log'}
+              </button>
+              <button
+                onClick={() => {
+                  setActionNotice(prev => ({ ...prev, [svc.id]: null }));
+                  if (svc.confirm) setConfirmAction(svc.id); else runAction(svc);
+                }}
+                disabled={!!busy || confirmAction === svc.id || unitStatus?.[svc.id]?.result === 'running'}
+                className={svc.action === 'restart' ? BTN_ROW_CAUTION : BTN_ROW}
+              >
+                {busy === svc.id ? <RefreshCw size={12} className="animate-spin" /> : <ActionIcon size={12} />}
+                {svc.action === 'restart' ? 'Restart' : 'Run now'}
+              </button>
+            </ActionRow>
+          );
+        })}
       </ActionGroup>
 
       <ActionGroup title="Export data">
@@ -395,6 +486,182 @@ function SystemActions({ data, config }) {
   );
 }
 
+const LAST_VALIDATION_KEY = 'proxbalance.lastTokenValidation';
+const readLastValidation = () => {
+  try { return JSON.parse(localStorage.getItem(LAST_VALIDATION_KEY)) || null; } catch (e) { return null; }
+};
+const LABEL = 'block text-sm font-medium text-pb-text dark:text-gray-300 mb-1';
+const HELP = 'text-xs text-pb-text2 dark:text-gray-400 mt-1';
+
+/** Settings → Connection: Proxmox API token and host. */
+function ConnectionSettings({
+  config,
+  proxmoxTokenId, setProxmoxTokenId, proxmoxTokenSecret, setProxmoxTokenSecret,
+  validatingToken, tokenValidationResult,
+  confirmHostChange, setConfirmHostChange,
+  validateToken, confirmAndChangeHost, setError,
+}) {
+  const storedSecret = config?.proxmox_api_token_secret ?? '';
+  // Older backends only show the '***' placeholder; newer ones add a flag too.
+  const secretSaved = config?.proxmox_api_token_secret_set ?? storedSecret === '***';
+  const [replacing, setReplacing] = useState(false);
+  // A reload after saving closes the replace field again.
+  useEffect(() => { setReplacing(false); }, [storedSecret]);
+  const showSecretInput = !secretSaved || replacing || proxmoxTokenSecret !== storedSecret;
+
+  // Last validation outcome survives reloads (kept in this browser only).
+  const [lastValidation, setLastValidation] = useState(readLastValidation);
+  const [showDetails, setShowDetails] = useState(false);
+  useEffect(() => {
+    if (!tokenValidationResult) return;
+    const entry = {
+      success: !!tokenValidationResult.success,
+      message: tokenValidationResult.message,
+      version: tokenValidationResult.version,
+      tokenId: proxmoxTokenId,
+      at: new Date().toISOString(),
+    };
+    setLastValidation(entry);
+    setShowDetails(true);
+    try { localStorage.setItem(LAST_VALIDATION_KEY, JSON.stringify(entry)); } catch (e) { /* storage blocked */ }
+  }, [tokenValidationResult]);
+
+  const canValidate = !validatingToken && proxmoxTokenId && (showSecretInput ? proxmoxTokenSecret : secretSaved);
+  const lastAge = lastValidation ? formatRelativeTime(lastValidation.at).replace('Just now', 'just now') : '';
+  const lastStale = lastValidation && lastValidation.tokenId && lastValidation.tokenId !== proxmoxTokenId;
+  const perms = tokenValidationResult?.success ? tokenValidationResult.permissions || [] : [];
+
+  const [hostDraft, setHostDraft] = useState(config?.proxmox_host || '');
+  useEffect(() => { setHostDraft(config?.proxmox_host || ''); }, [config?.proxmox_host]);
+  const submitHost = () => {
+    const newHost = hostDraft.trim();
+    if (!newHost) { setError('Please enter a valid Proxmox host'); return; }
+    // Two clicks: the first arms the change, the second applies it.
+    if (confirmHostChange === newHost) confirmAndChangeHost();
+    else setConfirmHostChange(newHost);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div id="proxmox-api-config">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400 mb-2">API token</h3>
+        <div className={`${INNER_CARD} space-y-4`}>
+          <div>
+            <label className={LABEL} htmlFor="pb-token-id">Token ID</label>
+            <input
+              id="pb-token-id" type="text" value={proxmoxTokenId}
+              onChange={(e) => setProxmoxTokenId(e.target.value)}
+              placeholder="proxbalance@pam!proxbalance"
+              className={`${INPUT_FIELD} font-mono sm:max-w-lg`}
+            />
+            <p className={HELP}>user@realm!tokenname</p>
+          </div>
+
+          <div>
+            <label className={LABEL} htmlFor="pb-token-secret">Token secret</label>
+            {showSecretInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  id="pb-token-secret" type="password" autoFocus={replacing}
+                  value={proxmoxTokenSecret === '***' ? '' : proxmoxTokenSecret}
+                  onChange={(e) => setProxmoxTokenSecret(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  autoComplete="new-password"
+                  className={`${INPUT_FIELD} font-mono sm:max-w-lg`}
+                />
+                {secretSaved && (
+                  <button
+                    onClick={() => { setProxmoxTokenSecret(storedSecret); setReplacing(false); }}
+                    className={BTN_ROW}
+                    title="Keep the saved secret"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={statusBadge('green')}><Lock size={12} /> Saved · hidden</span>
+                <button
+                  onClick={() => setReplacing(true)}
+                  className={BTN_ROW}
+                >
+                  Replace
+                </button>
+              </div>
+            )}
+            <p className={HELP}>
+              {showSecretInput && secretSaved
+                ? 'Leave empty to keep the saved secret.'
+                : 'The UUID shown once when the token was created in Proxmox. Never sent back to the browser.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-x-3 gap-y-2 flex-wrap">
+            <button onClick={validateToken} disabled={!canValidate} className={BTN_PRIMARY}>
+              {validatingToken ? <RefreshCw size={ICON.action} className="animate-spin" /> : <CheckCircle size={ICON.action} />}
+              {validatingToken ? 'Checking…' : 'Validate token'}
+            </button>
+            {lastValidation && !validatingToken && (
+              <span
+                className={`text-sm min-w-0 ${lastValidation.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+                title={lastValidation.message}
+              >
+                {lastValidation.success
+                  ? `Valid${lastValidation.version ? ` · PVE ${lastValidation.version}` : ''}`
+                  : `Failed: ${lastValidation.message || 'unknown error'}`}
+                <span className="text-pb-text3 dark:text-gray-500"> · {lastAge}{lastStale ? ' · different token ID' : ''}</span>
+              </span>
+            )}
+            {perms.length > 0 && (
+              <button onClick={() => setShowDetails(v => !v)} className="text-xs text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 underline-offset-2 hover:underline">
+                {showDetails ? 'Hide permissions' : 'Show permissions'}
+              </button>
+            )}
+          </div>
+          {showDetails && perms.length > 0 && (
+            <ul className="text-xs text-pb-text2 dark:text-gray-400 space-y-0.5">
+              {perms.map((perm, idx) => <li key={idx}>{perm}</li>)}
+            </ul>
+          )}
+          <p className="text-xs text-pb-text3 dark:text-gray-500">
+            The installer creates a token with the right permissions. Validating checks the token against the current host.
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400 mb-2">Proxmox host</h3>
+        <div className={`${INNER_CARD} space-y-3`}>
+          <div className="text-sm text-pb-text2 dark:text-gray-400">
+            Connected to <span className="font-mono font-medium text-pb-text dark:text-gray-200">{config?.proxmox_host || 'not configured'}</span>
+          </div>
+          <div>
+            <label className={LABEL} htmlFor="proxmoxHostInput">New host IP or hostname</label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <input
+                type="text" id="proxmoxHostInput"
+                value={hostDraft}
+                onChange={(e) => { setHostDraft(e.target.value); if (confirmHostChange) setConfirmHostChange(null); }}
+                placeholder="192.168.1.10 or pve-node1"
+                className={`${INPUT_FIELD} sm:max-w-xs`}
+              />
+              <button
+                onClick={submitHost}
+                disabled={!hostDraft.trim() || hostDraft.trim() === config?.proxmox_host}
+                className={`${confirmHostChange ? BTN_ROW_CAUTION : BTN_SECONDARY} !py-2 self-start sm:self-auto`}
+              >
+                {confirmHostChange ? <><AlertTriangle size={14} /> Click again to switch</> : <><Server size={14} /> Change host</>}
+              </button>
+            </div>
+            <p className={HELP}>Any node in the cluster works; the collector restarts against the new host.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Settings → Connection ("connection") and Settings → System ("system").
  * Connection holds the Proxmox API token and host; System holds data export,
@@ -403,176 +670,11 @@ function SystemActions({ data, config }) {
 export default function AdvancedSystemSettings({
   part,
   data, config,
-  proxmoxTokenId, setProxmoxTokenId, proxmoxTokenSecret, setProxmoxTokenSecret,
-  validatingToken, tokenValidationResult,
-  confirmHostChange, setConfirmHostChange,
-  validateToken, confirmAndChangeHost,
-  error, setError
+  error, setError,
+  ...connection
 }) {
   if (part === 'connection') {
-    return (
-      <div className="space-y-6">
-                    <div id="proxmox-api-config">
-                      <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Proxmox API Configuration</h3>
-                      <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                            API Token ID
-                          </label>
-                          <input
-                            type="text"
-                            value={proxmoxTokenId}
-                            onChange={(e) => setProxmoxTokenId(e.target.value)}
-                            placeholder="proxbalance@pam!proxbalance"
-                            className={`${INPUT_FIELD} font-mono`}
-                          />
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                            Format: user@realm!tokenname (e.g., proxbalance@pam!proxbalance)
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                            API Token Secret
-                          </label>
-                          <input
-                            type="password"
-                            value={proxmoxTokenSecret}
-                            onChange={(e) => setProxmoxTokenSecret(e.target.value)}
-                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            className={`${INPUT_FIELD} font-mono`}
-                          />
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                            The UUID token secret from Proxmox
-                          </p>
-                        </div>
-                        <button
-                          onClick={validateToken}
-                          disabled={validatingToken || !proxmoxTokenId || !proxmoxTokenSecret}
-                          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                          {validatingToken ? (
-                            <>
-                              <RefreshCw size={16} className="animate-spin" />
-                              Validating Token...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle size={16} />
-                              Validate Token & Check Permissions
-                            </>
-                          )}
-                        </button>
-
-                        {tokenValidationResult && (
-                          <div className={`p-4 rounded border ${
-                            tokenValidationResult.success
-                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                          }`}>
-                            <div className="flex items-start gap-2">
-                              {tokenValidationResult.success ? (
-                                <CheckCircle size={20} className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
-                              ) : (
-                                <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                              )}
-                              <div className="flex-1">
-                                <p className={`font-semibold text-sm mb-1 ${
-                                  tokenValidationResult.success
-                                    ? 'text-green-800 dark:text-green-200'
-                                    : 'text-red-800 dark:text-red-200'
-                                }`}>
-                                  {tokenValidationResult.message}
-                                </p>
-                                {tokenValidationResult.success && (
-                                  <>
-                                    {tokenValidationResult.version && (
-                                      <p className="text-xs text-green-700 dark:text-green-300 mb-2">
-                                        Proxmox VE Version: {tokenValidationResult.version}
-                                      </p>
-                                    )}
-                                    {tokenValidationResult.permissions && tokenValidationResult.permissions.length > 0 && (
-                                      <div className="mt-2">
-                                        <p className="text-xs font-semibold text-green-800 dark:text-green-200 mb-1">
-                                          Token Permissions:
-                                        </p>
-                                        <ul className="text-xs text-green-700 dark:text-green-300 space-y-1 ml-4">
-                                          {tokenValidationResult.permissions.map((perm, idx) => (
-                                            <li key={idx} className="flex items-start gap-1">
-                                              <span className="text-green-600 dark:text-green-400">•</span>
-                                              <span>{perm}</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Tip:</strong> Use the installation script to automatically create an API token with proper permissions. Click "Validate Token" after entering credentials to verify connectivity and check permissions.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-pb-text dark:text-white mb-4">Proxmox Host Configuration</h3>
-                      <div className="space-y-4 p-4 bg-pb-surface2 dark:bg-slate-700/50 rounded">
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Current Proxmox Host:</strong> {config?.proxmox_host || 'Not configured'}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">
-                            New Proxmox Host IP/Hostname
-                          </label>
-                          <input
-                            type="text"
-                            id="proxmoxHostInput"
-                            defaultValue={config?.proxmox_host || ''}
-                            placeholder="192.168.1.10 or pve-node1"
-                            className={INPUT_FIELD}
-                          />
-                          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                            IP address or hostname of the Proxmox node to connect to
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const newHost = document.getElementById('proxmoxHostInput').value.trim();
-                            if (!newHost) {
-                              setError('Please enter a valid Proxmox host');
-                              return;
-                            }
-
-                            // Two-click pattern: first click sets confirm state, second click executes
-                            if (confirmHostChange === newHost) {
-                              // Second click - execute the change
-                              confirmAndChangeHost();
-                            } else {
-                              // First click - set confirm state
-                              setConfirmHostChange(newHost);
-                            }
-                          }}
-                          className={`w-full px-4 py-2 text-pb-text dark:text-white rounded font-medium flex items-center justify-center gap-1.5 ${
-                            confirmHostChange
-                              ? 'bg-orange-500 hover:bg-orange-600'
-                              : 'bg-blue-500 hover:bg-blue-600'
-                          }`}
-                        >
-                          {confirmHostChange ? (<><AlertTriangle size={14} /> Click again to confirm</>) : (<><Server size={14} /> Update Proxmox Host</>)}
-                        </button>
-                      </div>
-                    </div>
-
-      </div>
-    );
+    return <ConnectionSettings config={config} setError={setError} {...connection} />;
   }
 
   return <SystemActions data={data} config={config} />;

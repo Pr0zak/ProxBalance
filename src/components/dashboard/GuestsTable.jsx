@@ -1,16 +1,26 @@
 import {
   TABLE_HEADER, TABLE_ROW, INPUT_FIELD,
   FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE,
-  metricTextColor, metricColor, PROGRESS_BAR_BG, statusBadge,
+  metricTextColor, metricColor, PROGRESS_BAR_BG, statusBadge, SELECT_FIELD,
 } from '../../utils/designTokens.js';
-import { ChevronDown, Tag, X } from '../Icons.jsx';
+import { ChevronDown, Filter, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { guestMobility, MOBILITY, MOBILITY_ORDER } from './guestMobility.js';
+import { behaviorTitle } from './workloadBehavior.js';
 
 const { useState, useMemo } = React;
 
 // The collector reports containers as 'CT'; older caches used 'LXC'.
 const isCT = (t) => t === 'CT' || t === 'LXC';
+
+// Running (or mid-migration) guests are the ones with live numbers.
+const isLive = (g) => g.status === 'running' || g.status === 'migrating';
+
+// Stopped guests are hidden by default; the choice is remembered per browser.
+const SHOW_STOPPED_KEY = 'guestsShowStopped';
+const readShowStopped = () => {
+  try { return localStorage.getItem(SHOW_STOPPED_KEY) === '1'; } catch { return false; }
+};
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
@@ -30,12 +40,6 @@ const STATIC_FACETS = [
     ],
   },
   {
-    id: 'state', label: 'State', options: [
-      { value: 'running', label: 'Running', test: g => g.status === 'running' },
-      { value: 'stopped', label: 'Stopped', test: g => g.status === 'stopped' },
-    ],
-  },
-  {
     id: 'rules', label: 'Rules', options: [
       { value: 'ignored', label: 'Ignored', test: g => !!g.tags?.has_ignore },
       { value: 'auto', label: 'Auto-Migrate', test: g => !!g.tags?.all_tags?.some(t => t === 'auto_migrate_ok' || t === 'auto-migrate-ok') },
@@ -45,7 +49,7 @@ const STATIC_FACETS = [
   },
 ];
 
-const EMPTY_SELECTION = { node: [], type: [], state: [], rules: [], balancer: [] };
+const EMPTY_SELECTION = { node: [], type: [], rules: [], balancer: [] };
 
 /** Proxmox tags on this guest that contain the query (IPs are tags too). */
 function tagHits(g, q) {
@@ -114,12 +118,13 @@ function TypeBadge({ type }) {
   );
 }
 
-function StatusDot({ status }) {
+function StatusDot({ status, dotOnly = false }) {
   const dot = status === 'running'
     ? 'bg-emerald-500 dark:bg-emerald-400'
     : status === 'migrating'
       ? 'bg-blue-500 dark:bg-blue-400 animate-pulse'
       : 'bg-slate-400 dark:bg-slate-500';
+  if (dotOnly) return <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} title={status} aria-label={status} />;
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-pb-text2 dark:text-gray-400">
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
@@ -135,7 +140,7 @@ function WorkloadBadge({ profile, running }) {
   return (
     <span
       className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${cls}`}
-      title={`${profile.behavior} workload (${profile.confidence} confidence, ${profile.data_points} samples)`}
+      title={behaviorTitle(profile)}
     >
       {profile.behavior.charAt(0).toUpperCase() + profile.behavior.slice(1)}
     </span>
@@ -229,32 +234,107 @@ function MoveButton({ rec, canMigrate, setConfirmMigration }) {
   );
 }
 
-function MobilityCell({ verdict, canMigrate, setConfirmMigration }) {
+/**
+ * Balancer verdict as one short chip; the full plain-language reason is the
+ * tooltip. A current suggestion becomes the Move button instead.
+ */
+function MobilityChip({ verdict, canMigrate, setConfirmMigration }) {
   if (!verdict) return null;
   if (verdict.key === 'suggested') {
     return <MoveButton rec={verdict.rec} canMigrate={canMigrate} setConfirmMigration={setConfirmMigration} />;
   }
-  const hint = verdict.hint && (
-    <span className="text-[11px] text-pb-text2 dark:text-gray-500 hidden xl:inline">{verdict.hint}</span>
-  );
   // The normal states stay quiet (dot + text) so the blocked ones stand out.
   if (verdict.key === 'movable' || verdict.key === 'stopped') {
     return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-pb-text2 dark:text-gray-400" title={verdict.detail}>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-pb-text2 dark:text-gray-400 cursor-help" title={verdict.detail}>
         <span className={`w-1.5 h-1.5 rounded-full ${verdict.key === 'movable' ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400 dark:bg-slate-500'}`} />
         {verdict.label}
-        {hint && <span className="hidden xl:inline text-pb-text2 dark:text-gray-600">·</span>}
-        {hint}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={verdict.detail}>
-      <span className={statusBadge(verdict.color)}>{verdict.label}</span>
-      {hint}
+    <span className={`${statusBadge(verdict.color)} whitespace-nowrap cursor-help`} title={verdict.detail}>
+      {verdict.label}
     </span>
   );
 }
+
+/** Phone-card meter: label, thin bar and the percentage. */
+function MiniBar({ label, pct, title }) {
+  const has = pct != null;
+  const clamped = has ? Math.max(0, Math.min(100, pct)) : 0;
+  return (
+    <div className="flex items-center gap-1.5 min-w-0" title={title}>
+      <span className="text-[10px] font-medium text-pb-text2 dark:text-gray-500 shrink-0">{label}</span>
+      <div className={`${PROGRESS_BAR_BG} flex-1 min-w-[1.5rem]`}>
+        {has && <div className={`h-full rounded-full ${metricColor(pct)}`} style={{ width: `${clamped > 0 ? Math.max(clamped, 3) : 0}%` }} />}
+      </div>
+      <span className={`text-[11px] font-mono tabular-nums w-8 text-right shrink-0 ${has ? metricTextColor(pct) : 'text-pb-text2 dark:text-gray-600'}`}>
+        {has ? `${pct.toFixed(0)}%` : '—'}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Two-line guest card for phones: name, node and state on top; CPU, memory
+ * and the balancer chip underneath. Tapping it opens the guest details.
+ */
+function GuestCard({ g, verdict, hits, onOpen, canMigrate, setConfirmMigration }) {
+  const live = isLive(g);
+  const memPct = memPercent(g);
+  const open = () => onOpen?.(g);
+  return (
+    <li
+      role="button"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }}
+      className={`px-4 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-pb-hover-dark focus:outline-none focus-visible:bg-slate-50 dark:focus-visible:bg-pb-hover-dark ${verdict?.rec ? 'bg-orange-50 dark:bg-orange-900/15' : ''}`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <StatusDot status={g.status} dotOnly />
+        <span className={`text-sm font-medium truncate min-w-0 ${live ? 'text-pb-text dark:text-gray-100' : 'text-pb-text2 dark:text-gray-400'}`}>
+          {g.name || `guest-${g.vmid}`}
+        </span>
+        <TypeBadge type={g.type} />
+        <span className="ml-auto shrink-0 text-xs text-pb-text2 dark:text-gray-400">{g.node}</span>
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 min-w-0">
+        {live ? (
+          <div className="grid grid-cols-2 gap-3 flex-1 min-w-0">
+            <MiniBar label="CPU" pct={g.cpu_current != null ? g.cpu_current : null} title={g.cpu_cores ? `${g.cpu_cores} vCPU` : undefined} />
+            <MiniBar
+              label="MEM"
+              pct={memPct}
+              title={g.mem_max_gb ? `${formatMem(g.mem_used_gb)} used of ${formatMem(g.mem_max_gb)}` : undefined}
+            />
+          </div>
+        ) : (
+          <span className="flex-1 min-w-0 truncate text-xs text-pb-text2 dark:text-gray-500">
+            Powered off{g.cpu_cores || g.mem_max_gb ? ` · ${[g.cpu_cores && `${g.cpu_cores} vCPU`, g.mem_max_gb && formatMem(g.mem_max_gb)].filter(Boolean).join(' · ')}` : ''}
+          </span>
+        )}
+        <span className="shrink-0" onClick={(e) => verdict?.rec && e.stopPropagation()}>
+          <MobilityChip verdict={verdict} canMigrate={canMigrate} setConfirmMigration={setConfirmMigration} />
+        </span>
+      </div>
+      {hits.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {hits.map(tag => <PlainTag key={tag} tag={tag} matched />)}
+        </div>
+      )}
+    </li>
+  );
+}
+
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'node', label: 'Node' },
+  { value: 'cpu', label: 'CPU' },
+  { value: 'mem', label: 'Memory' },
+  { value: 'mobility', label: 'Balancer' },
+];
 
 export default function GuestsTable({
   // Data
@@ -266,6 +346,14 @@ export default function GuestsTable({
   const [selected, setSelected] = useState(EMPTY_SELECTION);
   const [sortField, setSortField] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
+  const [showStopped, setShowStoppedState] = useState(readShowStopped);
+  const [filtersOpen, setFiltersOpen] = useState(false); // phones only
+  const setShowStopped = (v) => {
+    setShowStoppedState(v);
+    try { localStorage.setItem(SHOW_STOPPED_KEY, v ? '1' : '0'); } catch {}
+    // A "Stopped" balancer filter means nothing once stopped guests are hidden.
+    if (!v) setSelected(prev => ({ ...prev, balancer: prev.balancer.filter(k => k !== 'stopped') }));
+  };
 
   const openTagModal = setTagModalGuest && setShowTagModal
     ? (guest) => { setTagModalGuest(guest); setShowTagModal(true); }
@@ -277,6 +365,23 @@ export default function GuestsTable({
   };
 
   const allGuests = useMemo(() => Object.values(data?.guests || {}), [data]);
+
+  // Whole-cluster counts for the header line (independent of filters).
+  const totals = useMemo(() => {
+    const running = allGuests.filter(isLive).length;
+    return {
+      running,
+      stopped: allGuests.length - running,
+      ignored: allGuests.filter(g => !!g.tags?.has_ignore).length,
+    };
+  }, [allGuests]);
+
+  // Guests in scope before search/facets: running only unless the user asked
+  // for the stopped ones too.
+  const scoped = useMemo(
+    () => (showStopped ? allGuests : allGuests.filter(isLive)),
+    [allGuests, showStopped],
+  );
 
   // vmid → { key, label, color, detail, hint, rec } — why each guest will / won't move
   const verdicts = useMemo(() => {
@@ -296,12 +401,12 @@ export default function GuestsTable({
       { id: 'node', label: 'Node', options: nodes.map(n => ({ value: n, label: n, test: g => g.node === n })) },
       ...STATIC_FACETS,
       {
-        id: 'balancer', label: 'Balancer', options: MOBILITY_ORDER.map(k => ({
-          value: k, label: MOBILITY[k].label, test: g => verdicts[String(g.vmid)]?.key === k,
-        })),
+        id: 'balancer', label: 'Balancer', options: MOBILITY_ORDER
+          .filter(k => showStopped || k !== 'stopped')
+          .map(k => ({ value: k, label: MOBILITY[k].label, test: g => verdicts[String(g.vmid)]?.key === k })),
       },
     ];
-  }, [allGuests, verdicts]);
+  }, [allGuests, verdicts, showStopped]);
   const chipFacets = facets.filter(f => f.id !== 'balancer');
   const balancerFacet = facets.find(f => f.id === 'balancer');
 
@@ -325,8 +430,14 @@ export default function GuestsTable({
   });
 
   const filtered = useMemo(
-    () => allGuests.filter(g => matchesSearch(g, q) && passesFacets(g)),
-    [allGuests, q, selected, facets],
+    () => scoped.filter(g => matchesSearch(g, q) && passesFacets(g)),
+    [scoped, q, selected, facets],
+  );
+
+  // Stopped guests the search would find but the running-only view hides.
+  const hiddenStoppedHits = useMemo(
+    () => (showStopped || !q ? 0 : allGuests.filter(g => !isLive(g) && matchesSearch(g, q)).length),
+    [allGuests, showStopped, q],
   );
 
   // Facet counts: how many guests each option would show given the search
@@ -334,12 +445,12 @@ export default function GuestsTable({
   const counts = useMemo(() => {
     const out = {};
     for (const f of facets) {
-      const base = allGuests.filter(g => matchesSearch(g, q) && passesFacets(g, f.id));
+      const base = scoped.filter(g => matchesSearch(g, q) && passesFacets(g, f.id));
       out[f.id] = {};
       for (const o of f.options) out[f.id][o.value] = base.filter(o.test).length;
     }
     return out;
-  }, [allGuests, q, selected, facets]);
+  }, [scoped, q, selected, facets]);
 
   const sorted = useMemo(() => {
     const v = sortDir === 'asc' ? 1 : -1;
@@ -397,9 +508,40 @@ export default function GuestsTable({
     );
   };
 
+  const narrowed = activeCount > 0 || !!q;
+  const sep = <span className="text-pb-text2/60 dark:text-gray-600" aria-hidden="true">·</span>;
+
   return (
     <div>
-      {/* Search + count */}
+      {/* Counts for the whole cluster + the stopped-guests switch */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-2">
+        <div className="flex flex-wrap items-baseline gap-x-1.5 text-sm text-pb-text2 dark:text-gray-400 tabular-nums">
+          <span><span className="font-semibold text-pb-text dark:text-gray-100">{totals.running}</span> running</span>
+          {sep}
+          <span><span className="font-semibold text-pb-text dark:text-gray-100">{totals.stopped}</span> stopped</span>
+          {totals.ignored > 0 && (
+            <>
+              {sep}
+              <span title="Guests with the 'ignore' tag; ProxBalance leaves them where they are">
+                <span className="font-semibold text-pb-text dark:text-gray-100">{totals.ignored}</span> ignored
+              </span>
+            </>
+          )}
+        </div>
+        {totals.stopped > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowStopped(!showStopped)}
+            aria-pressed={showStopped}
+            className={`${FILTER_CHIP} ${showStopped ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE} !py-1`}
+            title={showStopped ? 'Hide powered-off guests' : 'Also list powered-off guests'}
+          >
+            {showStopped ? `Hide ${totals.stopped} stopped` : `+${totals.stopped} stopped`}
+          </button>
+        )}
+      </div>
+
+      {/* Search + (phones) filter / sort controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2">
         <input
           type="text"
@@ -409,66 +551,109 @@ export default function GuestsTable({
           className={`${INPUT_FIELD} sm:max-w-xs`}
           aria-label="Search guests"
         />
-        <div className="flex items-center gap-3 flex-1">
-          {(activeCount > 0 || q) && (
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(o => !o)}
+            aria-expanded={filtersOpen}
+            className={`sm:hidden ${FILTER_CHIP} ${activeCount > 0 ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE} inline-flex items-center gap-1.5`}
+          >
+            <Filter size={12} />
+            Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+            <ChevronDown size={12} className={`transition-transform duration-200 ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <label className="sm:hidden flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-400">
+            <span className="sr-only">Sort by</span>
+            <select
+              value={sortField}
+              onChange={e => { setSortField(e.target.value); setSortDir(['cpu', 'mem'].includes(e.target.value) ? 'desc' : 'asc'); }}
+              className={`${SELECT_FIELD} !py-1 !px-2 !text-xs`}
+              aria-label="Sort guests by"
+            >
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>Sort: {o.label}</option>)}
+            </select>
+          </label>
+          {narrowed && (
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
+              className="inline-flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 whitespace-nowrap"
             >
-              <X size={12} /> Clear filters
+              <X size={12} /> Clear<span className="hidden sm:inline">&nbsp;filters</span>
             </button>
           )}
-          <span className="text-xs text-pb-text2 dark:text-gray-500 ml-auto tabular-nums">
-            {sorted.length === allGuests.length
-              ? `${allGuests.length} guest${allGuests.length !== 1 ? 's' : ''}`
-              : `${sorted.length} of ${allGuests.length} guests`}
-          </span>
+          {narrowed && (
+            <span className="text-xs text-pb-text2 dark:text-gray-500 ml-auto tabular-nums whitespace-nowrap">
+              {sorted.length} of {scoped.length}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Facet groups — pick several: OR inside a group, AND across groups.
-          Chips wrap rather than scroll so nothing is cut off on a phone. */}
-      <div className="flex flex-wrap items-start gap-x-5 gap-y-2 mb-2">
-        {chipFacets.map(f => (
-          <div key={f.id} className="flex flex-wrap items-center gap-1.5 max-w-full">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mr-0.5">{f.label}</span>
-            {f.options.map(o => <FacetChip key={o.value} facetId={f.id} option={o} />)}
-          </div>
-        ))}
+      {/* Facets + balancer strip. Always visible from sm up; behind the
+          "Filters" button on phones so they don't fill the first screen. */}
+      <div className={`${filtersOpen ? 'block' : 'hidden'} sm:block`}>
+        {/* Facet groups — pick several: OR inside a group, AND across groups.
+            Chips wrap rather than scroll so nothing is cut off on a phone. */}
+        <div className="flex flex-wrap items-start gap-x-5 gap-y-2 mb-2">
+          {chipFacets.map(f => (
+            <div key={f.id} className="flex flex-wrap items-center gap-1.5 max-w-full">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mr-0.5">{f.label}</span>
+              {f.options.map(o => <FacetChip key={o.value} facetId={f.id} option={o} />)}
+            </div>
+          ))}
+        </div>
+
+        {/* Balancer verdict strip — counts per verdict; click to filter */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3 text-xs">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mr-0.5">Can ProxBalance move it?</span>
+          {balancerFacet.options.map(o => {
+            const k = o.value;
+            const isOn = selected.balancer.includes(k);
+            const n = counts.balancer?.[k] ?? 0;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggleOption('balancer', k)}
+                aria-pressed={isOn}
+                className={`${statusBadge(MOBILITY[k].color)} ${isOn ? 'ring-2 ring-pb-accent dark:ring-pb-accent-dark' : n === 0 ? 'opacity-40' : 'opacity-80 hover:opacity-100'}`}
+                title={isOn ? `Stop filtering by "${o.label}"` : `Show only "${o.label}" guests`}
+              >
+                {o.label}
+                <span className="tabular-nums">{n}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Balancer verdict strip — counts per verdict; click to filter */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3 text-xs">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mr-0.5">Can ProxBalance move it?</span>
-        {balancerFacet.options.map(o => {
-          const k = o.value;
-          const isOn = selected.balancer.includes(k);
-          const n = counts.balancer?.[k] ?? 0;
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => toggleOption('balancer', k)}
-              aria-pressed={isOn}
-              className={`${statusBadge(MOBILITY[k].color)} ${isOn ? 'ring-2 ring-pb-accent dark:ring-pb-accent-dark' : n === 0 ? 'opacity-40' : 'opacity-80 hover:opacity-100'}`}
-              title={isOn ? `Stop filtering by "${o.label}"` : `Show only "${o.label}" guests`}
-            >
-              {o.label}
-              <span className="tabular-nums">{n}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Phones: two-line cards */}
+      {sorted.length > 0 && (
+        <ul className="sm:hidden -mx-4 divide-y divide-slate-100 dark:divide-pb-border-dark/70 border-y border-slate-100 dark:border-pb-border-dark/70">
+          {sorted.map(g => (
+            <GuestCard
+              key={g.vmid}
+              g={g}
+              verdict={verdicts[String(g.vmid)]}
+              hits={tagHits(g, q)}
+              onOpen={onGuestClick}
+              canMigrate={canMigrate}
+              setConfirmMigration={setConfirmMigration}
+            />
+          ))}
+        </ul>
+      )}
 
-      <div className="overflow-x-auto -mx-4 sm:-mx-5">
-        <table className="w-full md:min-w-[860px]">
+      {/* Wider screens: the sortable table */}
+      <div className="hidden sm:block overflow-x-auto -mx-4 sm:-mx-5">
+        <table className="w-full md:min-w-[820px]">
           <thead>
             <tr className="border-b border-pb-border dark:border-slate-700/50">
-              <SortHeader field="vmid" className="hidden sm:table-cell">ID</SortHeader>
+              <SortHeader field="vmid">ID</SortHeader>
               <SortHeader field="name">Name</SortHeader>
               <SortHeader field="node">Node</SortHeader>
-              <SortHeader field="status" className="hidden md:table-cell">State</SortHeader>
+              {showStopped && <SortHeader field="status" className="hidden md:table-cell">State</SortHeader>}
               <SortHeader field="cpu">CPU</SortHeader>
               <SortHeader field="mem">Memory</SortHeader>
               <SortHeader field="mobility" className="hidden md:table-cell">Balancer</SortHeader>
@@ -486,7 +671,7 @@ export default function GuestsTable({
               const hits = tagHits(g, q);
               const rowBg = rec ? 'bg-orange-50 dark:bg-orange-900/15' : (idx % 2 === 1 ? 'bg-pb-surface2/60 dark:bg-slate-700/30' : '');
               // Stopped guests recede so the running workload is what you scan
-              const dim = running || g.status === 'migrating' ? '' : 'opacity-60';
+              const dim = isLive(g) ? '' : 'opacity-60';
               const cell = `px-2 py-1.5 ${dim}`;
               return (
                 <tr
@@ -494,20 +679,18 @@ export default function GuestsTable({
                   onClick={() => onGuestClick?.(g)}
                   className={`${TABLE_ROW} ${rowBg} cursor-pointer`}
                 >
-                  <td className={`${cell} whitespace-nowrap hidden sm:table-cell`}>
+                  <td className={`${cell} whitespace-nowrap`}>
                     <TypeBadge type={g.type} />
                     <span className="ml-2 hidden md:inline text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{g.vmid}</span>
                   </td>
                   <td className={cell}>
                     <div className="flex items-center gap-1.5 flex-wrap md:flex-nowrap">
-                      {/* Phones drop the ID column; the type rides with the name */}
-                      <span className="sm:hidden"><TypeBadge type={g.type} /></span>
                       <span className="text-sm text-pb-text dark:text-gray-200 whitespace-nowrap md:truncate md:max-w-[11rem]" title={g.name}>{g.name || `guest-${g.vmid}`}</span>
                       <span className="hidden md:inline-flex">
                         <WorkloadBadge profile={guestProfiles?.[id]} running={running} />
                       </span>
-                      {/* Phones hide the Balancer and Tags columns: keep the
-                          Move button and the tag the search matched in view. */}
+                      {/* Below md the Balancer and Tags columns are hidden:
+                          keep the Move button and the tag the search matched. */}
                       {rec && (
                         <span className="md:hidden">
                           <MoveButton rec={rec} canMigrate={canMigrate} setConfirmMigration={setConfirmMigration} />
@@ -521,7 +704,7 @@ export default function GuestsTable({
                     </div>
                   </td>
                   <td className={`${cell} text-xs text-pb-text2 dark:text-gray-400`}>{g.node}</td>
-                  <td className={`${cell} hidden md:table-cell`}><StatusDot status={g.status} /></td>
+                  {showStopped && <td className={`${cell} hidden md:table-cell`}><StatusDot status={g.status} /></td>}
                   <td className={`${cell} text-xs font-mono tabular-nums`}>
                     <UsageCell
                       pct={running && g.cpu_current != null ? g.cpu_current : null}
@@ -536,7 +719,7 @@ export default function GuestsTable({
                     />
                   </td>
                   <td className={`${cell} hidden md:table-cell`}>
-                    <MobilityCell verdict={verdict} canMigrate={canMigrate} setConfirmMigration={setConfirmMigration} />
+                    <MobilityChip verdict={verdict} canMigrate={canMigrate} setConfirmMigration={setConfirmMigration} />
                   </td>
                   <td className={`${cell} hidden md:table-cell`}>
                     <TagChips guest={g} canMigrate={canMigrate} handleRemoveTag={handleRemoveTag} hits={hits} />
@@ -564,12 +747,21 @@ export default function GuestsTable({
 
       {sorted.length === 0 && (
         <div className="text-center py-6 text-pb-text2 dark:text-gray-500 text-sm">
-          No guests match your filters.{' '}
-          {(activeCount > 0 || q) && (
+          No {showStopped ? '' : 'running '}guests match your filters.{' '}
+          {narrowed && (
             <button type="button" onClick={clearFilters} className="underline hover:text-pb-text dark:hover:text-gray-200">
               Clear filters
             </button>
           )}
+        </div>
+      )}
+
+      {hiddenStoppedHits > 0 && (
+        <div className="text-center pt-2 text-xs text-pb-text2 dark:text-gray-500">
+          {hiddenStoppedHits} stopped guest{hiddenStoppedHits !== 1 ? 's' : ''} also match{hiddenStoppedHits === 1 ? 'es' : ''}.{' '}
+          <button type="button" onClick={() => setShowStopped(true)} className="underline hover:text-pb-text dark:hover:text-gray-200">
+            Show stopped
+          </button>
         </div>
       )}
     </div>

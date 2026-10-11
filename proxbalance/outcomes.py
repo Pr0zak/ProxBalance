@@ -451,3 +451,51 @@ def get_migration_outcomes() -> List[Dict[str, Any]]:
         list of outcome dicts.
     """
     return _load_migration_outcomes()
+
+
+def attach_guest_names(outcomes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Add a ``guest_name`` field to each outcome (additive, best effort).
+
+    Outcome rows only store the vmid. The name comes from the current cluster
+    cache, falling back to the latest name recorded in migration_history for
+    guests that have since been renamed away or destroyed. Rows already
+    carrying a name are left alone; unknown guests get ``None``.
+
+    Args:
+        outcomes: outcome dicts as returned by ``_load_migration_outcomes``.
+
+    Returns:
+        The same list, each dict with ``guest_name`` set.
+    """
+    names: Dict[str, str] = {}
+    try:
+        cache = read_cache_file() or {}
+        guests = cache.get("guests") or {}
+        items = guests.values() if isinstance(guests, dict) else guests
+        for g in items:
+            if isinstance(g, dict) and g.get("vmid") is not None and g.get("name"):
+                names[str(g["vmid"])] = str(g["name"])
+    except Exception as e:  # noqa: BLE001 - names are a nicety, never fail the request
+        print(f"attach_guest_names: cache read failed: {e}", file=sys.stderr)
+
+    missing = {str(o.get("vmid")) for o in outcomes
+               if not o.get("guest_name") and str(o.get("vmid")) not in names}
+    if missing:
+        try:
+            conn = get_connection()
+            placeholders = ",".join("?" for _ in missing)
+            rows = conn.execute(
+                "SELECT vmid, guest_name FROM migration_history "
+                f"WHERE guest_name IS NOT NULL AND guest_name != '' AND CAST(vmid AS TEXT) IN ({placeholders}) "
+                "ORDER BY id",
+                tuple(missing),
+            ).fetchall()
+            for r in rows:  # ordered by id, so the latest name wins
+                names[str(r["vmid"])] = r["guest_name"]
+        except Exception as e:  # noqa: BLE001
+            print(f"attach_guest_names: history lookup failed: {e}", file=sys.stderr)
+
+    for o in outcomes:
+        if not o.get("guest_name"):
+            o["guest_name"] = names.get(str(o.get("vmid")))
+    return outcomes

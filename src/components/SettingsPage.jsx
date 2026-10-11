@@ -205,16 +205,6 @@ export default function SettingsPage(props) {
   } : { collection: registry.counts.collection || 0, notifications: notifCount };
 
   const aiModel = { openai: openaiModel, anthropic: anthropicModel, local: localModel }[aiProvider];
-  // Phones show the nav as a scrolling row; keep the active pill in view.
-  const navRef = useRef(null);
-  useEffect(() => {
-    const row = navRef.current;
-    const el = row?.querySelector('[data-active="true"]');
-    if (!row || !el || row.scrollWidth <= row.clientWidth) return;
-    const offset = el.getBoundingClientRect().left - row.getBoundingClientRect().left;
-    row.scrollLeft += offset - (row.clientWidth - el.offsetWidth) / 2;
-  }, [active]);
-
   const status = sectionStatus({
     config, data, backendCollected, automationConfig: draftAutomationConfig,
     aiEnabled, aiProvider, aiModel, systemInfo, proxmoxTokenId,
@@ -225,9 +215,9 @@ export default function SettingsPage(props) {
     <div className="pb-4 sm:pb-0">
       <div className="max-w-screen-2xl mx-auto p-4">
         <div className="flex flex-col md:flex-row gap-4">
-          {/* Section nav: vertical on desktop, scrolling pills on phones */}
-          <nav className="md:w-64 shrink-0">
-            <div ref={navRef} className="flex md:flex-col gap-1 overflow-x-auto md:sticky md:top-20">
+          {/* Section nav: vertical on desktop, a 3-column grid on phones so every section stays visible */}
+          <nav className="md:w-64 shrink-0" aria-label="Settings sections">
+            <div className="grid grid-cols-3 gap-1.5 md:flex md:flex-col md:gap-1 md:sticky md:top-20">
               {SECTIONS.map(s => {
                 const Icon = s.icon;
                 const isActive = s.id === active;
@@ -239,19 +229,19 @@ export default function SettingsPage(props) {
                     data-active={isActive}
                     onClick={() => onRouteTab?.(s.id)}
                     title={st ? `${s.label}: ${st.text}` : s.label}
-                    className={`flex items-start gap-2.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-left transition-colors ${
+                    className={`flex items-center justify-center md:justify-start md:items-start gap-1.5 md:gap-2.5 px-1.5 md:px-3 py-2 rounded-xl text-[13px] md:text-sm font-medium whitespace-nowrap text-left transition-colors border md:border-transparent ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow'
-                        : 'text-pb-text2 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-slate-800/60 hover:text-pb-text dark:hover:text-gray-200'
+                        ? 'bg-blue-600 text-white shadow border-blue-600'
+                        : 'bg-white dark:bg-pb-surface-dark md:bg-transparent md:dark:bg-transparent border-slate-200 dark:border-pb-border-dark md:dark:border-transparent text-pb-text2 dark:text-gray-400 hover:bg-white/70 dark:hover:bg-slate-800/60 hover:text-pb-text dark:hover:text-gray-200'
                     }`}
                   >
-                    <Icon size={16} className="mt-0.5 shrink-0" />
-                    <span className="flex-1 min-w-0">
-                      <span className="flex items-center gap-2">
-                        {s.label}
-                        {st && <span className={`md:hidden w-1.5 h-1.5 rounded-full ${DOT[st.tone]}`} />}
+                    <Icon size={16} className="hidden md:block md:mt-0.5 shrink-0" />
+                    <span className="md:flex-1 min-w-0">
+                      <span className="flex items-center justify-center md:justify-start gap-1.5 md:gap-2">
+                        <span className="truncate">{s.label}</span>
+                        {st && !pending && <span className={`md:hidden w-1.5 h-1.5 rounded-full shrink-0 ${DOT[st.tone]}`} />}
                         {pending > 0 && (
-                          <span className={`${statusBadge('yellow')} ml-auto !px-1.5 !py-0 text-[10px]`} title={`${pending} unsaved change${pending !== 1 ? 's' : ''} here`}>
+                          <span className={`${statusBadge('yellow')} md:ml-auto !px-1.5 !py-0 text-[10px]`} title={`${pending} unsaved change${pending !== 1 ? 's' : ''} here`}>
                             {pending}<span className="hidden md:inline">unsaved</span>
                           </span>
                         )}

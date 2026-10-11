@@ -1,5 +1,5 @@
 import {
-  RESOURCE_METRICS, buildNodeSeries, timeLabel, migrationAnnotations, thresholdAxis,
+  RESOURCE_METRICS, buildNodeSeries, r1, timeLabel, migrationAnnotations, thresholdAxis,
   chartTheme, withAlpha, useIsDark, useCrosshair,
 } from './nodeSeries.js';
 
@@ -14,6 +14,9 @@ const { useRef, useEffect } = React;
  *  - Min/max envelope band per metric (from each sample window) so long-range
  *    averaging doesn't hide spikes.
  *  - Synced crosshair across sibling charts (shared hoverTime / onHoverTime).
+ *  - Unmovable CPU (`anchoredCpu`: % of node CPU used by guests ProxBalance
+ *    won't move) as a flat shaded band from 0, labelled "now". It is a current
+ *    value, not a history, so it is drawn flat rather than as a series.
  * The legend lives outside the canvas (NodeStatusSection's metric chips), which
  * also drive `hiddenMetrics`. Headroom is a 0-100 score, not a %, so it is a
  * badge in the card header rather than a line on this percent axis.
@@ -26,6 +29,7 @@ export default function NodeChart({
   nodeName, trendData, chartPeriod, chartReady,
   migrationHistory, thresholds, hoverTime, onHoverTime,
   showMarkers = true, showThresholds = true, showEnvelope = true, hiddenMetrics = [],
+  anchoredCpu = null,
 }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -45,7 +49,7 @@ export default function NodeChart({
     const isHidden = (key) => hiddenMetrics.includes(key);
 
     const datasets = RESOURCE_METRICS.map(m => ({
-      label: `${m.long} %`, data: pts.map(p => +p[m.key].avg.toFixed(1)),
+      label: `${m.long} %`, data: pts.map(p => r1(p[m.key].avg)),
       borderColor: m.color, backgroundColor: withAlpha(m.color, 0.08),
       tension: 0.2, fill: !hasEnvelope, borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4,
       hidden: isHidden(m.key),
@@ -54,8 +58,8 @@ export default function NodeChart({
       // Faint min/max band per metric (max fills down to the immediately-following min).
       RESOURCE_METRICS.forEach(m => {
         const hidden = isHidden(m.key);
-        datasets.push({ label: `__band_${m.key}_max`, data: pts.map(p => +p[m.key].max.toFixed(1)), borderColor: 'transparent', backgroundColor: withAlpha(m.color, 0.12), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, hidden });
-        datasets.push({ label: `__band_${m.key}_min`, data: pts.map(p => +p[m.key].min.toFixed(1)), borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, hidden });
+        datasets.push({ label: `__band_${m.key}_max`, data: pts.map(p => r1(p[m.key].max)), borderColor: 'transparent', backgroundColor: withAlpha(m.color, 0.12), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, hidden });
+        datasets.push({ label: `__band_${m.key}_min`, data: pts.map(p => r1(p[m.key].min)), borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, hidden });
       });
     }
 
@@ -68,6 +72,19 @@ export default function NodeChart({
     thLines.forEach((t, i) => {
       annotations[`th_${i}`] = { type: 'line', yMin: t.value, yMax: t.value, borderColor: withAlpha(t.color, 0.45), borderWidth: 1, borderDash: [3, 3] };
     });
+    if (typeof anchoredCpu === 'number' && anchoredCpu >= 0.5 && !isHidden('cpu')) {
+      const cpuColor = RESOURCE_METRICS.find(m => m.key === 'cpu').color;
+      annotations.anchored = {
+        type: 'box', yMin: 0, yMax: Math.min(100, anchoredCpu), drawTime: 'beforeDatasetsDraw',
+        backgroundColor: isDark ? 'rgba(148,163,184,0.16)' : 'rgba(100,116,139,0.13)',
+        borderColor: withAlpha(cpuColor, 0.5), borderWidth: 0,
+        label: {
+          display: anchoredCpu >= 8, content: 'now', position: { x: 'end', y: 'start' },
+          color: theme.tick, font: { size: 9, weight: '600' }, padding: 2,
+        },
+      };
+      annotations.anchoredTop = { type: 'line', yMin: anchoredCpu, yMax: anchoredCpu, drawTime: 'beforeDatasetsDraw', borderColor: isDark ? 'rgba(148,163,184,0.45)' : 'rgba(100,116,139,0.4)', borderWidth: 1 };
+    }
     if (showMarkers) {
       Object.assign(annotations, migrationAnnotations(migrationHistory, times, latestTime, periodSeconds,
         (mig) => mig.source_node === nodeName || mig.target_node === nodeName));
@@ -105,7 +122,7 @@ export default function NodeChart({
     }
 
     return () => { if (chartRef.current) { try { chartRef.current.destroy(); } catch (e) {} chartRef.current = null; } };
-  }, [chartReady, trendData, chartPeriod, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait, showMarkers, showThresholds, showEnvelope, hiddenKey]);
+  }, [chartReady, trendData, chartPeriod, isDark, migrationHistory, thresholds?.cpu, thresholds?.mem, thresholds?.iowait, showMarkers, showThresholds, showEnvelope, hiddenKey, anchoredCpu]);
 
   useCrosshair(chartRef, timesRef, hoverTime, isDark);
 

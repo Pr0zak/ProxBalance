@@ -14,7 +14,7 @@ export const MOBILITY = {
   movable:   { label: 'Movable',     color: 'green',  rank: 1 },
   manual:    { label: 'Manual only', color: 'yellow', rank: 2 },
   pinned:    { label: 'Pinned',      color: 'red',    rank: 3 },
-  ha:        { label: 'HA / CRS',    color: 'blue',   rank: 4 },
+  ha:        { label: 'Proxmox HA',  color: 'blue',   rank: 4 },
   ignored:   { label: 'Ignored',     color: 'gray',   rank: 5 },
   stopped:   { label: 'Stopped',     color: 'gray',   rank: 6 },
 };
@@ -22,13 +22,13 @@ export const MOBILITY = {
 // Display order for the counting strip
 export const MOBILITY_ORDER = ['movable', 'suggested', 'manual', 'pinned', 'ha', 'ignored', 'stopped'];
 
-// Short "why" shown next to each blocked verdict (the full sentence is the tooltip)
+// Plain one-line "why" for each blocked verdict; it leads the tooltip.
 const BLOCK_HINT = {
-  pinned: 'passthrough disk',
-  manual: 'unshared bind mount',
-  ha: 'Proxmox CRS places it',
-  ignored: "'ignore' tag",
-  stopped: 'moves on evacuation only',
+  pinned: "Can't move: it uses passthrough or local hardware on its host",
+  manual: 'Moves by hand only: a folder from its host is mounted into it',
+  ha: 'Proxmox HA decides where it runs, not ProxBalance',
+  ignored: "Won't move: it has the 'ignore' tag",
+  stopped: 'Powered off: only moved when its node is emptied for maintenance',
 };
 
 // Guest memory at or above this reads as "hot" in the table, so the verdict
@@ -41,28 +41,34 @@ function formatGb(gb) {
 }
 
 /**
- * Short, precise hint for an eligible guest the engine chose not to move.
- * Uses the numbers in the engine's own sentence where it has them, so the
- * row says exactly which gate held it back.
+ * Plain reason an eligible guest is staying put right now. Uses the numbers
+ * in the engine's own sentence where it has them, so the tooltip says which
+ * gate held it back without the engine's jargon ("floor", "baseline").
  */
 function softHint(skipped) {
   if (!skipped) return null;
-  const node = skipped.node || 'node';
+  const d = skipped.detail || '';
+  const node = skipped.node || /Source node (\S+)/.exec(d)?.[1] || 'its node';
   switch (skipped.reason) {
     case 'source_memory_healthy': {
-      const m = /memory \((\d+)%\) is below migration floor \((\d+)%\)/.exec(skipped.detail || '');
-      return m ? `${node} mem ${m[1]}% < ${m[2]}% floor` : `${node} below trigger`;
+      const mem = /memory \((\d+)%\) is below migration floor \((\d+)%\)/.exec(d);
+      const cpu = /CPU \((\d+)%\) is below threshold \((\d+)%\)/.exec(d);
+      const parts = [
+        mem && `memory ${mem[1]}%, moves start at ${mem[2]}%`,
+        cpu && `CPU ${cpu[1]}%, moves start at ${cpu[2]}%`,
+      ].filter(Boolean);
+      return `Won't move now: ${node} is under the trigger${parts.length ? ` (${parts.join('; ')})` : ''}`;
     }
     case 'source_load_anchored': {
-      const m = /but (\d+)% of it is guests that can't move/.exec(skipped.detail || '');
-      return m ? `${node} load is ${m[1]}% unmovable guests` : `${node} load is unmovable guests`;
+      const m = /but (\d+)% of it is guests that can't move/.exec(d);
+      return `Won't move now: ${m ? `${m[1]}% of ` : 'most of '}${node}'s load is guests that can't move, so moving this one wouldn't help`;
     }
     case 'seasonal_baseline':
-      return `${node} load normal for this hour`;
+      return `Won't move now: ${node}'s load is normal for this time of day`;
     case 'insufficient_improvement':
-      return 'gain too small';
+      return "Won't move now: moving it wouldn't help enough";
     case 'no_suitable_target':
-      return 'no node can take it';
+      return 'Won\'t move now: no other node has room for it';
     default:
       return null;
   }
@@ -72,7 +78,8 @@ function softHint(skipped) {
  * @param {object} g        guest from data.guests
  * @param {object} rec      current recommendation for this guest, if any
  * @param {object} skipped  engine skip entry for this guest, if any
- * @returns {{key, label, color, rank, detail, hint, rec}}
+ * @returns {{key, label, color, rank, detail, hint, rec}}  `detail` is the
+ *   full plain-language tooltip; `hint` its first line.
  */
 export function guestMobility(g, rec, skipped) {
   const pinned = !!g.local_disks?.is_pinned;
@@ -84,30 +91,30 @@ export function guestMobility(g, rec, skipped) {
 
   let key;
   let detail;
-  let hint = null;
   if (rec) {
     key = 'suggested';
-    detail = `Suggested now: ${rec.source_node} → ${rec.target_node}. Click Move to review it.`;
+    detail = `Suggested now: move it from ${rec.source_node} to ${rec.target_node}. Click Move to review.`;
   } else if (pinned) {
     key = 'pinned';
-    detail = engine('passthrough_disk') || 'Passthrough or local disk hardware — cannot migrate, not even for maintenance.';
+    detail = engine('passthrough_disk') || 'It cannot migrate, not even when its node is emptied for maintenance.';
   } else if (bind) {
     key = 'manual';
-    detail = engine('unshared_bind_mount') || 'Unshared bind mount — only moves with --restart after checking the path exists on the target node.';
+    detail = engine('unshared_bind_mount') || 'Move it by hand with a restart, after checking the folder exists on the new node.';
   } else if (ha) {
     key = 'ha';
-    detail = engine('ha_managed') || 'HA-managed — Proxmox CRS controls where it runs.';
+    detail = engine('ha_managed') || 'Proxmox HA (CRS) places it; ProxBalance leaves it alone.';
   } else if (ignored) {
     key = 'ignored';
-    detail = "Has the 'ignore' tag — skipped unless its node is being evacuated.";
+    detail = 'ProxBalance skips it unless its node is emptied for maintenance.';
   } else if (stopped) {
     key = 'stopped';
-    detail = 'Not running — only moved when its node is evacuated.';
+    detail = 'Nothing to balance while it is off.';
   } else {
     key = 'movable';
-    hint = softHint(skipped);
-    detail = skipped?.detail || 'Eligible — ProxBalance will move it when its node needs relief.';
+    detail = 'ProxBalance can move it when its node needs relief.';
   }
+  const hint = key === 'movable' ? softHint(skipped) : (BLOCK_HINT[key] || null);
+  if (hint) detail = `${hint}.\n${detail}`;
 
   // A guest using most of its own RAM on a relaxed node looks alarming next
   // to "Movable". Say plainly that this is pressure inside the guest, which a
@@ -120,14 +127,13 @@ export function guestMobility(g, rec, skipped) {
   }
 
   const also = [
-    pinned && key !== 'pinned' && 'pinned hardware',
-    bind && key !== 'manual' && 'unshared bind mount',
-    ha && key !== 'ha' && 'HA-managed',
-    ignored && key !== 'ignored' && "'ignore' tag",
-    stopped && key !== 'stopped' && 'stopped',
+    pinned && key !== 'pinned' && 'uses host hardware',
+    bind && key !== 'manual' && 'has a host folder mounted',
+    ha && key !== 'ha' && 'managed by Proxmox HA',
+    ignored && key !== 'ignored' && "has the 'ignore' tag",
+    stopped && key !== 'stopped' && 'powered off',
   ].filter(Boolean);
   if (also.length) detail += `\nAlso: ${also.join(', ')}.`;
-  if (!hint) hint = BLOCK_HINT[key] || null;
 
   return { key, ...MOBILITY[key], detail, hint, rec: rec || null };
 }
