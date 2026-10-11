@@ -68,6 +68,7 @@ from proxbalance.patterns import get_node_seasonal_baseline
 _storage_cache: Dict[str, Any] = {"data": None, "expires": 0}
 _STORAGE_CACHE_TTL = 300  # 5 minutes
 from proxbalance.guest_profiles import get_guest_profile
+from proxbalance.ha_rules import check_ha_placement, HA_PREFERENCE_PENALTY
 
 # Lazy import for trend analysis (may not have data yet)
 _trend_module = None
@@ -293,7 +294,7 @@ def _calculate_cost_benefit(recommendation: Dict[str, Any], guest: Dict[str, Any
 # ---------------------------------------------------------------------------
 
 
-def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None, pve_crs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_threshold: float = 60.0, mem_threshold: float = 70.0, iowait_threshold: float = 30.0, maintenance_nodes: Optional[Set[str]] = None, initial_pending_guests: Optional[Dict[str, List[Dict[str, Any]]]] = None, pve_crs: Optional[Dict[str, Any]] = None, ha_rules: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Generate intelligent migration recommendations using pure score-based analysis.
 
@@ -315,6 +316,10 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     - Load spikes and sustained high load
     - Storage compatibility
     - Anti-affinity rules
+    - Proxmox VE 9 HA rules (``ha_rules``, the collector's compact snapshot):
+      a negative resource-affinity peer running on a target or a strict
+      node-affinity rule excluding it disqualifies the target; a non-strict
+      preference for another node adds HA_PREFERENCE_PENALTY
     - Maintenance mode (priority evacuation)
 
     Thresholds are only used internally by calculate_target_node_score for reference
@@ -607,7 +612,15 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
             best_target = None
             best_target_score = 999999
             best_target_details = None
+            best_target_ha_warnings: List[str] = []
             skip_reasons_per_target = []
+            # Moves already chosen in this pass count as done for HA rule checks.
+            ha_pending_moves = {
+                str(pg.get("vmid")): pt
+                for pt, pgs in pending_target_guests.items() for pg in pgs
+                if isinstance(pg, dict) and pg.get("vmid") is not None
+            } if ha_rules else {}
+            online_node_names = [n for n, d in nodes.items() if d.get("status") == "online"]
 
             for tgt_name, tgt_node in nodes.items():
                 try:
@@ -644,6 +657,15 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         skip_reasons_per_target.append(f"{tgt_name}: anti-affinity conflict")
                         continue
 
+                    # Proxmox VE 9 HA rules (resource/node affinity, legacy groups)
+                    ha_verdict = check_ha_placement(
+                        vmid_key, tgt_name, ha_rules, guests,
+                        pending_moves=ha_pending_moves, online_nodes=online_node_names,
+                    ) if ha_rules else None
+                    if ha_verdict and ha_verdict["blocks"]:
+                        skip_reasons_per_target.append(f"{tgt_name}: {ha_verdict['blocks'][0]}")
+                        continue
+
                     # Hard memory capacity gate: skip targets that can't physically
                     # fit this guest's allocated memory.
                     # Use actual node memory usage (mem_percent) rather than summing
@@ -675,11 +697,14 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
 
                     # Calculate target suitability score with details
                     score, tgt_details = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile)
+                    if ha_verdict and ha_verdict["lower_preference"]:
+                        score += HA_PREFERENCE_PENALTY
 
                     if score < best_target_score:
                         best_target_score = score
                         best_target = tgt_name
                         best_target_details = tgt_details
+                        best_target_ha_warnings = list(ha_verdict["warnings"]) if ha_verdict else []
 
                 except Exception as e:
                     print(f"Error evaluating target {tgt_name} for guest {vmid_key}: {str(e)}", file=sys.stderr)
@@ -728,6 +753,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "relief_fraction": round(relief_fraction, 2),
                     "source_details": src_details,
                     "target_details": best_target_details,
+                    "ha_warnings": best_target_ha_warnings,
                 })
 
                 # Track pending migration IMMEDIATELY so next guest evaluation considers it
@@ -892,6 +918,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 recommendation["mount_point_info"] = mount_point_info
             if bind_mount_warning:
                 recommendation["bind_mount_warning"] = bind_mount_warning
+            if candidate.get("ha_warnings"):
+                recommendation["ha_warnings"] = candidate["ha_warnings"]
 
             # Phase 4b: Calculate cost-benefit ratio
             recommendation["cost_benefit"] = _calculate_cost_benefit(recommendation, guest)
@@ -1064,6 +1092,16 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     if conflict:
                         print(f"Affinity companion {vmid_key}: anti-affinity conflict on {group_target}", file=sys.stderr)
                         continue
+
+                    if ha_rules:
+                        companion_ha = check_ha_placement(
+                            vmid_key, group_target, ha_rules, guests,
+                            pending_moves={str(r.get('vmid')): r.get('target_node')
+                                           for r in recommendations + companion_recs},
+                        )
+                        if companion_ha["blocks"]:
+                            print(f"Affinity companion {vmid_key}: {companion_ha['blocks'][0]}", file=sys.stderr)
+                            continue
 
                     # Generate companion recommendation
                     vmid_int = int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key

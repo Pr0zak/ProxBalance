@@ -103,6 +103,17 @@ def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> T
 
         print(f"Starting batch migration of {len(migrations)} guests via API", file=sys.stderr)
 
+        # HA rules: read once, then judge each move with the earlier ones applied.
+        from proxbalance.ha_rules import check_move_live, fetch_ha_data
+        cache_data = None
+        try:
+            with open(CACHE_FILE, 'r') as f:
+                cache_data = json.load(f)
+        except Exception:
+            pass
+        live_ha = fetch_ha_data(proxmox)
+        ha_pending: Dict[str, str] = {}
+
         results = []
         for idx, mig in enumerate(migrations):
             try:
@@ -116,6 +127,16 @@ def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> T
                         "vmid": vmid,
                         "success": False,
                         "error": "Missing required fields"
+                    })
+                    continue
+
+                ha = check_move_live(None, vmid, target, cache_data,
+                                     pending_moves=ha_pending, ha_data=live_ha)
+                if ha["blocks"]:
+                    results.append({
+                        "vmid": vmid,
+                        "success": False,
+                        "error": f"Blocked by Proxmox HA rules: {'; '.join(ha['blocks'])}",
                     })
                     continue
 
@@ -133,6 +154,7 @@ def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> T
                         restart=1
                     )
 
+                ha_pending[str(vmid)] = target
                 results.append({
                     "vmid": vmid,
                     "success": True,
@@ -449,6 +471,21 @@ def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: s
             checks.append({"check": "affinity", "passed": True, "detail": "No cache data — skipped"})
     except Exception as e:
         checks.append({"check": "affinity", "passed": True, "detail": f"Could not check affinity: {e}"})
+
+    # 7. Proxmox HA rules (PVE 9 resource/node affinity, PVE 8 restricted groups)
+    try:
+        from proxbalance.ha_rules import check_move_live
+        ha = check_move_live(proxmox, vmid, target_node, cache_data)
+        if ha["blocks"]:
+            checks.append({"check": "ha_rules", "passed": False, "detail": "; ".join(ha["blocks"])})
+        elif ha["source"] == "none":
+            checks.append({"check": "ha_rules", "passed": True, "detail": "HA rules unavailable — skipped"})
+        else:
+            checks.append({"check": "ha_rules", "passed": True, "detail": "No HA rule conflicts"})
+        for w in ha["warnings"]:
+            warnings.append({"check": "ha_rules", "detail": w})
+    except Exception as e:
+        checks.append({"check": "ha_rules", "passed": True, "detail": f"Could not check HA rules: {e}"})
 
     all_passed = all(c["passed"] for c in checks)
 

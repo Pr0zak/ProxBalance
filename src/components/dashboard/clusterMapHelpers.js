@@ -65,6 +65,18 @@ export const projectNode = (node, load, sign) => {
 export const CPU_WARN = 80;
 export const MEM_WARN = 85;
 
+// Proxmox HA rule verdicts for moving `guest` to `targetName`, as move checks.
+// The collector stores them per target on constrained guests (guest.ha_placement);
+// guests no HA rule mentions have none. The server re-checks live on migrate.
+export const haPlacementChecks = (guest, targetName) => {
+  const v = guest?.ha_placement?.[targetName];
+  if (!v) return [];
+  return [
+    ...(v.blocks || []).map(text => ({ level: 'block', text })),
+    ...(v.warnings || []).map(text => ({ level: 'warn', text })),
+  ];
+};
+
 // Things the operator should know before moving `guest` onto `target`.
 // level: 'block' (drop refused) | 'warn' | 'info'
 export const moveChecks = (guest, target, proj, allGuests, maintenanceNodes) => {
@@ -73,6 +85,7 @@ export const moveChecks = (guest, target, proj, allGuests, maintenanceNodes) => 
   if (target.status !== 'online') out.push({ level: 'block', text: `${target.name} is offline` });
   if (maintenanceNodes && maintenanceNodes.has(target.name)) out.push({ level: 'block', text: `${target.name} is in maintenance mode` });
   if (guest.local_disks?.is_pinned) out.push({ level: 'block', text: `Pinned to its host: ${guest.local_disks.pinned_reason || 'local/passthrough disk'}` });
+  haPlacementChecks(guest, target.name).forEach(c => out.push(c));
 
   const excl = guest.tags?.exclude_groups || [];
   const aff = guest.tags?.affinity_groups || [];

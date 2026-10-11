@@ -7,6 +7,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH
 from proxbalance.error_handlers import api_route
+from proxbalance.ha_rules import check_move_live
 from proxbalance.migrations import (
     execute_migration as _execute_migration,
     execute_batch_migration as _execute_batch_migration,
@@ -24,6 +25,27 @@ from proxbalance.migrations import (
 migrations_bp = Blueprint("migrations", __name__)
 
 
+def _read_cache_file():
+    """Read cluster_cache.json, or None when it is missing or unreadable."""
+    try:
+        cache_file = Path(BASE_PATH) / "cluster_cache.json"
+        if cache_file.exists():
+            with open(cache_file, 'r') as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
+
+def _check_ha_move(proxmox, vmid, target_node):
+    """HA rule verdict for one move (live read, cache fallback). Never raises."""
+    try:
+        return check_move_live(proxmox, vmid, target_node, _read_cache_file())
+    except Exception as e:
+        print(f"Warning: HA rule check skipped for {vmid}: {e}", file=sys.stderr)
+        return {"blocks": [], "warnings": [], "co_migrate": [], "source": "none"}
+
+
 @migrations_bp.route("/api/migrate", methods=["POST"])
 def execute_migration():
     """Execute a migration using Proxmox API"""
@@ -38,6 +60,17 @@ def execute_migration():
     target_node = data.get("target_node")
     source_node = data.get("source_node")
     guest_type = data.get("type", "VM")
+
+    # Refuse moves that a Proxmox HA rule forbids (re-read live; the cached
+    # snapshot may be old). Covers manual moves and automigrate, which posts here.
+    ha_verdict = _check_ha_move(proxmox, vmid, target_node)
+    if ha_verdict["blocks"]:
+        return jsonify({
+            "success": False,
+            "error": f"Blocked by Proxmox HA rules: {'; '.join(ha_verdict['blocks'])}",
+            "ha_blocks": ha_verdict["blocks"],
+            "ha_warnings": ha_verdict["warnings"],
+        }), 409
 
     # Capture pre-migration snapshot before executing
     pre_snapshot = _capture_pre_snapshot(vmid, source_node, target_node)
@@ -187,6 +220,13 @@ def execute_rollback():
 
         # Execute the migration via Proxmox
         proxmox = get_proxmox_client(config)
+        ha_verdict = _check_ha_move(proxmox, vmid, original_node)
+        if ha_verdict["blocks"]:
+            return jsonify({
+                "success": False,
+                "error": f"Rollback blocked by Proxmox HA rules: {'; '.join(ha_verdict['blocks'])}",
+                "ha_blocks": ha_verdict["blocks"],
+            }), 409
         result, status_code = _execute_migration(
             proxmox, vmid, original_node, current_node, guest_type
         )

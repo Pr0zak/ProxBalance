@@ -39,6 +39,7 @@ from proxbalance import migration_db
 from proxbalance.forecasting import get_score_history
 from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
 from proxbalance.scoring import recent_cpu
+from proxbalance.ha_rules import check_ha_placement, check_move_live
 
 # Logging
 logging.basicConfig(
@@ -504,6 +505,58 @@ def perform_safety_checks(config: Dict[str, Any], cache_data: Dict[str, Any]) ->
             return False, "Cluster not quorate"
 
     return True, "Cluster safety checks passed"
+
+
+def check_ha_rules_for_move(
+    vmid: int,
+    target_node: str,
+    cache_data: Dict[str, Any],
+    config: Optional[Dict[str, Any]] = None,
+    live: bool = False,
+) -> Tuple[bool, str]:
+    """Check a planned move against Proxmox HA rules.
+
+    With *live* the rules and HA state are re-read from Proxmox right before
+    executing (falling back to the cache when that fails); otherwise the
+    collector's cached snapshot is used.
+
+    Args:
+        vmid: Guest ID.
+        target_node: Planned target node.
+        cache_data: Cluster cache.
+        config: Configuration (Proxmox credentials), needed for *live*.
+        live: Re-read the HA rules from Proxmox.
+
+    Returns:
+        Tuple of (allowed, message). The message names the blocking rule, or
+        lists HA warnings when the move is allowed.
+    """
+    try:
+        if live:
+            proxmox = None
+            try:
+                from proxbalance.config_manager import get_proxmox_client
+                proxmox = get_proxmox_client(config or {})
+            except Exception as e:
+                logger.warning(f"HA rule re-check: no Proxmox client ({e}); using cached rules")
+            verdict = check_move_live(proxmox, vmid, target_node, cache_data)
+        else:
+            ha_data = cache_data.get('ha_rules')
+            if not ha_data:
+                return True, "No HA rules known"
+            nodes = cache_data.get('nodes', {})
+            verdict = check_ha_placement(
+                vmid, target_node, ha_data, cache_data.get('guests', {}),
+                online_nodes=[n for n, d in nodes.items() if d.get('status') == 'online'],
+            )
+        if verdict['blocks']:
+            return False, f"Blocked by Proxmox HA rules: {'; '.join(verdict['blocks'])}"
+        if verdict['warnings']:
+            return True, f"HA rules: {'; '.join(verdict['warnings'])}"
+        return True, "No HA rule conflicts"
+    except Exception as e:
+        logger.warning(f"HA rule check failed for {vmid} -> {target_node}: {e}")
+        return True, "HA rule check failed, proceeding"
 
 
 def check_target_node_safety(target_node: str, config: Dict[str, Any], cache_data: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1600,6 +1653,13 @@ def main():
 
                 vm_name = guest.get('name', f'VM-{vmid}')
 
+                # Proxmox HA rules (always active, maintenance evacuations included)
+                ha_ok, ha_msg = check_ha_rules_for_move(vmid, target_node, cache_data)
+                if not ha_ok:
+                    filtered_reasons.append(f"{vm_name} ({vmid}): {ha_msg}")
+                    last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', ha_msg, r))
+                    continue
+
                 # Check cooldown
                 if not is_maintenance_evac and is_vm_in_cooldown(vmid, cooldown_minutes, cooldown_reset_at):
                     reason = "In cooldown period"
@@ -1879,6 +1939,34 @@ def main():
                         'confidence_score': rec.get('confidence_score')
                     })
                     continue
+
+            # Re-check Proxmox HA rules live: rules or peer placement may have
+            # changed since the last collection.
+            if not dry_run:
+                ha_ok, ha_msg = check_ha_rules_for_move(vmid, target, cache_data, config, live=True)
+                if not ha_ok:
+                    logger.warning(f"Skipping VM {vmid}: {ha_msg}")
+                    guest = cache_data.get('guests', {}).get(str(vmid), {})
+                    activity_log.append({
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                        'vmid': vmid,
+                        'name': guest.get('name', f'VM-{vmid}'),
+                        'action': 'skipped',
+                        'reason': ha_msg
+                    })
+                    last_run_summary['decisions'].append({
+                        'vmid': vmid,
+                        'name': guest.get('name', f'VM-{vmid}'),
+                        'source_node': source,
+                        'target_node': target,
+                        'target_node_score': rec.get('target_node_score'),
+                        'action': 'skipped',
+                        'reason': ha_msg,
+                        'confidence_score': rec.get('confidence_score')
+                    })
+                    continue
+                if ha_msg.startswith("HA rules:"):
+                    logger.info(f"VM {vmid} -> {target}: {ha_msg}")
 
             target_score = rec.get('target_node_score', 'N/A')
             logger.info(f"Migrating {guest_type} {vmid} ({rec['name']}) from {source} to {target} (score: {target_score}) - {rec['reason']}")
