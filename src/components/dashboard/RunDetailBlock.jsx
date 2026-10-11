@@ -1,4 +1,4 @@
-import { CheckCircle, Eye, ChevronDown } from '../Icons.jsx';
+import { CheckCircle, AlertTriangle, Eye, ChevronDown } from '../Icons.jsx';
 import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
 
 const { useState } = React;
@@ -126,9 +126,9 @@ function ActivityLogList({ log }) {
 function SafetyChecksList({ safety }) {
   if (!safety || Object.keys(safety).length === 0) return null;
   const rows = [];
-  if (safety.migration_window) rows.push({ k: 'Migration Window', v: safety.migration_window });
-  if (safety.cluster_health) rows.push({ k: 'Cluster Health', v: safety.cluster_health });
-  if (safety.running_migrations != null) rows.push({ k: 'Running Migrations', v: safety.running_migrations });
+  if (safety.migration_window) rows.push({ k: 'Migration Window', v: safety.migration_window, ok: !/^not in|blackout/i.test(safety.migration_window) });
+  if (safety.cluster_health) rows.push({ k: 'Cluster Health', v: safety.cluster_health, ok: /passed|disabled/i.test(safety.cluster_health) });
+  if (safety.running_migrations != null) rows.push({ k: 'Running Migrations', v: safety.running_migrations, ok: true });
   if (rows.length === 0) return null;
   return (
     <div className="bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 rounded p-3">
@@ -136,7 +136,9 @@ function SafetyChecksList({ safety }) {
       <div className="space-y-1.5">
         {rows.map((r, i) => (
           <div key={i} className="flex items-start gap-2 text-xs">
-            <CheckCircle size={12} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+            {r.ok
+              ? <CheckCircle size={12} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              : <AlertTriangle size={12} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />}
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-pb-text dark:text-gray-300">{r.k}</div>
               <div className="text-pb-text2 dark:text-gray-400 text-[11px] break-words">{String(r.v)}</div>
@@ -190,7 +192,7 @@ export default function RunDetailBlock({ run, compact = false }) {
           rsl.tone === 'error'   ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40' :
           'text-pb-text2 dark:text-gray-300 bg-pb-surface2 dark:bg-slate-700/30 border-pb-border dark:border-slate-700/40'
         }`}>
-          <CheckCircle size={14} className="shrink-0" /> {rsl.banner}
+          {rsl.tone === 'error' ? <AlertTriangle size={14} className="shrink-0" /> : <CheckCircle size={14} className="shrink-0" />} {rsl.banner}
         </div>
       )}
       <DecisionsList decisions={run.decisions} />

@@ -50,7 +50,7 @@ function HeaderRow({ count }) {
   );
 }
 
-function DetailModal({ run, onClose }) {
+export function DetailModal({ run, onClose }) {
   if (!run) return null;
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>

@@ -56,28 +56,94 @@ function StatusBadge({ m }) {
   );
 }
 
+/** "In migration window: During the day (America/Chicago time: 15:30)" -> "During the day". */
+function windowLabel(raw) {
+  if (!raw) return null;
+  return String(raw).replace(/^in migration window:\s*/i, '').replace(/\s*\([^)]*time:[^)]*\)\s*$/i, '').trim() || null;
+}
+
+const pct = (v) => (typeof v === 'number' ? `${Math.round(v)}%` : '—');
+
+/**
+ * The before/after outcome recorded for a migration, if any. Outcomes are
+ * keyed by vmid and the snapshot time taken just before the move, so match on
+ * guest, nodes and a start time within 15 minutes of the history entry.
+ */
+function findOutcome(m, outcomes) {
+  if (!outcomes || m.dry_run) return null;
+  const t = tsOf(m);
+  let best = null;
+  let bestGap = 15 * 60 * 1000;
+  outcomes.forEach(o => {
+    if (String(o.vmid) !== String(m.vmid) || o.source_node !== m.source_node || o.target_node !== m.target_node) return;
+    const ot = parseTimestamp(o.pre_migration?.timestamp)?.getTime();
+    if (!ot) return;
+    const gap = Math.abs(t - ot);
+    if (gap <= bestGap) { best = o; bestGap = gap; }
+  });
+  return best;
+}
+
+const VERDICT = {
+  beneficial: ['helped', 'text-green-600 dark:text-green-400'],
+  neutral: ['made little difference', 'text-pb-text2 dark:text-gray-400'],
+  harmful: ['made it worse', 'text-red-600 dark:text-red-400'],
+};
+
+/** "pve5 CPU 89% -> 70% after the move, 73% after 1h, 75% after 24h · helped". */
+function OutcomeLine({ m, o }) {
+  const before = o.pre_migration?.source_node?.cpu;
+  const after = (o.post_migration || o.post_5min)?.source_node?.cpu;
+  if (typeof before !== 'number' || typeof after !== 'number') return null;
+  const h1 = o.post_1h?.source_node?.cpu;
+  const h24 = o.post_24h?.source_node?.cpu;
+  const verdict = VERDICT[o.verdict];
+  return (
+    <span>
+      {m.source_node} CPU {pct(before)} just before → {pct(after)} after the move
+      {typeof h1 === 'number' && `, ${pct(h1)} after 1h`}
+      {typeof h24 === 'number' && `, ${pct(h24)} after 24h`}
+      {verdict
+        ? <span className={verdict[1]}> · {verdict[0]}</span>
+        : (o.status && String(o.status).startsWith('pending') && <span className="text-pb-text2 dark:text-gray-500"> · still measuring</span>)}
+    </span>
+  );
+}
+
 /** Extra facts shown when a row is expanded. */
-function Details({ m }) {
-  const headroom = m.suitability_rating !== undefined
-    ? m.suitability_rating
+function Details({ m, outcome }) {
+  const headroom = m.suitability_rating !== undefined && m.suitability_rating !== null
+    ? Math.round(m.suitability_rating)
     : (m.target_node_score !== undefined && m.target_node_score !== null
       ? Math.max(0, Math.round(100 - Math.min(m.target_node_score || 0, 100))) : null);
+  const srcHeadroom = typeof m.source_suitability_rating === 'number' ? Math.round(m.source_suitability_rating) : null;
   const confidence = m.confidence_score ?? m.confidence;
+  const win = windowLabel(m.window_name);
   const facts = [
-    headroom != null && ['Target headroom', <span className={`font-semibold ${headroomTextColor(headroom)}`}>{headroom}/100</span>],
-    confidence != null && ['Confidence', `${Math.round(confidence)}%`],
-    m.reasoning?.score_improvement != null && ['Score gain', `${Math.round(m.reasoning.score_improvement)} points`],
-    m.window_name && ['Window', m.window_name],
-    m.task_id && ['Task', <span className="font-mono break-all">{m.task_id}</span>],
+    headroom != null && (srcHeadroom != null
+      ? ['Headroom', <>
+          {m.source_node} <span className={`font-semibold ${headroomTextColor(srcHeadroom)}`}>{srcHeadroom}</span>
+          {' → '}{m.target_node} <span className={`font-semibold ${headroomTextColor(headroom)}`}>{headroom}</span>
+        </>]
+      : ['Target headroom', <span className={`font-semibold ${headroomTextColor(headroom)}`}>{headroom}/100</span>]),
+    // Nearly every migration that runs scores high, so only a low one is worth showing.
+    confidence != null && confidence < 70 && ['Confidence', `${Math.round(confidence)}% (low)`],
+    win && ['Window', win],
   ].filter(Boolean);
   return (
     <div className="text-xs space-y-1.5">
       <p className="text-pb-text dark:text-gray-200 whitespace-pre-wrap break-words">{m.reason || 'No reason recorded.'}</p>
       {m.error_message && <p className="text-red-600 dark:text-red-400 break-words">Error: {m.error_message}</p>}
+      {outcome && <p className="text-pb-text2 dark:text-gray-400">Result: <span className="text-pb-text dark:text-gray-200"><OutcomeLine m={m} o={outcome} /></span></p>}
       {facts.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-pb-text2 dark:text-gray-400">
           {facts.map(([k, v]) => <span key={k}>{k}: <span className="text-pb-text dark:text-gray-200">{v}</span></span>)}
         </div>
+      )}
+      {m.task_id && (
+        <p className="text-[10px] text-pb-text3 dark:text-gray-500 break-all">
+          Proxmox task <span className="font-mono select-all">{m.task_id}</span>
+        </p>
       )}
     </div>
   );
@@ -98,6 +164,7 @@ export default function MigrationLogsSection({
   const [query, setQuery] = useState('');
   const [nodeFilter, setNodeFilter] = useState('');
   const [expanded, setExpanded] = useState(() => new Set());
+  const [outcomes, setOutcomes] = useState(null);
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -105,6 +172,9 @@ export default function MigrationLogsSection({
       const res = await fetch(`${API_BASE}/automigrate/history?type=migrations&limit=5000`);
       const data = await res.json();
       if (data.success && Array.isArray(data.migrations)) setFullHistory(data.migrations);
+      const oRes = await fetch(`${API_BASE}/migrate/outcomes?limit=1000`);
+      const oData = await oRes.json();
+      if (oData.success && Array.isArray(oData.outcomes)) setOutcomes(oData.outcomes);
     } catch (err) {
       console.error('Failed to load migration history:', err);
     } finally {
@@ -227,7 +297,7 @@ export default function MigrationLogsSection({
                   </div>
                   <div className="mt-1.5 flex items-start gap-1">
                     {open ? (
-                      <div className="flex-1 min-w-0"><Details m={m} /></div>
+                      <div className="flex-1 min-w-0"><Details m={m} outcome={findOutcome(m, outcomes)} /></div>
                     ) : (
                       <p className="flex-1 min-w-0 text-xs text-pb-text dark:text-gray-300 line-clamp-2">{m.reason || 'No reason recorded.'}</p>
                     )}
@@ -285,7 +355,7 @@ export default function MigrationLogsSection({
                     </tr>,
                     open && (
                       <tr key={`${k}-d`} className="border-b border-slate-100 dark:border-pb-border-dark/70 bg-slate-50/60 dark:bg-pb-surface2-dark/40">
-                        <td colSpan={7} className="px-3 pb-3 pt-1"><Details m={m} /></td>
+                        <td colSpan={7} className="px-3 pb-3 pt-1"><Details m={m} outcome={findOutcome(m, outcomes)} /></td>
                       </tr>
                     ),
                   ];

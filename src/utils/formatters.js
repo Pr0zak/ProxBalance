@@ -28,12 +28,32 @@ export function getTimezoneAbbr() {
  *   tone   — semantic color: 'success' | 'warn' | 'error' | 'info' | 'neutral'
  *   banner — longer sentence for the explanatory banner (or null)
  */
+/**
+ * Why a run failed, in words, or null when the run records no reason.
+ * Failed runs store their reason in different places depending on where they
+ * stopped: a top-level error, the cluster safety check, or the activity log.
+ */
+export function runFailureReason(run) {
+  if (!run) return null;
+  if (run.error) return String(run.error);
+  const health = run.safety_checks?.cluster_health;
+  if (health && !/passed|disabled/i.test(health)) return health;
+  const log = Array.isArray(run.activity_log) ? run.activity_log : [];
+  const bad = [...log].reverse().find(e => /fail|error/i.test(String(e?.status || e?.level || e?.message || '')));
+  if (bad) return String(bad.message || bad.status);
+  return null;
+}
+
 export function runStatusLabel(run) {
   if (!run) return { label: '—', tone: 'neutral', banner: null };
   const status = run.status;
   if (status === 'success') return { label: 'Success', tone: 'success', banner: null };
   if (status === 'partial') return { label: 'Partial', tone: 'warn', banner: null };
-  if (status === 'failed')  return { label: 'Failed',  tone: 'error', banner: null };
+  if (status === 'failed')  return { label: 'Failed',  tone: 'error', banner: runFailureReason(run) };
+  if (status === 'skipped') {
+    const why = run.safety_checks?.cluster_health || run.safety_checks?.migration_window;
+    return { label: 'Skipped', tone: 'neutral', banner: why ? `Skipped: ${why}` : null };
+  }
   if (status !== 'no_action') return { label: status || '—', tone: 'neutral', banner: null };
 
   // no_action — figure out *why*

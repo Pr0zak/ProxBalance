@@ -1,5 +1,8 @@
 import { AlertTriangle, ChevronRight } from '../Icons.jsx';
-import { parseTimestamp, runStatusLabel } from '../../utils/formatters.js';
+import { parseTimestamp, runStatusLabel, runFailureReason } from '../../utils/formatters.js';
+import { DetailModal } from './RunHistoryDisplay.jsx';
+
+const { useState } = React;
 import { tightestNode, toNodeSet } from '../../utils/nodeCondition.js';
 
 // Below this headroom a node is called out even if nothing else is wrong.
@@ -41,11 +44,13 @@ export function attentionItems({ data, config, automationStatus, maintenanceNode
   const lastRun = automationStatus?.state?.last_run;
   if (automationStatus?.enabled && lastRun && typeof lastRun === 'object' && runStatusLabel(lastRun).tone === 'error') {
     const when = parseTimestamp(lastRun.timestamp);
+    const reason = runFailureReason(lastRun);
     items.push({
       id: 'run-failed',
-      label: 'Last automation run failed',
-      detail: `${when ? `Run at ${when.toLocaleString()}` : 'Last run'}${lastRun.error ? `: ${lastRun.error}` : ''}`,
+      label: reason ? `Last automation run failed: ${reason.length > 60 ? `${reason.slice(0, 58)}…` : reason}` : 'Last automation run failed',
+      detail: `${when ? `Run at ${when.toLocaleString()}` : 'Last run'}${reason ? `: ${reason}` : ''}. Click for the run's details.`,
       href: '#/automation/history',
+      run: lastRun,
       tone: 'error',
     });
   }
@@ -93,6 +98,7 @@ const TONE = {
 
 /** One-line strip above the KPIs, rendered only when something needs attention. */
 export default function NeedsAttentionStrip(props) {
+  const [openRun, setOpenRun] = useState(null);
   const items = attentionItems(props);
   if (items.length === 0) return null;
   const anyError = items.some(i => i.tone === 'error');
@@ -105,6 +111,7 @@ export default function NeedsAttentionStrip(props) {
   };
 
   return (
+    <>
     <div
       role="status"
       className={`mb-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs overflow-x-auto whitespace-nowrap ${anyError
@@ -120,7 +127,7 @@ export default function NeedsAttentionStrip(props) {
           {i > 0 && <span className="text-pb-text2 dark:text-gray-600 shrink-0" aria-hidden="true">·</span>}
           <a
             href={item.href}
-            onClick={(e) => { e.preventDefault(); go(item.href); }}
+            onClick={(e) => { e.preventDefault(); if (item.run) setOpenRun(item.run); else go(item.href); }}
             title={item.detail}
             className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded shrink-0 transition-colors ${TONE[item.tone]}`}
           >
@@ -130,5 +137,7 @@ export default function NeedsAttentionStrip(props) {
         </React.Fragment>
       ))}
     </div>
+    {openRun && <DetailModal run={openRun} onClose={() => setOpenRun(null)} />}
+    </>
   );
 }

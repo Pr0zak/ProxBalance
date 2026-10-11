@@ -173,13 +173,21 @@ class ProxmoxAPICollector:
             print(f"Warning: Failed to fetch HA status: {str(e)}", file=sys.stderr)
             return {}
 
-    def get_cluster_status(self) -> List[Dict]:
-        """Fetch cluster/corosync status"""
-        try:
-            return self.proxmox.cluster.status.get()
-        except Exception as e:
-            print(f"Warning: Failed to fetch cluster status: {str(e)}", file=sys.stderr)
-            return []
+    def get_cluster_status(self) -> Optional[List[Dict]]:
+        """Fetch cluster/corosync status.
+
+        Retries once, because a single slow API response is common while the
+        node is busy. Returns None when both attempts fail, so callers can
+        tell "status unknown" apart from "cluster not quorate".
+        """
+        for attempt in (1, 2):
+            try:
+                return self.proxmox.cluster.status.get()
+            except Exception as e:
+                print(f"Warning: Failed to fetch cluster status (attempt {attempt}/2): {str(e)}", file=sys.stderr)
+                if attempt == 1:
+                    time.sleep(2)
+        return None
 
     def get_cluster_options(self) -> Dict:
         """Fetch datacenter/cluster options (CRS, HA defaults, migration network, ...)."""
@@ -705,12 +713,14 @@ class ProxmoxAPICollector:
         }
 
         # Parse cluster health
+        # quorate stays None when the status call failed: the quorum is
+        # unknown, not lost, and automation treats the two differently.
         cluster_health = {
-            "quorate": False,
+            "quorate": False if cluster_status is not None else None,
             "nodes": 0,
             "online_nodes": 0
         }
-        for item in cluster_status:
+        for item in cluster_status or []:
             if item.get("type") == "cluster":
                 cluster_health["quorate"] = bool(item.get("quorate", 0))
                 cluster_health["nodes"] = item.get("nodes", 0)

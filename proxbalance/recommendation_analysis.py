@@ -229,9 +229,11 @@ def build_structured_reason(guest: Dict[str, Any], src_node: Dict[str, Any], tgt
     tgt_name = tgt_node.get("name", "target")
     guest_name = guest.get("name", "guest")
 
-    trend_note = ""
-    if src_metrics.get("cpu_trend") == "rising" or src_metrics.get("mem_trend") == "rising":
-        trend_note = " with an upward trend"
+    # Say which metric is rising; "with an upward trend" after the memory
+    # figure read as if only memory was rising.
+    rising = [label for key, label in (("cpu_trend", "CPU"), ("mem_trend", "memory"))
+              if src_metrics.get(key) == "rising"]
+    trend_note = f"; {' and '.join(rising)} rising" if rising else ""
 
     # Use graduated severity language instead of always saying "high"
     def _severity_label(value: float) -> str:

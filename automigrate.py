@@ -493,6 +493,12 @@ def perform_safety_checks(config: Dict[str, Any], cache_data: Dict[str, Any]) ->
     # Check quorum only (cluster-wide safety)
     if safety.get('require_quorum', True):
         quorate = cache_data.get('cluster_health', {}).get('quorate', False)
+        if quorate is None:
+            # The collector could not read cluster status (API timeout), so
+            # quorum is unknown rather than lost. Don't migrate, but don't
+            # report a failure either; the next collection usually has it.
+            logger.warning("Cluster quorum unknown: last collection could not read cluster status")
+            return False, "Cluster status unknown: the last collection could not read it (Proxmox API timeout)"
         if not quorate:
             logger.warning("Cluster not quorate")
             return False, "Cluster not quorate"
@@ -1355,6 +1361,10 @@ def main():
         safe, safety_msg = perform_safety_checks(config, cache_data)
         last_run_summary['safety_checks']['cluster_health'] = safety_msg
         if not safe:
+            if safety_msg.startswith("Cluster status unknown"):
+                logger.info(f"Skipping run: {safety_msg}")
+                last_run_summary['status'] = 'skipped'
+                return 0
             logger.warning(f"Safety check failed: {safety_msg}")
             send_notification(config, 'failure', {'reason': safety_msg})
             last_run_summary['status'] = 'failed'
@@ -1966,6 +1976,8 @@ def main():
                 'source_node': rec.get('source_node') or rec.get('current_node'),
                 'target_node': target,
                 'target_node_score': rec.get('target_node_score'),  # Include node score
+                'suitability_rating': rec.get('suitability_rating'),
+                'source_suitability_rating': rec.get('source_suitability_rating'),
                 'reason': rec['reason'],
                 'confidence_score': rec['confidence_score'],
                 'status': status,
