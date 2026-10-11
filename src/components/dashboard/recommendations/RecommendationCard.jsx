@@ -6,6 +6,7 @@ import {
 import { fetchRollbackInfo, executeRollback } from '../../../api/client.js';
 import { INNER_CARD } from '../../../utils/designTokens.js';
 import AutoEligibilityBadge from './AutoEligibilityBadge.jsx';
+import SeenCountChip from './SeenCountChip.jsx';
 
 export default function RecommendationCard({
   rec, idx, penaltyConfig, recommendationData,
@@ -88,6 +89,7 @@ export default function RecommendationCard({
               </span>
             )}
             {!isCompleted && <AutoEligibilityBadge rec={rec} automationStatus={automationStatus} />}
+            {!isCompleted && <SeenCountChip rec={rec} />}
             {isCompleted && <CheckCircle size={18} className="text-green-600 dark:text-green-400" />}
             {status === 'failed' && <XCircle size={18} className="text-red-600 dark:text-red-400" />}
           </div>

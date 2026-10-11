@@ -15,12 +15,28 @@ from proxbalance.scoring import (
 )
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
+from proxbalance.rec_observation import annotate_seen_counts
 
 recommendations_bp = Blueprint('recommendations', __name__)
 
 
 def read_cache():
     return current_app.config['cache_manager'].get()
+
+
+def _annotate_seen(recommendations: list) -> None:
+    """Join automation's "seen in N consecutive runs" counts onto recs in place.
+
+    Read live from the tracking table on every request (automation updates it
+    more often than the recommendations cache is rewritten). Best effort: on
+    any failure the recommendations are served without the seen_* fields.
+    """
+    try:
+        from proxbalance import migration_db
+        auto_config = load_config().get('automated_migrations', {})
+        annotate_seen_counts(recommendations, migration_db.get_all_tracking(), auto_config)
+    except Exception as seen_err:
+        print(f"Warning: Failed to add seen counts: {seen_err}", file=sys.stderr)
 
 
 @recommendations_bp.route("/api/recommendations", methods=["POST"])
@@ -212,6 +228,9 @@ def get_recommendations():
     except Exception as cache_err:
         print(f"Warning: Failed to cache recommendations: {cache_err}", file=sys.stderr)
 
+    # Added to the response only, after the cache file is written, so the
+    # cache never holds counts that go stale between automation runs.
+    _annotate_seen(recommendations_cache["recommendations"])
     return jsonify(recommendations_cache)
 
 
@@ -322,6 +341,7 @@ def get_cached_recommendations():
         recommendations = recommendations[offset:]
 
     # Return modified response with pagination metadata
+    _annotate_seen(recommendations)
     cached_data["recommendations"] = recommendations
     cached_data["total_count"] = total_count
     cached_data["filtered_count"] = filtered_count

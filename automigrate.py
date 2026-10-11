@@ -39,6 +39,7 @@ from proxbalance import migration_db
 from proxbalance.forecasting import get_score_history
 from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
 from proxbalance.scoring import recent_cpu
+from proxbalance.rec_observation import same_target_streak
 
 # Logging
 logging.basicConfig(
@@ -1027,6 +1028,7 @@ def update_recommendation_tracking(
             # Just went stale — mark it, reset consecutive count
             entry['stale_since'] = now.isoformat()
             entry['consecutive_count'] = 0
+            entry['target_streak'] = 0
             entry['status'] = 'stale'
         else:
             # Already stale — check retention period
@@ -1060,6 +1062,16 @@ def update_recommendation_tracking(
                 # Recommendation reappeared — clear stale marker, restart consecutive chain
                 del entry['stale_since']
                 entry['consecutive_count'] = 0
+            # target_streak counts consecutive runs naming the same target. It is
+            # informational (shown in the UI); gating still uses consecutive_count,
+            # which is per guest and survives a change of target.
+            if entry['consecutive_count'] <= 0 or entry.get('last_target_node') != target_node:
+                entry['target_streak'] = 1
+            else:
+                prior = entry.get('target_streak')
+                if not isinstance(prior, int):
+                    prior = same_target_streak(entry, target_node) or 0
+                entry['target_streak'] = prior + 1
             entry["consecutive_count"] += 1
             entry["last_seen"] = now.isoformat()
             entry["source_node"] = source_node  # Keep current source updated
@@ -1074,6 +1086,7 @@ def update_recommendation_tracking(
                 "first_seen": now.isoformat(),
                 "last_seen": now.isoformat(),
                 "consecutive_count": 1,
+                "target_streak": 1,
                 "observations": [observation]
             }
             tracked[key] = entry
@@ -1110,6 +1123,27 @@ def update_recommendation_tracking(
 
     tracking["tracked"] = tracked
     return tracking, ready, observing
+
+
+def record_run_without_candidates(intelligent_config: Dict[str, Any]) -> None:
+    """Record an automation run that produced no observable recommendations.
+
+    Without this, a run with an empty recommendation list never touched the
+    tracking table, so a guest recommended in runs 1 and 3 but not 2 kept
+    counting as if it had been seen "consecutively". Passing an empty list
+    marks every tracked entry stale, which restarts its chain.
+
+    Args:
+        intelligent_config: The ``intelligent_migrations`` rules section.
+    """
+    # A forced dry-run (/api/automigrate/test) must not count as an observation.
+    if os.environ.get('PROXBALANCE_FORCE_DRY_RUN') == '1':
+        return
+    tracking = load_tracking()
+    if not tracking.get("tracked"):
+        return
+    tracking, _, _ = update_recommendation_tracking(tracking, [], intelligent_config)
+    save_tracking(tracking)
 
 
 def is_cycle_migration(vmid: int, target_node: str, cycle_window_hours: int = DEFAULT_CYCLE_WINDOW_HOURS) -> Tuple[bool, str]:
@@ -1447,6 +1481,9 @@ def main():
             recommendations = rec_data.get('recommendations', [])
             if not recommendations:
                 logger.info("No more recommendations available")
+                im_cfg = rules.get('intelligent_migrations', {})
+                if im_cfg.get('enabled', False) and migrations_attempted == 0:
+                    record_run_without_candidates(im_cfg)
                 break
 
             # --- Intelligent Migration: Persistence Filter (Phase 1) ---
@@ -1536,6 +1573,10 @@ def main():
                             except NameError:
                                 filtered_reasons = [detail]
                         break
+                else:
+                    # Only bypass (maintenance / distribution) recs this run:
+                    # nothing was observed, so every tracked chain is broken.
+                    record_run_without_candidates(intelligent_config)
 
             elif intelligent_enabled and migrations_attempted > 0:
                 # Subsequent iterations: filter against saved tracking (read-only)
