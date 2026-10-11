@@ -14,6 +14,7 @@ Complete documentation for ProxBalance - cluster monitoring and automated load b
 - **[Configuration Reference](CONFIGURATION.md)** - All config.json options with descriptions
 - **[API Reference](API.md)** - REST API endpoints for automation and scripting
 - **[Scoring Algorithm](SCORING_ALGORITHM.md)** - Penalty-based scoring system internals
+- **[Prometheus Metrics](PROMETHEUS.md)** - `/api/metrics` endpoint, scrape config and Grafana dashboard
 
 ## Features
 

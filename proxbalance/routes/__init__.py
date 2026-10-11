@@ -18,6 +18,7 @@ def register_blueprints(app):
     from proxbalance.routes.guests import guests_bp
     from proxbalance.routes.automation import automation_bp
     from proxbalance.routes.notifications import notifications_bp
+    from proxbalance.routes.metrics import metrics_bp
 
     app.register_blueprint(analysis_bp)
     app.register_blueprint(recommendations_bp)
@@ -29,3 +30,4 @@ def register_blueprints(app):
     app.register_blueprint(guests_bp)
     app.register_blueprint(automation_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(metrics_bp)
