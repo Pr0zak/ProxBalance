@@ -176,12 +176,22 @@ def generate_recommendations():
 
         logger.info(f"Generating recommendations with thresholds: CPU={payload['cpu_threshold']}%, MEM={payload['mem_threshold']}%, IOWait={payload['iowait_threshold']}%")
 
-        # Call local API to generate recommendations
-        response = requests.post(
-            'http://127.0.0.1:5000/api/recommendations',
-            json=payload,
-            timeout=120  # 2 minutes for large clusters
-        )
+        # Call local API to generate recommendations. A deploy restarts the API and
+        # this timer together, so the first attempt can hit the API while it is still
+        # starting; retry connection errors for up to ~30s before giving up.
+        for attempt in range(6):
+            try:
+                response = requests.post(
+                    'http://127.0.0.1:5000/api/recommendations',
+                    json=payload,
+                    timeout=120  # 2 minutes for large clusters
+                )
+                break
+            except requests.exceptions.ConnectionError:
+                if attempt == 5:
+                    raise
+                logger.info("API not reachable yet, retrying in 5s...")
+                time.sleep(5)
         response.raise_for_status()
         result = response.json()
 
