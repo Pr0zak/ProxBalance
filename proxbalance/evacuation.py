@@ -22,6 +22,8 @@ from proxbalance.config_manager import (
     DISK_PREFIXES,
     trigger_collection,
 )
+from proxbalance.pve_client import submit_migration
+from proxbalance.pve_errors import describe_pve_error
 from proxbalance.storage import (
     get_node_storage,
     verify_storage_availability,
@@ -697,17 +699,17 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
 
                 print(f"  \u2192 Migrating {guest_type.upper()} {vmid} to {target_node_for_guest} (storage: {', '.join(sorted(storage_volumes)) if storage_volumes else 'none'})", file=sys.stderr)
 
-                # Execute migration
+                # Execute migration. One POST, never retried: Proxmox keeps
+                # applying a request we stopped waiting for, so a resend could
+                # migrate the guest twice. If the answer is lost,
+                # submit_migration looks up the started task instead, or
+                # raises MigrationOutcomeUnknown (recorded as a failure below).
                 if guest_type == "qemu":
-                    task_id = proxmox.nodes(source_node).qemu(vmid).migrate.post(
-                        target=target_node_for_guest,
-                        online=1
-                    )
+                    task_id = submit_migration(proxmox, source_node, vmid, "VM",
+                                               {"target": target_node_for_guest, "online": 1})
                 else:  # lxc
-                    task_id = proxmox.nodes(source_node).lxc(vmid).migrate.post(
-                        target=target_node_for_guest,
-                        restart=1
-                    )
+                    task_id = submit_migration(proxmox, source_node, vmid, "CT",
+                                               {"target": target_node_for_guest, "restart": 1})
 
                 print(f"  \u2713 Migration started. Task ID: {task_id}", file=sys.stderr)
 
@@ -763,8 +765,10 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                         elapsed += poll_interval
 
                     except Exception as poll_error:
-                        # Only retry on connection errors, not on task failures
-                        error_str = str(poll_error)
+                        # Polling the task status is a GET, so repeating it is
+                        # safe. Stop on a vanished task or unreachable node
+                        # (595); otherwise keep polling.
+                        error_str = describe_pve_error(poll_error)
                         if 'task not found' in error_str.lower() or '595' in error_str:
                             migration_error = f"Task disappeared or node unreachable: {error_str}"
                             print(f"  \u2717 {migration_error}", file=sys.stderr)

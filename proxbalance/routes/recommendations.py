@@ -740,7 +740,8 @@ def guest_migration_options(vmid):
         config = load_config()
         from proxbalance.config_manager import get_proxmox_client
         try:
-            proxmox = get_proxmox_client(config)
+            from proxbalance.pve_client import PVE_SLOW_READ_TIMEOUT
+            proxmox = get_proxmox_client(config, timeout=PVE_SLOW_READ_TIMEOUT)
         except ValueError:
             pass
         if proxmox:

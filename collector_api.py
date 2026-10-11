@@ -13,6 +13,14 @@ import urllib3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
+from proxbalance.pve_client import (
+    PVE_READ_TIMEOUT,
+    PVE_SLOW_READ_TIMEOUT,
+    build_proxmox_client,
+    retry_read,
+)
+from proxbalance.pve_errors import classify_pve_error, describe_pve_error
+
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -72,6 +80,8 @@ class ProxmoxAPICollector:
         self.nodes = {}
         self.guests = {}
         self.proxmox = None
+        self.proxmox_slow = None
+        self.collection_errors: List[Dict] = []
 
         # Collection optimization settings
         opt_config = config.get('collection_optimization', {})
@@ -86,9 +96,14 @@ class ProxmoxAPICollector:
         self._connect()
     
     def _connect(self):
-        """Establish connection to Proxmox API"""
+        """Establish connection to Proxmox API.
+
+        Builds two clients that differ only in their read timeout: the normal
+        one (``PVE_READ_TIMEOUT``) and one for known slow reads such as RRD
+        bulk and storage status (``PVE_SLOW_READ_TIMEOUT``).
+        """
         try:
-            from proxmoxer import ProxmoxAPI
+            import proxmoxer  # noqa: F401  (availability check only)
         except ImportError:
             raise Exception(
                 "proxmoxer library not installed. Install with:\n"
@@ -96,73 +111,94 @@ class ProxmoxAPICollector:
                 "or\n"
                 "  apt install python3-proxmoxer"
             )
-        
+
         try:
             if self.auth_method == 'api_token':
                 token_id = self.config.get('proxmox_api_token_id', '')
                 token_secret = self.config.get('proxmox_api_token_secret', '')
-                
+
                 if not token_id or not token_secret:
                     raise ValueError(
                         "API token authentication selected but credentials missing.\n"
                         "Please set 'proxmox_api_token_id' and 'proxmox_api_token_secret' in config.json\n"
                         "Run create_api_token.sh on your Proxmox server to create a token."
                     )
-                
-                # Split token_id into user and token name
+
                 # Format: user@realm!tokenname
                 if '!' not in token_id:
                     raise ValueError(f"Invalid token ID format: {token_id}. Expected format: user@realm!tokenname")
-                
-                user, token_name = token_id.split('!', 1)
-                
-                self.proxmox = ProxmoxAPI(
-                    self.proxmox_host,
-                    user=user,
-                    token_name=token_name,
-                    token_value=token_secret,
-                    port=self.proxmox_port,
-                    verify_ssl=self.verify_ssl
-                )
+
+                credentials = {'token_id': token_id, 'token_secret': token_secret}
             else:
                 # Username/password authentication
                 username = self.config.get('proxmox_username', 'proxbalance@pam')
                 password = self.config.get('proxmox_password', '')
-                
+
                 if not password:
                     raise ValueError(
                         "Password authentication selected but no password provided.\n"
                         "Please set 'proxmox_password' in config.json\n"
                         "Or use API token authentication (recommended)"
                     )
-                
-                self.proxmox = ProxmoxAPI(
-                    self.proxmox_host,
-                    user=username,
-                    password=password,
-                    port=self.proxmox_port,
-                    verify_ssl=self.verify_ssl
-                )
-            
+
+                credentials = {'username': username, 'password': password}
+
+            common = dict(port=self.proxmox_port, verify_ssl=self.verify_ssl, **credentials)
+            self.proxmox = build_proxmox_client(self.proxmox_host, timeout=PVE_READ_TIMEOUT, **common)
+            self.proxmox_slow = build_proxmox_client(self.proxmox_host, timeout=PVE_SLOW_READ_TIMEOUT, **common)
+
             # Test connection
             self.proxmox.version.get()
-            
+
         except Exception as e:
-            raise Exception(f"Failed to connect to Proxmox API at {self.proxmox_host}:{self.proxmox_port}: {str(e)}")
-    
+            raise Exception(
+                f"Failed to connect to Proxmox API at {self.proxmox_host}:{self.proxmox_port} "
+                f"({describe_pve_error(e)})"
+            ) from e
+
+    def _note_error(self, what: str, exc: BaseException, node: Optional[str] = None,
+                    level: str = "Warning") -> str:
+        """Log a failed Proxmox call with its error kind and remember it.
+
+        The list ends up in the cache as ``collection_errors`` so the UI and
+        logs can tell a dead node (network/connect_timeout) from a slow one
+        (read_timeout), a token problem (auth) or a failing storage backend
+        on a live node (application).
+
+        Args:
+            what: Short description of the call (``"RRD data (day)"``).
+            exc: The exception raised.
+            node: Node the call was about, when it was node-specific.
+            level: Log prefix.
+
+        Returns:
+            The error kind.
+        """
+        kind = classify_pve_error(exc)
+        where = f" for {node}" if node else ""
+        print(f"{level}: Failed to fetch {what}{where} [{kind}]: {exc}", file=sys.stderr)
+        # list.append is atomic, so the node worker threads can share the list.
+        self.collection_errors.append({
+            "node": node,
+            "call": what,
+            "kind": kind,
+            "message": str(exc)[:300],
+        })
+        return kind
+
     def get_cluster_resources(self) -> List[Dict]:
         """Fetch cluster resources"""
         try:
-            return self.proxmox.cluster.resources.get()
+            return retry_read(self.proxmox.cluster.resources.get, what="cluster resources")
         except Exception as e:
-            raise Exception(f"Failed to fetch cluster resources: {str(e)}")
+            raise Exception(f"Failed to fetch cluster resources ({describe_pve_error(e)})") from e
 
     def get_ha_resources(self) -> List[Dict]:
         """Fetch HA managed resources"""
         try:
             return self.proxmox.cluster.ha.resources.get()
         except Exception as e:
-            print(f"Warning: Failed to fetch HA resources: {str(e)}", file=sys.stderr)
+            self._note_error("HA resources", e)
             return []
 
     def get_ha_status(self) -> Dict:
@@ -170,31 +206,30 @@ class ProxmoxAPICollector:
         try:
             return self.proxmox.cluster.ha.status.manager_status.get()
         except Exception as e:
-            print(f"Warning: Failed to fetch HA status: {str(e)}", file=sys.stderr)
+            self._note_error("HA status", e)
             return {}
 
     def get_cluster_status(self) -> Optional[List[Dict]]:
         """Fetch cluster/corosync status.
 
-        Retries once, because a single slow API response is common while the
-        node is busy. Returns None when both attempts fail, so callers can
-        tell "status unknown" apart from "cluster not quorate".
+        Retries once on a transient failure (network, timeout, HTTP 5xx),
+        because a single slow API response is common while the node is busy.
+        This is a GET, so repeating it is safe. Returns None when it still
+        fails, so callers can tell "status unknown" apart from "cluster not
+        quorate".
         """
-        for attempt in (1, 2):
-            try:
-                return self.proxmox.cluster.status.get()
-            except Exception as e:
-                print(f"Warning: Failed to fetch cluster status (attempt {attempt}/2): {str(e)}", file=sys.stderr)
-                if attempt == 1:
-                    time.sleep(2)
-        return None
+        try:
+            return retry_read(self.proxmox.cluster.status.get, what="cluster status")
+        except Exception as e:
+            self._note_error("cluster status", e)
+            return None
 
     def get_cluster_options(self) -> Dict:
         """Fetch datacenter/cluster options (CRS, HA defaults, migration network, ...)."""
         try:
             return self.proxmox.cluster.options.get() or {}
         except Exception as e:
-            print(f"Warning: Failed to fetch cluster options: {str(e)}", file=sys.stderr)
+            self._note_error("cluster options", e)
             return {}
 
     @staticmethod
@@ -249,9 +284,10 @@ class ProxmoxAPICollector:
     def get_storage_status(self, node: str) -> List[Dict]:
         """Fetch storage status for a node"""
         try:
-            return self.proxmox.nodes(node).storage.get()
+            # Slow client: storage status waits on every backend of the node.
+            return self.proxmox_slow.nodes(node).storage.get()
         except Exception as e:
-            print(f"Warning: Failed to fetch storage for {node}: {str(e)}", file=sys.stderr)
+            self._note_error("storage status", e, node=node)
             return []
 
     def get_backup_info(self) -> List[Dict]:
@@ -261,7 +297,7 @@ class ProxmoxAPICollector:
             not_backed_up = self.proxmox.cluster('backup-info')('not-backed-up').get()
             return not_backed_up
         except Exception as e:
-            print(f"Warning: Failed to fetch backup info: {str(e)}", file=sys.stderr)
+            self._note_error("backup info", e)
             return []
 
     def get_resource_pools(self) -> List[Dict]:
@@ -269,7 +305,7 @@ class ProxmoxAPICollector:
         try:
             return self.proxmox.pools.get()
         except Exception as e:
-            print(f"Warning: Failed to fetch resource pools: {str(e)}", file=sys.stderr)
+            self._note_error("resource pools", e)
             return []
 
     def get_guest_agent_info(self, node: str, vmid: int) -> Dict:
@@ -283,11 +319,11 @@ class ProxmoxAPICollector:
     def get_node_rrd_data(self, node: str, timeframe: str = "day") -> List[Dict]:
         """Fetch RRD performance data for a node"""
         try:
-            data = self.proxmox.nodes(node).rrddata.get(timeframe=timeframe)
+            data = self.proxmox_slow.nodes(node).rrddata.get(timeframe=timeframe)
             print(f"Fetched {len(data)} RRD data points for {node} (timeframe: {timeframe})")
             return data
         except Exception as e:
-            print(f"Error fetching RRD data for {node}: {str(e)}", file=sys.stderr)
+            self._note_error(f"RRD data ({timeframe})", e, node=node, level="Error")
             return []
     
     def get_guest_config(self, node: str, vmid: int, guest_type: str) -> Dict:
@@ -298,16 +334,16 @@ class ProxmoxAPICollector:
             else:  # lxc
                 return self.proxmox.nodes(node).lxc(vmid).config.get()
         except Exception as e:
-            print(f"Warning: Failed to fetch config for {guest_type} {vmid} on {node}: {str(e)}", file=sys.stderr)
+            self._note_error(f"config for {guest_type} {vmid}", e, node=node)
             return {}
 
     def get_guest_rrd_data(self, node: str, vmid: int, guest_type: str, timeframe: str = "hour") -> List[Dict]:
         """Fetch RRD performance data for a guest (VM or CT)"""
         try:
             if guest_type == 'qemu':
-                data = self.proxmox.nodes(node).qemu(vmid).rrddata.get(timeframe=timeframe)
+                data = self.proxmox_slow.nodes(node).qemu(vmid).rrddata.get(timeframe=timeframe)
             else:  # lxc
-                data = self.proxmox.nodes(node).lxc(vmid).rrddata.get(timeframe=timeframe)
+                data = self.proxmox_slow.nodes(node).lxc(vmid).rrddata.get(timeframe=timeframe)
             return data
         except Exception as e:
             # Silently fail - some guests may not have RRD data
@@ -326,9 +362,10 @@ class ProxmoxAPICollector:
             if cpu is not None:
                 cpu_values.append(cpu * 100)  # Convert to percentage
 
-            maxmem = point.get('maxmem', 0)
-            mem = point.get('mem', 0)
-            if maxmem and maxmem > 0:
+            # NaN/Infinity from Proxmox arrive as None (see pve_client).
+            maxmem = point.get('maxmem') or 0
+            mem = point.get('mem') or 0
+            if maxmem > 0:
                 mem_values.append(mem / maxmem * 100)
 
         def _stats(values):
@@ -528,8 +565,8 @@ class ProxmoxAPICollector:
 
         # Calculate metrics from multiple timeframes for better trend analysis
         metrics = {
-            "current_cpu": node.get("cpu", 0) * 100,
-            "current_mem": (node.get("mem", 0) / node.get("maxmem", 1)) * 100 if node.get("maxmem") else 0,
+            "current_cpu": (node.get("cpu") or 0) * 100,
+            "current_mem": ((node.get("mem") or 0) / node["maxmem"]) * 100 if node.get("maxmem") else 0,
             "current_iowait": 0,
             # 24-hour averages (detailed, short-term)
             "avg_cpu": 0,
@@ -566,7 +603,7 @@ class ProxmoxAPICollector:
         # Calculate 24-hour metrics (detailed)
         rrd_day = timeframes['day']
         if rrd_day:
-            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if "memused" in d and "memtotal" in d and d["memtotal"] > 0 else None
+            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if d.get("memused") is not None and d.get("memtotal") else None
             cpu_values_day = self._extract_rrd_values(rrd_day, "cpu")
             mem_values_day = self._extract_rrd_values(rrd_day, None, filter_fn=mem_filter)
             iowait_values_day = self._extract_rrd_values(rrd_day, "iowait")
@@ -592,7 +629,7 @@ class ProxmoxAPICollector:
         # Calculate 7-day metrics (longer-term patterns)
         rrd_week = timeframes['week']
         if rrd_week:
-            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if "memused" in d and "memtotal" in d and d["memtotal"] > 0 else None
+            mem_filter = lambda d: (d["memused"] / d["memtotal"] * 100) if d.get("memused") is not None and d.get("memtotal") else None
             cpu_values_week = self._extract_rrd_values(rrd_week, "cpu")
             mem_values_week = self._extract_rrd_values(rrd_week, None, filter_fn=mem_filter)
             iowait_values_week = self._extract_rrd_values(rrd_week, "iowait")
@@ -634,9 +671,10 @@ class ProxmoxAPICollector:
         storage_status = self.get_storage_status(node_name)
         for storage in storage_status:
             if storage.get("enabled", 1):  # Only enabled storage
-                total_gb = storage.get("total", 0) / (1024**3)
-                used_gb = storage.get("used", 0) / (1024**3)
-                avail_gb = storage.get("avail", 0) / (1024**3)
+                # `or 0`: a value Proxmox sent as NaN arrives as None.
+                total_gb = (storage.get("total") or 0) / (1024**3)
+                used_gb = (storage.get("used") or 0) / (1024**3)
+                avail_gb = (storage.get("avail") or 0) / (1024**3)
                 usage_pct = (used_gb / total_gb * 100) if total_gb > 0 else 0
 
                 storage_info.append({
@@ -654,7 +692,7 @@ class ProxmoxAPICollector:
             "name": node_name,
             "status": node.get("status", "unknown"),
             "cpu_cores": node.get("maxcpu", 0),
-            "total_mem_gb": node.get("maxmem", 0) / (1024**3),
+            "total_mem_gb": (node.get("maxmem") or 0) / (1024**3),
             "uptime": node.get("uptime", 0),
             "cpu_percent": metrics["current_cpu"],
             "mem_percent": metrics["current_mem"],
@@ -754,7 +792,7 @@ class ProxmoxAPICollector:
                     try:
                         self.nodes[node_name] = future.result()
                     except Exception as e:
-                        print(f"Error processing node {node_name}: {e}", file=sys.stderr)
+                        self._note_error("node data", e, node=node_name, level="Error")
                         import traceback
                         traceback.print_exc()
 
@@ -770,7 +808,7 @@ class ProxmoxAPICollector:
                 try:
                     self.nodes[node_name] = self._process_single_node(node)
                 except Exception as e:
-                    print(f"Error processing node {node_name}: {e}", file=sys.stderr)
+                    self._note_error("node data", e, node=node_name, level="Error")
 
             node_duration = time.time() - node_start
             self.perf_metrics["node_processing_time"] = round(node_duration, 2)
@@ -860,9 +898,9 @@ class ProxmoxAPICollector:
                 # cpu_current for estimating what a move would relieve.
                 **({"cpu_avg_hour": cpu_avg_hour} if cpu_avg_hour is not None else {}),
                 "cpu_cores": config.get("cores") or config.get("cpus") or config.get("cpulimit") or guest.get("maxcpu", 0),
-                "mem_used_gb": guest.get("mem", 0) / (1024**3),
-                "mem_max_gb": guest.get("maxmem", 0) / (1024**3),
-                "disk_gb": guest.get("disk", 0) / (1024**3),
+                "mem_used_gb": (guest.get("mem") or 0) / (1024**3),
+                "mem_max_gb": (guest.get("maxmem") or 0) / (1024**3),
+                "disk_gb": (guest.get("disk") or 0) / (1024**3),
                 "disk_read_bps": disk_read_bps,
                 "disk_write_bps": disk_write_bps,
                 "net_in_bps": net_in_bps,
@@ -975,7 +1013,10 @@ class ProxmoxAPICollector:
             "cluster_health": getattr(self, 'cluster_health', {}),
             "ha_status": getattr(self, 'ha_status', {}),
             "pve_crs": getattr(self, 'crs_config', {}),
-            "performance": getattr(self, 'perf_metrics', {})
+            "performance": getattr(self, 'perf_metrics', {}),
+            # Failed Proxmox calls this run, each with its error kind
+            # (network / connect_timeout / read_timeout / auth / application).
+            "collection_errors": list(self.collection_errors),
         }
 
 

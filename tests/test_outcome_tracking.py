@@ -50,7 +50,7 @@ def _migrate_client(monkeypatch):
     from flask import Flask
     from proxbalance.routes import migrations as mroute
     monkeypatch.setattr(mroute, "load_config", lambda: {})
-    monkeypatch.setattr(mroute, "get_proxmox_client", lambda cfg: object())
+    monkeypatch.setattr(mroute, "get_proxmox_client", lambda cfg, **kw: object())
     monkeypatch.setattr(mroute, "_execute_migration",
                         lambda *a, **k: ({"success": True, "task_id": "UPID:x"}, 200))
     app = Flask(__name__)

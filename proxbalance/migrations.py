@@ -20,6 +20,8 @@ from proxbalance.config_manager import (
     trigger_collection, BASE_PATH, CACHE_FILE, DISK_PREFIXES,
     load_config, read_cache_file,
 )
+from proxbalance.pve_client import MigrationOutcomeUnknown, submit_migration
+from proxbalance.pve_errors import classify_pve_error, describe_pve_error
 
 # Re-exports for backwards compatibility (moved to proxbalance.outcomes)
 from proxbalance.outcomes import (  # noqa: E402, F401
@@ -54,19 +56,16 @@ def execute_migration(proxmox: Any, vmid: Union[int, str], target: str, source: 
         if not source:
             return {"success": False, "error": "Missing source_node"}, 400
 
-        # Execute migration via API
+        # Execute migration via API. submit_migration sends the POST exactly
+        # once and never retries it: Proxmox keeps applying a request we
+        # stopped waiting for, so a resend could migrate the guest twice.
         if guest_type == "VM":
-            # Use kwargs with hyphenated parameter name for Proxmox API
-            result = proxmox.nodes(source).qemu(vmid).migrate.post(
-                target=target,
-                online=1,
-                **{'with-local-disks': 1}  # Allow migration of VMs with local disks
-            )
+            # Hyphenated parameter name for the Proxmox API
+            params = {"target": target, "online": 1,
+                      "with-local-disks": 1}  # Allow migration of VMs with local disks
         else:  # CT
-            result = proxmox.nodes(source).lxc(vmid).migrate.post(
-                target=target,
-                restart=1
-            )
+            params = {"target": target, "restart": 1}
+        result = submit_migration(proxmox, source, vmid, guest_type, params)
 
         trigger_collection()
 
@@ -80,10 +79,14 @@ def execute_migration(proxmox: Any, vmid: Union[int, str], target: str, source: 
             "type": guest_type
         }, 200
 
+    except MigrationOutcomeUnknown as e:
+        print(f"Migration outcome unknown for {guest_type} {vmid}: {e}", file=sys.stderr)
+        return {"success": False, "outcome_unknown": True, "error": str(e)}, 504
+
     except Exception as e:
         error_trace = traceback.format_exc()
-        print(f"Migration error for VM {vmid}: {str(e)}\n{error_trace}", file=sys.stderr)
-        return {"success": False, "error": str(e)}, 500
+        print(f"Migration error for VM {vmid}: {describe_pve_error(e)}\n{error_trace}", file=sys.stderr)
+        return {"success": False, "error": str(e), "error_kind": classify_pve_error(e)}, 500
 
 
 def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], int]:
@@ -121,17 +124,13 @@ def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> T
 
                 print(f"[{idx+1}/{len(migrations)}] Starting migration of {guest_type} {vmid} from {source} to {target}", file=sys.stderr)
 
-                # Execute migration via API
+                # Execute migration via API: one POST, never retried (see
+                # submit_migration for why).
                 if guest_type == "VM":
-                    task_id = proxmox.nodes(source).qemu(vmid).migrate.post(
-                        target=target,
-                        online=1
-                    )
+                    params = {"target": target, "online": 1}
                 else:  # CT
-                    task_id = proxmox.nodes(source).lxc(vmid).migrate.post(
-                        target=target,
-                        restart=1
-                    )
+                    params = {"target": target, "restart": 1}
+                task_id = submit_migration(proxmox, source, vmid, guest_type, params)
 
                 results.append({
                     "vmid": vmid,
@@ -145,9 +144,10 @@ def execute_batch_migration(proxmox: Any, migrations: List[Dict[str, Any]]) -> T
                 results.append({
                     "vmid": vmid,
                     "success": False,
-                    "error": str(e)
+                    "error": str(e),
+                    "outcome_unknown": isinstance(e, MigrationOutcomeUnknown),
                 })
-                print(f"  \u2717 Failed to start migration of {vmid}: {str(e)}", file=sys.stderr)
+                print(f"  \u2717 Failed to start migration of {vmid}: {describe_pve_error(e)}", file=sys.stderr)
 
         # Trigger collection after batch completes
         trigger_collection()
@@ -314,9 +314,11 @@ def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: s
         if proxmox:
             target_status = proxmox.nodes(target_node).status.get()
             if target_status:
-                cpu_pct = target_status.get("cpu", 0) * 100
-                mem_total = target_status.get("memory", {}).get("total", 1)
-                mem_used = target_status.get("memory", {}).get("used", 0)
+                # `or`: a value Proxmox sent as NaN arrives as None.
+                memory = target_status.get("memory") or {}
+                cpu_pct = (target_status.get("cpu") or 0) * 100
+                mem_total = memory.get("total") or 0
+                mem_used = memory.get("used") or 0
                 mem_pct = (mem_used / mem_total * 100) if mem_total > 0 else 0
 
                 if cpu_pct > 90 or mem_pct > 95:
