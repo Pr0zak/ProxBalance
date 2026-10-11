@@ -67,6 +67,7 @@ def get_recommendations():
             maintenance_nodes,
             initial_pending_guests=initial_pending,
             pve_crs=cache_data.get('pve_crs') or {},
+            ha_rules=cache_data.get('ha_rules'),
         )
         recommendations = result.get("recommendations", [])
         skipped_guests = result.get("skipped_guests", [])

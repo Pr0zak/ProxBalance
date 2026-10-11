@@ -3,6 +3,7 @@ import {
   MODAL_OVERLAY, MODAL_CONTAINER, INNER_CARD, SELECT_FIELD, PROGRESS_BAR_BG,
   BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, metricColor, metricTextColor
 } from '../../utils/designTokens.js';
+import { haPlacementChecks } from './clusterMapHelpers.js';
 
 // Load past this on a target after the plan runs is flagged red.
 const TIGHT_PCT = 85;
@@ -296,9 +297,18 @@ export default function EvacuationModals({
                                 {evacuationPlan.available_targets.map(target => (
                                   <option key={target} value={target}>
                                     {target}{missingStorage(item, target, data).length ? ' (no storage)' : ''}
+                                    {haPlacementChecks(data?.guests?.[String(item.vmid)], target).some(c => c.level === 'block') ? ' (HA rule)' : ''}
                                   </option>
                                 ))}
                               </select>
+                              {actionFor(item) === 'migrate' && haPlacementChecks(data?.guests?.[String(item.vmid)], targetFor(item)).map((c, i) => (
+                                <div
+                                  key={i}
+                                  className={`mt-1 text-[11px] ${c.level === 'block' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'}`}
+                                >
+                                  {c.text}
+                                </div>
+                              ))}
                               {actionFor(item) === 'migrate' && missingStorage(item, targetFor(item), data).length > 0 && (
                                 <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
                                   missing {missingStorage(item, targetFor(item), data).join(', ')}

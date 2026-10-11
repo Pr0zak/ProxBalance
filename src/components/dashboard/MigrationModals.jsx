@@ -4,6 +4,33 @@ import {
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
+import { haPlacementChecks } from './clusterMapHelpers.js';
+
+// Proxmox HA rule blocks/warnings for moving guest `vmid` to `target`, from the
+// collector's per-guest verdicts. Renders nothing when no HA rule applies.
+function HaRuleNotes({ data, vmid, target }) {
+  const guest = data?.guests?.[String(vmid)];
+  const checks = target ? haPlacementChecks(guest, target) : [];
+  if (!checks.length) return null;
+  return (
+    <ul className="mt-3 space-y-1 text-xs" aria-label="Proxmox HA rules">
+      {checks.map((c, i) => (
+        <li
+          key={i}
+          className={`flex items-start gap-1.5 ${c.level === 'block'
+            ? 'text-red-600 dark:text-red-400 font-medium'
+            : 'text-amber-700 dark:text-amber-300'}`}
+        >
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>{c.level === 'block' ? 'Blocked: ' : ''}{c.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const haBlocked = (data, vmid, target) =>
+  haPlacementChecks(data?.guests?.[String(vmid)], target).some(c => c.level === 'block');
 
 export default function MigrationModals({
   showMigrationDialog, setShowMigrationDialog,
@@ -65,12 +92,16 @@ export default function MigrationModals({
               <option value="">Select target node...</option>
               {data && data.nodes && Object.values(data.nodes)
                 .filter(node => node.name !== (selectedGuest.currentNode || selectedGuest.node) && node.status === 'online')
-                .map(node => (
-                  <option key={node.name} value={node.name}>
-                    {node.name}
-                  </option>
-                ))}
+                .map(node => {
+                  const blocked = haBlocked(data, selectedGuest.vmid, node.name);
+                  return (
+                    <option key={node.name} value={node.name}>
+                      {node.name}{blocked ? ' (blocked by HA rule)' : ''}
+                    </option>
+                  );
+                })}
             </select>
+            <HaRuleNotes data={data} vmid={selectedGuest.vmid} target={migrationTarget} />
           </div>
 
           <div className="flex justify-end gap-3">
@@ -93,7 +124,7 @@ export default function MigrationModals({
                   setShowMigrationDialog(false);
                 }
               }}
-              disabled={!migrationTarget}
+              disabled={!migrationTarget || haBlocked(data, selectedGuest.vmid, migrationTarget)}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
               <MoveRight size={14} /> Migrate
@@ -386,6 +417,8 @@ export default function MigrationModals({
                 <span className="font-medium">Reason:</span> {confirmMigration.reason}
               </div>
             )}
+
+            <HaRuleNotes data={data} vmid={confirmMigration.vmid} target={confirmMigration.target_node} />
           </div>
 
           <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-pb-border dark:border-slate-700">
@@ -397,7 +430,9 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndMigrate}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
+              disabled={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node)}
+              title={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node) ? 'A Proxmox HA rule forbids this move' : undefined}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Play size={16} />
               Start Migration

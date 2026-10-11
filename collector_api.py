@@ -209,6 +209,20 @@ class ProxmoxAPICollector:
             self._note_error("HA status", e)
             return {}
 
+    def get_ha_rules_snapshot(self, ha_resources: List[Dict]) -> Optional[Dict]:
+        """Fetch HA rules (PVE 9) or HA groups (PVE 8) plus live HA state.
+
+        Reuses the already-fetched HA resources. Returns the compact snapshot
+        from proxbalance.ha_rules.fetch_ha_data, or None on any failure so
+        a broken HA endpoint never breaks collection.
+        """
+        try:
+            from proxbalance.ha_rules import fetch_ha_data
+            return fetch_ha_data(self.proxmox, resources_raw=ha_resources)
+        except Exception as e:
+            print(f"Warning: HA rules snapshot failed: {str(e)}", file=sys.stderr)
+            return None
+
     def get_cluster_status(self) -> Optional[List[Dict]]:
         """Fetch cluster/corosync status.
 
@@ -723,6 +737,7 @@ class ProxmoxAPICollector:
         resource_pools = self.get_resource_pools()
         cluster_options = self.get_cluster_options()
         self.crs_config = self._normalize_crs_config(cluster_options.get("crs"))
+        self.ha_rules = self.get_ha_rules_snapshot(ha_resources)
 
         # Create HA lookup for quick access
         ha_managed = {}
@@ -990,13 +1005,22 @@ class ProxmoxAPICollector:
         except Exception as e:
             print(f"Warning: anchored load annotation failed: {e}", file=sys.stderr)
 
+        # Per-target HA rule verdicts on constrained guests, for the move preview.
+        ha_rules = getattr(self, 'ha_rules', None)
+        if ha_rules:
+            try:
+                from proxbalance.ha_rules import annotate_ha_placement
+                annotate_ha_placement(self.guests, self.nodes, ha_rules)
+            except Exception as e:
+                print(f"Warning: HA placement annotation failed: {e}", file=sys.stderr)
+
         total_guests = len(self.guests)
         ignored = sum(1 for g in self.guests.values() if g["tags"]["has_ignore"])
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])
         ha_managed_count = sum(1 for g in self.guests.values() if g.get("ha_managed", False))
         backed_up_count = sum(1 for g in self.guests.values() if g.get("has_backup", False))
 
-        return {
+        summary = {
             "collected_at": datetime.utcnow().isoformat() + 'Z',
             "nodes": self.nodes,
             "guests": self.guests,
@@ -1018,6 +1042,11 @@ class ProxmoxAPICollector:
             # (network / connect_timeout / read_timeout / auth / application).
             "collection_errors": list(self.collection_errors),
         }
+        # Only stored when it could be read; consumers treat a missing key as
+        # "no HA rules known" and skip the checks.
+        if ha_rules is not None:
+            summary["ha_rules"] = ha_rules
+        return summary
 
 
 def _load_previous_node_statuses():

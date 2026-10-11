@@ -99,7 +99,7 @@ export function MovePreviewPanel({
       <CheckList checks={tp.checks} />
 
       <p className="mt-3 text-[11px] text-pb-text2 dark:text-gray-500">
-        Estimate from current usage only. Storage, affinity and scoring checks run again when the migration starts.
+        Estimate from current usage only. Storage, affinity, Proxmox HA rule and scoring checks run again when the migration starts.
       </p>
 
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">

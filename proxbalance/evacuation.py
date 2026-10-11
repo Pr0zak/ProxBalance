@@ -28,6 +28,42 @@ from proxbalance.storage import (
     get_node_storage,
     verify_storage_availability,
 )
+from proxbalance.ha_rules import HA_PREFERENCE_PENALTY, check_ha_placement, fetch_ha_data
+
+
+def _ha_verdicts(
+    vmid: Any,
+    candidates: List[Dict[str, Any]],
+    ha_data: Optional[Dict[str, Any]],
+    guests: Optional[Dict[str, Any]],
+    pending_moves: Optional[Dict[str, str]],
+) -> Dict[str, Dict[str, Any]]:
+    """Proxmox HA rule verdict for each candidate node (empty without HA data).
+
+    Args:
+        vmid: Guest ID.
+        candidates: Dicts with a 'node' key.
+        ha_data: Compact HA snapshot (see proxbalance.ha_rules).
+        guests: Cluster cache guests, for peer names and statuses.
+        pending_moves: vmid (str) -> node for guests already placed this run.
+
+    Returns:
+        Node name -> check_ha_placement() result.
+    """
+    if not ha_data:
+        return {}
+    online = [n['node'] for n in candidates]
+    return {
+        n['node']: check_ha_placement(vmid, n['node'], ha_data, guests or {},
+                                      pending_moves=pending_moves, online_nodes=online)
+        for n in candidates
+    }
+
+
+def _ha_none_allowed(verdicts: Dict[str, Dict[str, Any]]) -> str:
+    """Reason string when HA rules leave no candidate node."""
+    parts = [f"{node}: {v['blocks'][0]}" for node, v in sorted(verdicts.items()) if v['blocks']]
+    return "Proxmox HA rules allow no target node (" + "; ".join(parts) + ")"
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +226,12 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
         # Generate migration plan first
         migration_plan = []
 
+        # Proxmox HA rules, read live (cache fallback); guests placed earlier in
+        # the plan count as already moved.
+        ha_data = fetch_ha_data(proxmox) or cluster_data.get('ha_rules')
+        cluster_guests = cluster_data.get('guests', {})
+        ha_pending: Dict[str, str] = {}
+
         # Track pending assignments to distribute load evenly
         pending_counts = {n['node']: 0 for n in available_nodes}
 
@@ -313,6 +355,9 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
                     })
                     continue
 
+                ha_by_node = _ha_verdicts(vmid, compatible_nodes, ha_data, cluster_guests, ha_pending)
+                ha_skip = None
+
                 # Find best target node - priority: guest_targets > target_node > auto-select
                 vmid_str = str(vmid)
                 if vmid_str in guest_targets:
@@ -335,6 +380,8 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
                         })
                         continue
                     selected_target = requested_target
+                    if ha_by_node.get(selected_target, {}).get('blocks'):
+                        ha_skip = f"Selected target '{selected_target}' is blocked by Proxmox HA rules: {ha_by_node[selected_target]['blocks'][0]}"
                 elif target_node:
                     # Check if forced target_node is compatible with this guest's storage
                     if target_node not in [n['node'] for n in compatible_nodes]:
@@ -353,10 +400,35 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
                         })
                         continue
                     selected_target = target_node
+                    if ha_by_node.get(selected_target, {}).get('blocks'):
+                        ha_skip = f"Target node '{selected_target}' is blocked by Proxmox HA rules: {ha_by_node[selected_target]['blocks'][0]}"
                 else:
-                    # Auto-select best target based on load
-                    selected_target = min(compatible_nodes, key=lambda n: n['cpu'] + n['mem'] + (pending_counts[n['node']] * 10))['node']
+                    # Auto-select best target based on load, among nodes HA rules allow
+                    ha_allowed = [n for n in compatible_nodes if not ha_by_node.get(n['node'], {}).get('blocks')]
+                    if ha_allowed:
+                        selected_target = min(ha_allowed, key=lambda n: (
+                            n['cpu'] + n['mem'] + (pending_counts[n['node']] * 10)
+                            + (HA_PREFERENCE_PENALTY if ha_by_node.get(n['node'], {}).get('lower_preference') else 0)
+                        ))['node']
+                    else:
+                        selected_target = None
+                        ha_skip = _ha_none_allowed(ha_by_node)
+                if ha_skip:
+                    migration_plan.append({
+                        "vmid": vmid,
+                        "name": guest_name,
+                        "type": guest_type,
+                        "status": current_status,
+                        "target": None,
+                        "will_restart": False,
+                        "skipped": True,
+                        "skip_reason": ha_skip,
+                        "storage_volumes": list(storage_volumes),
+                        "storage_compatible": True
+                    })
+                    continue
                 pending_counts[selected_target] += 1
+                ha_pending[vmid_str] = selected_target
 
                 # Determine if will restart
                 will_restart = False
@@ -377,7 +449,8 @@ def evacuate_node(proxmox: Any, source_node: str, maintenance_nodes: Optional[Li
                     "skipped": False,
                     "skip_reason": None,
                     "storage_volumes": list(storage_volumes),
-                    "storage_compatible": True
+                    "storage_compatible": True,
+                    "ha_warnings": ha_by_node.get(selected_target, {}).get('warnings', []),
                 })
 
             except Exception as e:
@@ -461,6 +534,9 @@ def _pick_evacuation_target(
     pending_counts: Dict[str, int],
     guest_targets: Optional[Dict[str, str]] = None,
     target_node: Optional[str] = None,
+    ha_data: Optional[Dict[str, Any]] = None,
+    guests: Optional[Dict[str, Any]] = None,
+    ha_pending: Optional[Dict[str, str]] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
     """Choose the node a guest migrates to during an evacuation.
 
@@ -479,6 +555,11 @@ def _pick_evacuation_target(
         pending_counts: Node name -> guests already assigned this run.
         guest_targets: Optional vmid (str) -> chosen target node.
         target_node: Optional forced target for every guest.
+        ha_data: Optional Proxmox HA snapshot. Nodes an HA rule forbids are
+            never chosen (an explicit pick of one is an error), and nodes a
+            non-strict rule ranks lower are less preferred.
+        guests: Cluster cache guests, for HA peer lookups.
+        ha_pending: vmid (str) -> node for guests already moved this run.
 
     Returns:
         Tuple of (target node or None, error message or None).
@@ -492,6 +573,9 @@ def _pick_evacuation_target(
         missing = storage_volumes - target_storage_map.get(requested, set())
         if missing:
             return None, f"{label} '{requested}' missing required storage: {', '.join(sorted(missing))}"
+        verdict = _ha_verdicts(vmid, [{'node': requested}], ha_data, guests, ha_pending).get(requested)
+        if verdict and verdict['blocks']:
+            return None, f"{label} '{requested}' is blocked by Proxmox HA rules: {verdict['blocks'][0]}"
         return requested, None
 
     compatible = [n for n in available_nodes
@@ -503,7 +587,14 @@ def _pick_evacuation_target(
         else:
             missing_on_all = storage_volumes
         return None, f"Storage not available on any target node: {', '.join(sorted(missing_on_all))}"
-    best = min(compatible, key=lambda n: n['cpu'] + n['mem'] + (pending_counts.get(n['node'], 0) * 10))
+    verdicts = _ha_verdicts(vmid, compatible, ha_data, guests, ha_pending)
+    allowed = [n for n in compatible if not verdicts.get(n['node'], {}).get('blocks')]
+    if not allowed:
+        return None, _ha_none_allowed(verdicts)
+    best = min(allowed, key=lambda n: (
+        n['cpu'] + n['mem'] + (pending_counts.get(n['node'], 0) * 10)
+        + (HA_PREFERENCE_PENALTY if verdicts.get(n['node'], {}).get('lower_preference') else 0)
+    ))
     return best['node'], None
 
 
@@ -557,6 +648,17 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
 
         # Track pending assignments during execution to distribute load evenly
         execution_pending_counts = {n['node']: 0 for n in available_nodes}
+
+        # Proxmox HA rules, re-read live at execution time (cache fallback)
+        cached = {}
+        try:
+            with open(CACHE_FILE, 'r') as f:
+                cached = json.load(f)
+        except Exception:
+            pass
+        ha_data = fetch_ha_data(proxmox) or cached.get('ha_rules')
+        cluster_guests = cached.get('guests', {})
+        ha_pending: Dict[str, str] = {}
 
         # Get storage info for all available target nodes
         target_storage_map = {}
@@ -683,6 +785,7 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                 target_node_for_guest, pick_error = _pick_evacuation_target(
                     vmid, storage_volumes, available_nodes, target_storage_map,
                     execution_pending_counts, guest_targets, target_node,
+                    ha_data=ha_data, guests=cluster_guests, ha_pending=ha_pending,
                 )
                 if pick_error:
                     print(f"  \u2717 {pick_error}", file=sys.stderr)
@@ -696,6 +799,7 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
                     _update_evacuation_progress(session_id, idx + 1, successful, failed, result)
                     continue
                 execution_pending_counts[target_node_for_guest] = execution_pending_counts.get(target_node_for_guest, 0) + 1
+                ha_pending[str(vmid)] = target_node_for_guest
 
                 print(f"  \u2192 Migrating {guest_type.upper()} {vmid} to {target_node_for_guest} (storage: {', '.join(sorted(storage_volumes)) if storage_volumes else 'none'})", file=sys.stderr)
 
