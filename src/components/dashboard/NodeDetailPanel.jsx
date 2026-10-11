@@ -8,6 +8,7 @@ import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
 import { guestMobility } from './guestMobility.js';
+import { ScoreBreakdown } from './ScoreBreakdown.jsx';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -446,7 +447,10 @@ export default function NodeDetailPanel({
                 {seg.label} <span className="font-semibold text-pb-text dark:text-gray-200 tabular-nums">{fmtPts(seg.value)}</span>
               </span>
             ))}
-            {penaltyTotal === 0 && <span className="text-green-600 dark:text-green-400">no penalties</span>}
+          </div>
+          {/* Each penalty with the reading behind it, and the arithmetic */}
+          <div className={`${INNER_CARD} !p-3 mt-2`}>
+            <ScoreBreakdown score={score} />
           </div>
         </div>
       )}
@@ -503,7 +507,7 @@ export default function NodeDetailPanel({
           onToggle={() => setScoringOpen(o => !o)}
         >
           <p className="text-xs text-pb-text2 dark:text-gray-400">
-            Headroom is 0–100 (higher = more room to take guests): 100 minus penalty points for load, sustained averages, IOWait, spikes and trends.
+            Headroom is 0–100 (higher = more room to take guests): 100 minus a weighted base load (current and predicted CPU/RAM/IOWait, capacity in use, storage fill) minus penalty points for high load, sustained averages, IOWait, spikes and trends. The list above shows each part.
             Load is weighted {penaltyConfig ? `${(penaltyConfig.weight_current * 100).toFixed(0)}% now, ${(penaltyConfig.weight_24h * 100).toFixed(0)}% 24h avg, ${(penaltyConfig.weight_7d * 100).toFixed(0)}% 7-day avg` : '50% now, 30% 24h avg, 20% 7-day avg'}.
             {' '}<span className="text-green-600 dark:text-green-400 font-semibold">70+</span> plenty · <span className="text-yellow-600 dark:text-yellow-400 font-semibold">50–69</span> good · <span className="text-orange-600 dark:text-orange-400 font-semibold">30–49</span> tight · <span className="text-red-600 dark:text-red-400 font-semibold">&lt;30</span> under pressure.
             {score.reason ? ` Engine summary: ${score.reason}.` : ''}

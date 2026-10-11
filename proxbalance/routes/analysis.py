@@ -5,6 +5,7 @@ from proxbalance.config_manager import (
     load_config, CONFIG_FILE, trigger_collection, get_proxmox_client,
 )
 from proxbalance.error_handlers import api_route
+from proxbalance.scoring import cluster_spread
 
 analysis_bp = Blueprint("analysis", __name__)
 
@@ -70,6 +71,8 @@ def analyze_cluster():
             "error": "No cached data available. Collection in progress, please wait 30-60 seconds and refresh."
         }), 503
 
+    # Shallow copy: the cached snapshot itself is shared and must not be mutated.
+    data = {**data, "cluster_spread": cluster_spread(data.get("nodes", {}))}
     return jsonify({"success": True, "data": data})
 
 
@@ -100,6 +103,7 @@ def get_cluster_summary():
         "summary": data.get("summary", {}),
         "cluster_health": data.get("cluster_health", {}),
         "pve_crs": data.get("pve_crs", {}),
+        "cluster_spread": cluster_spread(data.get("nodes", {})),
         "node_count": len(data.get("nodes", {})),
         "guest_count": len(data.get("guests", {}))
     }

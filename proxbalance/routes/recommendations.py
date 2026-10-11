@@ -11,7 +11,7 @@ from datetime import datetime
 from proxbalance.config_manager import load_config, load_penalty_config, BASE_PATH
 from proxbalance.scoring import (
     calculate_target_node_score, DEFAULT_PENALTY_CONFIG, analyze_workload_patterns,
-    annotate_anchored_load, recent_cpu, weighted_cpu,
+    annotate_anchored_load, recent_cpu, weighted_cpu, cluster_spread,
 )
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
@@ -709,11 +709,16 @@ def node_scores():
             'committed_mem_gb': node.get("committed_mem_gb", 0),
             'anchored_cpu': node.get("anchored_cpu", 0),
             'anchored_guests': node.get("anchored_guests", []),
+            # Itemised explanation: non-zero penalties with the reading behind each,
+            # and the base + penalties arithmetic behind suitability_rating.
+            'penalty_items': details.get("penalty_items", []) if details else [],
+            'score_breakdown': details.get("score_breakdown") if details else None,
         }
 
     return jsonify({
         "success": True,
-        "scores": node_scores
+        "scores": node_scores,
+        "cluster_spread": cluster_spread(nodes),
     })
 
 
