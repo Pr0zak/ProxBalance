@@ -334,7 +334,7 @@ export default function AutoStatusPill({
           {showLastCheck && (
             <section className="min-w-0">
               <h4 className={sectionTitle}>Last check</h4>
-              <RunDetailBlock run={lastRunObj} compact ctx={storyCtx} />
+              <RunDetailBlock run={lastRunObj} compact ctx={storyCtx} headerChip={last?.chip} />
             </section>
           )}
           {API_BASE && (
