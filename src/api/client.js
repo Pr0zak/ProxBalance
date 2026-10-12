@@ -524,9 +524,10 @@ export async function fetchForecasts(params = {}) {
 /**
  * "What if a node fails?" simulation from the latest collected data.
  * With a node: that node's result. Without: the N-1 summary for every node.
- * storage: 'strict' (node-local disks can't restart elsewhere) or 'capacity'.
+ * storage: 'capacity' (default; node-local disks assumed restored) or
+ * 'strict' (unplanned failure: node-local disks can't restart elsewhere).
  */
-export async function fetchNodeFailure(node, storage = 'strict') {
+export async function fetchNodeFailure(node, storage = 'capacity') {
   try {
     const query = new URLSearchParams({ storage });
     if (node) query.append('node', node);

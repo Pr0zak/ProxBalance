@@ -45,6 +45,17 @@ test('short verdict', () => {
   assert.equal(M.shortVerdict(null), null);
 });
 
+test('storage mode defaults to capacity', () => {
+  globalThis.localStorage = { store: {}, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; } };
+  assert.equal(M.readStorageMode(), 'capacity');
+  M.writeStorageMode('strict');
+  assert.equal(M.readStorageMode(), 'strict');
+  M.writeStorageMode('capacity');
+  assert.equal(M.readStorageMode(), 'capacity');
+  delete globalThis.localStorage;
+  assert.equal(M.readStorageMode(), 'capacity');
+});
+
 test('memory bar clamps and never shrinks', () => {
   assert.deepEqual(M.memBar({ mem_before: 40, mem_after: 70 }), { before: 40, added: 30, after: 70, ceiling: 95 });
   assert.deepEqual(M.memBar({ mem_before: 90, mem_after: 120 }, 90), { before: 90, added: 10, after: 100, ceiling: 90 });

@@ -13,25 +13,23 @@ const TONE_TEXT = {
   gray: 'text-pb-text dark:text-gray-200',
 };
 
-/** Storage-mode switch, shown only when some guest keeps disks on node-local storage. */
+/**
+ * "Unplanned failure" toggle, shown when some guest keeps disks on node-local
+ * storage. Off (default): pure capacity, as if those disks were restored.
+ * On: guests on node-local disks can't restart elsewhere.
+ */
 export function StorageModePicker({ value, onChange }) {
-  const opts = [['strict', 'lost'], ['capacity', 'restored']];
+  const on = value === 'strict';
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label="Node-local disks">
-      <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">Local disks</span>
-      {opts.map(([k, label]) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => onChange(k)}
-          aria-pressed={value === k}
-          title={k === 'strict'
-            ? 'Guests whose disks are on node-local storage die with the node'
-            : 'Assume their disks are restored elsewhere (backup or replica): pure capacity check'}
-          className={`${FILTER_CHIP} ${value === k ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
-        >{label}</button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => onChange(on ? 'capacity' : 'strict')}
+      aria-pressed={on}
+      title={on
+        ? 'Showing an unplanned failure: guests on node-local disks die with the node. Click for the capacity view.'
+        : 'Showing capacity: could the other nodes hold its guests if their disks were restored? Click for an unplanned failure.'}
+      className={`${FILTER_CHIP} ${on ? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
+    >Unplanned failure</button>
   );
 }
 
@@ -113,7 +111,12 @@ function NodeResult({ res }) {
   const ceiling = res.mem_ceiling || 95;
   return (
     <div className="space-y-3">
-      <p className={`text-sm font-medium ${TONE_TEXT[tone]}`}>{res.verdict}</p>
+      <div>
+        <p className={`text-sm font-medium ${TONE_TEXT[tone]}`}>{res.verdict}</p>
+        {res.storage_mode !== 'strict' && res.local_disk_note && (
+          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">{res.local_disk_note}.</p>
+        )}
+      </div>
       {res.nodes.length > 0 && (
         <div className="space-y-2 max-w-3xl">
           <div className="flex items-center gap-3 text-[11px] text-pb-text2 dark:text-gray-400">

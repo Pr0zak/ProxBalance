@@ -4,11 +4,15 @@
 export const STORAGE_KEY = 'failureSimStorage';
 export const ROUTE_PREFIX = 'failure-';
 
-/** Remembered storage mode ('strict' | 'capacity'); per-viewer nicety only. */
+/**
+ * Remembered storage mode; per-viewer nicety only. 'capacity' (default: could
+ * the other nodes hold its guests?) or 'strict' (unplanned failure: guests on
+ * node-local disks don't come back on their own).
+ */
 export function readStorageMode() {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'capacity' ? 'capacity' : 'strict';
-  } catch { return 'strict'; }
+    return localStorage.getItem(STORAGE_KEY) === 'strict' ? 'strict' : 'capacity';
+  } catch { return 'capacity'; }
 }
 
 export function writeStorageMode(mode) {

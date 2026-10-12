@@ -63,13 +63,14 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   // "What if a node fails?": #/insights/failure-<node> opens it on that node.
   const [failStorage, setFailStorage] = useState(readStorageMode);
   const changeFailStorage = (m) => { setFailStorage(m); writeStorageMode(m); };
-  const [failSummary] = useLoad(() => fetchNodeFailure(null, failStorage), [failStorage]);
+  // N-1 chips always use the capacity view; the toggle only changes the selected node's detail.
+  const [failSummary] = useLoad(() => fetchNodeFailure(null, 'capacity'));
   const routedNode = routeTab && routeTab.startsWith(ROUTE_PREFIX) ? routeTab.slice(ROUTE_PREFIX.length) : null;
   const failRef = useRef(null);
   useEffect(() => {
     if (routedNode && failRef.current) failRef.current.scrollIntoView({ block: 'start' });
   }, [routedNode]);
-  const showStoragePicker = failStorage === 'capacity' || (failSummary.data?.local_storage_guests || 0) > 0;
+  const showStoragePicker = failStorage === 'strict' || (failSummary.data?.local_storage_guests || 0) > 0;
 
   return (
     <div className="pb-4 sm:pb-0">
