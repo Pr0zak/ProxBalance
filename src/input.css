@@ -68,3 +68,7 @@
   to { transform: translateX(0); opacity: 1; }
 }
 .drawer-enter { animation: slideInRight 250ms ease-out; }
+
+/* Sideways-scrolling rows (tab bars on phones): scroll without a visible bar */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

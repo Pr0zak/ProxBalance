@@ -102,6 +102,10 @@ export const BTN_SECONDARY =
 export const BTN_DANGER =
   'inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed';
 
+/** Add to small controls (segmented buttons, inline actions) so they are at
+ *  least 40 px tall on phones; desktop keeps the compact size. */
+export const TAP_TARGET = 'min-h-[40px] sm:min-h-0';
+
 export const BTN_ICON =
   'inline-flex items-center justify-center p-2 rounded-lg bg-white dark:bg-transparent hover:bg-slate-100 dark:hover:bg-pb-hover-dark border border-slate-200 dark:border-pb-border-dark text-slate-600 dark:text-pb-text2-dark hover:text-slate-900 dark:hover:text-pb-text-dark transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-pb-accent/30';
 
@@ -287,7 +291,7 @@ export const scoreColor = headroomTextColor;
 // ---------------------------------------------------------------------------
 
 export const FILTER_CHIP =
-  'px-3 py-1.5 text-xs font-medium rounded-full border transition-colors duration-150 whitespace-nowrap';
+  'px-3 py-1.5 min-h-[40px] sm:min-h-0 text-xs font-medium rounded-full border transition-colors duration-150 whitespace-nowrap';
 
 export const FILTER_CHIP_ACTIVE =
   'bg-pb-accent/10 text-pb-accent border-pb-accent/30 dark:bg-pb-accent-dark/15 dark:text-pb-accent-dark dark:border-pb-accent-dark/35';
@@ -300,7 +304,7 @@ export const FILTER_CHIP_INACTIVE =
 // ---------------------------------------------------------------------------
 
 export const SUB_TAB =
-  'px-4 py-2.5 text-sm font-medium transition-colors duration-150 border-b-2 whitespace-nowrap';
+  'px-3 sm:px-4 py-2.5 text-sm font-medium transition-colors duration-150 border-b-2 whitespace-nowrap';
 
 export const SUB_TAB_ACTIVE =
   'text-pb-accent dark:text-pb-accent-dark border-pb-accent dark:border-pb-accent-dark';
