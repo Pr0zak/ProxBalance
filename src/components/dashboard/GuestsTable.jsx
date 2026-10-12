@@ -1,8 +1,7 @@
 import {
   TABLE_HEADER, TABLE_ROW, INPUT_FIELD,
   FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE,
-  metricTextColor, metricColor, PROGRESS_BAR_BG, statusBadge, SELECT_FIELD,
-} from '../../utils/designTokens.js';
+  metricTextColor, metricColor, PROGRESS_BAR_BG, statusBadge, SELECT_FIELD, TAP_TARGET } from '../../utils/designTokens.js';
 import { ChevronDown, Filter, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { guestMobility, MOBILITY, MOBILITY_ORDER } from './guestMobility.js';
@@ -567,7 +566,7 @@ export default function GuestsTable({
             <select
               value={sortField}
               onChange={e => { setSortField(e.target.value); setSortDir(['cpu', 'mem'].includes(e.target.value) ? 'desc' : 'asc'); }}
-              className={`${SELECT_FIELD} !py-1 !px-2 !text-xs`}
+              className={`${TAP_TARGET} ${SELECT_FIELD} !py-1 !px-2 !text-xs`}
               aria-label="Sort guests by"
             >
               {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>Sort: {o.label}</option>)}

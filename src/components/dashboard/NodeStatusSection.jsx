@@ -1,5 +1,5 @@
 import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
-import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor } from '../../utils/designTokens.js';
+import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 import MetricCompareCard from './MetricCompareCard.jsx';
 import { NODE_COLORS, RESOURCE_METRICS, hasTrendData, useChartPeriod, CHART_PERIODS } from './nodeSeries.js';
@@ -163,7 +163,7 @@ export default function NodeStatusSection({
                       key={m.id}
                       onClick={() => setCompare(m.id)}
                       title={m.title}
-                      className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                      className={`${TAP_TARGET} px-2.5 py-1 text-xs font-medium rounded transition-colors ${
                         compareBy === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                       }`}
                     >
@@ -198,7 +198,7 @@ export default function NodeStatusSection({
                     <button
                       key={p.id}
                       onClick={() => setChartPeriod(p.id)}
-                      className={`px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      className={`${TAP_TARGET} px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors ${
                         chartPeriod === p.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                       }`}
                     >
@@ -218,7 +218,7 @@ export default function NodeStatusSection({
                     <button
                       key={o.k}
                       onClick={() => overlayToggle(o.k, !o.val, o.set)}
-                      className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+                      className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors ${
                         o.val ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                       }`}
                       title={`${o.val ? 'Hide' : 'Show'} ${o.label.toLowerCase()} on the resource charts`}

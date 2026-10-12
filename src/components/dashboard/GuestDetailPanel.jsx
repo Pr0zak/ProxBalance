@@ -2,7 +2,7 @@ import {
   AlertTriangle, CheckCircle, XCircle, RefreshCw, MoveRight, TrendingUp, Lock, Info
 } from '../Icons.jsx';
 import {
-  INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, statusBadge, headroomTextColor, metricTextColor } from '../../utils/designTokens.js';
+  INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, statusBadge, headroomTextColor, metricTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import DetailPanel, { PeriodChips, FactRow, PANEL_PERIODS } from './DetailPanel.jsx';
 import { behaviorTitle } from './workloadBehavior.js';
@@ -461,7 +461,7 @@ export default function GuestDetailPanel({
                 onClick={toggleIoExempt}
                 disabled={togglingExempt}
                 title={hasExemptTag ? 'Remove the io_exempt tag' : "Add the io_exempt tag: use when its I/O is on dedicated storage a move can't relieve"}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                className={`${TAP_TARGET} text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50`}
               >
                 {togglingExempt ? 'Saving…' : hasExemptTag ? 'Count it' : 'Exempt…'}
               </button>

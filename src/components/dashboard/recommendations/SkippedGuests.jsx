@@ -1,3 +1,4 @@
+import { TAP_TARGET } from '../../../utils/designTokens.js';
 import { ChevronDown } from '../../Icons.jsx';
 import { skipReasonLabel, skipToneClass } from '../recsHelpers.js';
 
@@ -28,7 +29,7 @@ export default function SkippedGuests({
     <div className="mt-4 border-t border-pb-border dark:border-slate-700/50 pt-3">
       <button
         onClick={() => setCollapsedSections(prev => ({ ...prev, skippedGuests: !prev.skippedGuests }))}
-        className="flex items-center gap-2 text-sm text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300 transition-colors"
+        className={`${TAP_TARGET} flex items-center gap-2 text-sm text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-300 transition-colors`}
       >
         <ChevronDown size={16} className={`transition-transform duration-200 ${!collapsed ? 'rotate-180' : ''}`} />
         <span className="font-medium">Not recommended · {skipped.length} guests</span>

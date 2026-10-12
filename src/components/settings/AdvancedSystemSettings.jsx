@@ -4,12 +4,11 @@ import {
 } from '../Icons.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import {
-  INPUT_FIELD, ICON, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN, statusBadge,
-} from '../../utils/designTokens.js';
+  INPUT_FIELD, ICON, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 import { formatRelativeTime } from '../../utils/formatters.js';
 const { useState, useEffect, useRef } = React;
 
-const BTN_ROW = `${BTN_SECONDARY} !px-3 !py-1.5 !gap-1.5 text-xs`;
+const BTN_ROW = `${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5 !gap-1.5 text-xs`;
 const BTN_ROW_CAUTION = `${BTN_ROW} !text-orange-600 dark:!text-orange-400`;
 const LOG_PROBLEM = /\b(error|warn(ing)?|fail(ed|ure)?|traceback|exception|critical)\b/i;
 
@@ -160,7 +159,7 @@ function ConfirmStrip({ text, confirmLabel, busy, onConfirm, onCancel }) {
         <span className="flex-1 min-w-[12rem]">{text}</span>
         <div className="flex items-center gap-2">
           <button onClick={onCancel} disabled={busy} className={BTN_ROW}>Cancel</button>
-          <button onClick={onConfirm} disabled={busy} className={`${BTN_DANGER} !px-3 !py-1.5 !gap-1.5 text-xs`}>
+          <button onClick={onConfirm} disabled={busy} className={`${TAP_TARGET} ${BTN_DANGER} !px-3 !py-1.5 !gap-1.5 text-xs`}>
             {busy ? <RefreshCw size={12} className="animate-spin" /> : null}
             {confirmLabel}
           </button>

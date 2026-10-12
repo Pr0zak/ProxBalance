@@ -1,7 +1,7 @@
 import { RefreshCw, Server } from '../Icons.jsx';
 import { formatLocalTime, getTimezoneAbbr } from '../../utils/formatters.js';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD, INNER_CARD } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, INNER_CARD, TAP_TARGET } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
 import { useUnsaved, countChanges } from '../UnsavedChanges.jsx';
 const { useState, useEffect, useMemo, useRef } = React;
@@ -85,7 +85,7 @@ export default function DataCollectionSection({
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-pb-hover dark:hover:bg-slate-600 text-pb-text2 dark:text-gray-400 disabled:opacity-50"
+            className={`${TAP_TARGET} inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-pb-hover dark:hover:bg-slate-600 text-pb-text2 dark:text-gray-400 disabled:opacity-50`}
             title="Collect now"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Collect now

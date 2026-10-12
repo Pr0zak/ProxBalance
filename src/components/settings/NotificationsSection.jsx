@@ -3,7 +3,7 @@ import {
 } from '../Icons.jsx';
 import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
-import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, INNER_CARD, statusBadge } from '../../utils/designTokens.js';
+import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, INNER_CARD, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
 const { useState, useEffect } = React;
 
@@ -161,7 +161,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
       onClick={(e) => { e.stopPropagation(); runTest(channel); }}
       disabled={!!testing || dirty || readiness[channel]?.ready === false}
       title={testDisabledReason || (readiness[channel]?.ready === false ? readiness[channel].reason : 'Send a test message to this channel only')}
-      className={`${BTN_SECONDARY} !px-2.5 !py-1 !gap-1.5 text-xs`}
+      className={`${TAP_TARGET} ${BTN_SECONDARY} !px-2.5 !py-1 !gap-1.5 text-xs`}
     >
       {testing === channel ? <RefreshCw size={12} className="animate-spin" /> : <Bell size={12} />}
       Test

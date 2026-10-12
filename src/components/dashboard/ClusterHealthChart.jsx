@@ -1,4 +1,4 @@
-import { GLASS_CARD, INNER_CARD, BTN_ICON, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, BTN_ICON, ICON, TAP_TARGET } from '../../utils/designTokens.js';
 import { X, ChevronLeft, ChevronRight } from '../Icons.jsx';
 import { NODE_COLORS, CHART_PERIODS, periodConfig, useChartPeriod } from './nodeSeries.js';
 
@@ -468,7 +468,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             <button
               type="button"
               onClick={() => setShowMarkers(!showMarkers)}
-              className={`px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
+              className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
                 showMarkers
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-slate-800/60 text-pb-text2 dark:text-gray-400 border-pb-border dark:border-slate-700/50 hover:text-pb-text dark:hover:text-gray-200'
@@ -807,7 +807,7 @@ function Pills({ options, value, onChange }) {
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
-          className={`px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+          className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors ${
             value === o.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
           }`}
         >

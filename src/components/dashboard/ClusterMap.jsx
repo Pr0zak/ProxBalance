@@ -4,7 +4,7 @@ import {
 } from '../Icons.jsx';
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
-  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex } from '../../utils/designTokens.js';
+  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET } from '../../utils/designTokens.js';
 import { HEADROOM_HINT } from '../../utils/constants.js';
 import {
   QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration,
@@ -307,7 +307,7 @@ export default function ClusterMap({
               <div className="flex flex-wrap rounded-lg bg-pb-surface2 dark:bg-slate-700 p-1">
                 <button
                   onClick={() => setClusterMapViewMode('cpu')}
-                  className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
+                  className={`${TAP_TARGET} flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                     clusterMapViewMode === 'cpu'
                       ? 'bg-blue-600 text-white'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
@@ -318,7 +318,7 @@ export default function ClusterMap({
                 </button>
                 <button
                   onClick={() => setClusterMapViewMode('memory')}
-                  className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
+                  className={`${TAP_TARGET} flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                     clusterMapViewMode === 'memory'
                       ? 'bg-blue-600 text-white'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
@@ -329,7 +329,7 @@ export default function ClusterMap({
                 </button>
                 <button
                   onClick={() => setClusterMapViewMode('allocated')}
-                  className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
+                  className={`${TAP_TARGET} flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                     clusterMapViewMode === 'allocated'
                       ? 'bg-blue-600 text-white'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
@@ -340,7 +340,7 @@ export default function ClusterMap({
                 </button>
                 <button
                   onClick={() => setClusterMapViewMode('disk_io')}
-                  className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
+                  className={`${TAP_TARGET} flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                     clusterMapViewMode === 'disk_io'
                       ? 'bg-blue-600 text-white'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
@@ -351,7 +351,7 @@ export default function ClusterMap({
                 </button>
                 <button
                   onClick={() => setClusterMapViewMode('network')}
-                  className={`flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
+                  className={`${TAP_TARGET} flex items-center gap-0.5 px-3 py-1 text-sm rounded transition-colors ${
                     clusterMapViewMode === 'network'
                       ? 'bg-blue-600 text-white'
                       : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
@@ -369,7 +369,7 @@ export default function ClusterMap({
                   <button
                     key={m.id}
                     onClick={() => setColor(m.id)}
-                    className={`px-3 py-1 text-sm rounded transition-colors ${
+                    className={`${TAP_TARGET} px-3 py-1 text-sm rounded transition-colors ${
                       colorMode === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                     }`}
                     title={m.id === 'type' ? 'Color circles by guest type (VM/CT)' : 'Color circles by load (green→red)'}
@@ -382,7 +382,7 @@ export default function ClusterMap({
             {recList.length > 0 && (
               <button
                 onClick={() => setShowPlan(!showPlan)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`${TAP_TARGET} px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
                   showPlan ? 'bg-amber-500 text-white' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
                 title="Overlay recommended migrations as arrows on the map"

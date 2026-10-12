@@ -3,8 +3,7 @@ import {
 } from '../Icons.jsx';
 import {
   GLASS_CARD, INNER_CARD, BTN_SECONDARY, INPUT_FIELD, SELECT_FIELD, TABLE_HEADER, TABLE_ROW,
-  statusBadge, headroomTextColor,
-} from '../../utils/designTokens.js';
+  statusBadge, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
 import TabBar from '../TabBar.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
@@ -242,7 +241,7 @@ export default function MigrationLogsSection({
             <select
               value={nodeFilter}
               onChange={(e) => { setNodeFilter(e.target.value); setMigrationHistoryPage(1); }}
-              className={`${SELECT_FIELD} !py-1.5 text-xs`}
+              className={`${TAP_TARGET} ${SELECT_FIELD} !py-1.5 text-xs`}
               aria-label="Filter by node"
             >
               <option value="">All nodes</option>
@@ -251,12 +250,12 @@ export default function MigrationLogsSection({
             <select
               value={pageSize}
               onChange={(e) => { setMigrationHistoryPageSize(Number(e.target.value)); setMigrationHistoryPage(1); }}
-              className={`${SELECT_FIELD} !py-1.5 text-xs`}
+              className={`${TAP_TARGET} ${SELECT_FIELD} !py-1.5 text-xs`}
               aria-label="Rows per page"
             >
               {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
             </select>
-            <button onClick={refresh} className={`${BTN_SECONDARY} !px-3 !py-1.5 ml-auto`} title="Refresh">
+            <button onClick={refresh} className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5 ml-auto`} title="Refresh">
               <RefreshCw size={14} className={loadingHistory ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
@@ -377,8 +376,8 @@ export default function MigrationLogsSection({
               <span className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">Page {page} of {pageCount}</span>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setPage(1)} disabled={page === 1} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs hidden sm:inline-flex`}>Newest</button>
-                <button onClick={() => setPage(page - 1)} disabled={page === 1} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Newer</button>
-                <button onClick={() => setPage(page + 1)} disabled={page >= pageCount} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Older</button>
+                <button onClick={() => setPage(page - 1)} disabled={page === 1} className={`${TAP_TARGET} ${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Newer</button>
+                <button onClick={() => setPage(page + 1)} disabled={page >= pageCount} className={`${TAP_TARGET} ${BTN_SECONDARY} !px-2.5 !py-1 !text-xs`}>Older</button>
                 <button onClick={() => setPage(pageCount)} disabled={page >= pageCount} className={`${BTN_SECONDARY} !px-2.5 !py-1 !text-xs hidden sm:inline-flex`}>Oldest</button>
               </div>
             </div>
@@ -407,7 +406,7 @@ export default function MigrationLogsSection({
                     console.error('Error fetching logs:', error);
                   }
                 }}
-                className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+                className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5`}
                 title="Refresh logs"
               >
                 <RefreshCw size={14} />
@@ -427,7 +426,7 @@ export default function MigrationLogsSection({
                   window.URL.revokeObjectURL(url);
                 }}
                 disabled={!automigrateLogs}
-                className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+                className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5`}
               >
                 <Download size={14} />
                 Download

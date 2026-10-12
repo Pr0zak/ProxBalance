@@ -1,7 +1,7 @@
 import {
   Activity, RefreshCw, CheckCircle, ChevronDown, Moon, Play, X
 } from '../Icons.jsx';
-import { GLASS_CARD, iconBadge, BTN_PRIMARY, ICON, statusBadge } from '../../utils/designTokens.js';
+import { GLASS_CARD, iconBadge, BTN_PRIMARY, ICON, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 
 import { formatLocalTime } from '../../utils/formatters.js';
 
@@ -398,7 +398,7 @@ export default function MigrationRecommendationsSection({
           <button
             onClick={generateRecommendations}
             disabled={loadingRecommendations || !data}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200"
+            className={`${TAP_TARGET} flex items-center gap-1.5 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200`}
             title="Generate now"
           >
             {loadingRecommendations ? (

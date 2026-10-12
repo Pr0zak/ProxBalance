@@ -3,7 +3,7 @@ import {
 } from '../Icons.jsx';
 import {
   INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER,
-  PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor } from '../../utils/designTokens.js';
+  PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
@@ -253,7 +253,7 @@ export default function NodeDetailPanel({
   };
 
   const online = node.status === 'online';
-  const stepBtn = 'shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-800';
+  const stepBtn = 'shrink-0 w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-800';
 
   const header = (
     <div className="flex items-center gap-2">
@@ -486,7 +486,7 @@ export default function NodeDetailPanel({
               Running guests <span className="font-normal text-pb-text2 dark:text-gray-400">· share of CPU</span>
             </span>
             {stoppedCount > 0 && (
-              <button onClick={() => setShowStopped(s => !s)} className="text-[11px] text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200">
+              <button onClick={() => setShowStopped(s => !s)} className={`${TAP_TARGET} text-[11px] text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200`}>
                 {showStopped ? 'Hide stopped' : `+${stoppedCount} stopped`}
               </button>
             )}

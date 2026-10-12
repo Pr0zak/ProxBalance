@@ -1,7 +1,7 @@
 import {
   AlertTriangle, ChevronDown, X, Filter
 } from '../Icons.jsx';
-import { GLASS_CARD, BTN_SECONDARY } from '../../utils/designTokens.js';
+import { GLASS_CARD, BTN_SECONDARY, TAP_TARGET } from '../../utils/designTokens.js';
 import { ToggleRow } from '../Toggle.jsx';
 import NumberRow from './NumberRow.jsx';
 import TriggerThresholds from './TriggerThresholds.jsx';
@@ -135,7 +135,7 @@ export default function GuestSelectionSection({
                             </button>
                             <button
                               onClick={() => setConfirmAllowContainerRestarts(false)}
-                              className={`${BTN_SECONDARY} !px-2 !py-1 !text-xs`}
+                              className={`${TAP_TARGET} ${BTN_SECONDARY} !px-2 !py-1 !text-xs`}
                             >
                               <X size={14} />
                               Cancel

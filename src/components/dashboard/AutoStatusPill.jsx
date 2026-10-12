@@ -196,7 +196,7 @@ export default function AutoStatusPill({
           {canExpand && (
             <button
               onClick={() => setExpanded(e => !e)}
-              className="p-0.5 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
+              className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] -my-2 -ml-3 sm:min-w-0 sm:min-h-0 sm:m-0 p-0.5 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
               title={expanded ? 'Hide what automation did' : 'Show what automation did and why'}
               aria-label={expanded ? 'Collapse' : 'Expand'}
               aria-expanded={expanded}
@@ -236,7 +236,7 @@ export default function AutoStatusPill({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => togglePause(automationStatus, fetchAutomationStatus)}
-              className="px-2.5 py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+              className="px-3 py-2.5 sm:px-2.5 sm:py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
               title={automationStatus.timer_active ? 'Pause auto-migration timer' : 'Resume auto-migration timer'}
             >
               {automationStatus.timer_active ? <Pause size={12} /> : <Play size={12} />}
@@ -246,7 +246,7 @@ export default function AutoStatusPill({
               <button
                 onClick={() => runAutomationNow()}
                 disabled={runningAutomation}
-                className={`px-2.5 py-1 text-xs rounded border text-white inline-flex items-center gap-1 disabled:bg-gray-600 ${
+                className={`px-3 py-2.5 sm:px-2.5 sm:py-1 text-xs rounded border text-white inline-flex items-center gap-1 disabled:bg-gray-600 ${
                   outsideWindow
                     ? 'bg-blue-600/40 border-blue-500/40 hover:bg-blue-600/60'
                     : 'bg-blue-600 border-blue-500 hover:bg-blue-700'
@@ -262,7 +262,7 @@ export default function AutoStatusPill({
             {setCurrentPage && (
               <button
                 onClick={() => setCurrentPage('automation')}
-                className="px-2.5 py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+                className="px-3 py-2.5 sm:px-2.5 sm:py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
                 title="Open automation settings"
                 aria-label="Open automation settings"
               >

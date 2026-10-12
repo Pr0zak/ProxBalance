@@ -1,3 +1,4 @@
+import { TAP_TARGET } from '../../utils/designTokens.js';
 import { X } from '../Icons.jsx';
 
 const { useEffect } = React;
@@ -69,7 +70,7 @@ export function PeriodChips({ value, onChange }) {
         <button
           key={p.id}
           onClick={() => onChange(p.id)}
-          className={`px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors ${
+          className={`${TAP_TARGET} px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors ${
             value === p.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
           }`}
         >

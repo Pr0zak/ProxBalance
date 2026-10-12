@@ -3,7 +3,7 @@ import {
 } from '../Icons.jsx';
 import WeeklyScheduleOverview from './WeeklyScheduleOverview.jsx';
 import { describeDays, isOvernight, scheduleOutlook } from '../../utils/scheduleWindows.js';
-import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD, statusBadge } from '../../utils/designTokens.js';
+import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 
 const { useState } = React;
 
@@ -422,7 +422,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                           {/* Action Buttons */}
                           <button
                             onClick={() => setEditingWindowIndex(idx)}
-                            className="shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1"
+                            className={`${TAP_TARGET} shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center justify-center gap-1`}
                             title="Edit"
                           >
                             <Edit size={14} />
@@ -451,7 +451,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                                 setConfirmRemoveWindow({ id: windowId, type: isMigration ? 'migration' : 'blackout' });
                               }
                             }}
-                            className={`shrink-0 px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
+                            className={`${TAP_TARGET} shrink-0 px-2 py-1 text-pb-text dark:text-white rounded text-sm flex items-center justify-center gap-1 ${
                               confirmRemoveWindow?.id === `${isMigration ? 'migration' : 'blackout'}-${window.originalIndex}`
                                 ? 'bg-orange-600 hover:bg-orange-700'
                                 : 'bg-red-600 hover:bg-red-700'

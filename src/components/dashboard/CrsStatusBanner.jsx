@@ -1,3 +1,4 @@
+import { TAP_TARGET } from '../../utils/designTokens.js';
 import { Info, AlertTriangle, Server, ChevronDown } from '../Icons.jsx';
 
 const { useState } = React;
@@ -55,7 +56,7 @@ export default function CrsStatusBanner({ pveCrs, automationEnabled, onEdit }) {
           <Server size={12} /> PVE CRS: <span className="font-mono">basic</span> (no auto-balancing)
         </span>
         {onEdit && (
-          <button onClick={onEdit} className="underline hover:text-pb-text dark:hover:text-gray-300">Edit</button>
+          <button onClick={onEdit} className={`${TAP_TARGET} px-1 underline hover:text-pb-text dark:hover:text-gray-300`}>Edit</button>
         )}
       </div>
     );
@@ -98,10 +99,10 @@ export default function CrsStatusBanner({ pveCrs, automationEnabled, onEdit }) {
           {rebalanceOnStart && !autoRebalance && <span className="font-mono px-1.5 rounded bg-pb-surface2 dark:bg-slate-800 text-pb-text dark:text-gray-300">rebalance-on-start</span>}
           <span className="hidden sm:inline">— {summary}</span>
           <span className="ml-auto flex items-center gap-3">
-            <button onClick={() => setShowDetails(v => !v)} className="flex items-center gap-0.5 hover:text-pb-text dark:hover:text-gray-200">
+            <button onClick={() => setShowDetails(v => !v)} className={`${TAP_TARGET} flex items-center gap-0.5 hover:text-pb-text dark:hover:text-gray-200`}>
               Details <ChevronDown size={12} className={`transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`} />
             </button>
-            {onEdit && <button onClick={onEdit} className="underline hover:text-pb-text dark:hover:text-gray-200">Edit</button>}
+            {onEdit && <button onClick={onEdit} className={`${TAP_TARGET} px-1 underline hover:text-pb-text dark:hover:text-gray-200`}>Edit</button>}
           </span>
         </div>
         {showDetails && (
