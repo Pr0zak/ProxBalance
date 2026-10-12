@@ -71,6 +71,7 @@ eq('dry parts subject', pDry.subject, 'zentry-det-pve5 pve5 → pve3');
 eq('nothing parts has no subject', S.lastCheckParts(nothing(3), { now }).subject, '');
 eq('nothing parts chip', S.lastCheckParts(nothing(3), { now }).chip, 'nothing to do');
 eq('waiting parts subject', S.lastCheckParts(waiting, { now }).subject, 'zentry-det-pve5 pve5 → pve3 · 2 of 3 checks');
+eq('count never exceeds requirement', JSON.stringify(S.observationProgress({ action: 'observing', reason: 'Observing 6/3 consecutive runs' })), JSON.stringify({ seen: 3, need: 3 }));
 eq('skipped parts subject', S.lastCheckParts(skippedWindow, { now, opensAt: '03:00' }).subject, 'outside the migration window (opens 03:00)');
 eq('real move parts chip', S.lastCheckParts(realMove, { now }).chip, 'moved');
 

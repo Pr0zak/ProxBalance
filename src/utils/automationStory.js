@@ -52,11 +52,17 @@ export function clockTime(ts) {
 /** "2 of 3" from an observing decision ("Observing 2/3 consecutive runs"). */
 export function observationProgress(d) {
   const r = d?.reasoning;
+  let p = null;
   if (r?.observation_count != null && r?.required_observations != null) {
-    return { seen: Number(r.observation_count), need: Number(r.required_observations) };
+    p = { seen: Number(r.observation_count), need: Number(r.required_observations) };
+  } else {
+    const m = /(\d+)\s*\/\s*(\d+)/.exec(d?.reason || '');
+    if (m) p = { seen: Number(m[1]), need: Number(m[2]) };
   }
-  const m = /(\d+)\s*\/\s*(\d+)/.exec(d?.reason || '');
-  return m ? { seen: Number(m[1]), need: Number(m[2]) } : null;
+  // Runs from before v2.16.0 could count past the requirement ("6/3"); a
+  // count can't usefully exceed what's needed, so show it as complete.
+  if (p && p.need > 0 && p.seen > p.need) p.seen = p.need;
+  return p;
 }
 
 /**
