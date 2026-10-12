@@ -1,4 +1,4 @@
-import { ProxBalanceLogo, RefreshCw, GitBranch, GitHub, Sun, Moon } from './Icons.jsx';
+import { ProxBalanceLogo, RefreshCw, GitHub, Sun, Moon } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, CONNECTION_BADGE_IDLE, BTN_ICON
@@ -17,7 +17,7 @@ export default function TopNav({
   darkMode, toggleDarkMode,
   connected, collectedAt, collectionIntervalMin,
   onRefresh, refreshing,
-  systemInfo, onShowUpdate, onShowBranches,
+  systemInfo, onShowUpdate,
   automationStatus,
 }) {
   const outsideWindow = connected
@@ -98,18 +98,6 @@ export default function TopNav({
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 Connected
               </span>
-            )}
-
-            {/* Branch info */}
-            {systemInfo?.branch && (
-              <button
-                onClick={onShowBranches}
-                className="hidden lg:flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                title="Manage branches"
-              >
-                <GitBranch size={12} />
-                <span className="font-mono">{systemInfo.branch.length > 16 ? systemInfo.branch.substring(0, 16) + '...' : systemInfo.branch}</span>
-              </button>
             )}
 
             {/* Data age — amber past 2x the collection interval, red past 3x */}

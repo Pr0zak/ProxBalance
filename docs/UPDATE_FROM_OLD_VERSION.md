@@ -46,20 +46,19 @@ systemctl restart proxmox-balance
 
 ---
 
-## Branches
+## Update channels
 
-- **main** -- Stable releases (recommended for production)
-- **dev** -- Latest features and fixes (may be less stable)
+Installs update to published releases (the stable channel) by default. To follow a branch for development or testing, set the channel to `dev` in the update window and check the branch out once:
 
-To switch branches:
 ```bash
 cd /opt/proxmox-balance-manager
 git fetch origin
-git checkout main
-git pull origin main
+git checkout <branch>
 bash post_update.sh
 systemctl restart proxmox-balance
 ```
+
+To try a fix before it is released, use the beta channel; fixes are published as pre-releases (`vX.Y.Z-rc.N`). See [Releasing and updating](RELEASING.md).
 
 ---
 

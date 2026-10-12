@@ -269,3 +269,20 @@ def test_required_free_bytes_counts_database(tmp_path):
     assert ru.required_free_bytes(str(tmp_path)) == ru.MIN_FREE_BYTES
     (tmp_path / "proxbalance.db").write_bytes(b"x" * 1000)
     assert ru.required_free_bytes(str(tmp_path)) == ru.MIN_FREE_BYTES + 1000
+
+
+# -- API surface ----------------------------------------------------------
+
+def test_branch_manager_endpoints_removed_and_status_served(tmp_path):
+    from flask import Flask
+    from proxbalance.routes.system import system_bp
+    app = Flask(__name__)
+    app.config["update_manager"] = UpdateManager(str(tmp_path))
+    app.register_blueprint(system_bp)
+    client = app.test_client()
+    for path, method in [("/api/system/branches", "get"), ("/api/system/switch-branch", "post"),
+                         ("/api/system/branch-preview/main", "get"), ("/api/system/rollback-branch", "post"),
+                         ("/api/system/clear-testing-mode", "post")]:
+        assert getattr(client, method)(path).status_code == 404, path
+    resp = client.get("/api/system/update-status")
+    assert resp.status_code == 200 and resp.get_json() == {"state": "idle"}

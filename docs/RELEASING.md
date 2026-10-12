@@ -23,6 +23,12 @@ An install on the stable channel that is still following a branch (every
 install from before channels existed) is offered "switch to release vX.Y.Z".
 After that it only moves between releases.
 
+Earlier versions had a branch switcher in the top bar. It was removed in
+v2.16: to try a fix, publish it as a pre-release and use the beta channel; to
+develop on a branch, check it out once and use the dev channel. The removed
+API endpoints (`/api/system/branches`, `switch-branch`, `branch-preview`,
+`rollback-branch`, `clear-testing-mode`) now return 404.
+
 ## How an update runs
 
 The in-app **Update** button and `update.sh` on the Proxmox host both run
