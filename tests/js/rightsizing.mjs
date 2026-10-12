@@ -34,6 +34,30 @@ test('totals', () => {
   assert.equal(M.totalsText({ vcpus_freed: 0, gb_freed: 0 }), null);
 });
 
+test('container hints read as limits', () => {
+  assert.equal(M.hintText({ kind: 'cpu', current: 2, suggested: 1, avg_pct: 1, p95_pct: 2 }, { limit: true }),
+    '2 vCPU → 1 (limit) · avg 1%, p95 2%');
+  assert.equal(M.hintText({ kind: 'memory', current_gb: 8, suggested_gb: 1.5, avg_gb: 0.65, p95_gb: 0.89 }, { limit: true }),
+    '8 GB → 1.5 GB (limit) · avg 666 MB, p95 911 MB');
+  assert.equal(M.hintText({ kind: 'stopped', running_pct: 5 }, { limit: true }), 'mostly stopped (running 5% of the week)');
+  assert.deepEqual(M.panelParts({ status: 'ok', kind: 'ct', hints: [{ kind: 'cpu', current: 2, suggested: 1, avg_pct: 1, p95_pct: 2 }] }),
+    ['2 vCPU → 1 (limit) · avg 1%, p95 2%']);
+  assert.deepEqual(M.panelParts({ status: 'ok', kind: 'vm', hints: [{ kind: 'cpu', current: 2, suggested: 1, avg_pct: 1, p95_pct: 2 }] }),
+    ['2 vCPU → 1 (avg 1%, p95 2%)']);
+});
+
+test('summary counts VMs only', () => {
+  const vm = { vcpus_freed: 3, gb_freed: 6.5, guests_with_hints: 2, mostly_stopped: 0 };
+  const ct = { vcpus_freed: 29, gb_freed: 70, guests_with_hints: 30, mostly_stopped: 1 };
+  assert.deepEqual(M.summaryText({ window_days: 7, totals: { vm, ct } }),
+    { lead: 'VMs could free 3 vCPUs and 6.5 GB', rest: 'across 2 VMs, from the last 7 days of use.' });
+  assert.deepEqual(M.summaryText({ window_days: 7, totals: { vm: { guests_with_hints: 0 }, ct } }),
+    { lead: null, rest: 'No VM is oversized for its last 7 days of use.' });
+  // Only a mostly-stopped VM: nothing to free, still counted.
+  assert.deepEqual(M.summaryText({ window_days: 7, totals: { vm: { vcpus_freed: 0, gb_freed: 0, guests_with_hints: 1 }, ct } }),
+    { lead: null, rest: 'Hints for 1 VM, from the last 7 days of use.' });
+});
+
 test('panel line', () => {
   assert.equal(M.panelLine(null), null);
   assert.equal(M.panelLine({ status: 'no_data', hints: [] }), null);

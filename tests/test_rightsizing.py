@@ -214,9 +214,26 @@ def test_report_ranks_by_savings_and_totals():
     rep = build_report(guests, nodes, samples, _runs(), NOW)
     assert [g["name"] for g in rep["guests"]] == ["big", "small", "parked"]
     assert rep["guests"][0]["ignored"] is True
-    assert rep["totals"]["vcpus_freed"] == 4 + 1
-    assert rep["totals"]["mostly_stopped"] == 1
+    assert {g["kind"] for g in rep["guests"]} == {"ct"}
+    assert rep["totals"]["ct"]["vcpus_freed"] == 4 + 1
+    assert rep["totals"]["ct"]["mostly_stopped"] == 1
+    assert rep["totals"]["vm"] == {"vcpus_freed": 0, "gb_freed": 0, "guests_with_hints": 0, "mostly_stopped": 0}
     assert rep["totals"]["assessed"] == 3
+
+
+def test_report_splits_vm_and_container_totals():
+    guests = {
+        "1": _ct(cores=4, mem_gb=8, name="ct"),
+        "2": {**_vm(agent=True, cores=4, mem_gb=8), "name": "vm"},
+        "3": {**_vm(agent=False, cores=2, mem_gb=8), "name": "vm-noagent"},
+    }
+    samples = {k: _samples(cpu=2, mem=10) for k in guests}
+    rep = build_report(guests, {}, samples, _runs(), NOW)
+    kinds = {g["name"]: g["kind"] for g in rep["guests"]}
+    assert kinds == {"ct": "ct", "vm": "vm", "vm-noagent": "vm"}
+    # vm: 4->2 vCPU, 8 GB -> 1.5 GB; vm-noagent: 2->1 vCPU, memory skipped.
+    assert rep["totals"]["vm"] == {"vcpus_freed": 3, "gb_freed": 6.5, "guests_with_hints": 2, "mostly_stopped": 0}
+    assert rep["totals"]["ct"] == {"vcpus_freed": 2, "gb_freed": 6.5, "guests_with_hints": 1, "mostly_stopped": 0}
 
 
 @pytest.fixture()
@@ -262,8 +279,11 @@ def test_route_and_guest_history_payload(tmp_db):
     assert [g["vmid"] for g in body["guests"]] == [101]
     assert [h["kind"] for h in body["guests"][0]["hints"]] == ["cpu", "memory"]
     assert body["totals"]["no_data"] == 1
+    assert body["guests"][0]["kind"] == "ct"
+    assert body["totals"]["vm"]["guests_with_hints"] == 0
 
     hist = client.get("/api/guests/101/history?hours=24").get_json()
     assert hist["rightsizing"]["status"] == "ok"
+    assert hist["rightsizing"]["kind"] == "ct"
     assert [h["kind"] for h in hist["rightsizing"]["hints"]] == ["cpu", "memory"]
     assert client.get("/api/guests/102/history?hours=24").get_json()["rightsizing"]["status"] == "no_data"

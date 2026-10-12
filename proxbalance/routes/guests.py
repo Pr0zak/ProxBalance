@@ -581,7 +581,7 @@ def get_guest_metrics_history(vmid):
 
 def _guest_rightsizing(vmid):
     """This guest's right-sizing assessment over the last week, or None when it can't be read."""
-    from proxbalance.rightsizing import assess_guest, load_window
+    from proxbalance.rightsizing import assess_guest, guest_kind, load_window
     try:
         cache = read_cache() or {}
         guest = (cache.get("guests") or {}).get(str(vmid))
@@ -590,7 +590,7 @@ def _guest_rightsizing(vmid):
         samples, runs = load_window(vmid=str(vmid))
         a = assess_guest(guest, samples.get(str(vmid), []), time.time(), runs)
         return {"status": a["status"], "hints": a["hints"], "running_pct": a["running_pct"],
-                "days": a["days"], "ignored": bool((guest.get("tags") or {}).get("has_ignore"))}
+                "days": a["days"], "kind": guest_kind(guest), "ignored": bool((guest.get("tags") or {}).get("has_ignore"))}
     except Exception as e:
         print(f"rightsizing: guest {vmid} unavailable: {e}", file=sys.stderr)
         return None

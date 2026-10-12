@@ -15,14 +15,18 @@ function pct(v) {
   return v < 1 && v > 0 ? '<1%' : `${Math.round(v)}%`;
 }
 
-/** One hint as a short phrase. */
-export function hintText(h) {
+/**
+ * One hint as a short phrase. With `limit` (a container, whose cores and
+ * memory are limits rather than reservations) the size reads "(limit)".
+ */
+export function hintText(h, { limit = false } = {}) {
   if (!h) return '';
+  const tail = (detail) => (limit ? ` (limit) · ${detail}` : ` (${detail})`);
   if (h.kind === 'cpu') {
-    return `${h.current} vCPU → ${h.suggested} (avg ${pct(h.avg_pct)}, p95 ${pct(h.p95_pct)})`;
+    return `${h.current} vCPU → ${h.suggested}${tail(`avg ${pct(h.avg_pct)}, p95 ${pct(h.p95_pct)}`)}`;
   }
   if (h.kind === 'memory') {
-    return `${formatSize(h.current_gb)} → ${formatSize(h.suggested_gb)} (avg ${formatSize(h.avg_gb)}, p95 ${formatSize(h.p95_gb)})`;
+    return `${formatSize(h.current_gb)} → ${formatSize(h.suggested_gb)}${tail(`avg ${formatSize(h.avg_gb)}, p95 ${formatSize(h.p95_gb)}`)}`;
   }
   if (h.kind === 'stopped') {
     return `mostly stopped (running ${pct(h.running_pct)} of the week)`;
@@ -42,6 +46,23 @@ export function totalsText(totals) {
 }
 
 /**
+ * The Insights card's header, from a /api/insights/rightsizing response.
+ * Only VMs are counted: container limits aren't reserved on the host.
+ * Returns `{ lead, rest }`; `lead` is the bold part (or null).
+ */
+export function summaryText(data) {
+  const days = data?.window_days || 7;
+  const vm = data?.totals?.vm || {};
+  const n = vm.guests_with_hints || 0;
+  const free = totalsText(vm);
+  if (n === 0) return { lead: null, rest: `No VM is oversized for its last ${days} days of use.` };
+  return {
+    lead: free ? `VMs ${free}` : null,
+    rest: `${free ? 'across' : 'Hints for'} ${n} VM${n === 1 ? '' : 's'}, from the last ${days} days of use.`,
+  };
+}
+
+/**
  * The guest side panel's one line, from the history payload's `rightsizing`
  * block. Returns null when there is nothing worth a row (no block, no data,
  * template).
@@ -57,5 +78,5 @@ export function panelParts(rs) {
   if (rs.status === 'not_enough_history') return [`Not enough history yet (${rs.days ?? 0} of 3 days)`];
   if (rs.status !== 'ok') return null;
   if (!rs.hints || rs.hints.length === 0) return ['Fits its allocation'];
-  return rs.hints.map(hintText);
+  return rs.hints.map(h => hintText(h, { limit: rs.kind === 'ct' }));
 }

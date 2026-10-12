@@ -510,11 +510,11 @@ Returns a guest's CPU and memory time series (0-100%), downsampled to about 80 p
 
 ```json
 {"success": true, "vmid": "100", "points": [{"time": "...", "cpu": 12.5, "mem": 48.2}],
- "rightsizing": {"status": "ok", "running_pct": 99.6, "days": 7.0, "ignored": false,
+ "rightsizing": {"status": "ok", "running_pct": 99.6, "days": 7.0, "kind": "vm", "ignored": false,
                  "hints": [{"kind": "cpu", "current": 4, "suggested": 2, "avg_pct": 3.4, "p95_pct": 9.0, "vcpus_freed": 2, "gb_freed": 0.0}]}}
 ```
 
-`rightsizing` always covers the last 7 days whatever `hours` is, and is the same assessment `GET /api/insights/rightsizing` makes (see there for hint shapes). `status` is `ok` (assessed; `hints` may be empty), `not_enough_history` (under 3 days of samples), `no_data` or `template`. It is `null` when the guest isn't in the cluster cache.
+`rightsizing` carries `kind` (`vm` or `ct`; the side panel marks a container's sizes "(limit)") and always covers the last 7 days whatever `hours` is, and is the same assessment `GET /api/insights/rightsizing` makes (see there for hint shapes). `status` is `ok` (assessed; `hints` may be empty), `not_enough_history` (under 3 days of samples), `no_data` or `template`. It is `null` when the guest isn't in the cluster cache.
 
 ### GET /api/insights/rightsizing
 
@@ -528,21 +528,27 @@ A guest needs at least 3 days of samples; with less, or none, it gets no hint. "
 
 Sorted by what each could free: vCPUs plus GB converted to vCPUs at the cluster's host memory-per-CPU ratio; mostly-stopped guests last.
 
+Each guest carries `kind`: `vm` or `ct`. Totals are split the same way (`totals.vm`, `totals.ct`) because a container's cores and memory are limits, not reservations: lowering them frees little on the host and mostly matters for overcommit accounting. Only `totals.vm` is real capacity; the Insights card's "VMs could free …" header uses it and lists containers in a collapsed group.
+
 ```json
 {
   "success": true, "window_days": 7, "min_history_days": 3,
   "guests": [
-    {"vmid": 241, "name": "claude-dev", "node": "pve4", "type": "CT", "ignored": true,
+    {"vmid": 106, "name": "haos10.5", "node": "pve3", "type": "VM", "kind": "vm", "ignored": false,
+     "running_pct": 100.0, "days": 7.0, "vcpus_freed": 1, "gb_freed": 0.0,
+     "hints": [{"kind": "cpu", "current": 2, "suggested": 1, "avg_pct": 5.6, "p95_pct": 8.9, "vcpus_freed": 1, "gb_freed": 0.0}]},
+    {"vmid": 241, "name": "claude-dev", "node": "pve4", "type": "CT", "kind": "ct", "ignored": true,
      "running_pct": 100.0, "days": 7.0, "vcpus_freed": 2, "gb_freed": 9.5,
      "hints": [
        {"kind": "cpu", "current": 4, "suggested": 2, "avg_pct": 3.4, "p95_pct": 9.0, "vcpus_freed": 2, "gb_freed": 0.0},
        {"kind": "memory", "current_gb": 16.0, "suggested_gb": 6.5, "suggested_mb": 6656, "avg_gb": 3.89, "p95_gb": 4.87, "avg_pct": 24.3, "vcpus_freed": 0, "gb_freed": 9.5}
      ]},
-    {"vmid": 238, "name": "networkoptimizer", "node": "pve4", "type": "CT", "ignored": false,
+    {"vmid": 238, "name": "networkoptimizer", "node": "pve4", "type": "CT", "kind": "ct", "ignored": false,
      "running_pct": 4.4, "days": 7.0, "vcpus_freed": 0, "gb_freed": 0.0,
      "hints": [{"kind": "stopped", "running_pct": 4.4, "vcpus_freed": 0, "gb_freed": 0.0}]}
   ],
-  "totals": {"vcpus_freed": 31, "gb_freed": 77.9, "guests_with_hints": 33, "mostly_stopped": 2,
+  "totals": {"vm": {"vcpus_freed": 1, "gb_freed": 0.0, "guests_with_hints": 2, "mostly_stopped": 1},
+             "ct": {"vcpus_freed": 30, "gb_freed": 77.9, "guests_with_hints": 31, "mostly_stopped": 1},
              "assessed": 40, "not_enough_history": 6, "no_data": 27}
 }
 ```

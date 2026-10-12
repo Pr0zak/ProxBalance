@@ -319,6 +319,11 @@ def build_report(
     Ranking: vCPUs freed plus GB freed expressed in vCPUs at the cluster's
     host memory-per-CPU ratio, so 8 GB on a 31 GB / 4 CPU node ranks about
     like one vCPU. Mostly-stopped guests (nothing to resize) come last.
+
+    Each row carries ``kind`` (``vm`` or ``ct``) and totals are split the
+    same way: a container's cores and memory are limits, not reservations,
+    so lowering them frees little on the host. Only ``totals.vm`` is real
+    capacity.
     """
     ratio = _gb_per_vcpu(nodes)
     rows: List[Dict[str, Any]] = []
@@ -337,6 +342,7 @@ def build_report(
             "name": g.get("name") or f"guest-{vmid}",
             "node": g.get("node"),
             "type": g.get("type"),
+            "kind": guest_kind(g),
             "ignored": _is_ignored(g),
             "running_pct": a["running_pct"],
             "days": a["days"],
@@ -353,12 +359,24 @@ def build_report(
         "min_history_days": MIN_HISTORY_DAYS,
         "guests": rows,
         "totals": {
-            "vcpus_freed": sum(r["vcpus_freed"] for r in rows),
-            "gb_freed": round(sum(r["gb_freed"] for r in rows), 1),
-            "guests_with_hints": len(rows),
-            "mostly_stopped": sum(1 for r in rows if any(h["kind"] == "stopped" for h in r["hints"])),
+            "vm": _kind_totals([r for r in rows if r["kind"] == "vm"]),
+            "ct": _kind_totals([r for r in rows if r["kind"] == "ct"]),
             **counts,
         },
+    }
+
+
+def guest_kind(guest: Dict[str, Any]) -> str:
+    """``vm`` for QEMU guests, ``ct`` for containers."""
+    return "vm" if _is_vm(guest) else "ct"
+
+
+def _kind_totals(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    return {
+        "vcpus_freed": sum(r["vcpus_freed"] for r in rows),
+        "gb_freed": round(sum(r["gb_freed"] for r in rows), 1),
+        "guests_with_hints": len(rows),
+        "mostly_stopped": sum(1 for r in rows if any(h["kind"] == "stopped" for h in r["hints"])),
     }
 
 
