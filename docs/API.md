@@ -1099,6 +1099,23 @@ Each pattern includes `daily_pattern`, `weekly_pattern`, `burst_detection` and:
 - `quiet_window`: `{"start_hour": 2, "end_hour": 5, "avg_cpu": 11.3}`, the quietest contiguous 3-hour stretch (it can wrap midnight; `end_hour` is exclusive)
 - `recommendation_timing`: the same window as text, for example `"Migrate during 02:00-05:00 when load is minimal (avg 11%)"`
 
+### GET /api/simulate/node-failure
+
+"What if a node fails?" simulation from the latest collected data (no Proxmox calls).
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `node` | string | Node to fail. Omitted: run every online node and return the N-1 summary |
+| `storage` | string | `capacity` (default): could the other nodes hold its guests? Disks on node-local storage are assumed restored elsewhere. `strict` (unplanned failure): guests whose disks are on node-local storage can't restart elsewhere |
+| `mem_ceiling` | float | Highest memory % a survivor may reach (default 95, clamped 50–100) |
+| `tight_pct` | float | A survivor ending above this memory % makes the result `tight` (default 85) |
+
+Only running guests on the failed node move. Guests with passthrough disks or hardware (the guest's `passthrough_devices`: hostpci, usb, container `dev` entries), unshared bind mounts or, in `strict` mode, node-local disks go to `cant_restart` with a reason. A disk is node-local when its storage (from the guest's `disks[].storage`) has `shared: false` on the node, or, for entries collected before the flag existed, a non-shared storage type. The rest are placed largest memory first onto the survivor with the most free memory that stays at or under `mem_ceiling`, skipping nodes that an `exclude_*` tag or a Proxmox HA rule blocks. Memory demand is a VM's allocation and a container's current use. The `ignore` tag does not block a restart; such placements carry `ignored: true`.
+
+Single node response (`data`): `status` (`ok`, `tight`, `stranded`, `short`, `offline`), `verdict`, `nodes` (per survivor `mem_before`, `mem_after`, `cpu_before`, `cpu_after`, `added`, `added_gb`), `placements` (`vmid`, `name`, `type`, `from`, `to`, `mem_gb`, `ha_managed`, `ignored`, optional `local_storage`), `cant_restart` and `doesnt_fit` (`vmid`, `name`, `type`, `mem_gb`, `reason`), `busiest`, `running_guests`, `local_storage_guests`, `local_disk_note` (for example `"If pve4 fails unexpectedly, its 5 guests don't restart elsewhere: their disks are node-local (restore from backup)"`, or null).
+
+Summary response (`data`): `nodes` (per node `status`, `verdict`, `placed`, `cant_restart`, `doesnt_fit`, `doesnt_fit_gb`, `busiest`, `local_disk_note`), `can_lose`, `n1_ok`, `local_storage_guests`, `verdict`.
+
 ---
 
 [Back to Documentation](README.md)

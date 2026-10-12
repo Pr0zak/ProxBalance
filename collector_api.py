@@ -5,6 +5,7 @@ Uses Proxmox API for fast, reliable data collection
 """
 
 import json
+import re
 import sys
 import os
 from datetime import datetime
@@ -541,6 +542,28 @@ class ProxmoxAPICollector:
             "total_pinned_disks": passthrough_count
         }
 
+    def detect_passthrough_devices(self, config: Dict) -> List[Dict]:
+        """
+        Host hardware handed to the guest: PCI and USB passthrough for VMs
+        (``hostpciN``, ``usbN`` other than SPICE redirection) and device nodes
+        for containers (``devN``). Such a guest can't start on another node
+        as-is; the node-failure simulation reports it as tied to its host.
+        Passthrough *disks* stay in ``local_disks``; storage-backed volumes
+        are in ``disks``.
+
+        Returns:
+            List of ``{"key": "hostpci0", "device": "0000:00:02.0"}``.
+        """
+        devices = []
+        for key, value in config.items():
+            if not isinstance(value, str):
+                continue
+            if (re.match(r'^hostpci\d+$', key)
+                    or (re.match(r'^usb\d+$', key) and 'spice' not in value)
+                    or re.match(r'^dev\d+$', key)):
+                devices.append({"key": key, "device": value.split(',')[0]})
+        return sorted(devices, key=lambda d: d["key"])
+
     @staticmethod
     def _extract_rrd_values(rrd_data, key, scale=100, filter_fn=None):
         """Extract and scale values from RRD data points."""
@@ -697,8 +720,9 @@ class ProxmoxAPICollector:
                     "type": storage.get("type", "unknown"),
                     "content": storage.get("content", ""),
                     "active": bool(storage.get("active", 0)),
-                    # Shared storage (NFS, CIFS, PBS, Ceph, shared LVM ...) is not
-                    # copied on migration; storage_projection skips it.
+                    # Shared storage (NFS, CIFS, PBS, Ceph, shared LVM ...) is reachable
+                    # from every node: not copied on migration (storage_projection) and
+                    # not lost when a node fails (failure_sim).
                     "shared": bool(storage.get("shared", 0)),
                     "total_gb": round(total_gb, 2),
                     "used_gb": round(used_gb, 2),
@@ -945,6 +969,9 @@ class ProxmoxAPICollector:
                 # Storage-backed volumes (storage id + provisioned size) for the
                 # target storage projection.
                 "disks": parse_guest_disks(config),
+                # Host hardware passed through (hostpci/usb/dev); ties the guest
+                # to its node for the failure simulation.
+                "passthrough_devices": self.detect_passthrough_devices(config),
             }
             
             self.guests[str(vmid)] = guest_info

@@ -532,6 +532,22 @@ export async function fetchRightsizing() {
     return await response.json();
   } catch (err) {
     console.error('Error fetching right-sizing hints:', err);
+
+ * "What if a node fails?" simulation from the latest collected data.
+ * With a node: that node's result. Without: the N-1 summary for every node.
+ * storage: 'capacity' (default; node-local disks assumed restored) or
+ * 'strict' (unplanned failure: node-local disks can't restart elsewhere).
+ */
+export async function fetchNodeFailure(node, storage = 'capacity') {
+  try {
+    const query = new URLSearchParams({ storage });
+    if (node) query.append('node', node);
+    const response = await fetch(`${API_BASE}/simulate/node-failure?${query}`);
+    const result = await response.json();
+    if (!result.success) return { error: true, message: result.error || 'simulation failed' };
+    return result.data;
+  } catch (err) {
+    console.error('Error simulating node failure:', err);
     return { error: true, message: err.message };
   }
 }
