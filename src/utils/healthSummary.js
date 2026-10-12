@@ -1,0 +1,97 @@
+/**
+ * Plain-words cluster health for the dashboard KPI tile, the phone status
+ * line and the health breakdown modal. Instead of a vague word ("Tight")
+ * it states the fact: either every node has room, or which node is short
+ * and why (its largest penalty from /api/node-scores `penalty_items`).
+ */
+import { headroomLevel } from './designTokens.js';
+
+// penalty key → short plain phrase. Keys match proxbalance/scoring.py.
+const PHRASE_BY_KEY = {
+  iowait_current: 'disk wait high now',
+  iowait_sustained: 'disk wait high this week',
+  current_cpu: 'CPU busy now',
+  sustained_cpu: 'CPU busy all week',
+  cpu_spikes: 'CPU peaks this week',
+  cpu_trend: 'CPU rising',
+  current_mem: 'memory nearly full',
+  sustained_mem: 'memory nearly full',
+  mem_spikes: 'memory nearly full',
+  mem_overcommit: 'memory over-allocated',
+  mem_trend: 'memory rising',
+  predicted_cpu: 'load forecast to rise',
+  predicted_mem: 'load forecast to rise',
+};
+
+// Label patterns for items whose key is unknown (newer/older backends).
+const PHRASE_BY_LABEL = [
+  [/iowait.*(7-day|week|sustained)/i, 'disk wait high this week'],
+  [/iowait/i, 'disk wait high now'],
+  [/forecast/i, 'load forecast to rise'],
+  [/cpu.*(peak|spike)/i, 'CPU peaks this week'],
+  [/spike/i, 'CPU spikes'],
+  [/cpu.*trend/i, 'CPU rising'],
+  [/mem.*trend/i, 'memory rising'],
+  [/cpu.*(7-day|24h|sustained|week)/i, 'CPU busy all week'],
+  [/cpu/i, 'CPU busy now'],
+  [/mem/i, 'memory nearly full'],
+];
+
+/**
+ * Short plain phrase for one penalty item ({key, label}).
+ * Unmapped items fall back to their own label, lower-cased.
+ */
+export function problemPhrase(item) {
+  if (!item) return null;
+  if (item.key && PHRASE_BY_KEY[item.key]) return PHRASE_BY_KEY[item.key];
+  const label = String(item.label || item.key || '').trim();
+  for (const [re, phrase] of PHRASE_BY_LABEL) if (re.test(label)) return phrase;
+  return label ? label.replace(/_/g, ' ').toLowerCase() : null;
+}
+
+/** Largest penalty item for one node-scores entry (penalty_items, else penalty_breakdown). */
+export function biggestProblem(score) {
+  const items = Array.isArray(score?.penalty_items) ? score.penalty_items : null;
+  if (items && items.length) {
+    const top = items.reduce((a, b) => ((b.points || 0) > (a.points || 0) ? b : a));
+    if ((top.points || 0) > 0) return top;
+  }
+  const bd = score?.penalty_breakdown;
+  if (bd && typeof bd === 'object') {
+    const top = Object.entries(bd)
+      .filter(([, p]) => typeof p === 'number' && p > 0)
+      .sort((a, b) => b[1] - a[1])[0];
+    if (top) return { key: top[0], label: top[0], points: top[1] };
+  }
+  return null;
+}
+
+/**
+ * Headline + sub line for the cluster health tile.
+ *
+ * @param {object} p
+ * @param {string|null} p.node    busiest node name (null when unknown)
+ * @param {number|null} p.headroom busiest node headroom, 0-100
+ * @param {object|null} p.score   that node's /api/node-scores entry
+ * @returns {{ level: 'ok'|'warn'|'crit'|null, headline: string, sub: string|null, phrase: string|null }}
+ */
+export function healthSummary({ node = null, headroom = null, score = null } = {}) {
+  const level = headroomLevel(headroom);
+  if (level === null) return { level: null, headline: '—', sub: null, phrase: null };
+  const n = Math.round(headroom);
+  if (level === 'ok') {
+    return {
+      level,
+      headline: 'All nodes have room',
+      sub: node ? `Least room: ${node} · headroom ${n}/100` : `headroom ${n}/100`,
+      phrase: null,
+    };
+  }
+  const phrase = problemPhrase(biggestProblem(score)) || 'high base load';
+  return {
+    level,
+    headline: node ? `${node}: ${phrase}` : `Low headroom: ${phrase}`,
+    sub: node ? `Busiest node · headroom ${n}/100` : `headroom ${n}/100`,
+    phrase,
+  };
+}

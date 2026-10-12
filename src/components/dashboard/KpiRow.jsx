@@ -1,4 +1,4 @@
-import { KPI_CARD, scoreColor, headroomLevel } from '../../utils/designTokens.js';
+import { KPI_CARD, scoreColor } from '../../utils/designTokens.js';
 import { Server, Activity, Clock, MoveRight } from '../Icons.jsx';
 import ClusterHealthBreakdown from './ClusterHealthBreakdown.jsx';
 import { spreadText } from './ScoreBreakdown.jsx';
@@ -7,11 +7,9 @@ import { getStatus, getNextCheck } from './AutoStatusPill.jsx';
 import { tightestNode, toNodeSet } from '../../utils/nodeCondition.js';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
+import { healthSummary } from '../../utils/healthSummary.js';
 
 const { useState, useMemo } = React;
-
-// Plain words for the busiest node's headroom (same scale as the Nodes table).
-const HEALTH_WORD = { ok: 'Good', warn: 'Tight', crit: 'Under pressure' };
 
 const STATUS_TEXT = {
   green: 'text-green-700 dark:text-green-400',
@@ -76,8 +74,13 @@ export default function KpiRow({
     meanScore = healthVal;
     healthSource = 'backend';
   }
-  const level = headroomLevel(healthVal);
-  const healthWord = level ? HEALTH_WORD[level] : '—';
+  // Plain facts instead of a vague word: every node has room, or which node
+  // is short and its biggest problem (largest penalty item).
+  const health = healthSummary({
+    node: busiest?.name || null,
+    headroom: healthVal,
+    score: busiest ? nodeScores?.[busiest.name] : null,
+  });
   const healthColor = healthVal !== null ? scoreColor(healthVal) : 'text-pb-text2 dark:text-gray-500';
   const healthTitle = busiest
     ? `Busiest node: ${busiest.name}, headroom ${healthVal}/100${busiest.top ? ` (mostly: ${busiest.top.description})` : ''}.\n`
@@ -151,14 +154,12 @@ export default function KpiRow({
   // ─────────────────────────── phone: one status line ───────────────────────────
   const sep = <span className="text-pb-text2 dark:text-gray-600" aria-hidden="true">·</span>;
   const phone = (
-    <div className="sm:hidden mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 rounded-xl border bg-white dark:bg-pb-surface-dark border-slate-200 dark:border-pb-border-dark text-xs">
-      <button type="button" onClick={() => setShowHealthDetail(true)} title={healthTitle} className="inline-flex items-center gap-1 min-w-0">
-        <span className="text-pb-text2 dark:text-gray-400">Health</span>
-        <span className={`font-semibold ${healthColor}`}>{healthWord}</span>
-        {busiest && <span className="text-pb-text2 dark:text-gray-400 truncate">({busiest.name} {healthVal})</span>}
+    <div className="sm:hidden mb-3 flex flex-wrap items-center gap-x-2 px-3 py-0.5 rounded-xl border bg-white dark:bg-pb-surface-dark border-slate-200 dark:border-pb-border-dark text-xs">
+      <button type="button" onClick={() => setShowHealthDetail(true)} title={healthTitle} className="inline-flex items-center gap-1 min-w-0 min-h-[40px]">
+        <span className={`font-semibold truncate ${healthColor}`}>{health.headline}</span>
       </button>
       {sep}
-      <button type="button" onClick={() => go('nodes')} title={nodesSub || 'All nodes online'} className="inline-flex items-center gap-1">
+      <button type="button" onClick={() => go('nodes')} title={nodesSub || 'All nodes online'} className="inline-flex items-center gap-1 min-h-[40px]">
         <span className={`font-semibold tabular-nums ${onlineNodes === totalNodes ? 'text-pb-text dark:text-gray-100' : 'text-yellow-700 dark:text-yellow-400'}`}>{onlineNodes}/{totalNodes}</span>
         <span className="text-pb-text2 dark:text-gray-400">nodes</span>
       </button>
@@ -166,7 +167,7 @@ export default function KpiRow({
       {moving > 0 && (
         <>
           {sep}
-          <button type="button" onClick={() => setShowInFlight(true)} className="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-300">
+          <button type="button" onClick={() => setShowInFlight(true)} className="inline-flex items-center gap-1 min-h-[40px] font-semibold text-blue-700 dark:text-blue-300">
             <MoveRight size={12} /> Moving {moving}
           </button>
         </>
@@ -174,7 +175,7 @@ export default function KpiRow({
       {recCount > 0 && (
         <>
           {sep}
-          <button type="button" onClick={() => go('suggestions')} className="font-semibold text-purple-700 dark:text-purple-300">
+          <button type="button" onClick={() => go('suggestions')} className="min-h-[40px] font-semibold text-purple-700 dark:text-purple-300">
             {recCount} suggestion{recCount !== 1 ? 's' : ''}
           </button>
         </>
@@ -199,11 +200,9 @@ export default function KpiRow({
       <Tile onClick={() => setShowHealthDetail(true)} title={healthTitle}>
         <Activity size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
         <div className="min-w-0">
-          <div className={`text-xl font-bold ${healthColor}`}>{healthWord}</div>
+          <div className={`text-lg font-bold leading-snug ${healthColor}`}>{health.headline}</div>
           <Label>Cluster health</Label>
-          {busiest
-            ? <Sub>Busiest: <span className="text-pb-text dark:text-gray-300">{busiest.name}</span> · headroom <span className="tabular-nums">{healthVal}</span></Sub>
-            : healthVal !== null && <Sub>headroom {healthVal}</Sub>}
+          {health.sub && <Sub>{health.sub}</Sub>}
           {data.cluster_spread && <Sub title="Max − min across online nodes">{spreadText(data.cluster_spread)}</Sub>}
         </div>
       </Tile>

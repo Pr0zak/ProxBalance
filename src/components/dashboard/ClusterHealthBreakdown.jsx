@@ -1,6 +1,7 @@
 import { MODAL_OVERLAY, MODAL_CONTAINER, scoreColor } from '../../utils/designTokens.js';
 import { X, ChevronDown } from '../Icons.jsx';
 import { ScoreBreakdown, SpreadFigure } from './ScoreBreakdown.jsx';
+import { healthSummary } from '../../utils/healthSummary.js';
 
 const { useState } = React;
 
@@ -104,6 +105,11 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
   // Headline: the tightest node when the caller provides it (KPI card), else the mean.
   const headline = tightest ? Math.round(tightest.rating) : avgScore;
   const drag = entries.filter(e => e.rating < (avgScore ?? 0));
+  const summary = healthSummary({
+    node: tightest?.name || null,
+    headroom: tightest ? tightest.rating : null,
+    score: tightest ? nodeScores?.[tightest.name] : null,
+  });
 
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
@@ -122,7 +128,7 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
               <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
               <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5">
                 {tightest
-                  ? <>Tightest: <span className="font-semibold text-pb-text dark:text-gray-300">{tightest.name}</span> · {tightest.top ? `${tightest.top.label} +${tightest.top.pts}` : 'no penalties'} · mean {avgScore ?? '—'}</>
+                  ? <>{summary.headline}{summary.sub ? ` · ${summary.sub}` : ''} · mean {avgScore ?? '—'}</>
                   : <>{healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier</>}
               </p>
             </div>
