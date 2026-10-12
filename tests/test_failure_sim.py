@@ -20,7 +20,10 @@ def _guest(vmid, node, mem, kind="VM", status="running", tags=(), storages=("nas
         "vmid": vmid, "name": f"g{vmid}", "type": kind, "node": node, "status": status,
         "mem_max_gb": mem, "mem_used_gb": mem, "cpu_avg_hour": 20.0, "cpu_cores": 2,
         "tags": {"all_tags": list(tags), "exclude_groups": excl, "has_ignore": "ignore" in tags},
-        "local_disks": {"is_pinned": False, "storages": list(storages), "hardware": []},
+        "local_disks": {"is_pinned": False},
+        "disks": [{"key": f"scsi{i}", "storage": st, "volume": f"{st}:vm-{vmid}-disk-{i}", "size_gb": 8.0}
+                  for i, st in enumerate(storages)],
+        "passthrough_devices": [],
         "mount_points": {},
     }
     g.update(extra)
@@ -60,18 +63,36 @@ def test_largest_first_onto_most_free_memory():
     assert order == [(102, "pve3"), (103, "pve5"), (101, "pve3")]
 
 
-def test_local_disk_guest_cant_restart_in_strict_mode():
+def test_local_disk_guest_capacity_by_default_strict_on_request():
     nodes, guests = _cluster(_guest(101, "pve4", 4, storages=("local-lvm",)), _guest(102, "pve4", 2))
-    r = simulate_node_failure("pve4", nodes, guests)
+    # Default (capacity): placed, flagged, and the note says it won't come back on its own.
+    c = simulate_node_failure("pve4", nodes, guests)
+    assert c["storage_mode"] == "capacity"
+    placed = {p["vmid"]: p for p in c["placements"]}
+    assert placed[101]["local_storage"] == ["local-lvm"]
+    assert c["status"] == "ok"
+    assert c["local_disk_note"] == (
+        "If pve4 fails unexpectedly, 1 of its 2 guests doesn't restart elsewhere: "
+        "its disks are node-local (restore from backup)")
+    # Strict ("unplanned failure"): can't restart elsewhere.
+    r = simulate_node_failure("pve4", nodes, guests, storage_mode="strict")
     assert [g["vmid"] for g in r["cant_restart"]] == [101]
     assert "node-local storage (local-lvm)" in r["cant_restart"][0]["reason"]
     assert r["status"] == "stranded"
     assert r["local_storage_guests"] == 1
-    # Capacity mode assumes a restore elsewhere and flags the placement.
-    c = simulate_node_failure("pve4", nodes, guests, storage_mode="capacity")
-    placed = {p["vmid"]: p for p in c["placements"]}
-    assert placed[101]["local_storage"] == ["local-lvm"]
-    assert c["status"] == "ok"
+
+
+def test_local_disk_note_all_guests_and_shared_fallback():
+    nodes, guests = _cluster(_guest(101, "pve4", 4, storages=("local-lvm",)),
+                             _guest(102, "pve4", 2, storages=("local-lvm", "nas")))
+    assert simulate_node_failure("pve4", nodes, guests)["local_disk_note"].startswith(
+        "If pve4 fails unexpectedly, its 2 guests don't restart elsewhere")
+    # Storage entries without the shared flag fall back to the type (lvmthin = local).
+    for n in nodes.values():
+        n["storage"] = [{"storage": "local-lvm", "type": "lvmthin"}, {"storage": "nas", "type": "nfs"}]
+    assert simulate_node_failure("pve4", nodes, guests)["local_storage_guests"] == 2
+    only_nas = {"103": _guest(103, "pve4", 1)}
+    assert simulate_node_failure("pve4", nodes, only_nas)["local_disk_note"] is None
 
 
 def test_passthrough_and_bind_mount_cant_restart_but_ignore_is_placed():
@@ -179,7 +200,7 @@ def test_all_nodes_summary():
         _guest(101, "pve3", 2), _guest(201, "pve4", 20), _guest(202, "pve4", 20), _guest(203, "pve4", 20),
         _guest(301, "pve5", 2, storages=("local-lvm",)),
     )
-    s = simulate_all_failures(nodes, guests)
+    s = simulate_all_failures(nodes, guests, storage_mode="strict")
     by = {r["node"]: r for r in s["nodes"]}
     assert by["pve3"]["status"] == "ok"
     assert by["pve4"]["status"] == "short" and by["pve4"]["doesnt_fit"] == 1
@@ -188,6 +209,9 @@ def test_all_nodes_summary():
     assert s["n1_ok"] is False
     assert s["verdict"].startswith("The cluster can lose pve3; losing pve4 leaves 1 guest")
     assert simulate_all_failures(*_cluster(_guest(101, "pve3", 2)))["verdict"] == "The cluster can lose any one node"
+    # Default capacity view: pve5's local-disk guest is placed, so pve5 can fail.
+    cap = {r["node"]: r for r in simulate_all_failures(nodes, guests)["nodes"]}
+    assert cap["pve5"]["status"] == "ok" and cap["pve5"]["local_disk_note"]
 
 
 class _FakeCache:
@@ -223,24 +247,24 @@ def test_route_without_cache():
     assert _client(None).get("/api/simulate/node-failure").status_code == 503
 
 
-def test_collector_records_disk_storages_and_hardware():
+def test_collector_records_passthrough_devices():
     import collector_api
     col = object.__new__(collector_api.ProxmoxAPICollector)
-    vm = col.detect_local_disks({
+    assert col.detect_passthrough_devices({
         "scsi0": "local-lvm-2t:vm-507-disk-0,size=32G",
-        "scsi10": "/dev/disk/by-id/wwn-0x5000,backup=0",
-        "ide2": "Images:iso/debian.iso,media=cdrom",
-        "hostpci0": "0000:00:02.0",
+        "hostpci0": "0000:00:02.0,pcie=1",
         "usb0": "spice",
-    })
-    assert vm["storages"] == ["local-lvm-2t"]
-    assert vm["hardware"] == ["hostpci0"]
-    assert vm["is_pinned"] is True
-    ct = col.detect_local_disks({
+        "usb1": "host=1234:5678",
+    }) == [{"key": "hostpci0", "device": "0000:00:02.0"}, {"key": "usb1", "device": "host=1234:5678"}]
+    assert col.detect_passthrough_devices({
         "rootfs": "local-lvm:vm-244-disk-0,size=32G",
-        "mp0": "/nfs/NVR/zentry,mp=/srv/nas,shared=1",
         "dev0": "/dev/dri/renderD128,gid=992",
-    })
-    assert ct["storages"] == ["local-lvm"]
-    assert ct["hardware"] == ["dev0"]
-    assert ct["is_pinned"] is False
+    }) == [{"key": "dev0", "device": "/dev/dri/renderD128"}]
+
+
+def test_passthrough_device_cant_restart():
+    g = _guest(101, "pve4", 2)
+    g["passthrough_devices"] = [{"key": "hostpci0", "device": "0000:00:02.0"}]
+    nodes, guests = _cluster(g)
+    r = simulate_node_failure("pve4", nodes, guests)
+    assert r["cant_restart"][0]["reason"] == "passthrough hardware (hostpci0)"

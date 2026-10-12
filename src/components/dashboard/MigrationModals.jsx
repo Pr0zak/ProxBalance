@@ -5,6 +5,8 @@ import {
 import { API_BASE } from '../../utils/constants.js';
 import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 import { haPlacementChecks } from './clusterMapHelpers.js';
+import { storageEntries, storageLine } from './recommendations/cardModel.js';
+import { fetchGuestMigrationOptions } from '../../api/client.js';
 
 // Proxmox HA rule blocks/warnings for moving guest `vmid` to `target`, from the
 // collector's per-guest verdicts. Renders nothing when no HA rule applies.
@@ -32,6 +34,54 @@ function HaRuleNotes({ data, vmid, target }) {
 const haBlocked = (data, vmid, target) =>
   haPlacementChecks(data?.guests?.[String(vmid)], target).some(c => c.level === 'block');
 
+// Target storage after the move, for every node-local storage that ends above
+// 80%. Uses `provided` (a recommendation's or Move-to option's target_storage)
+// when the caller has it, otherwise asks /api/guest/<vmid>/migration-options.
+// Renders nothing when all disks are on shared storage or data is missing.
+// Reports whether a disk won't fit through onFull so the caller can block.
+function TargetStorageNotes({ vmid, target, provided, onFull }) {
+  const [fetched, setFetched] = React.useState(null);
+  const hasProvided = Array.isArray(provided);
+  React.useEffect(() => {
+    if (hasProvided || vmid == null || !target) return undefined;
+    if (fetched && String(fetched.vmid) === String(vmid)) return undefined;
+    let cancelled = false;
+    fetchGuestMigrationOptions(vmid, {}).then((res) => {
+      if (!cancelled && res && !res.error && Array.isArray(res.options)) setFetched({ vmid, options: res.options });
+    });
+    return () => { cancelled = true; };
+  }, [vmid, target, hasProvided]);
+
+  let entries = [];
+  if (hasProvided) entries = provided;
+  else if (fetched && String(fetched.vmid) === String(vmid)) {
+    entries = (fetched.options.find(o => o.node === target) || {}).target_storage || [];
+  }
+  const shown = storageEntries({ target_storage: entries }, 'warning');
+  const full = shown.some(e => e.level === 'wont_fit');
+  React.useEffect(() => { if (onFull) onFull(full); }, [full]);
+  React.useEffect(() => () => { if (onFull) onFull(false); }, []);
+  if (!shown.length) return null;
+  return (
+    <ul className="mt-3 space-y-1 text-xs" aria-label="Target storage after the move">
+      {shown.map((e, i) => {
+        const severe = e.level === 'wont_fit' || e.level === 'critical';
+        return (
+          <li
+            key={i}
+            className={`flex items-start gap-1.5 ${severe
+              ? 'text-red-600 dark:text-red-400 font-medium'
+              : 'text-amber-700 dark:text-amber-300'}`}
+          >
+            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+            <span>{e.level === 'wont_fit' ? 'Blocked: ' : ''}Target storage: {storageLine(e)}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function MigrationModals({
   showMigrationDialog, setShowMigrationDialog,
   selectedGuest,
@@ -53,6 +103,9 @@ export default function MigrationModals({
   cancellingMigration, setCancellingMigration,
   fetchAutomationStatus
 }) {
+  // Set by TargetStorageNotes when a disk won't fit on the chosen target.
+  const [dialogStorageFull, setDialogStorageFull] = React.useState(false);
+  const [confirmStorageFull, setConfirmStorageFull] = React.useState(false);
   return (<>
     {/* Migration Dialog Modal */}
     {showMigrationDialog && selectedGuest && canMigrate && (
@@ -102,6 +155,7 @@ export default function MigrationModals({
                 })}
             </select>
             <HaRuleNotes data={data} vmid={selectedGuest.vmid} target={migrationTarget} />
+            <TargetStorageNotes vmid={selectedGuest.vmid} target={migrationTarget} onFull={setDialogStorageFull} />
           </div>
 
           <div className="flex justify-end gap-3">
@@ -124,7 +178,8 @@ export default function MigrationModals({
                   setShowMigrationDialog(false);
                 }
               }}
-              disabled={!migrationTarget || haBlocked(data, selectedGuest.vmid, migrationTarget)}
+              disabled={!migrationTarget || haBlocked(data, selectedGuest.vmid, migrationTarget) || dialogStorageFull}
+              title={dialogStorageFull ? "The guest's disks won't fit on the target storage" : undefined}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
             >
               <MoveRight size={14} /> Migrate
@@ -419,6 +474,12 @@ export default function MigrationModals({
             )}
 
             <HaRuleNotes data={data} vmid={confirmMigration.vmid} target={confirmMigration.target_node} />
+            <TargetStorageNotes
+              vmid={confirmMigration.vmid}
+              target={confirmMigration.target_node}
+              provided={confirmMigration.target_storage}
+              onFull={setConfirmStorageFull}
+            />
           </div>
 
           <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-pb-border dark:border-slate-700">
@@ -430,8 +491,9 @@ export default function MigrationModals({
             </button>
             <button
               onClick={confirmAndMigrate}
-              disabled={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node)}
-              title={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node) ? 'A Proxmox HA rule forbids this move' : undefined}
+              disabled={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node) || confirmStorageFull}
+              title={haBlocked(data, confirmMigration.vmid, confirmMigration.target_node) ? 'A Proxmox HA rule forbids this move'
+                : confirmStorageFull ? "The guest's disks won't fit on the target storage" : undefined}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Play size={16} />

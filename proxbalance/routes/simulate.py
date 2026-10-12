@@ -31,8 +31,9 @@ def simulate_failure():
 
     Query args:
         node: Node to fail. Omitted: N-1 summary across all online nodes.
-        storage: ``strict`` (default; guests on node-local storage can't
-            restart elsewhere) or ``capacity`` (assume they can be restored).
+        storage: ``capacity`` (default; pure capacity, node-local disks
+            assumed restored) or ``strict`` (unplanned failure: guests on
+            node-local storage can't restart elsewhere).
         mem_ceiling: Highest memory % a survivor may reach (default 95).
         tight_pct: Survivor memory % above which the result is "tight" (85).
     """
@@ -42,7 +43,7 @@ def simulate_failure():
     nodes = data.get("nodes", {})
     guests = data.get("guests", {})
     ha_rules = data.get("ha_rules")
-    storage = request.args.get("storage", "strict")
+    storage = request.args.get("storage", "capacity")
     if storage not in STORAGE_MODES:
         return api_error(f"storage must be one of: {', '.join(STORAGE_MODES)}", 400)
     kwargs = {

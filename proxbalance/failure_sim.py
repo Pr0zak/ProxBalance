@@ -9,12 +9,14 @@ Rules, in order:
 1. Only running guests on the failed node are displaced.
 2. A guest that is tied to the failed node can't restart elsewhere: passthrough
    disks or other passthrough hardware, unshared bind mounts (the host folder
-   lives on that node) and — in ``strict`` storage mode — disks on node-local
-   storage (LVM-thin, local directory, ...), which die with the node unless a
+   lives on that node) and — in ``strict`` ("unplanned failure") mode — disks
+   on node-local storage (LVM-thin, local directory, ...), which die with the node unless a
    backup or replica is restored somewhere else. The ``ignore`` tag is not a
    blocker: it stops ProxBalance from moving a guest, not the guest from
    starting elsewhere after a failure, so ignored guests are placed (and
-   flagged) like any other.
+   flagged) like any other. The default ``capacity`` mode assumes node-local
+   disks are restored elsewhere and only asks whether the survivors have room;
+   ``local_disk_note`` still says which guests would not come back on their own.
 3. The remaining guests are placed largest memory first, each onto the
    surviving online node with the most free memory that can take it while
    staying at or under the memory ceiling (95 % by default). Tag anti-affinity
@@ -33,6 +35,7 @@ now (its memory setting is only a cgroup ceiling).
 from typing import Any, Dict, List, Optional, Tuple
 
 from proxbalance.ha_rules import check_ha_placement
+from proxbalance.storage_projection import is_shared_storage
 
 DEFAULT_MEM_CEILING = 95.0   # % of a survivor's RAM a placement may reach
 DEFAULT_TIGHT_PCT = 85.0     # a survivor ending above this makes the result "tight"
@@ -71,16 +74,21 @@ def guest_cpu_impact(guest: Dict[str, Any], node: Dict[str, Any]) -> float:
 
 
 def node_local_storages(node: Dict[str, Any]) -> set:
-    """Storage IDs on *node* that the collector marked as not shared.
+    """Storage IDs on *node* that are not shared across nodes.
 
-    Storage whose ``shared`` flag is unknown (older collector) is left out, so
-    the strict storage rule only fires on data that says so.
+    Uses the collector's ``shared`` flag, falling back to the storage type for
+    entries that predate it (same rule as the target storage projection).
     """
     out = set()
     for s in node.get("storage", []) or []:
-        if isinstance(s, dict) and s.get("shared") is False and s.get("storage"):
+        if isinstance(s, dict) and s.get("storage") and not is_shared_storage(s):
             out.add(s["storage"])
     return out
+
+
+def guest_storages(guest: Dict[str, Any]) -> set:
+    """Storage IDs the guest's disks live on, from the collector's ``disks`` list."""
+    return {d["storage"] for d in guest.get("disks") or [] if isinstance(d, dict) and d.get("storage")}
 
 
 def _paths(items: List[Dict[str, Any]], key: str) -> str:
@@ -88,7 +96,7 @@ def _paths(items: List[Dict[str, Any]], key: str) -> str:
     return ", ".join(vals[:2]) + ("…" if len(vals) > 2 else "")
 
 
-def restart_blocker(guest: Dict[str, Any], local_storages: set, storage_mode: str = "strict") -> Optional[str]:
+def restart_blocker(guest: Dict[str, Any], local_storages: set, storage_mode: str = "capacity") -> Optional[str]:
     """Why *guest* can't start on another node, or None if it can.
 
     Args:
@@ -101,7 +109,7 @@ def restart_blocker(guest: Dict[str, Any], local_storages: set, storage_mode: st
     if ld.get("is_pinned") or ld.get("has_passthrough"):
         devices = _paths(ld.get("passthrough_disks") or [], "device")
         return f"passthrough disk{f' {devices}' if devices else ''}"
-    hardware = ld.get("hardware") or []
+    hardware = [d.get("key") for d in guest.get("passthrough_devices") or [] if isinstance(d, dict) and d.get("key")]
     if hardware:
         return f"passthrough hardware ({', '.join(hardware[:3])})"
     mp = guest.get("mount_points") or {}
@@ -110,7 +118,7 @@ def restart_blocker(guest: Dict[str, Any], local_storages: set, storage_mode: st
         paths = _paths(unshared, "source")
         return f"unshared bind mount{f' {paths}' if paths else ''} on its host"
     if storage_mode == "strict":
-        local = sorted(set(ld.get("storages") or []) & local_storages)
+        local = sorted(guest_storages(guest) & local_storages)
         if local:
             return f"disks on node-local storage ({', '.join(local)})"
     return None
@@ -179,7 +187,7 @@ def simulate_node_failure(
     ha_rules: Optional[Dict[str, Any]] = None,
     mem_ceiling: float = DEFAULT_MEM_CEILING,
     tight_pct: float = DEFAULT_TIGHT_PCT,
-    storage_mode: str = "strict",
+    storage_mode: str = "capacity",
 ) -> Dict[str, Any]:
     """Simulate *failed_node* going down and restarting its guests elsewhere.
 
@@ -190,9 +198,10 @@ def simulate_node_failure(
         ha_rules: Compact HA snapshot (``cluster_cache['ha_rules']``) or None.
         mem_ceiling: Highest memory % a survivor may reach.
         tight_pct: A survivor ending above this % makes the result "tight".
-        storage_mode: ``strict`` (node-local disks can't restart elsewhere)
-            or ``capacity`` (assume they can be restored; they are placed and
-            flagged with ``local_storage``).
+        storage_mode: ``capacity`` (default: could the other nodes hold its
+            guests? node-local disks are assumed restored, and those
+            placements are flagged with ``local_storage``) or ``strict``
+            (unplanned failure: node-local disks can't restart elsewhere).
 
     Returns:
         Dict with ``status`` (ok | tight | stranded | short | offline),
@@ -206,13 +215,13 @@ def simulate_node_failure(
     if failed_node not in nodes:
         raise KeyError(failed_node)
     if storage_mode not in STORAGE_MODES:
-        storage_mode = "strict"
+        storage_mode = "capacity"
     guests = guests or {}
     failed = nodes[failed_node]
     res: Dict[str, Any] = {
         "node": failed_node, "status": "ok", "verdict": "",
         "nodes": [], "placements": [], "cant_restart": [], "doesnt_fit": [],
-        "busiest": None, "running_guests": 0, "local_storage_guests": 0,
+        "busiest": None, "running_guests": 0, "local_storage_guests": 0, "local_disk_note": None,
         "mem_ceiling": mem_ceiling, "tight_pct": tight_pct, "storage_mode": storage_mode,
     }
     if failed.get("status", "online") != "online":
@@ -245,7 +254,7 @@ def simulate_node_failure(
     movable: List[Tuple[str, Dict[str, Any], float]] = []
     for vmid, g in displaced:
         mem = round(guest_mem_demand_gb(g), 2)
-        on_local = sorted(set((g.get("local_disks") or {}).get("storages") or []) & local)
+        on_local = sorted(guest_storages(g) & local)
         if on_local:
             res["local_storage_guests"] += 1
         reason = restart_blocker(g, local, storage_mode)
@@ -287,7 +296,7 @@ def simulate_node_failure(
             st["added"] += 1
             st["residents"].append(g)
             pending[vmid] = chosen
-            on_local = sorted(set((g.get("local_disks") or {}).get("storages") or []) & local)
+            on_local = sorted(guest_storages(g) & local)
             res["placements"].append({
                 **entry, "from": failed_node, "to": chosen,
                 "ha_managed": bool(g.get("ha_managed")),
@@ -325,7 +334,23 @@ def simulate_node_failure(
     elif any(n["mem_after"] > tight_pct for n in res["nodes"] if n["added"]):
         res["status"] = "tight"
     res["verdict"] = _verdict(failed_node, res)
+    res["local_disk_note"] = _local_disk_note(failed_node, res)
     return res
+
+
+def _local_disk_note(failed: str, res: Dict[str, Any]) -> Optional[str]:
+    """Plain line for guests whose disks die with the node (shown in either mode)."""
+    n = res["local_storage_guests"]
+    if not n:
+        return None
+    verb = "doesn't" if n == 1 else "don't"
+    if n == res["running_guests"]:
+        who = "its guest" if n == 1 else f"its {n} guests"
+    else:
+        who = f"{n} of its {res['running_guests']} guests"
+    disks = "its disks are" if n == 1 else "their disks are"
+    return (f"If {failed} fails unexpectedly, {who} {verb} restart elsewhere: "
+            f"{disks} node-local (restore from backup)")
 
 
 def simulate_all_failures(
@@ -334,7 +359,7 @@ def simulate_all_failures(
     ha_rules: Optional[Dict[str, Any]] = None,
     mem_ceiling: float = DEFAULT_MEM_CEILING,
     tight_pct: float = DEFAULT_TIGHT_PCT,
-    storage_mode: str = "strict",
+    storage_mode: str = "capacity",
 ) -> Dict[str, Any]:
     """Run :func:`simulate_node_failure` for every online node (N-1 status).
 
@@ -363,6 +388,7 @@ def simulate_all_failures(
             "doesnt_fit_gb": round(sum(g["mem_gb"] for g in r["doesnt_fit"]), 2),
             "busiest": r["busiest"],
             "local_storage_guests": r["local_storage_guests"],
+            "local_disk_note": r["local_disk_note"],
         })
     online = [r for r in rows if r["status"] != "offline"]
     can_lose = [r["node"] for r in online if r["status"] in ("ok", "tight")]

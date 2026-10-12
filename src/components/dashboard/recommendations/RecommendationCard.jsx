@@ -8,10 +8,10 @@ import EngineDetail from './EngineDetail.jsx';
 import { seenCountDetail } from './seenCount.js';
 import {
   autoStatus, moveBars, reasonSentence, whyBullets, riskLabel, seenSummary,
-  guestSize, haWarnings, fmtPct,
+  guestSize, haWarnings, fmtPct, storageWarnings,
 } from './cardModel.js';
 
-const STATUS_ICON = { ready: CheckCircle, waiting: Clock, paused: Pause, blocked: AlertTriangle, manual: MinusCircle };
+const STATUS_ICON = { ready: CheckCircle, waiting: Clock, paused: Pause, blocked: AlertTriangle, storage: AlertTriangle, manual: MinusCircle };
 
 /**
  * The one status chip: auto-eligibility and the seen count together. Hover
@@ -137,6 +137,7 @@ export default function RecommendationCard({
     hasConflict && `Several suggestions target ${rec.conflict_target || rec.target_node}; together they may push it over the limits.`,
     inflow && `Inflow cap: automation sends at most ${inflow.cap} migration${inflow.cap === 1 ? '' : 's'} into ${inflow.target} per run.`,
     ...ha.map(w => `HA rule: ${w}`),
+    ...storageWarnings(rec),
     changedTarget && `Target changed from ${changedTarget.old_target} to ${changedTarget.new_target} since the last generation.`,
     rec.bind_mount_warning && rec.bind_mount_warning.replace(/^[⚠ℹ]️?\s*/, ''),
   ].filter(Boolean);
