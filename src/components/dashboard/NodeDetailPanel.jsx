@@ -269,8 +269,8 @@ export default function NodeDetailPanel({
           <span className={`font-medium ${online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             ● <span className="capitalize">{node.status || 'unknown'}</span>
           </span>
-          {fmtUptime(node.uptime) && <> · up {fmtUptime(node.uptime)}</>}
-          {' · '}{runningCount} of {nodeGuests.length} running
+          {fmtUptime(node.uptime) && <> · <span className="whitespace-nowrap">up {fmtUptime(node.uptime)}</span></>}
+          {' · '}<span className="whitespace-nowrap">{runningCount} of {nodeGuests.length} running</span>
         </p>
       </div>
       {score && (
