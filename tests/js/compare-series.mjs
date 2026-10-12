@@ -1,5 +1,5 @@
 // Checks the one-chart node comparison helpers (compareSeries.js): colours,
-// short-gap filling, time-axis alignment, axis ceiling and the spread line.
+// edge filling, per-period bucket averages, axis ceiling and the spread line.
 // Run: node tests/js/compare-series.mjs
 import { build } from 'esbuild';
 const out = await build({ stdin: { contents: "export * from './src/components/dashboard/compareSeries.js';", resolveDir: process.cwd(), loader: 'js' },
@@ -21,29 +21,43 @@ eq('first sorted node gets the first colour', c1.pve3, '#3b82f6');
 const many = S.nodeColors(Array.from({ length: 9 }, (_, i) => `n${i}`));
 eq('colours cycle past the palette', many.n8, many.n0);
 
-// Gap filling.
-eq('trailing lag fills forward', S.fillShortGaps([1, 2, 3, null]), [1, 2, 3, 3]);
-eq('leading lag fills backward', S.fillShortGaps([null, null, 5, 6]), [5, 5, 5, 6]);
-eq('short interior gap fills forward', S.fillShortGaps([1, null, null, 4]), [1, 1, 1, 4]);
-eq('long gap (outage) stays a gap', S.fillShortGaps([1, null, null, null, null, 6]), [1, null, null, null, null, 6]);
-eq('maxGap is respected', S.fillShortGaps([1, null, null, 4], 1), [1, null, null, 4]);
-eq('all-missing stays missing', S.fillShortGaps([null, null]), [null, null]);
-eq('zero is a value, not a gap', S.fillShortGaps([0, null, 2]), [0, 0, 2]);
+// Edge filling: only a missing first/last value, never an inner gap.
+eq('trailing lag fills forward', S.fillEdges([1, 2, 3, null]), [1, 2, 3, 3]);
+eq('leading lag fills backward', S.fillEdges([null, 5, 6]), [5, 5, 6]);
+eq('inner gap stays a gap', S.fillEdges([1, null, 4]), [1, null, 4]);
+eq('long trailing gap (offline) stays', S.fillEdges([1, 2, null, null]), [1, 2, null, null]);
+eq('all-missing stays missing', S.fillEdges([null, null]), [null, null]);
+eq('zero is a value, not a gap', S.fillEdges([0, null]), [0, 0]);
 
-// Alignment: node B lags one step at the end and has a 5-sample outage.
-const pt = (time, v) => ({ time, cpu: { avg: v, min: v - 1, max: v + 1 }, mem: { avg: v, min: v, max: v }, iowait: { avg: null, min: null, max: null } });
-const A = Array.from({ length: 12 }, (_, i) => pt(1000 + i * 60, 10 + i));
-const B = A.slice(0, 11).filter((_, i) => i < 2 || i > 6).map(p => pt(p.time + 5, 50));
-const al = S.alignSeries([{ name: 'a', pts: A }, { name: 'b', pts: B }], 'cpu');
-eq('axis comes from the fullest node', al.times.length, 12);
-eq('lagging node filled at the end, outage kept', al.lines[1].values,
-  [50, 50, null, null, null, null, null, 50, 50, 50, 50, 50]);
-eq('min band aligned too', al.lines[0].min.slice(0, 3), [9, 10, 11]);
-eq('missing metric stays null', S.alignSeries([{ name: 'a', pts: A }], 'iowait').lines[0].values.every(v => v === null), true);
-eq('nothing to draw -> null', S.alignSeries([{ name: 'a', pts: [] }], 'cpu'), null);
+// Averaging windows and labels.
+eq('1d uses 15-min buckets', S.COMPARE_BUCKETS['1d'], 900);
+eq('labels', ['1h', '1d', '7d', '30d', '1yr'].map(p => S.averageLabel(S.COMPARE_BUCKETS[p])),
+  ['5-min averages', '15-min averages', '1-hour averages', '4-hour averages', '2-day averages']);
+
+// Bucketing at 1h (5-min buckets) over per-minute rows whose value is the minute index.
+// Node b is offline for minutes 10-24 (three whole buckets) and its last sample is
+// minute 54, one bucket behind node a (minute 59).
+const H1 = { id: '1h', ms: 3600 * 1000, rrd: 'hour' };
+const T0 = 1800000000; // multiple of 300
+const rows = (mins) => mins.map(m => ({ time: T0 + m * 60, cpu: m, mem: 50, iowait: null }));
+const all = Array.from({ length: 60 }, (_, m) => m);
+const bs = S.bucketSeries([
+  { name: 'a', trendData: { hour: rows(all) } },
+  { name: 'b', trendData: { hour: rows(all.filter(m => (m < 10 || m > 24) && m <= 54)) } },
+  { name: 'c', trendData: {} },
+], H1, 'cpu');
+eq('one shared axis of whole buckets', bs.times.length === 12 && bs.times[0] === T0 && bs.times[1] - bs.times[0] === 300, true);
+eq('bucket averages', bs.lines[0].values, [2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57]);
+eq('raw range kept for the band', [bs.lines[0].min[1], bs.lines[0].max[1]], [5, 9]);
+eq('outage stays a gap, lagging end filled', bs.lines[1].values, [2, 7, null, null, null, 27, 32, 37, 42, 47, 52, 52]);
+eq('node without data is left out', bs.lines.map(l => l.name), ['a', 'b']);
+eq('label carried', bs.label, '5-min averages');
+eq('metric with no samples -> null', S.bucketSeries([{ name: 'a', trendData: { hour: rows(all) } }], H1, 'iowait'), null);
+eq('falls back to day rows', S.bucketSeries([{ name: 'a', trendData: { day: rows(all) } }], H1, 'cpu').lines[0].values[0], 2);
+eq('nothing to draw -> null', S.bucketSeries([{ name: 'a', trendData: { hour: [] } }], H1, 'cpu'), null);
 
 // Axis ceiling.
-eq('cpu axis is 0-100', S.axisMax('cpu', al.lines, 80), 100);
+eq('cpu axis is 0-100', S.axisMax('cpu', bs.lines, 80), 100);
 eq('iowait scales to data', S.axisMax('iowait', [{ values: [1, 3.2, null] }], undefined), 5);
 eq('iowait includes threshold', S.axisMax('iowait', [{ values: [1, 2] }], 30), 35);
 eq('iowait with no data has a floor', S.axisMax('iowait', [{ values: [null] }], undefined), 10);

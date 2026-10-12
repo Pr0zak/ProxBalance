@@ -1,9 +1,9 @@
 import { TAP_TARGET } from '../../utils/designTokens.js';
 import useIsMobile from '../../utils/useIsMobile.js';
 import {
-  buildNodeSeries, timeLabel, migrationAnnotations, chartTheme, withAlpha, useIsDark,
+  periodConfig, timeLabel, migrationAnnotations, chartTheme, withAlpha, useIsDark,
 } from './nodeSeries.js';
-import { COMPARE_METRICS, alignSeries, axisMax, spreadNow, spreadText } from './compareSeries.js';
+import { COMPARE_METRICS, bucketSeries, axisMax, spreadNow, spreadText } from './compareSeries.js';
 
 const { useRef, useEffect, useMemo, useState } = React;
 
@@ -12,16 +12,20 @@ const METRIC_KEY = 'nodeCompareMetric';
 /**
  * Every node on one chart, one metric at a time (CPU / Memory / IO wait), so an
  * uneven cluster shows up as lines that sit apart.
- *  - Same samples and period as the per-node charts (buildNodeSeries). A node
- *    that lags by a sample or two is filled so its line doesn't break; a longer
- *    stretch with no samples (node offline) stays a gap.
+ *  - Same RRD rows and period as the per-node charts, averaged per period
+ *    (5-min at 1h/6h, 15-min at 1d, 1-hour at 7d, the per-node aggregates
+ *    from 30d up) so four lines stay readable; see compareSeries.bucketSeries.
+ *    A node whose newest sample lags by a bucket is filled at the end; a bucket
+ *    with no samples (node offline) stays a gap.
  *  - Legend under the chart: each item shows or hides its node; hovering it
  *    highlights the line. Tapping a line highlights that node (tap again to
  *    clear) and, with Min/Max on, draws its min/max band.
  *  - The recommendation threshold for the metric is one thin dashed line,
  *    labelled on the line itself.
  *  - One line of text under the chart: the spread between the lowest and
- *    highest node right now.
+ *    highest node right now, and which average the lines use.
+ *  - `toolbarExtra` sits at the end of the metric row and `toolbarPanel` right
+ *    under it (the parent's phone-only Options button and its panel).
  *
  * `nodes` is [{ name, color, trendData }], memoized by the parent.
  * `chartReady` follows NodeChart: Chart.js and the annotation plugin are loaded.
@@ -29,6 +33,7 @@ const METRIC_KEY = 'nodeCompareMetric';
 export default function NodeCompareChart({
   nodes, thresholds, clusterSpread, chartPeriod, chartReady, migrationHistory,
   showMarkers = true, showThresholds = true, showEnvelope = false,
+  toolbarExtra = null, toolbarPanel = null,
 }) {
   const [metric, setMetricState] = useState(() => {
     try { const v = localStorage.getItem(METRIC_KEY); if (COMPARE_METRICS.some(m => m.key === v)) return v; } catch {}
@@ -48,14 +53,9 @@ export default function NodeCompareChart({
   }, [names]);
 
   const aligned = useMemo(() => {
-    const series = nodes.map(n => {
-      const s = buildNodeSeries(n.trendData, chartPeriod);
-      return s ? { name: n.name, pts: s.pts, meta: s } : null;
-    }).filter(Boolean);
-    const a = alignSeries(series, metric);
-    if (!a) return null;
-    const ref = series.reduce((x, y) => (y.pts.length > x.pts.length ? y : x)).meta;
-    return { ...a, latestTime: ref.latestTime, periodSeconds: ref.periodSeconds, multiDay: ref.multiDay, step: ref.step };
+    const cfg = periodConfig(chartPeriod);
+    const a = bucketSeries(nodes, cfg, metric);
+    return a ? { ...a, multiDay: cfg.ms > 2 * 86400 * 1000 } : null;
   }, [nodes, chartPeriod, metric]);
 
   const colorOf = useMemo(() => Object.fromEntries(nodes.map(n => [n.name, n.color])), [nodes]);
@@ -80,7 +80,9 @@ export default function NodeCompareChart({
             </button>
           ))}
         </div>
+        {toolbarExtra}
       </div>
+      {toolbarPanel}
 
       {aligned ? (
         <CompareCanvas
@@ -130,7 +132,7 @@ export default function NodeCompareChart({
 
       {aligned && (
         <p className="mt-1.5 text-sm text-pb-text2 dark:text-gray-400 tabular-nums">
-          {spreadText(spread)}
+          {spreadText(spread)}<span className="text-xs text-pb-text2 dark:text-gray-500 whitespace-nowrap"> · {aligned.label}</span>
           {showEnvelope && !highlight && <span className="block sm:inline sm:ml-3 text-xs text-pb-text2 dark:text-gray-500">Tap a line to see its min/max band</span>}
         </p>
       )}
@@ -178,7 +180,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
         ...lineStyle(l.name, highlight),
         tension: 0.2, pointRadius: 0, pointHoverRadius: 3, fill: false, spanGaps: false, hidden: isHidden,
       });
-      if (highlight === l.name && showEnvelope && aligned.step > 1 && !isHidden) {
+      if (highlight === l.name && showEnvelope && !isHidden) {
         datasets.push({ label: '__band_max', data: l.max, borderColor: 'transparent', backgroundColor: withAlpha(colorOf[l.name], 0.2), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, order: 2 });
         datasets.push({ label: '__band_min', data: l.min, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, order: 2 });
       }

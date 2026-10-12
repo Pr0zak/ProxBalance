@@ -1,7 +1,7 @@
 /**
  * Pure helpers for the "One chart" node comparison (NodeCompareChart): node
- * colours, aligning every node's samples onto one time axis with short-gap
- * filling, the y-axis ceiling, and the "Spread now" line under the chart.
+ * colours, averaging every node's samples into shared time buckets, the y-axis
+ * ceiling, and the "Spread now" line under the chart.
  * No React or Chart.js here, so tests/js/compare-series.mjs can run them in node.
  */
 import { NODE_COLORS } from './nodeSeries.js';
@@ -23,68 +23,94 @@ export function nodeColors(names) {
   return out;
 }
 
-/** Nearest point to time t in a time-sorted list, or null if none within tol seconds. */
-export function sampleAt(pts, t, tol) {
-  if (!pts || !pts.length) return null;
-  let lo = 0, hi = pts.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (pts[mid].time < t) lo = mid + 1; else hi = mid;
-  }
-  let best = pts[lo];
-  if (lo > 0 && Math.abs(pts[lo - 1].time - t) < Math.abs(best.time - t)) best = pts[lo - 1];
-  return Math.abs(best.time - t) <= tol ? best : null;
+/**
+ * Averaging window per period, in seconds. Four raw per-minute lines overlap
+ * into noise, so each node's line is averaged per clock-aligned bucket. From 7d
+ * up the buckets equal the aggregates the per-node charts already draw
+ * (RRD step x sample window), so those read the same as before.
+ */
+export const COMPARE_BUCKETS = {
+  '1h': 300, '6h': 300, '1d': 900, '7d': 3600,
+  '30d': 4 * 3600, '90d': 12 * 3600, '180d': 86400, '1yr': 2 * 86400,
+};
+
+/** "15-min averages", "1-hour averages", "2-day averages". */
+export function averageLabel(bucketSeconds) {
+  const s = bucketSeconds;
+  if (s < 3600) return `${Math.round(s / 60)}-min averages`;
+  if (s < 86400) return `${Math.round(s / 3600)}-hour averages`;
+  return `${Math.round(s / 86400)}-day averages`;
 }
 
 /**
- * Fill runs of up to `maxGap` missing values so a node whose samples lag the
- * others by a step or two doesn't split its own line: fill forward from the last
- * value, or backward from the next one when the run starts the series. Longer
- * runs (a node that was really offline) stay null and draw as a gap. A series
- * with no values at all stays all-null.
+ * Fill a missing first or last value (up to `maxEdge` in a row) from its
+ * neighbour, so a node whose newest sample lags the others by a bucket doesn't
+ * end its line early. Gaps inside the series are never filled: an empty bucket
+ * means no samples at all for that whole stretch (node offline).
  */
-export function fillShortGaps(values, maxGap = 3) {
+export function fillEdges(values, maxEdge = 1) {
   const out = values.slice();
-  let i = 0;
-  while (i < out.length) {
-    if (out[i] != null) { i++; continue; }
-    let j = i;
-    while (j < out.length && out[j] == null) j++;
-    const len = j - i;
-    const prev = i > 0 ? out[i - 1] : null;
-    const next = j < out.length ? out[j] : null;
-    const fill = prev != null ? prev : next;
-    if (len <= maxGap && fill != null) for (let k = i; k < j; k++) out[k] = fill;
-    i = j;
-  }
+  const n = out.length;
+  const first = out.findIndex(v => v != null);
+  if (first < 0) return out;
+  let last = n - 1;
+  while (out[last] == null) last--;
+  if (first <= maxEdge) for (let i = 0; i < first; i++) out[i] = out[first];
+  if (n - 1 - last <= maxEdge) for (let i = last + 1; i < n; i++) out[i] = out[last];
   return out;
 }
 
 const round1 = (v) => (typeof v === 'number' && isFinite(v) ? +v.toFixed(1) : null);
+const isNum = (v) => typeof v === 'number' && isFinite(v);
+
+/** The RRD rows a node's chart uses for this period (same choice as buildNodeSeries). */
+const rawRows = (trendData, cfg) => {
+  if (!trendData || typeof trendData !== 'object') return [];
+  const rows = trendData[cfg.rrd] || [];
+  return rows.length ? rows : (trendData.day || []);
+};
 
 /**
- * Put every node's series on one time axis for one metric.
+ * Every node on one time axis for one metric, averaged per bucket.
  *
- * `series` is [{ name, pts }] where pts come from buildNodeSeries (each metric
- * is { avg, min, max }). The axis is the node with the most samples (latest
- * sample wins a tie); other nodes snap to it within half a step, then short gaps
- * are filled. Returns null when nothing can be drawn, else
- * { times, lines: [{ name, values, min, max }] } (min/max for the envelope band).
+ * `nodes` is [{ name, trendData }] (raw RRD rows: { time, cpu, mem, iowait });
+ * `cfg` is a CHART_PERIODS entry. Buckets are clock-aligned
+ * (floor(time / bucket)) and cover the period, starting at the first whole
+ * bucket, up to the newest sample of any node, so every node shares one axis. A bucket with no samples for a node is
+ * null (a gap; nothing is averaged across it); only a missing first or last
+ * bucket is filled (fillEdges).
+ *
+ * Returns null when nothing can be drawn, else
+ * { times, bucket, label, latestTime, periodSeconds, lines: [{ name, values, min, max }] }
+ * with times in unix seconds, values the bucket averages and min/max the raw
+ * range inside each bucket.
  */
-export function alignSeries(series, metricKey, maxGap = 3) {
-  const usable = (series || []).filter(s => s && s.pts && s.pts.length);
-  if (!usable.length) return null;
-  const lastT = (s) => s.pts[s.pts.length - 1].time;
-  const ref = usable.reduce((a, b) => (
-    b.pts.length > a.pts.length || (b.pts.length === a.pts.length && lastT(b) > lastT(a)) ? b : a));
-  const times = ref.pts.map(p => p.time);
-  const tol = times.length > 1 ? (times[times.length - 1] - times[0]) / (times.length - 1) / 2 : Infinity;
-  const lines = usable.map(s => {
-    const samples = times.map(t => sampleAt(s.pts, t, tol));
-    const pick = (f) => fillShortGaps(samples.map(p => (p && p[metricKey] ? round1(p[metricKey][f]) : null)), maxGap);
-    return { name: s.name, values: pick('avg'), min: pick('min'), max: pick('max') };
-  });
-  return { times, lines };
+export function bucketSeries(nodes, cfg, metricKey) {
+  const bucket = COMPARE_BUCKETS[cfg.id] || 900;
+  const periodSeconds = cfg.ms / 1000;
+  const withRows = (nodes || []).map(n => ({ name: n.name, rows: rawRows(n.trendData, cfg) })).filter(n => n.rows.length);
+  if (!withRows.length) return null;
+  const latestTime = Math.max(...withRows.map(n => n.rows.reduce((m, p) => Math.max(m, p.time), 0)));
+  const from = latestTime - periodSeconds;
+  const startB = Math.ceil(from / bucket);
+  const count = Math.floor(latestTime / bucket) - startB + 1;
+  const times = Array.from({ length: count }, (_, i) => (startB + i) * bucket);
+  const lines = withRows.map(n => {
+    const sum = new Array(count).fill(0), cnt = new Array(count).fill(0);
+    const lo = new Array(count).fill(null), hi = new Array(count).fill(null);
+    n.rows.forEach(p => {
+      const v = p[metricKey];
+      if (!isNum(v) || p.time < startB * bucket || p.time > latestTime) return;
+      const i = Math.floor(p.time / bucket) - startB;
+      sum[i] += v; cnt[i] += 1;
+      lo[i] = lo[i] == null ? v : Math.min(lo[i], v);
+      hi[i] = hi[i] == null ? v : Math.max(hi[i], v);
+    });
+    const avg = sum.map((s, i) => (cnt[i] ? round1(s / cnt[i]) : null));
+    return { name: n.name, values: fillEdges(avg), min: fillEdges(lo.map(round1)), max: fillEdges(hi.map(round1)) };
+  }).filter(l => l.values.some(v => v != null));
+  if (!lines.length) return null;
+  return { times, bucket, label: averageLabel(bucket), latestTime, periodSeconds, lines };
 }
 
 /**

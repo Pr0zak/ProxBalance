@@ -2,6 +2,7 @@ import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from 
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
 import NodeCompareChart from './NodeCompareChart.jsx';
+import { usePhoneOptions, PhoneOptionsButton, PhoneOptionsPanel } from './PhoneOptions.jsx';
 import { RESOURCE_METRICS, hasTrendData, useChartPeriod, CHART_PERIODS } from './nodeSeries.js';
 import { nodeColors } from './compareSeries.js';
 
@@ -108,6 +109,7 @@ export default function NodeStatusSection({
   const [showEnvelope, setShowEnvelope] = useState(() => lsBool('nodeChartEnvelope', false));
   const overlayToggle = (key, val, setter) => { setter(val); try { localStorage.setItem(key, String(val)); } catch {} };
   // One chart with every node (default) or one chart per node (persisted).
+  const [optsOpen, toggleOpts] = usePhoneOptions('nodeCharts');
   const [view, setViewState] = useState(() => { try { return localStorage.getItem(VIEW_KEY) === 'node' ? 'node' : 'one'; } catch { return 'one'; } });
   const setView = (id) => { setViewState(id); try { localStorage.setItem(VIEW_KEY, id); } catch {} };
   // Colors follow the sorted node names, matching the Cluster Health chart.
@@ -129,9 +131,90 @@ export default function NodeStatusSection({
   const Wrapper = embedded ? React.Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: `${GLASS_CARD} overflow-hidden` };
   const isCollapsed = embedded ? false : collapsedSections.nodeStatus;
+  // Chart controls: inline from sm up; behind the Options button on phones.
+  const controlGroups = (
+    <>
+      <div className="flex items-center gap-2">
+        <div role="group" aria-label="Chart layout" className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+          {VIEW_MODES.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              aria-pressed={view === m.id}
+              onClick={() => setView(m.id)}
+              title={m.title}
+              className={`${TAP_TARGET} px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                view === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === 'node' && <div className="hidden md:flex items-center gap-2">
+        <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4].map(cols => (
+            <button
+              key={cols}
+              onClick={() => setNodeGridColumns(cols)}
+              className={`px-3 py-1.5 text-sm rounded transition-colors ${
+                nodeGridColumns === cols
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600'
+              }`}
+              title={`${cols} column${cols > 1 ? 's' : ''}`}
+            >
+              {cols}
+            </button>
+          ))}
+        </div>
+      </div>}
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-pb-text2 dark:text-gray-400">Period:</label>
+        <div className="flex flex-wrap items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+          {CHART_PERIODS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setChartPeriod(p.id)}
+              className={`${TAP_TARGET} px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors ${
+                chartPeriod === p.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
+        <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+          {[
+            { k: 'nodeChartMarkers', label: 'Markers', val: showMarkers, set: setShowMarkers },
+            { k: 'nodeChartThresholds', label: 'Thresholds', val: showThresholds, set: setShowThresholds },
+            { k: 'nodeChartEnvelope', label: 'Min/Max', val: showEnvelope, set: setShowEnvelope },
+          ].map(o => (
+            <button
+              key={o.k}
+              onClick={() => overlayToggle(o.k, !o.val, o.set)}
+              className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors ${
+                o.val ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+              }`}
+              title={`${o.val ? 'Hide' : 'Show'} ${o.label.toLowerCase()} on the resource charts`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+  const phoneButton = <PhoneOptionsButton open={optsOpen} onToggle={toggleOpts} controls="node-chart-options" />;
+  const phonePanel = <PhoneOptionsPanel open={optsOpen} id="node-chart-options">{controlGroups}</PhoneOptionsPanel>;
   return (
         <Wrapper {...wrapperProps}>
-          <div className={`flex flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
+          <div className={`${embedded ? 'hidden sm:flex' : 'flex'} flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
             {!embedded && (
               <div className="flex items-center gap-3 min-w-0">
                 <div className={iconBadge('cyan', 'blue')}>
@@ -150,82 +233,7 @@ export default function NodeStatusSection({
                 </button>
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <div className="flex items-center gap-2">
-                <div role="group" aria-label="Chart layout" className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
-                  {VIEW_MODES.map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      aria-pressed={view === m.id}
-                      onClick={() => setView(m.id)}
-                      title={m.title}
-                      className={`${TAP_TARGET} px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                        view === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {view === 'node' && <div className="hidden md:flex items-center gap-2">
-                <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4].map(cols => (
-                    <button
-                      key={cols}
-                      onClick={() => setNodeGridColumns(cols)}
-                      className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                        nodeGridColumns === cols
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text dark:text-gray-300 hover:bg-slate-600'
-                      }`}
-                      title={`${cols} column${cols > 1 ? 's' : ''}`}
-                    >
-                      {cols}
-                    </button>
-                  ))}
-                </div>
-              </div>}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-pb-text2 dark:text-gray-400">Period:</label>
-                <div className="flex flex-wrap items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
-                  {CHART_PERIODS.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => setChartPeriod(p.id)}
-                      className={`${TAP_TARGET} px-1.5 sm:px-2 py-1 text-xs font-medium rounded transition-colors ${
-                        chartPeriod === p.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-pb-text2 dark:text-gray-400">Overlays:</label>
-                <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
-                  {[
-                    { k: 'nodeChartMarkers', label: 'Markers', val: showMarkers, set: setShowMarkers },
-                    { k: 'nodeChartThresholds', label: 'Thresholds', val: showThresholds, set: setShowThresholds },
-                    { k: 'nodeChartEnvelope', label: 'Min/Max', val: showEnvelope, set: setShowEnvelope },
-                  ].map(o => (
-                    <button
-                      key={o.k}
-                      onClick={() => overlayToggle(o.k, !o.val, o.set)}
-                      className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors ${
-                        o.val ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
-                      }`}
-                      title={`${o.val ? 'Hide' : 'Show'} ${o.label.toLowerCase()} on the resource charts`}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <div className="hidden sm:flex flex-wrap items-center gap-3 sm:gap-4">{controlGroups}</div>
           </div>
 
           {isCollapsed ? (
@@ -440,8 +448,13 @@ export default function NodeStatusSection({
               showMarkers={showMarkers}
               showThresholds={showThresholds}
               showEnvelope={showEnvelope}
+              toolbarExtra={phoneButton}
+              toolbarPanel={phonePanel}
             />
           ) : (
+          <>
+          <div className="sm:hidden mb-3">{phoneButton}</div>
+          {phonePanel}
           <div className={`grid gap-4 transition-all duration-300 ease-in-out ${
             nodeGridColumns === 1 ? 'grid-cols-1' :
             nodeGridColumns === 2 ? 'grid-cols-1 lg:grid-cols-2' :
@@ -501,6 +514,7 @@ export default function NodeStatusSection({
               </div>
             ))}
           </div>
+          </>
           )}
 
           {expandedNode && data.nodes[expandedNode] && (
