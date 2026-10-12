@@ -72,6 +72,16 @@ eq('nothing parts has no subject', S.lastCheckParts(nothing(3), { now }).subject
 eq('nothing parts chip', S.lastCheckParts(nothing(3), { now }).chip, 'nothing to do');
 eq('waiting parts subject', S.lastCheckParts(waiting, { now }).subject, 'zentry-det-pve5 pve5 → pve3 · 2 of 3 checks');
 eq('count never exceeds requirement', JSON.stringify(S.observationProgress({ action: 'observing', reason: 'Observing 6/3 consecutive runs' })), JSON.stringify({ seen: 3, need: 3 }));
+{
+  const run = { timestamp: '2026-10-12T01:45:00Z', mode: 'dry_run', dry_run: true, status: 'success', migrations_executed: 1, migrations_successful: 1,
+    decisions: [
+      { action: 'executed', name: 'sonarr', source_node: 'pve3', target_node: 'pve6', reason: 'sonarr must be evacuated because pve3 is entering maintenance' },
+      ...[2, 3, 4, 5, 6].map(n => ({ action: 'skipped', name: `g${n}`, source_node: 'pve3', target_node: 'pve6', reason: `Lower priority - Ranked #${n} of 20` })),
+    ] };
+  const rows = S.lastCheckRows(run, { now });
+  eq('held rows folded into one', rows.filter(r => r.chip === 'held back').length, 1);
+  has('held summary text', rows.find(r => r.chip === 'held back').why, '5 guests waiting their turn');
+}
 eq('skipped parts subject', S.lastCheckParts(skippedWindow, { now, opensAt: '03:00' }).subject, 'outside the migration window (opens 03:00)');
 eq('real move parts chip', S.lastCheckParts(realMove, { now }).chip, 'moved');
 
@@ -85,8 +95,10 @@ eq('live row chip', S.lastCheckRows(realMove)[0].chip, 'moved');
 const rWait = S.lastCheckRows(waiting, { observationPeriods: 3 });
 eq('waiting row pips', JSON.stringify(rWait[0].pips), '{"seen":2,"need":3}');
 const rHeld = S.lastCheckRows(held);
-eq('held row chip', rHeld[0].chip, 'held back: In cooldown period');
-eq('inflow cap row chip', rHeld[1].chip, 'held back: per-node inflow cap');
+eq('held row chip', rHeld[0].chip, 'held back');
+has('held row reason', rHeld[0].why, 'cooldown period');
+eq('inflow cap row chip', rHeld[1].chip, 'held back');
+has('inflow cap row reason', rHeld[1].why, 'per-node limit');
 eq('skipped row reason', S.lastCheckRows(skippedWindow)[0].why, 'outside the migration window');
 eq('old-format reason rising', S.shortWhy({ reason: 'atlas should move to pve6 because pve5 has elevated CPU usage (63% CPU, 35% mem with an upward trend), while pve6 has more capacity (42% CPU, 19% mem).' }), 'CPU on pve5 rising');
 eq('memory reason not rising', S.shortWhy({ reason: 'x should move to pve3 because pve4 has high memory usage (20% CPU, 81% mem), while pve3 has more capacity.' }), 'memory on pve4 high');

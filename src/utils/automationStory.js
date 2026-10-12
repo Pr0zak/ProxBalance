@@ -229,6 +229,16 @@ export function shortWhy(d) {
 }
 
 /** Shorten a held-back reason to fit a chip. */
+/**
+ * Held-back reason as a short phrase that groups well: every "lower
+ * priority, ranked #N of M" guest is simply waiting for a later check.
+ */
+export function heldKey(d) {
+  if (/ranked\s*#?\d+/i.test(d?.reason || '') || /lower priority/i.test(d?.reason || '')) return 'waiting their turn (one move per check)';
+  if (d?.skip_code === 'target_inflow_cap') return 'held by the per-node limit, next check';
+  return shortHeld(d);
+}
+
 function shortHeld(d) {
   const label = decisionSkipLabel(d);
   if (label) return label.toLowerCase();
@@ -278,6 +288,7 @@ export function lastCheckRows(run, ctx = {}) {
   const dry = isDryRun(run);
   const n = ctx.observationPeriods || null;
   const rows = [];
+  const held = new Map(); // reason → guest names, folded into one row each
   for (const d of run.decisions || []) {
     const base = { name: guestName(d), route: route(d) };
     if (MOVE_ACTIONS.has(d.action)) {
@@ -288,8 +299,16 @@ export function lastCheckRows(run, ctx = {}) {
     } else if (d.action === 'observing') {
       rows.push({ ...base, chip: 'waiting', tone: 'purple', pips: observationProgress(d), why: '', order: 1 });
     } else if (HELD_ACTIONS.has(d.action)) {
-      rows.push({ ...base, chip: `held back: ${shortHeld(d)}`, tone: 'orange', pips: null, why: '', order: 2, title: heldReason(d) });
+      const key = heldKey(d);
+      if (!held.has(key)) held.set(key, { names: [], first: { ...base, title: heldReason(d) } });
+      held.get(key).names.push(base.name);
     }
+  }
+  for (const [key, g] of held) {
+    rows.push(g.names.length === 1
+      ? { ...g.first, chip: 'held back', tone: 'gray', pips: null, why: key, order: 2 }
+      : { name: null, route: '', chip: 'held back', tone: 'gray', pips: null, order: 2,
+          why: `${g.names.length} guests ${key}`, title: g.names.join(', ') });
   }
   return rows.sort((a, b) => a.order - b.order);
 }
