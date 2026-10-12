@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app
-import json, os, sys, re
+import json, os, sys, re, time
 import requests
 from proxbalance.config_manager import load_config, get_proxmox_client, trigger_collection, BASE_PATH, CACHE_FILE
 from proxbalance.error_handlers import api_route
@@ -576,7 +576,37 @@ def get_guest_metrics_history(vmid):
         step = len(points) / 80.0
         points = [points[int(i * step)] for i in range(80)]
 
-    return jsonify({"success": True, "vmid": vmid, "points": points})
+    return jsonify({"success": True, "vmid": vmid, "points": points, "rightsizing": _guest_rightsizing(vmid)})
+
+
+def _guest_rightsizing(vmid):
+    """This guest's right-sizing assessment over the last week, or None when it can't be read."""
+    from proxbalance.rightsizing import assess_guest, load_window
+    try:
+        cache = read_cache() or {}
+        guest = (cache.get("guests") or {}).get(str(vmid))
+        if not guest:
+            return None
+        samples, runs = load_window(vmid=str(vmid))
+        a = assess_guest(guest, samples.get(str(vmid), []), time.time(), runs)
+        return {"status": a["status"], "hints": a["hints"], "running_pct": a["running_pct"],
+                "days": a["days"], "ignored": bool((guest.get("tags") or {}).get("has_ignore"))}
+    except Exception as e:
+        print(f"rightsizing: guest {vmid} unavailable: {e}", file=sys.stderr)
+        return None
+
+
+@guests_bp.route("/api/insights/rightsizing", methods=["GET"])
+@api_route
+def get_rightsizing():
+    """Guests whose allocation doesn't match their last week of use, biggest savings first."""
+    from proxbalance.rightsizing import build_report, load_window
+
+    cache = read_cache() or {}
+    now = time.time()
+    samples, runs = load_window(now=now)
+    report = build_report(cache.get("guests") or {}, cache.get("nodes") or {}, samples, runs, now)
+    return jsonify({"success": True, **report})
 
 
 @guests_bp.route("/api/affinity-groups", methods=["GET"])
