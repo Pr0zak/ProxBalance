@@ -8,6 +8,7 @@ import DetailPanel, { PeriodChips, FactRow, PANEL_PERIODS } from './DetailPanel.
 import { behaviorTitle } from './workloadBehavior.js';
 import { guestMobility } from './guestMobility.js';
 import { seenCountDetail } from './recommendations/seenCount.js';
+import { storageEntries, storageLine } from './recommendations/cardModel.js';
 
 const { useState, useEffect } = React;
 
@@ -62,6 +63,14 @@ function TargetList({ opts, canMove, hostNode, hostRating, onMove }) {
                 after: CPU {Math.round(mt.predicted_cpu || 0)}% · RAM {Math.round(mt.predicted_mem || 0)}%
                 {oc > 1.0 && <span className="ml-1 text-orange-600 dark:text-orange-400" title={`Memory committed: ${(oc * 100).toFixed(0)}% of physical`}>· committed {(oc * 100).toFixed(0)}%</span>}
               </div>
+              {storageEntries(opt, 'warning').map((e) => (
+                <div
+                  key={e.storage}
+                  className={`flex items-start gap-1 text-[11px] ${e.level === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'}`}
+                >
+                  <AlertTriangle size={11} className="mt-0.5 shrink-0" /> <span>{storageLine(e)}</span>
+                </div>
+              ))}
             </div>
             {canMove && (
               <button onClick={() => onMove(opt)} className={`${i === 0 && (hostRating == null || opt.suitability_rating > hostRating) ? BTN_PRIMARY : BTN_SECONDARY} !px-2.5 !py-1 !text-xs shrink-0`}>
@@ -197,6 +206,8 @@ export default function GuestDetailPanel({
       suitability_rating: opt.suitability_rating,
       score_improvement: opt.improvement,
       reason: opt.reason,
+      // Projected target storage (absent on the option = nothing local above 0)
+      target_storage: opt.target_storage || [],
     });
     setSelectedGuestDetails(null);
   };

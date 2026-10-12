@@ -51,6 +51,36 @@ export function haWarnings(rec, guest) {
   return [...new Set(all)];
 }
 
+// ---------------------------------------------------------------------------
+// Target storage after the move (rec.target_storage, from the server's
+// storage_projection). Shared storage never appears; an empty or missing list
+// shows nothing.
+// ---------------------------------------------------------------------------
+
+const STORAGE_RANK = { ok: 0, warning: 1, critical: 2, wont_fit: 3 };
+
+/** Projection entries at `level` or worse (default: anything above ok). */
+export function storageEntries(rec, level = 'warning') {
+  const list = Array.isArray(rec?.target_storage) ? rec.target_storage : [];
+  const floor = STORAGE_RANK[level] ?? 1;
+  return list.filter(e => (STORAGE_RANK[e?.level] ?? -1) >= floor);
+}
+
+/** "local-lvm on pve6: 72% → 88%", plus planned-move and won't-fit notes. */
+export function storageLine(e) {
+  const pct = (v) => (num(v) == null ? '—' : `${Math.round(v)}%`);
+  const base = `${e?.storage || '—'} on ${e?.node || '—'}: ${pct(e?.used_before_pct)} → ${pct(e?.used_after_pct)}`;
+  const extras = [];
+  if (num(e?.pending_gb) > 0) extras.push(`incl. ${Math.round(e.pending_gb)} GB from other planned moves`);
+  if (e?.level === 'wont_fit' && num(e?.size_gb) != null) extras.push(`${Math.round(e.size_gb)} GB won't fit`);
+  return extras.length ? `${base} (${extras.join('; ')})` : base;
+}
+
+/** Details warning lines for every target storage above 80% after the move. */
+export function storageWarnings(rec) {
+  return storageEntries(rec, 'warning').map(e => `Target storage: ${storageLine(e)}`);
+}
+
 /**
  * The single status chip: auto-eligibility and the seen count merged.
  *
@@ -61,9 +91,35 @@ export function haWarnings(rec, guest) {
  * @param ctx.inflow        { target, cap } when the per-node inflow cap leaves
  *                          this move out of automation's next run
  * @returns {{ key, label, color, lines: string[] }}
- *   key ∈ manual | paused | waiting | blocked | ready
+ *   key ∈ manual | paused | waiting | blocked | storage | ready
+ *   (blocked also covers "won't fit on the target storage"; storage means the
+ *   target storage ends above 90% but automation would still run the move)
  */
-export function autoStatus(rec, { automation, config, guest, inflow } = {}) {
+export function autoStatus(rec, ctx = {}) {
+  // A move whose disks won't fit can't run at all, manually or automatically.
+  const full = storageEntries(rec, 'wont_fit');
+  if (full.length) {
+    return {
+      key: 'blocked', label: 'Blocked: storage full', color: 'red',
+      lines: [`Not enough room on the target: ${full.map(storageLine).join('; ')}. Automation skips this move.`],
+    };
+  }
+  const base = baseAutoStatus(rec, ctx);
+  const critical = storageEntries(rec, 'critical');
+  if (critical.length && base.key !== 'blocked' && base.key !== 'manual') {
+    return {
+      key: 'storage', label: 'Storage nearly full', color: 'orange',
+      lines: [
+        `The target's storage ends above 90%: ${critical.map(storageLine).join('; ')}.`,
+        `Automation still runs it (${base.label}).`,
+        ...base.lines,
+      ],
+    };
+  }
+  return base;
+}
+
+function baseAutoStatus(rec, { automation, config, guest, inflow } = {}) {
   const seen = seenCountInfo(rec);
   const seenLines = seenCountDetail(rec, seen);
   const make = (key, label, color, lines) => ({ key, label, color, lines: lines.filter(Boolean) });

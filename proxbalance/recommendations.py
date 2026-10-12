@@ -47,6 +47,13 @@ from proxbalance.reporting import (
     build_summary as _build_summary,
     generate_capacity_advisories as _generate_capacity_advisories,
 )
+from proxbalance.storage_projection import (
+    LEVEL_WONT_FIT,
+    annotate_target_storage,
+    entries_at_least,
+    format_storage_line,
+    project_target_storage,
+)
 from proxbalance.storage import (
     build_storage_cache,
     check_storage_compatibility,
@@ -697,6 +704,16 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                         skip_reasons_per_target.append(f"{tgt_name}: storage incompatible")
                         continue
 
+                    # Skip targets whose local storage can't hold the guest's disks
+                    # (after the moves already planned into that node).
+                    full = entries_at_least(
+                        project_target_storage(guest, tgt_name, nodes, pending_target_guests.get(tgt_name, [])),
+                        LEVEL_WONT_FIT,
+                    )
+                    if full:
+                        skip_reasons_per_target.append(f"{tgt_name}: target storage full ({format_storage_line(full[0])})")
+                        continue
+
                     # Calculate target suitability score with details
                     score, tgt_details = calculate_target_node_score(tgt_node, guest, pending_target_guests, cpu_threshold, mem_threshold, penalty_config=penalty_cfg, return_details=True, guest_profile=guest_profile)
                     if ha_verdict and ha_verdict["lower_preference"]:
@@ -1181,6 +1198,12 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     except Exception as e:
         print(f"Error in affinity rules processing: {str(e)}", file=sys.stderr)
         traceback.print_exc()
+
+    # Target storage after each move, counting earlier moves into the same node.
+    try:
+        annotate_target_storage(recommendations, nodes, guests, initial_pending_guests)
+    except Exception as e:
+        print(f"Warning: target storage projection failed: {e}", file=sys.stderr)
 
     # G1: Post-generation conflict detection
     # Scope conflict detection to max_migrations_per_run so we only flag

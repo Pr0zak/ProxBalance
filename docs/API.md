@@ -85,6 +85,8 @@ Returns node data without guest details.
 
 Returns guest data without node details.
 
+Each guest has a `disks` list: its storage-backed volumes from the guest config, `{key, storage, volume, size_gb}`, where `size_gb` is the provisioned size (`null` when the config gives none, as for most unused disks). Bind mounts, passthrough devices and CD-ROM drives are left out. Node storage entries (in `/api/cluster-analysis` and `/api/nodes-only`) carry `shared` (Proxmox's flag) next to `total_gb`, `used_gb`, `avail_gb` and `usage_pct`.
+
 ### POST /api/refresh
 
 Triggers an immediate data collection from the Proxmox API.
@@ -222,6 +224,28 @@ Each move is estimated on its own: the target side uses the guest's allocated me
 
 The fields are omitted, never zero-filled, when the count is unknown: automation or intelligent migrations off, the guest never observed or dropped from the last run, maintenance evacuations and distribution balancing (which skip the count), or automation not having refreshed the entry within 3 check intervals (at least 30 minutes).
 
+**Target storage (`target_storage`, `target_storage_level`)**: every recommendation carries the projected usage of the target node's local storage after the move, for each storage that would receive a copied disk. Shared storage (the collector's `shared` flag; NFS, CIFS, PBS, Ceph, shared LVM/iSCSI) is never listed, so a guest whose disks are all on shared storage gets an empty list. Moves earlier in the list into the same target are counted first (and in-flight moves when the engine knows them).
+
+```json
+"target_storage": [
+  {"storage": "local-lvm", "node": "pve6", "size_gb": 32.0, "pending_gb": 8.0, "total_gb": 793.8,
+   "used_before_pct": 72.0, "used_after_pct": 77.0, "level": "ok"}
+],
+"target_storage_level": "ok"
+```
+
+| Field | Meaning |
+|-------|---------|
+| `storage`, `node` | Storage id on the target node (Proxmox reuses the source storage id; ProxBalance passes no storage mapping) |
+| `size_gb` | This guest's disks on that storage, by provisioned size (the worst case for thin storage) |
+| `pending_gb` | Disks of earlier planned moves into the same storage |
+| `used_before_pct` | The storage's usage now |
+| `used_after_pct` | Usage after the earlier planned moves and this one |
+| `level` | `ok`, `warning` (> 80%), `critical` (> 90%) or `wont_fit` (> 100%, or more data than the free space) |
+| `target_storage_level` | The worst `level`, or `null` when the list is empty |
+
+Entries are sorted worst first. A storage with no usage numbers, an inactive storage, or a disk with no known size gives no entry rather than a 0. The engine already rejects targets where a disk won't fit (skip reason "`<node>`: target storage full (...)"), so `wont_fit` appears only on moves added outside that check (distribution balancing, affinity companions).
+
 ### GET /api/recommendations
 
 Returns cached recommendations from the last generation, in the same shape as the POST response. Supports filtering and pagination; see [GET /api/recommendations (with filtering)](#get-apirecommendations-with-filtering).
@@ -257,6 +281,8 @@ curl -X POST http://<host>/api/guest/100/migration-options \
   -H "Content-Type: application/json" \
   -d '{"cpu_threshold": 60, "mem_threshold": 70, "maintenance_nodes": []}'
 ```
+
+Each option for another node carries `target_storage` (same shape as on recommendations, without counting other planned moves) when the guest has disks on that node's local storage; the key is absent otherwise. A node where a disk won't fit is returned with `disqualified: true` and a reason like "Storage full: local-lvm on pve3: 2% → 200% (96 GB won't fit)". The migrate confirmation dialog uses this to show the target storage lines and to block a move that won't fit.
 
 ### POST /api/penalty-config/simulate
 

@@ -16,6 +16,9 @@ from proxbalance.scoring import (
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
 from proxbalance.rec_observation import annotate_seen_counts
+from proxbalance.storage_projection import (
+    LEVEL_WONT_FIT, entries_at_least, format_storage_line, project_target_storage,
+)
 
 recommendations_bp = Blueprint('recommendations', __name__)
 
@@ -821,6 +824,21 @@ def guest_migration_options(vmid):
                 entry.update({"score": 999999, "suitability_rating": 0, "suitable": False, "reason": "Storage incompatible", "disqualified": True})
                 target_options.append(entry)
                 continue
+
+        # Target storage after the move (node-local disks only; empty for the
+        # current node and for guests whose disks are all on shared storage).
+        target_storage = project_target_storage(guest, node_name, nodes)
+        if target_storage:
+            entry["target_storage"] = target_storage
+        full = entries_at_least(target_storage, LEVEL_WONT_FIT)
+        if full:
+            entry.update({
+                "score": 999999, "suitability_rating": 0, "suitable": False,
+                "reason": f"Storage full: {format_storage_line(full[0])}",
+                "disqualified": True,
+            })
+            target_options.append(entry)
+            continue
 
         # Hard memory capacity gate: reject if guest can't physically fit.
         # Use actual node memory usage (mem_percent) rather than summing
