@@ -1,4 +1,4 @@
-import { GLASS_CARD, iconBadge, ICON } from '../../utils/designTokens.js';
+import { GLASS_CARD, iconBadge, ICON, TAP_TARGET } from '../../utils/designTokens.js';
 import { Server, Settings } from '../Icons.jsx';
 import NodeSummaryTable from './NodeSummaryTable.jsx';
 import TabBar from '../TabBar.jsx';
@@ -87,7 +87,7 @@ export default function ClusterSection(props) {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setLayoutMenuOpen(o => !o)}
-            className="p-1.5 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40"
+            className={`${TAP_TARGET} min-w-[40px] sm:min-w-0 inline-flex items-center justify-center p-1.5 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40`}
             title="Layout — show a tab as its own section"
             aria-label="Section layout"
           >

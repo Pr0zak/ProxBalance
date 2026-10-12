@@ -5,7 +5,7 @@ import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx'
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
 import { useAppStatus } from '../AppStatus.jsx';
-import { statusBadge } from '../../utils/designTokens.js';
+import { statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 import { lastCheckSentence, lastCheckParts, lastRealMove, shortDateTime } from '../../utils/automationStory.js';
 
 const { useState, useEffect, useMemo } = React;
@@ -262,7 +262,7 @@ export default function AutoStatusPill({
             {setCurrentPage && (
               <button
                 onClick={() => setCurrentPage('automation')}
-                className="px-3 py-2.5 sm:px-2.5 sm:py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
+                className={`${TAP_TARGET} px-3 py-2.5 sm:px-2.5 sm:py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1`}
                 title="Open automation settings"
                 aria-label="Open automation settings"
               >

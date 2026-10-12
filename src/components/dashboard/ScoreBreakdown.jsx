@@ -1,3 +1,4 @@
+import { TAP_TARGET } from '../../utils/designTokens.js';
 /**
  * Line-by-line explanation of a node's headroom, from /api/node-scores
  * (`penalty_items` + `score_breakdown`), and the cluster spread figure from
@@ -69,7 +70,7 @@ export function ScoreBreakdown({ score, compact = false }) {
           type="button"
           onClick={() => setShowBase(s => !s)}
           aria-expanded={showBase}
-          className="w-full flex items-center justify-between gap-3 py-0.5 text-left text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
+          className={`${TAP_TARGET} w-full flex items-center justify-between gap-3 py-0.5 text-left text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200`}
         >
           <span className="flex items-center gap-1">
             <ChevronDown size={12} className={`transition-transform duration-200 ${showBase ? 'rotate-180' : ''}`} />

@@ -41,7 +41,7 @@ export default function SkippedGuests({
               <button
                 key={reason}
                 onClick={() => setOpenReason(openReason === reason ? null : reason)}
-                className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-shadow ${skipToneClass(reason)} ${openReason === reason ? 'ring-2 ring-blue-500/60' : 'hover:shadow'}`}
+                className={`${TAP_TARGET} px-2.5 py-1 rounded-full border text-xs font-medium transition-shadow ${skipToneClass(reason)} ${openReason === reason ? 'ring-2 ring-blue-500/60' : 'hover:shadow'}`}
               >
                 {skipReasonLabel(reason)} <span className="tabular-nums opacity-70">{list.length}</span>
               </button>

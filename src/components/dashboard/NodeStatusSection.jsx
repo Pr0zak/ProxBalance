@@ -483,7 +483,7 @@ export default function NodeStatusSection({
                       </span>
                     )}
                     {hasTrendData(node) && (
-                      <button onClick={() => setExpandedNode(node.name)} title="Expand chart" aria-label="Expand chart" className={`${BTN_ICON} !p-1 text-sm leading-none`}>⤢</button>
+                      <button onClick={() => setExpandedNode(node.name)} title="Expand chart" aria-label="Expand chart" className={`${TAP_TARGET} min-w-[40px] sm:min-w-0 inline-flex items-center justify-center ${BTN_ICON} !p-1 text-sm leading-none`}>⤢</button>
                     )}
                   </div>
                 </div>

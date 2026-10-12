@@ -304,7 +304,7 @@ export default function GuestDetailPanel({
       <div className="min-w-0">
         <div className="text-[11px] text-pb-text2 dark:text-gray-400">
           {hostData && setSelectedNode
-            ? <button onClick={openHost} className="hover:underline text-blue-600 dark:text-blue-400" title={`Open ${hostNode}`}>{hostNode}</button>
+            ? <button onClick={openHost} className="relative hover:underline text-blue-600 dark:text-blue-400 before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']" title={`Open ${hostNode}`}>{hostNode}</button>
             : hostNode}
           {' › '}{guest.name || guest.vmid}
         </div>
