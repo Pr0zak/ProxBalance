@@ -1,12 +1,13 @@
-import { Activity, TrendingUp, Clock, CheckCircle } from './Icons.jsx';
+import { Activity, TrendingUp, Clock, CheckCircle, Cpu } from './Icons.jsx';
 import { GLASS_CARD } from '../utils/designTokens.js';
 import SectionHeader from './SectionHeader.jsx';
 import OutcomesByDay from './insights/OutcomesByDay.jsx';
 import NodeTrends, { RangePicker } from './insights/NodeTrends.jsx';
 import Forecasts, { ForecastsClear, forecastsEmpty } from './insights/Forecasts.jsx';
 import RhythmHeatmap, { MetricPicker } from './insights/RhythmHeatmap.jsx';
+import Rightsizing, { RightsizingSummary } from './insights/Rightsizing.jsx';
 import { RANGES, useLoad } from './insights/shared.jsx';
-import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts } from '../api/client.js';
+import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts, fetchRightsizing } from '../api/client.js';
 
 const { useState } = React;
 
@@ -55,6 +56,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   );
   const thresholds = { cpu: cpuThreshold, memory: memThreshold, iowait: iowaitThreshold };
   const [engineState] = useLoad(() => fetchForecasts());
+  const [rightsizingState] = useLoad(() => fetchRightsizing());
   // Nothing projected: Forecasts shrinks to one line and the rhythm card takes the full width.
   const noForecasts = forecastsEmpty(trendsState, engineState, thresholds);
 
@@ -84,6 +86,11 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
               metric={rhythmMetric}
               threshold={rhythmMetric === 'cpu' ? cpuThreshold : iowaitThreshold}
             />
+          </div>
+          <div className={`${GLASS_CARD} xl:col-span-2`}>
+            <SectionHeader title="Right-sizing" icon={Cpu} accent={['teal', 'cyan']} />
+            <RightsizingSummary data={rightsizingState.data} />
+            <Rightsizing state={rightsizingState} />
           </div>
           <div className={`${GLASS_CARD} xl:col-span-2`}>
             <SectionHeader title="Migration outcomes" icon={CheckCircle} accent={['emerald', 'green']} />
