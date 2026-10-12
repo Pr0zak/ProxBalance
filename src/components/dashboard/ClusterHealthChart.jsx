@@ -1,5 +1,6 @@
 import { GLASS_CARD, INNER_CARD, BTN_ICON, ICON, TAP_TARGET } from '../../utils/designTokens.js';
-import { X, ChevronLeft, ChevronRight } from '../Icons.jsx';
+import { X, ChevronLeft, ChevronRight, Info } from '../Icons.jsx';
+import { usePhoneOptions, PhoneOptionsButton, PhoneOptionsPanel } from './PhoneOptions.jsx';
 import { NODE_COLORS, CHART_PERIODS, periodConfig, useChartPeriod } from './nodeSeries.js';
 
 const { useState, useEffect, useRef } = React;
@@ -140,6 +141,9 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
   // Pinned moment (ms timestamp): click/tap the chart to keep a detail panel open.
   // A period change clears it (the pinned time may not exist in the new window).
   const [pinnedT, setPinnedT] = useState(null);
+  const [optsOpen, toggleOpts] = usePhoneOptions('healthChart');
+  // How-to text lives behind the info button (tooltip on desktop, tap shows it).
+  const [showHelp, setShowHelp] = useState(false);
   const lastPointerRef = useRef('mouse');
   // Latest prev/next migration times, read by the key handler without re-binding it.
   const migStepRef = useRef({ prev: undefined, next: undefined });
@@ -434,6 +438,35 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
     pin = { e, nodes, lowest, migs, nearMs, hasDayAgo: !!dayAgo, clusterDelta: dayAgo ? e.cluster - dayAgo.cluster : null };
   }
 
+  const helpText = [
+    view === 'cluster' ? 'The line is colored by health value.' : view === 'lines' ? 'Each line is a node’s headroom (0–100).' : 'Band height = node headroom.',
+    showMarkers && rawMarkers.length > 0
+      ? `${markerBins.length < rawMarkers.length ? 'A number on a marker counts grouped migrations. ' : ''}Markers snap on hover; click or tap to pin, ←/→ to step.`
+      : 'Click or tap the chart to pin a moment.',
+  ].join(' ');
+  // View + Migrations controls: inline from sm up, in the Options panel on phones.
+  const viewControls = (
+    <>
+      <LabeledPills label="View" options={VIEW_MODES} value={view} onChange={setView} />
+      {rawMarkers.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-pb-text2 dark:text-gray-400">Migrations</span>
+          <button
+            type="button"
+            onClick={() => setShowMarkers(!showMarkers)}
+            className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
+              showMarkers
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-slate-800/60 text-pb-text2 dark:text-gray-400 border-pb-border dark:border-slate-700/50 hover:text-pb-text dark:hover:text-gray-200'
+            }`}
+            title={`${showMarkers ? 'Hide' : 'Show'} migration markers`}
+          >
+            {showMarkers ? 'Shown' : 'Hidden'}
+          </button>
+        </div>
+      )}
+    </>
+  );
   return (
     <div className={`${GLASS_CARD} mb-3`}>
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -444,7 +477,7 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
             {rawMarkers.length > 0 && ` · ${rawMarkers.length} migration${rawMarkers.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {view === 'cluster' && latest != null && (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-bold text-pb-text dark:text-white tabular-nums">{latest.toFixed(1)}</span>
@@ -455,31 +488,16 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
               )}
             </div>
           )}
+          <span className="ml-auto sm:hidden"><PhoneOptionsButton open={optsOpen} onToggle={toggleOpts} controls="health-chart-options" /></span>
           <Pills options={PERIODS} value={period} onChange={setPeriod} />
         </div>
       </div>
 
-      {/* View selector (Smoothing=Medium + Detail=Full are locked) */}
-      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mb-2 text-[11px]">
-        <LabeledPills label="View" options={VIEW_MODES} value={view} onChange={setView} />
-        {rawMarkers.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-pb-text2 dark:text-gray-400">Migrations</span>
-            <button
-              type="button"
-              onClick={() => setShowMarkers(!showMarkers)}
-              className={`${TAP_TARGET} px-2 py-1 text-[11px] font-medium rounded transition-colors border ${
-                showMarkers
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-slate-800/60 text-pb-text2 dark:text-gray-400 border-pb-border dark:border-slate-700/50 hover:text-pb-text dark:hover:text-gray-200'
-              }`}
-              title={`${showMarkers ? 'Hide' : 'Show'} migration markers`}
-            >
-              {showMarkers ? 'Shown' : 'Hidden'}
-            </button>
-          </div>
-        )}
+      {/* View selector (Smoothing=Medium + Detail=Full are locked); behind Options on phones */}
+      <div className="hidden sm:flex items-center gap-x-4 gap-y-1.5 flex-wrap mb-2 text-[11px]">
+        {viewControls}
       </div>
+      <PhoneOptionsPanel open={optsOpen} id="health-chart-options">{viewControls}</PhoneOptionsPanel>
 
       <div ref={containerRef} className="relative">
         <svg
@@ -755,37 +773,39 @@ export default function ClusterHealthChart({ scoreHistory, migrationHistory, fet
         </div>
       )}
 
-      {showLegend && (
-        <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
-          {nodeNames.map((n, k) => (
-            <span key={n} className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorFor(k) }} />{n}
-            </span>
-          ))}
-          <span className="ml-auto">{view === 'lines' ? 'headroom 0–100 per node' : 'band height = node headroom'}</span>
-        </div>
-      )}
-
-      {view === 'cluster' && hasData && (
-        <div className="flex items-center gap-3 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
-          {HEALTH_BANDS.map((b) => (
+      {(hasData || showLegend || (showMarkers && rawMarkers.length > 0)) && (
+        <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1.5 text-[10px] text-pb-text2 dark:text-gray-400">
+          {view === 'cluster' && hasData && HEALTH_BANDS.map((b) => (
             <span key={b.label} className="flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: b.color }} />
               {b.label}
             </span>
           ))}
-          <span className="ml-auto">line colored by health value</span>
+          {showLegend && nodeNames.map((n, k) => (
+            <span key={n} className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: colorFor(k) }} />{n}
+            </span>
+          ))}
+          {showMarkers && rawMarkers.length > 0 && (
+            <>
+              <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowHelp(v => !v)}
+            aria-expanded={showHelp}
+            aria-label="How to read this chart"
+            title={helpText}
+            className={`${BTN_ICON} ${TAP_TARGET} ml-auto min-w-[40px] sm:min-w-0 !p-1 !border-0`}
+          >
+            <Info size={14} />
+          </button>
         </div>
       )}
-
-      {showMarkers && rawMarkers.length > 0 && (
-        <div className="flex items-center gap-3 mt-2 text-[10px] text-pb-text2 dark:text-gray-400">
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-green-500" />completed</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-yellow-500" />other</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-0 h-0 border-l-[3px] border-r-[3px] border-t-[6px] border-l-transparent border-r-transparent border-t-red-500" />failed</span>
-          <span className="ml-auto">{markerBins.length < rawMarkers.length ? 'count = grouped migrations · markers snap on hover · click to pin, ←/→ to step' : 'markers snap on hover · click to pin, ←/→ to step'}</span>
-        </div>
-      )}
+      {showHelp && <p className="mt-1 text-[11px] text-pb-text2 dark:text-gray-400">{helpText}</p>}
     </div>
   );
 }
