@@ -123,7 +123,7 @@ export function RunStrip({ runs, ctx: parentCtx = {} }) {
             <span className="text-pb-text2 dark:text-gray-500">{agoText(selected.t)}</span>
             {parts.chip && <span className={statusBadge(parts.tone)}>{parts.chip}</span>}
           </div>
-          <RunDetailBlock run={selected.run} compact ctx={ctx} />
+          <RunDetailBlock run={selected.run} compact ctx={ctx} headerChip={parts.chip} showTime={false} />
         </div>
       )}
     </div>

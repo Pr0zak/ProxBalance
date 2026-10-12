@@ -21,17 +21,29 @@ function actionLabel(d, dry) {
 const ACTION_TONE = { executed: 'green', pending: 'blue', failed: 'red', observing: 'purple', deferred: 'yellow', skipped: 'orange', filtered: 'gray' };
 
 /** Full per-guest list, used inside "Details". */
-function DecisionsList({ decisions, dry }) {
+function DecisionsList({ decisions, dry, shown = new Set() }) {
   if (!decisions || decisions.length === 0) return null;
   const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['observing', 'deferred'].includes(d.action) ? 1 : d.action === 'skipped' ? 2 : 3);
   const sorted = [...decisions].sort((a, b) => (order(a) - order(b)) || ((a.priority_rank || 999) - (b.priority_rank || 999)));
   return (
     <div>
-      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Guests considered ({decisions.length})</div>
+      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Scores</div>
       <ul className="divide-y divide-pb-border dark:divide-slate-700/50">
         {sorted.map((d, idx) => {
           const tone = d.action === 'executed' && dry ? 'yellow' : (ACTION_TONE[d.action] || 'gray');
           const why = ['executed', 'pending', 'failed'].includes(d.action) ? whyText(d) : (d.reason || '');
+          // Guests already shown in the rows above only add their numbers here.
+          if (shown.has(d.name || `guest ${d.vmid}`)) {
+            if (d.confidence_score == null && d.target_node_score == null && !d.error) return null;
+            return (
+              <li key={idx} className="py-1 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
+                <span className="text-pb-text dark:text-gray-300">{d.name || `guest ${d.vmid}`}</span>
+                {d.confidence_score != null && <> · confidence {d.confidence_score}%</>}
+                {d.target_node_score != null && <> · target score {d.target_node_score}</>}
+                {d.error && <div className="mt-0.5 text-red-600 dark:text-red-400">Error: {d.error}</div>}
+              </li>
+            );
+          }
           return (
             <li key={idx} className="py-1.5 text-xs">
               <div className="flex items-center gap-2 flex-wrap">
@@ -129,7 +141,7 @@ export function Pips({ seen, need }) {
  * One row per guest worth mentioning: name, route, progress pips, outcome
  * chip and a short reason. Nothing-to-do runs render nothing.
  */
-export function GuestRows({ run, ctx = {} }) {
+export function GuestRows({ run, ctx = {}, headerChip = null }) {
   const rows = lastCheckRows(run, ctx);
   if (!rows) return null; // the outcome chip beside it already says "nothing to do"
   const shown = rows.slice(0, 5);
@@ -137,7 +149,7 @@ export function GuestRows({ run, ctx = {} }) {
     <ul className="space-y-1.5">
       {shown.map((r, i) => (
         <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs min-w-0">
-          <span className={`${statusBadge(r.tone)} shrink-0`} title={r.title || undefined}>{r.chip}</span>
+          {r.chip !== headerChip && <span className={`${statusBadge(r.tone)} shrink-0`} title={r.title || undefined}>{r.chip}</span>}
           {r.name && <span className="font-medium text-pb-text dark:text-gray-200">{r.name}</span>}
           {r.route && <span className="font-mono text-pb-text2 dark:text-gray-400">{r.route}</span>}
           {r.pips && <Pips seen={r.pips.seen} need={r.pips.need} />}
@@ -154,19 +166,19 @@ export function GuestRows({ run, ctx = {} }) {
  * inside a "Details" toggle. `compact` starts with Details closed
  * (dashboard); the modal opens it.
  */
-export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
+export default function RunDetailBlock({ run, compact = false, ctx = {}, headerChip = null, showTime = true }) {
   const [showDetails, setShowDetails] = useState(!compact);
   if (!run) return <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4">No run selected.</div>;
   const dry = isDryRun(run);
   const meta = [
-    run.timestamp && `${shortDateTime(run.timestamp)} (${agoText(run.timestamp)})`,
+    showTime && run.timestamp && `${shortDateTime(run.timestamp)} (${agoText(run.timestamp)})`,
     `took ${fmtDuration(run.duration_seconds)}`,
     run.mode === 'dry_run' ? 'dry run' : run.mode === 'live' ? 'live' : null,
-    run.migrations_executed != null && `${run.migrations_successful ?? 0} of ${run.migrations_executed} ${dry ? 'logged' : 'moves succeeded'}`,
+    run.migrations_executed > 0 && `${run.migrations_successful ?? 0} of ${run.migrations_executed} ${dry ? 'logged' : 'moves succeeded'}`,
   ].filter(Boolean).join(' · ');
   return (
     <div className="space-y-2">
-      <GuestRows run={run} ctx={ctx} />
+      <GuestRows run={run} ctx={ctx} headerChip={headerChip} />
       <FailedSafetyChecks safety={run.safety_checks} />
       <button
         type="button"
@@ -180,7 +192,8 @@ export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
       {showDetails && (
         <div className="space-y-3 pl-4 border-l-2 border-pb-border dark:border-slate-700/60">
           <div className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">{meta}</div>
-          <DecisionsList decisions={run.decisions} dry={dry} />
+          <DecisionsList decisions={run.decisions} dry={dry}
+            shown={new Set((lastCheckRows(run, ctx) || []).slice(0, 5).map(r => r.name).filter(Boolean))} />
           <ActivityLogList log={run.activity_log} />
         </div>
       )}
