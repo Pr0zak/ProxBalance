@@ -215,7 +215,9 @@ Later updates use the new updater and don't depend on the service's write permis
 
 ## Data Collection Issues
 
-### No cached data available
+### No data collected yet
+
+The dashboard shows "No data collected yet" with a **Collect now** button until the first collection finishes. Loading the page never starts a collection on its own; press **Collect now** (`POST /api/refresh`) or wait for the collector timer. If a collection still produces nothing, run the collector by hand and read its output:
 
 ```bash
 pct exec <ctid> -- jq -r '.proxmox_host' /opt/proxmox-balance-manager/config.json

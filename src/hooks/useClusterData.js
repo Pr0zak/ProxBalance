@@ -29,7 +29,11 @@ export function useClusterData(API_BASE, deps = {}) {
           const result = await response.json();
           const errorMsg = result.error || 'Service temporarily unavailable';
 
-          if (errorMsg.toLowerCase().includes('token') || errorMsg.toLowerCase().includes('auth') || errorMsg.toLowerCase().includes('401') || errorMsg.toLowerCase().includes('unauthorized')) {
+          if (result.no_data) {
+            // Nothing collected yet. Reads never start a collection; the
+            // empty state offers "Collect now" (POST /api/refresh).
+            if (setTokenAuthError) setTokenAuthError(false);
+          } else if (errorMsg.toLowerCase().includes('token') || errorMsg.toLowerCase().includes('auth') || errorMsg.toLowerCase().includes('401') || errorMsg.toLowerCase().includes('unauthorized')) {
             setError(`${errorMsg}. Please check your API token configuration in Settings.`);
             if (setTokenAuthError) setTokenAuthError(true);
           } else {

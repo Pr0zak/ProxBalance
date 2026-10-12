@@ -49,6 +49,22 @@ def health_check():
     return jsonify(health_status)
 
 
+def _no_data_response():
+    """503 for a read that finds no collected data yet.
+
+    Reads never start a collection: a GET must not start work, and GETs sit
+    outside the CSRF guard. The caller starts one with POST /api/refresh
+    (the dashboard's "Collect now"); the timer also collects on schedule.
+    """
+    return jsonify({
+        "success": False,
+        "error": "No data collected yet. Use Collect now (POST /api/refresh) "
+                 "and refresh in 30-60 seconds.",
+        "no_data": True,
+        "collection_triggered": False,
+    }), 503
+
+
 @analysis_bp.route("/api/analyze", methods=["GET"])
 @api_route
 def analyze_cluster():
@@ -65,11 +81,7 @@ def analyze_cluster():
     data = read_cache()
 
     if data is None:
-        trigger_collection()
-        return jsonify({
-            "success": False,
-            "error": "No cached data available. Collection in progress, please wait 30-60 seconds and refresh."
-        }), 503
+        return _no_data_response()
 
     # Shallow copy: the cached snapshot itself is shared and must not be mutated.
     data = {**data, "cluster_spread": cluster_spread(data.get("nodes", {}))}
@@ -91,11 +103,7 @@ def get_cluster_summary():
 
     data = read_cache()
     if data is None:
-        trigger_collection()
-        return jsonify({
-            "success": False,
-            "error": "No cached data available"
-        }), 503
+        return _no_data_response()
 
     # Return minimal data for instant header/title rendering
     summary_data = {

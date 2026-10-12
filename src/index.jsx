@@ -504,9 +504,9 @@ const ProxmoxBalanceManager = () => {
                 <Info size={36} className="text-blue-600 dark:text-blue-400" />
                 <div>
                   <p className="text-base font-semibold text-blue-800 dark:text-blue-200">No Data Available</p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300/70 mt-1">Waiting for cluster data collection. Please wait 30-60 seconds and refresh.</p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300/70 mt-1">No data collected yet. Collect now to read the cluster; it takes 30-60 seconds.</p>
                   <button onClick={handleRefresh} className={`${BTN_PRIMARY} mt-4 flex items-center gap-2 mx-auto`}>
-                    <RefreshCw size={14} /> Refresh
+                    <RefreshCw size={14} /> Collect now
                   </button>
                 </div>
               </div>

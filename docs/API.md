@@ -71,9 +71,22 @@ Returns full cluster analysis including nodes, guests, and metrics.
 curl http://<host>/api/analyze
 ```
 
+When nothing has been collected yet, it returns `503` and does **not** start a collection (a read never starts work). Start one with `POST /api/refresh`, then read again in 30-60 seconds:
+
+```json
+{
+  "success": false,
+  "error": "No data collected yet. Use Collect now (POST /api/refresh) and refresh in 30-60 seconds.",
+  "no_data": true,
+  "collection_triggered": false
+}
+```
+
 ### GET /api/cluster-summary
 
 Returns a summary of cluster state (node count, guest count, resource totals).
+
+With no collected data it returns the same `503` no-data body as `GET /api/analyze` and does not start a collection.
 
 Includes `cluster_spread` (also added to `GET /api/analyze` data and the `POST /api/node-scores` response): for `memory` and `cpu`, the `min`/`max` (with `min_node`/`max_node`), `spread` (max − min, percentage points), `mean`, `cv` (population std-dev ÷ mean) and `nodes` counted, over online nodes only. CPU is the ~15-minute `recent_cpu` that scoring uses. A metric with fewer than two readings is `null`.
 
@@ -89,7 +102,7 @@ Each guest has a `disks` list: its storage-backed volumes from the guest config,
 
 ### POST /api/refresh
 
-Triggers an immediate data collection from the Proxmox API.
+Triggers an immediate data collection from the Proxmox API. This is the only way to start a collection on demand (the dashboard's **Collect now**); the read endpoints never start one.
 
 ```bash
 curl -X POST http://<host>/api/refresh
