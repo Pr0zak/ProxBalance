@@ -101,13 +101,13 @@ export function RunStrip({ runs, ctx: parentCtx = {} }) {
         </div>
       </div>
       {/* Phones: one row per day */}
-      <div className="sm:hidden space-y-1">
+      <div className="sm:hidden space-y-2">
         {days.map(d => (
-          <div key={d.key} className="flex items-start gap-2">
-            <span className="w-16 shrink-0 text-[10px] leading-4 text-pb-text2 dark:text-gray-500">{d.label}</span>
-            <div className="flex flex-wrap gap-0.5 min-w-0">
+          <div key={d.key}>
+            <div className="text-[10px] text-pb-text2 dark:text-gray-500 mb-0.5">{d.label}</div>
+            <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
               {d.items.map(it => (
-                <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className="w-3 h-4" />
+                <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className="w-full h-4" />
               ))}
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { RefreshCw } from '../../../Icons.jsx';
+import { RefreshCw, ChevronDown } from '../../../Icons.jsx';
 import { statusBadge } from '../../../../utils/designTokens.js';
 import { fetchMigrationOutcomes } from '../../../../api/client.js';
 import { parseTimestamp } from '../../../../utils/formatters.js';
@@ -6,6 +6,8 @@ import {
   outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct,
   cpuChange, barScale, barGeometry, helpedTally,
 } from '../../../../utils/automationStory.js';
+
+import useIsMobile from '../../../../utils/useIsMobile.js';
 
 const { useState, useEffect } = React;
 
@@ -104,9 +106,7 @@ function OutcomeRow({ o, scale }) {
   const change = cpuChange(h);
   const name = o.guest_name || `${o.guest_type || 'guest'} ${o.vmid}`;
   const when = shortDateTime(o.pre_migration?.timestamp);
-  const cpuText = h.before == null && h.after == null
-    ? `${h.node} CPU —`
-    : `${h.node} CPU ${formatPct(h.before)} → ${formatPct(h.after)}`;
+  const cpuNumbers = h.before == null && h.after == null ? '—' : `${formatPct(h.before)} → ${formatPct(h.after)}`;
   const aria = `${name} moved ${o.source_node} to ${o.target_node} ${when}: ${headlineText(h)}, ${h.label}`;
   return (
     <li className="border-b border-pb-border/60 dark:border-slate-700/50 last:border-0">
@@ -119,16 +119,19 @@ function OutcomeRow({ o, scale }) {
         title={aria}
       >
         {/* What moved, where, when */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
+        <div className="flex items-center gap-x-2 min-w-0">
           <span className="font-medium text-pb-text dark:text-gray-200 truncate">{name}</span>
-          <span className="font-mono text-pb-text2 dark:text-gray-400">{o.source_node} → {o.target_node}</span>
-          <span className="text-pb-text2 dark:text-gray-500">{when}</span>
-          <span className={`ml-auto ${statusBadge(h.tone)}`}>{h.label}</span>
+          <span className="font-mono text-pb-text2 dark:text-gray-400 shrink-0">{o.source_node} → {o.target_node}</span>
+          <span className="text-pb-text2 dark:text-gray-500 shrink-0 hidden sm:inline">{when}</span>
+          <span className="text-pb-text2 dark:text-gray-500 shrink-0 sm:hidden">{when.split(',')[0]}</span>
+          <span className={`ml-auto shrink-0 ${statusBadge(h.tone)}`}>{h.label}</span>
         </div>
         {/* What it did to the node it left */}
         <div className="mt-1 flex items-center gap-2">
           <DivergingBar change={change} scale={scale} tone={h.tone} />
-          <span className="w-32 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">{cpuText}</span>
+          <span className="w-20 sm:w-32 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">
+            <span className="hidden sm:inline">{h.node} CPU </span>{cpuNumbers}
+          </span>
         </div>
       </button>
       {open && <OutcomeDetail o={o} h={h} />}
@@ -144,6 +147,9 @@ function OutcomeRow({ o, scale }) {
 export default function MigrationOutcomes({ active, limit = 5, onOpenInsights }) {
   const [outcomes, setOutcomes] = useState(null);
   const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile(640);
+  const [rowsOpen, setRowsOpen] = useState(null); // null = default: open on desktop, closed on phones
+  const showRows = rowsOpen ?? !isMobile;
 
   useEffect(() => {
     if (!active || outcomes || loading) return;
@@ -175,24 +181,28 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
       ) : (
         <>
           {tally.total > 0 && (
-            <div className="flex items-center gap-3 mb-2" title={outcomesSummary(list.slice(0, 10))}>
+            <button type="button" onClick={() => setRowsOpen(!showRows)} aria-expanded={showRows}
+              className="w-full flex items-center gap-3 mb-2 text-left" title={outcomesSummary(list.slice(0, 10))}>
               <span className="text-sm font-medium text-pb-text dark:text-gray-200 whitespace-nowrap tabular-nums">Helped {tally.helped} of {tally.total}</span>
               <div className="flex gap-0.5 flex-1 max-w-[12rem]" aria-hidden="true">
                 {tally.segments.map((t, i) => <span key={i} className={`h-2 flex-1 rounded-sm ${TONE_FILL[t] || TONE_FILL.gray}`} />)}
               </div>
-            </div>
+              <ChevronDown size={14} className={`ml-auto shrink-0 text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${showRows ? 'rotate-180' : ''}`} />
+            </button>
           )}
+          {showRows && <>
           <ul>
             {shown.map(o => <OutcomeRow key={o.key} o={o} scale={scale} />)}
           </ul>
           <div className="mt-1 flex items-center gap-2 text-[10px] text-pb-text2 dark:text-gray-500">
             <div className="flex-1 flex justify-between tabular-nums">
-              <span>◀ lower CPU (helped)</span>
-              <span>higher CPU (worse) ▶</span>
+              <span>◀ lower (helped)</span>
+              <span>higher (worse) ▶</span>
             </div>
-            <span className="w-32 shrink-0" />
+            <span className="w-20 sm:w-32 shrink-0" />
           </div>
           <p className="text-[10px] text-pb-text2 dark:text-gray-500">Each bar: CPU on the node the guest left, 24 h after the move compared with just before.</p>
+          </>}
         </>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-500">
