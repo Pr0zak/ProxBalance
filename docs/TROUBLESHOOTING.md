@@ -142,6 +142,16 @@ pct exec <ctid> -- systemctl restart proxmox-balance
 
 Common causes: missing `config.json`, Python syntax errors, port 5000 in use, virtual environment broken.
 
+### 403 "Cross-site request blocked"
+
+A save, migration or other action fails with `403` and `Cross-site request blocked`. The CSRF check (see `csrf_protection` in [Configuration](CONFIGURATION.md#csrf-protection)) decided the request came from a different site than the one serving ProxBalance.
+
+- **From the dashboard itself:** the browser reached ProxBalance at an address the API does not recognise as its own, usually because a reverse proxy rewrites the `Host` header or terminates TLS without sending `X-Forwarded-Proto`. Fix the proxy to keep `Host` and send `X-Forwarded-Proto` (or `X-Forwarded-Host`), or add the public address to `cors_origins`, for example `"cors_origins": ["https://proxbalance.example.com"]`.
+- **From another web page or dashboard you control:** add that page's origin to `cors_origins`, or send the request with the `api_key` header.
+- **From a script:** plain curl and script requests send neither `Origin` nor `Sec-Fetch-Site` and are not affected. If your client adds an `Origin` header, drop it or send the `api_key`.
+
+As a last resort set `"csrf_protection": false` in `config.json` and restart: `systemctl restart proxmox-balance`.
+
 ### Connection refused / page won't load
 
 ```bash

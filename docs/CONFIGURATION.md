@@ -26,7 +26,22 @@ All ProxBalance settings are stored in `config.json`. Most settings can be manag
 | `ui_refresh_interval_minutes` | int | `15` | How often the dashboard auto-refreshes (Settings > Connection, "Dashboard auto-refresh") |
 | `api_key` | string | `""` | Optional key required on every `/api/` call except `/api/health`, sent as `X-API-Key` or `Authorization: Bearer`. Empty disables the check |
 | `updates.channel` | string | `"stable"` | Which updates the updater offers: `stable` (tested releases), `beta` (releases and pre-releases) or `dev` (every commit on the checked-out branch). See [Releasing and updating](RELEASING.md) |
-| `cors_origins` | array | `[]` | Allowed CORS origins. Empty restricts to same-origin |
+| `cors_origins` | array | `[]` | Allowed CORS origins. Empty restricts to same-origin. Origins listed here are also accepted by the CSRF check |
+| `csrf_protection` | bool | `true` | Blocks state-changing `/api/` requests (POST, PUT, PATCH, DELETE) that a browser sends from another site. See below. Set to `false` only for a reverse-proxy setup that breaks it |
+
+
+### CSRF protection
+
+With `csrf_protection` on (the default), every POST, PUT, PATCH and DELETE under `/api/` goes through one check before it reaches a route:
+
+1. A request that carries a valid `api_key` header (`X-API-Key` or `Authorization: Bearer`) is allowed. Another site cannot make a browser attach that header, so it cannot be forged.
+2. If the browser sends `Sec-Fetch-Site`, the values `same-origin` and `none` are allowed. `same-site` and `cross-site` get `403 {"success": false, "error": true, "message": "Cross-site request blocked"}`.
+3. Otherwise, if the browser sends `Origin`, it must be the address the browser used to reach ProxBalance, or one of `cors_origins`. Anything else gets the same 403.
+4. Requests with neither header (curl, scripts, Prometheus, the ProxBalance systemd services, the MCP server) are allowed, because they cannot come from a victim's browser.
+
+GET, HEAD and OPTIONS are never checked, and `/api/health` is exempt. The dashboard needs no setup: it calls the API on the same origin.
+
+The "address the browser used" is rebuilt from the `Host` header plus the request scheme. Behind a reverse proxy that terminates TLS, the proxy must keep the original `Host` and send `X-Forwarded-Proto` (Nginx Proxy Manager does both by default, and the bundled nginx passes them on). A proxy that rewrites `Host` should also send `X-Forwarded-Host`. If yours does neither, add the public address to `cors_origins` (for example `["https://proxbalance.example.com"]`) or, as a last resort, set `csrf_protection` to `false`.
 
 ---
 

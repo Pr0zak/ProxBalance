@@ -23,6 +23,7 @@ from proxbalance.cache import CacheManager
 from proxbalance.db import init_db
 from proxbalance.routes import register_blueprints
 from proxbalance.error_handlers import register_error_handlers
+from proxbalance.csrf import provided_api_key, register_csrf_protection
 
 # ---------------------------------------------------------------------------
 # Flask application
@@ -51,14 +52,19 @@ def _check_api_key():
     if not api_key:
         return None
     # Accept key via Authorization: Bearer <key> or X-API-Key header
-    provided = request.headers.get('X-API-Key', '')
-    if not provided:
-        auth_header = request.headers.get('Authorization', '')
-        if auth_header.startswith('Bearer '):
-            provided = auth_header[7:]
+    provided = provided_api_key()
     if not provided or not hmac.compare_digest(provided, api_key):
         return jsonify({"error": True, "message": "Invalid or missing API key"}), 401
     return None
+
+
+# ---------------------------------------------------------------------------
+# CSRF protection: block cross-site POST/PUT/PATCH/DELETE on /api/
+# (see proxbalance/csrf.py). Registered after the API key check, so a
+# request with a valid key header skips the origin check there.
+# ---------------------------------------------------------------------------
+
+register_csrf_protection(app, load_config)
 
 # ---------------------------------------------------------------------------
 # Shared state accessible via current_app.config in blueprints
