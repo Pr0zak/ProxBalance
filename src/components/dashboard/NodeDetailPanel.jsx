@@ -3,7 +3,9 @@ import {
 } from '../Icons.jsx';
 import {
   INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER,
-  PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
+  PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor, TAP_TARGET, NODE_ROLE } from '../../utils/designTokens.js';
+import { nodeRoles } from '../../utils/nodeRoles.js';
+import { NodeRoleMarker } from './NodeRoleMarker.jsx';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
@@ -104,7 +106,7 @@ export default function NodeDetailPanel({
   setError,
   nodeScores, penaltyConfig,
   API_BASE,
-  data, recommendations, guestRecMap, skippedGuests,
+  data, recommendations, guestRecMap, skippedGuests, nodeRoleMap,
   setSelectedGuestDetails, setConfirmMigration,
   // Maintenance mode (server-backed, see useEvacuation)
   setNodeMaintenance, maintenanceSaving,
@@ -162,6 +164,7 @@ export default function NodeDetailPanel({
   const m = node.metrics || {};
   const score = nodeScores && nodeScores[node.name];
   const inMaintenance = maintenanceNodes.has(node.name);
+  const role = (nodeRoleMap || nodeRoles({ nodes: [node.name], recommendations: recs, maintenanceNodes }))[node.name] || null;
   const guestCount = node.guests ? Object.keys(node.guests).length : nodeGuests.length;
   // Automation only evacuates running guests; stopped ones stay until planned by hand.
   const running = nodeGuests.filter(g => g.status === 'running');
@@ -284,9 +287,10 @@ export default function NodeDetailPanel({
         <button onClick={() => goTo(prevNode)} className={stepBtn} aria-label={`Previous node, ${prevNode}`} title={prevNode}><ChevronLeft size={16} /></button>
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-bold text-pb-text dark:text-white truncate">{node.name}</h3>
-          {inMaintenance && <span className="px-2 py-0.5 bg-yellow-500 text-white text-[10px] font-bold rounded-full shrink-0">MAINTENANCE</span>}
+        <div className="flex flex-wrap items-center gap-x-2">
+          <h3 className="text-lg font-bold text-pb-text dark:text-white truncate max-w-full">{node.name}</h3>
+          {/* The count is in the sentence below for giving / receiving, so it is said once */}
+          <NodeRoleMarker role={role} label showCount={role?.kind === 'maintenance'} size={13} className="text-xs" />
         </div>
         <p className="text-xs text-pb-text2 dark:text-gray-400">
           <span className={`font-medium ${online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -295,6 +299,10 @@ export default function NodeDetailPanel({
           {fmtUptime(node.uptime) && <> · <span className="whitespace-nowrap">up {fmtUptime(node.uptime)}</span></>}
           {' · '}<span className="whitespace-nowrap">{runningCount} of {nodeGuests.length} running</span>
         </p>
+        {/* Maintenance explains itself in the box below; giving / receiving say who moves where here */}
+        {role && role.kind !== 'maintenance' && (
+          <p className={`mt-0.5 text-xs ${NODE_ROLE[role.kind].text}`}>{role.sentence}</p>
+        )}
       </div>
       {score && (
         <div className="shrink-0 text-right leading-tight px-1" title="Headroom: 0–100, how much room this node has to take on guests (higher = more room)">
@@ -494,7 +502,6 @@ export default function NodeDetailPanel({
         <div>
           <div className="text-xs font-semibold text-pb-text dark:text-gray-200 mb-1 flex items-center gap-1.5">
             <MoveRight size={14} className="text-amber-600 dark:text-amber-400" /> Suggested moves
-            <span className="font-normal text-pb-text2 dark:text-gray-400">{movingOff.length} off · {movingHere.length} here</span>
           </div>
           {[...movingOff.map(r => ({ r, dir: 'off' })), ...movingHere.map(r => ({ r, dir: 'in' }))].map(({ r, dir }) => (
             <div key={`${dir}-${r.vmid}`} className="flex items-center justify-between gap-2 py-1.5 text-xs border-b border-pb-border dark:border-slate-700/70 last:border-b-0">

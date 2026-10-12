@@ -128,7 +128,8 @@ export default function ClusterSection(props) {
           handleRemoveTag={props.handleRemoveTag}
           setTagModalGuest={props.setTagModalGuest}
           setShowTagModal={props.setShowTagModal}
-          nodeRecCounts={props.nodeRecCounts}
+          nodeRoleMap={props.nodeRoleMap}
+          recommendations={props.recommendations}
           guestRecMap={props.guestRecMap}
           setConfirmMigration={props.setConfirmMigration}
           maintenanceNodes={props.maintenanceNodes}
@@ -158,6 +159,7 @@ export default function ClusterSection(props) {
           clusterMapViewMode={props.clusterMapViewMode}
           setClusterMapViewMode={props.setClusterMapViewMode}
           maintenanceNodes={props.maintenanceNodes}
+          nodeRoleMap={props.nodeRoleMap}
           setSelectedNode={props.setSelectedNode}
           setSelectedGuestDetails={props.setSelectedGuestDetails}
           guestsMigrating={props.guestsMigrating}

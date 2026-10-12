@@ -1,11 +1,13 @@
 import {
   GLASS_CARD, TABLE_HEADER, TABLE_ROW, PROGRESS_BAR_BG,
-  metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON,
+  metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON, nodeRoleEdge,
 } from '../../utils/designTokens.js';
 import { ChevronDown, Tag, X } from '../Icons.jsx';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { HEADROOM_HINT, DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IOWAIT_THRESHOLD } from '../../utils/constants.js';
 import { penaltyList, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
+import { nodeRoles } from '../../utils/nodeRoles.js';
+import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 
 const { useState, useMemo } = React;
 
@@ -545,8 +547,8 @@ export default function NodeSummaryTable({
   embedded = false,
   // Tag management
   canMigrate, guestProfiles, handleRemoveTag, setTagModalGuest, setShowTagModal,
-  // Optional cross-reference badges from recommendations
-  nodeRecCounts, guestRecMap, setConfirmMigration,
+  // Each node's role in balancing (utils/nodeRoles.js) and per-guest suggestions
+  nodeRoleMap, recommendations, guestRecMap, setConfirmMigration,
   // Nodes in maintenance (Set or array of names), for the Condition column
   maintenanceNodes,
   // Thresholds that define "over" in the Condition column
@@ -590,6 +592,10 @@ export default function NodeSummaryTable({
   };
 
   const maintSet = useMemo(() => toNodeSet(maintenanceNodes), [maintenanceNodes]);
+  const roles = useMemo(
+    () => nodeRoleMap || nodeRoles({ nodes: data?.nodes, recommendations, maintenanceNodes: maintSet }),
+    [nodeRoleMap, data, recommendations, maintSet],
+  );
 
   const nodes = useMemo(() => {
     if (!data?.nodes) return [];
@@ -750,14 +756,14 @@ export default function NodeSummaryTable({
                 {nodes.map(node => {
                   const isExpanded = expandedNodes.has(node.name);
                   const nodeGuests = guestsByNode[node.name] || [];
-                  const recs = nodeRecCounts?.[node.name];
+                  const role = roles[node.name];
                   return (
                     <React.Fragment key={node.name}>
                       <tr
                         className={`${TABLE_ROW} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
-                        <td className="px-2 py-3 md:p-3 w-8">
+                        <td className="px-2 py-3 md:p-3 w-8" style={nodeRoleEdge(role)}>
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleNode(node.name); }}
                             className="flex items-center justify-center w-10 h-10 -m-2.5 md:w-5 md:h-5 md:m-0 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
@@ -773,22 +779,9 @@ export default function NodeSummaryTable({
                           <div className="flex items-center gap-2">
                             <span className={`md:hidden w-2 h-2 rounded-full shrink-0 ${node.online ? 'bg-green-400' : 'bg-red-400'}`} />
                             <span className="text-sm font-medium text-pb-text dark:text-white">{node.name}</span>
-                            {recs?.outbound > 0 && (
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40 tabular-nums"
-                                title={`${recs.outbound} guest${recs.outbound !== 1 ? 's' : ''} recommended to leave this node`}
-                              >
-                                →{recs.outbound}
-                              </span>
-                            )}
-                            {recs?.inbound > 0 && (
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 tabular-nums"
-                                title={`${recs.inbound} guest${recs.inbound !== 1 ? 's' : ''} recommended to move to this node`}
-                              >
-                                ←{recs.inbound}
-                              </span>
-                            )}
+                            {/* Maintenance already reads in the Condition column on md+; the
+                                marker stays there only when it carries a count of guests leaving. */}
+                            <NodeRoleMarker role={role} className={role?.kind === 'maintenance' && !role.count ? 'md:hidden' : ''} />
                           </div>
                         </td>
                         <td className="p-3 hidden md:table-cell">
@@ -851,6 +844,7 @@ export default function NodeSummaryTable({
               </tbody>
             </table>
           </div>
+          <NodeRoleLegend roles={roles} className="pt-2" />
           {nodes.some(n => (n.raw.anchored_cpu || 0) >= 0.5) && (
             <div className="flex items-center gap-1.5 pt-2 text-[11px] text-pb-text2 dark:text-gray-500">
               <span className="inline-block w-4 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
