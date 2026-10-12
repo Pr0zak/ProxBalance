@@ -200,7 +200,7 @@ export default function KpiRow({
       <Tile onClick={() => setShowHealthDetail(true)} title={healthTitle}>
         <Activity size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
         <div className="min-w-0">
-          <div className={`text-lg font-bold leading-snug ${healthColor}`}>{health.headline}</div>
+          <div className={`text-lg font-bold leading-snug text-balance ${healthColor}`}>{health.headline}</div>
           <Label>Cluster health</Label>
           {health.sub && <Sub>{health.sub}</Sub>}
           {data.cluster_spread && <Sub title="Max − min across online nodes">{spreadText(data.cluster_spread)}</Sub>}
