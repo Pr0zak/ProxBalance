@@ -18,6 +18,7 @@ from proxbalance.metrics_store import (
     get_metric_value,
     get_all_node_names,
 )
+from proxbalance.forecasting import FORECAST_HORIZON_DAYS, projection_series
 
 
 # ---------------------------------------------------------------------------
@@ -138,11 +139,16 @@ def _analyze_metric_trend(
     field: str,
     lookback_hours: int,
     threshold: Optional[float] = None,
+    series: bool = False,
+    horizon_days: float = FORECAST_HORIZON_DAYS,
 ) -> Dict[str, Any]:
     """Analyze trend for a single metric across historical samples.
 
     Returns a dict with direction, magnitude, confidence, projected value,
-    stability, and optional threshold crossing estimate.
+    stability, and optional threshold crossing estimate. With ``series`` it
+    also carries ``forecast``: the chart data from
+    :func:`proxbalance.forecasting.projection_series` (None when there are
+    too few samples to fit).
     """
     values = []
     timestamps = []
@@ -167,6 +173,7 @@ def _analyze_metric_trend(
             "projected_value": None,
             "hours_to_threshold": None,
             "data_points": len(values),
+            **({"forecast": None} if series else {}),
         }
 
     # Normalize timestamps to hours for numerical stability
@@ -209,7 +216,7 @@ def _analyze_metric_trend(
     sign = "+" if rate_per_day >= 0 else ""
     rate_display = f"{sign}{rate_per_day:.1f}%/day"
 
-    return {
+    result = {
         "direction": direction,
         "rate_per_day": round(rate_per_day, 2),
         "rate_display": rate_display,
@@ -222,6 +229,11 @@ def _analyze_metric_trend(
         "hours_to_threshold": hours_to_threshold,
         "data_points": len(values),
     }
+    if series:
+        result["forecast"] = projection_series(
+            timestamps, values, rate_per_day, current_avg, threshold, horizon_days,
+        )
+    return result
 
 
 def _hourly_swing_pts(samples: List[Dict], field: str) -> Optional[float]:
@@ -316,6 +328,8 @@ def analyze_node_trends(
     cpu_threshold: float = 60.0,
     mem_threshold: float = 70.0,
     iowait_threshold: float = 30.0,
+    series: bool = False,
+    horizon_days: float = FORECAST_HORIZON_DAYS,
 ) -> Dict[str, Any]:
     """Comprehensive trend analysis for a single node.
 
@@ -325,6 +339,8 @@ def analyze_node_trends(
         cpu_threshold: CPU threshold for crossing projection.
         mem_threshold: Memory threshold for crossing projection.
         iowait_threshold: IOWait threshold for crossing projection.
+        series: Also return each metric's forecast chart data.
+        horizon_days: Forecast horizon for ``days_to_limit``.
 
     Returns:
         Dict with per-metric trends, stability scores, baseline info,
@@ -337,9 +353,10 @@ def analyze_node_trends(
     current_hour = datetime.now(timezone.utc).hour
 
     # Analyze each metric
-    cpu_trend = _analyze_metric_trend(samples, "cpu", lookback_hours, cpu_threshold)
-    mem_trend = _analyze_metric_trend(samples, "memory", lookback_hours, mem_threshold)
-    iowait_trend = _analyze_metric_trend(samples, "iowait", lookback_hours, iowait_threshold)
+    fc = {"series": series, "horizon_days": horizon_days}
+    cpu_trend = _analyze_metric_trend(samples, "cpu", lookback_hours, cpu_threshold, **fc)
+    mem_trend = _analyze_metric_trend(samples, "memory", lookback_hours, mem_threshold, **fc)
+    iowait_trend = _analyze_metric_trend(samples, "iowait", lookback_hours, iowait_threshold, **fc)
 
     # Baseline comparison
     cpu_baseline = _compute_baseline(samples, "cpu", current_hour)
@@ -527,11 +544,16 @@ def get_cluster_trend_summary(
     lookback_hours: int = 168,
     cpu_threshold: float = 60.0,
     mem_threshold: float = 70.0,
+    iowait_threshold: float = 30.0,
+    series: bool = False,
+    horizon_days: float = FORECAST_HORIZON_DAYS,
 ) -> Dict[str, Any]:
     """Generate a cluster-wide trend summary for all known nodes.
 
     Returns per-node trend summaries, cluster direction, top movers,
-    and data quality overview.
+    and data quality overview. ``series`` adds each metric's forecast
+    chart data (history, projection, days to the limit within
+    ``horizon_days``).
     """
     node_names = get_all_node_names()
     if not node_names:
@@ -545,7 +567,8 @@ def get_cluster_trend_summary(
     node_trends = {}
     for name in node_names:
         node_trends[name] = analyze_node_trends(
-            name, lookback_hours, cpu_threshold, mem_threshold
+            name, lookback_hours, cpu_threshold, mem_threshold, iowait_threshold,
+            series=series, horizon_days=horizon_days,
         )
 
     # Cluster direction

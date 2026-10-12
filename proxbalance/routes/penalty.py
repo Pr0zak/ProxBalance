@@ -346,11 +346,19 @@ def get_trends_nodes():
     lookback = request.args.get("lookback_days", 7, type=int)
     cpu_threshold = request.args.get("cpu_threshold", 60.0, type=float)
     mem_threshold = request.args.get("mem_threshold", 70.0, type=float)
+    iowait_threshold = request.args.get("iowait_threshold", 30.0, type=float)
+    # series=1 adds per-metric forecast chart data (Insights → Forecasts).
+    series = request.args.get("series", "0") in ("1", "true")
+    horizon_days = request.args.get("horizon_days", 30, type=int)
+    horizon_days = max(1, min(horizon_days, 365))
 
     summary = get_cluster_trend_summary(
         lookback_hours=lookback * 24,
         cpu_threshold=cpu_threshold,
         mem_threshold=mem_threshold,
+        iowait_threshold=iowait_threshold,
+        series=series,
+        horizon_days=horizon_days,
     )
 
     return jsonify({"success": True, **summary})
