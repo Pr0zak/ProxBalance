@@ -387,6 +387,7 @@ const ProxmoxBalanceManager = () => {
         clusterNodes={cluster.data?.nodes}
         automationConfig={automation.automationConfig}
         routeTab={ui.subPage}
+        chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
       />
       {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
     </div>);

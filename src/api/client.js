@@ -156,11 +156,14 @@ export async function resetMigrationSettings() {
 // Trend Analysis
 // ---------------------------------------------------------------------------
 
-export async function fetchNodeTrends(lookbackDays = 7, cpuThreshold, memThreshold) {
+export async function fetchNodeTrends(lookbackDays = 7, cpuThreshold, memThreshold, { iowaitThreshold, series = false } = {}) {
   try {
     const params = new URLSearchParams({ lookback_days: lookbackDays });
     if (cpuThreshold) params.append('cpu_threshold', cpuThreshold);
     if (memThreshold) params.append('mem_threshold', memThreshold);
+    if (iowaitThreshold) params.append('iowait_threshold', iowaitThreshold);
+    // series=1 adds per-metric forecast chart data (history + projection).
+    if (series) params.append('series', '1');
     const response = await fetch(`${API_BASE}/trends/nodes?${params}`);
     const result = await response.json();
     return result;
