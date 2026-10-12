@@ -1,14 +1,16 @@
-import { Activity, TrendingUp, Clock, CheckCircle } from './Icons.jsx';
+import { Activity, TrendingUp, Clock, CheckCircle, Power } from './Icons.jsx';
 import { GLASS_CARD } from '../utils/designTokens.js';
 import SectionHeader from './SectionHeader.jsx';
 import OutcomesByDay from './insights/OutcomesByDay.jsx';
 import NodeTrends, { RangePicker } from './insights/NodeTrends.jsx';
 import Forecasts, { ForecastsClear, forecastsEmpty } from './insights/Forecasts.jsx';
 import RhythmHeatmap, { MetricPicker } from './insights/RhythmHeatmap.jsx';
+import FailureSim, { StorageModePicker } from './insights/FailureSim.jsx';
+import { readStorageMode, writeStorageMode, ROUTE_PREFIX } from './insights/failureModel.js';
 import { RANGES, useLoad } from './insights/shared.jsx';
-import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts } from '../api/client.js';
+import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts, fetchNodeFailure } from '../api/client.js';
 
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
 
 const RANGE_KEY = 'insightsTrendDays';
 
@@ -41,7 +43,7 @@ function WorkloadRhythm({ clusterNodes, schedule, metric, threshold }) {
  * never showed: trend projections, forecasts, workload rhythm, and measured
  * migration outcomes.
  */
-export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThreshold, clusterNodes, automationConfig }) {
+export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThreshold, clusterNodes, automationConfig, routeTab }) {
   const [trendDays, setTrendDays] = useState(readRange);
   const [rhythmMetric, setRhythmMetric] = useState('cpu');
   const changeRange = (d) => {
@@ -57,6 +59,17 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   const [engineState] = useLoad(() => fetchForecasts());
   // Nothing projected: Forecasts shrinks to one line and the rhythm card takes the full width.
   const noForecasts = forecastsEmpty(trendsState, engineState, thresholds);
+
+  // "What if a node fails?": #/insights/failure-<node> opens it on that node.
+  const [failStorage, setFailStorage] = useState(readStorageMode);
+  const changeFailStorage = (m) => { setFailStorage(m); writeStorageMode(m); };
+  const [failSummary] = useLoad(() => fetchNodeFailure(null, failStorage), [failStorage]);
+  const routedNode = routeTab && routeTab.startsWith(ROUTE_PREFIX) ? routeTab.slice(ROUTE_PREFIX.length) : null;
+  const failRef = useRef(null);
+  useEffect(() => {
+    if (routedNode && failRef.current) failRef.current.scrollIntoView({ block: 'start' });
+  }, [routedNode]);
+  const showStoragePicker = failStorage === 'capacity' || (failSummary.data?.local_storage_guests || 0) > 0;
 
   return (
     <div className="pb-4 sm:pb-0">
@@ -84,6 +97,10 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
               metric={rhythmMetric}
               threshold={rhythmMetric === 'cpu' ? cpuThreshold : iowaitThreshold}
             />
+          </div>
+          <div ref={failRef} className={`${GLASS_CARD} xl:col-span-2 scroll-mt-20`}>
+            <SectionHeader title="What if a node fails?" icon={Power} accent={['red', 'rose']} right={showStoragePicker ? <StorageModePicker value={failStorage} onChange={changeFailStorage} /> : null} />
+            <FailureSim storage={failStorage} routedNode={routedNode} summaryState={failSummary} />
           </div>
           <div className={`${GLASS_CARD} xl:col-span-2`}>
             <SectionHeader title="Migration outcomes" icon={CheckCircle} accent={['emerald', 'green']} />

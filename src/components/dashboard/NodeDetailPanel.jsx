@@ -9,6 +9,8 @@ import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
 import { guestMobility } from './guestMobility.js';
 import { ScoreBreakdown } from './ScoreBreakdown.jsx';
+import { fetchNodeFailure } from '../../api/client.js';
+import { shortVerdict, verdictTone, readStorageMode, ROUTE_PREFIX } from '../insights/failureModel.js';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -37,6 +39,14 @@ const MOBILITY_TEXT = {
   red: 'text-red-600 dark:text-red-400',
   blue: 'text-indigo-600 dark:text-indigo-300',
   gray: 'text-pb-text2 dark:text-gray-400',
+};
+
+// Text colour for the "If this node fails" line, by simulation status.
+const FAILURE_TONE = {
+  green: 'text-emerald-700 dark:text-emerald-300',
+  yellow: 'text-amber-700 dark:text-amber-300',
+  red: 'text-red-700 dark:text-red-300',
+  gray: 'text-pb-text dark:text-gray-200',
 };
 
 const HATCH = { backgroundImage: 'repeating-linear-gradient(135deg, rgba(100,116,139,0.85) 0 3px, rgba(71,85,105,0.85) 3px 6px)' };
@@ -106,9 +116,22 @@ export default function NodeDetailPanel({
   const [confirmMaint, setConfirmMaint] = useState(false);
   const [maintError, setMaintError] = useState(null);
   const nodeName = selectedNode && selectedNode.name;
+  const [failure, setFailure] = useState(null);
+  const collectedAt = data && data.collected_at;
 
   // A different node (or closing) drops any half-finished confirmation.
   useEffect(() => { setConfirmMaint(false); setMaintError(null); setShowStopped(false); }, [nodeName]);
+
+  // "If this node fails" line: the simulation for this node, refreshed per collection.
+  useEffect(() => {
+    setFailure(null);
+    if (!nodeName) return undefined;
+    let live = true;
+    fetchNodeFailure(nodeName, readStorageMode()).then(res => {
+      if (live && res && !res.error && res.node === nodeName) setFailure(res);
+    });
+    return () => { live = false; };
+  }, [nodeName, collectedAt]);
 
   const skippedByVmid = useMemo(() => {
     const out = {};
@@ -394,6 +417,17 @@ export default function NodeDetailPanel({
         <LoadRow label="CPU" sub={`${node.cpu_cores || 0} cores`} now={cpuNow} avg24={m.avg_cpu} avg7={m.avg_cpu_week} peak={peakOf(cpuNow, m.max_cpu, m.max_cpu_week)} anchored={anchoredShown} />
         <LoadRow label="Memory" sub={memTotal ? `${memUsed.toFixed(1)} / ${memTotal.toFixed(0)} GB` : null} now={node.mem_percent} avg24={m.avg_mem} avg7={m.avg_mem_week} peak={peakOf(node.mem_percent, m.max_mem, m.max_mem_week)} />
         <LoadRow label="IOWait" sub="I/O latency" now={m.current_iowait} avg24={m.avg_iowait} avg7={m.avg_iowait_week} peak={peakOf(m.current_iowait, m.max_iowait)} />
+        {shortVerdict(failure) && (
+          <p className="text-xs text-pb-text2 dark:text-gray-400">
+            If this node fails:{' '}
+            <a
+              href={`#/insights/${ROUTE_PREFIX}${encodeURIComponent(node.name)}`}
+              onClick={() => setSelectedNode(null)}
+              className={`font-medium underline decoration-dotted underline-offset-2 hover:decoration-solid ${FAILURE_TONE[verdictTone(failure)]}`}
+              title="Open the node-failure simulation on the Insights page"
+            >{shortVerdict(failure)}</a>
+          </p>
+        )}
         {anchoredShown >= 1 && (
           <p className="text-xs text-pb-text2 dark:text-gray-400">
             <span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={HATCH} />

@@ -386,6 +386,7 @@ const ProxmoxBalanceManager = () => {
         cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
         clusterNodes={cluster.data?.nodes}
         automationConfig={automation.automationConfig}
+        routeTab={ui.subPage}
       />
       {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
     </div>);

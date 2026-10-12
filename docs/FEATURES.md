@@ -51,6 +51,7 @@ A separate page for analysis over time:
 - **Node trends** over 24h, 7d, 30d or 90d: direction, average and rate for CPU, memory and IOWait, with sparklines and time-to-threshold for confident fits only
 - **Forecasts**: projected threshold crossings, plus the recommendation engine's 48-hour look-ahead that feeds automation
 - **Workload rhythm**: hour-of-day heatmap over 30 days in the schedule's time zone, with the hours your migration windows allow and the quietest stretch
+- **What if a node fails?**: pick a node and see where its running guests would restart (largest first, onto the survivor with the most free memory, up to 95%, respecting anti-affinity tags and Proxmox HA rules), which can't restart elsewhere (passthrough hardware, host bind mounts, node-local disks) and which don't fit, with each survivor's memory before and after. Every node carries an N-1 chip: can fail, tight (a survivor ends above 85%), can't restart, or left out. A "Local disks: lost / restored" switch appears when guests keep disks on node-local storage, so you can check pure capacity as if they were restored from backup. The node panel shows the same verdict in one line and links here
 - **Migration outcomes**: source-node CPU and memory before each migration versus 5 minutes and 24 hours after, for manual, automated and companion migrations
 
 ### Light + Dark Mode
