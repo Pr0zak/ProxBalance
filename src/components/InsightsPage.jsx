@@ -44,7 +44,7 @@ function WorkloadRhythm({ clusterNodes, schedule, metric, threshold }) {
  * never showed: trend projections, forecasts, workload rhythm, and measured
  * migration outcomes.
  */
-export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThreshold, clusterNodes, automationConfig, routeTab }) {
+export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThreshold, clusterNodes, automationConfig, routeTab, chartJsLoaded, loadChartJs }) {
   const [trendDays, setTrendDays] = useState(readRange);
   const [rhythmMetric, setRhythmMetric] = useState('cpu');
   const changeRange = (d) => {
@@ -53,14 +53,14 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   };
   // One trends fetch shared by Node trends and Forecasts so both describe the same window.
   const [trendsState] = useLoad(
-    () => fetchNodeTrends(trendDays, cpuThreshold, memThreshold),
-    [trendDays, cpuThreshold, memThreshold]
+    () => fetchNodeTrends(trendDays, cpuThreshold, memThreshold, { iowaitThreshold, series: true }),
+    [trendDays, cpuThreshold, memThreshold, iowaitThreshold]
   );
   const thresholds = { cpu: cpuThreshold, memory: memThreshold, iowait: iowaitThreshold };
   const [engineState] = useLoad(() => fetchForecasts());
   const [rightsizingState] = useLoad(() => fetchRightsizing());
   // Nothing projected: Forecasts shrinks to one line and the rhythm card takes the full width.
-  const noForecasts = forecastsEmpty(trendsState, engineState, thresholds);
+  const noForecasts = forecastsEmpty(trendsState, engineState);
 
   // "What if a node fails?": #/insights/failure-<node> opens it on that node.
   const [failStorage, setFailStorage] = useState(readStorageMode);
@@ -89,7 +89,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
           ) : (
             <div className={GLASS_CARD}>
               <SectionHeader title="Forecasts" icon={TrendingUp} accent={['orange', 'red']} />
-              <Forecasts trendsState={trendsState} days={trendDays} thresholds={thresholds} engineState={engineState} />
+              <Forecasts trendsState={trendsState} days={trendDays} engineState={engineState} chartReady={chartJsLoaded} loadChartJs={loadChartJs} />
             </div>
           )}
           <div className={`${GLASS_CARD} ${noForecasts ? 'xl:col-span-2' : ''}`}>

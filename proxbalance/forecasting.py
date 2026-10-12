@@ -8,7 +8,7 @@ manages score history snapshots for time-series analysis.
 
 import json
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone, timedelta
 
 from proxbalance.constants import (
@@ -108,6 +108,82 @@ def project_trend(values: List[float], timestamps: List[float], hours_ahead: flo
         "trend_rate_per_day": round(trend_rate_per_day, 2),
         "confidence": confidence,
         "r_squared": round(r_squared, 4),
+    }
+
+
+# Forecast chart: how far ahead a crossing still counts, and how many points
+# of history the chart gets (the fit itself always uses every sample).
+FORECAST_HORIZON_DAYS = 30
+FORECAST_HISTORY_POINTS = 120
+
+
+def projection_series(
+    timestamps: List[float],
+    values: List[float],
+    rate_per_day: float,
+    current: float,
+    threshold: Optional[float],
+    horizon_days: float = FORECAST_HORIZON_DAYS,
+    max_points: int = FORECAST_HISTORY_POINTS,
+) -> Dict[str, Any]:
+    """Chart data for one node metric: history, the projected line and the crossing day.
+
+    The projection is the trend fit's slope (``rate_per_day``) continued from
+    ``current`` (the recent value the crossing estimate also starts from), so
+    the dashed line, the headline and ``hours_to_threshold`` all agree.
+
+    Args:
+        timestamps: Sample Unix timestamps (seconds), any order.
+        values: Sample values (percent), parallel to ``timestamps``.
+        rate_per_day: Fitted slope in percentage points per day.
+        current: Recent value the projection starts from (at day 0 = last sample).
+        threshold: The limit for this metric, or None when there is none.
+        horizon_days: Crossings further out than this are reported as None.
+        max_points: History is averaged into at most this many points.
+
+    Returns:
+        Dict with ``history`` ([[days, value], ...], days <= 0 relative to the
+        last sample), ``projection`` ([[0, current], [end_day, value]], clipped
+        to 0-100 %), ``days_to_limit`` (None when flat, falling, already over
+        or beyond the horizon), ``limit`` and ``horizon_days``.
+    """
+    pairs = sorted((t, v) for t, v in zip(timestamps, values) if t is not None and v is not None)
+    history: List[List[float]] = []
+    if pairs:
+        last_ts = pairs[-1][0]
+        span = last_ts - pairs[0][0]
+        width = span / max_points if span > 0 else 1.0
+        buckets: Dict[int, List[float]] = {}
+        for t, v in pairs:
+            idx = min(int((last_ts - t) / width), max_points - 1)
+            b = buckets.setdefault(idx, [0.0, 0.0, 0])
+            b[0] += t
+            b[1] += v
+            b[2] += 1
+        for idx in sorted(buckets, reverse=True):
+            t_sum, v_sum, n = buckets[idx]
+            history.append([round((t_sum / n - last_ts) / 86400, 3), round(v_sum / n, 2)])
+
+    days_to_limit = None
+    if threshold is not None and rate_per_day > 0 and current < threshold:
+        days = (threshold - current) / rate_per_day
+        if days <= horizon_days:
+            # Below the limit means some time is left; never report 0.
+            days_to_limit = max(round(days, 1), 0.1)
+
+    end_day = float(horizon_days)
+    if rate_per_day > 0 and current < 100:
+        end_day = min(end_day, (100 - current) / rate_per_day)
+    elif rate_per_day < 0 and current > 0:
+        end_day = min(end_day, current / -rate_per_day)
+    end_value = max(0.0, min(100.0, current + rate_per_day * end_day))
+
+    return {
+        "history": history,
+        "projection": [[0, round(current, 2)], [round(end_day, 2), round(end_value, 2)]],
+        "days_to_limit": days_to_limit,
+        "limit": threshold,
+        "horizon_days": horizon_days,
     }
 
 
