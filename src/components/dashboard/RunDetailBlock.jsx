@@ -25,7 +25,13 @@ function resultText(d, dry) {
     const p = observationProgress(d);
     return p ? `waiting ${p.seen}/${p.need}` : 'waiting';
   }
-  if (d.action === 'filtered' || d.action === 'skipped' || d.action === 'deferred') return `held back: ${heldKey(d)}`;
+  if (d.action === 'filtered' || d.action === 'skipped' || d.action === 'deferred') {
+    // Short forms for the table; the row above the table says why.
+    const k = heldKey(d);
+    if (k.startsWith('waiting their turn')) return 'next in line';
+    if (k.startsWith('held by the per-node limit')) return 'node limit, next check';
+    return `held: ${k}`;
+  }
   return actionLabel(d, dry);
 }
 
@@ -55,7 +61,7 @@ function DecisionsList({ decisions, dry }) {
             <tr key={idx} className="align-top">
               <td className="pr-3 py-0.5 text-pb-text dark:text-gray-300 whitespace-nowrap">{d.name || `guest ${d.vmid}`}</td>
               <td className="pr-3 py-0.5 font-mono whitespace-nowrap">{d.source_node || '—'} → {d.target_node || '—'}</td>
-              <td className="pr-3 py-0.5">
+              <td className="pr-3 py-0.5 whitespace-nowrap">
                 {resultText(d, dry)}
                 {d.error && <div className="text-red-600 dark:text-red-400">Error: {d.error}</div>}
               </td>
