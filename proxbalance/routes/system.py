@@ -296,9 +296,7 @@ def system_info():
         "update_channel": update_info.get('channel'),
         "latest_release": update_info.get('release'),
         "update_check_error": update_info.get('error'),
-        "previous_branch": update_manager._load_previous_branch(),
-        "update_in_progress": (update_manager.is_locked
-                               or update_manager.update_status().get('state') == 'running')
+        "update_in_progress": update_manager.update_status().get('state') == 'running'
     }
 
     return jsonify(system_data)
@@ -360,48 +358,6 @@ def set_update_channel():
     update_manager = current_app.config['update_manager']
     return jsonify({"success": True, "channel": channel,
                     "update": update_manager.check_for_updates(config=config, force=True)})
-
-@system_bp.route("/api/system/branches", methods=["GET"])
-@api_route
-def list_branches():
-    """List all available git branches"""
-    update_manager = current_app.config['update_manager']
-    result = update_manager.list_branches()
-    return jsonify(result)
-
-@system_bp.route("/api/system/switch-branch", methods=["POST"])
-def switch_branch():
-    """Switch to a different git branch"""
-    update_manager = current_app.config['update_manager']
-    data = request.get_json()
-    target_branch = data.get('branch', '')
-    result = update_manager.switch_branch(target_branch)
-    status_code = 200 if result.get('success', False) else 400
-    return jsonify(result), status_code
-
-
-@system_bp.route("/api/system/branch-preview/<branch>", methods=["GET"])
-def branch_preview(branch):
-    """Preview commits in a branch compared to main"""
-    update_manager = current_app.config['update_manager']
-    result = update_manager.branch_preview(branch)
-    status_code = 200 if result.get('success', False) else 400
-    return jsonify(result), status_code
-
-@system_bp.route("/api/system/rollback-branch", methods=["POST"])
-def rollback_branch():
-    """Switch back to the previously active branch"""
-    update_manager = current_app.config['update_manager']
-    result = update_manager.rollback_branch()
-    status_code = 200 if result.get('success', False) else 400
-    return jsonify(result), status_code
-
-@system_bp.route("/api/system/clear-testing-mode", methods=["POST"])
-def clear_testing_mode():
-    """Clear the previous branch tracking to exit testing mode"""
-    update_manager = current_app.config['update_manager']
-    result = update_manager.clear_testing_mode()
-    return jsonify(result), 200
 
 @system_bp.route("/api/system/restart-service", methods=["POST"])
 def restart_service():

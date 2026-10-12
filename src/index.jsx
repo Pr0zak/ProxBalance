@@ -281,14 +281,13 @@ const ProxmoxBalanceManager = () => {
       refreshing={cluster.loading}
       systemInfo={updates.systemInfo}
       onShowUpdate={() => updates.setShowUpdateModal(true)}
-      onShowBranches={() => { updates.fetchBranches(); updates.setShowBranchModal(true); }}
       automationStatus={automation.automationStatus}
     />
   );
 
   // Run Plan modal + a "Running plan" pill — rendered on every page so the run
   // (state lives in useMigrations) is reachable after closing/navigating away.
-  // Update / branch dialogs are opened from the TopNav, so mount them on every page.
+  // The update dialog is opened from the TopNav, so mount them on every page.
   const systemModals = (
     <SystemModals
       showUpdateModal={updates.showUpdateModal} setShowUpdateModal={updates.setShowUpdateModal}
@@ -298,13 +297,7 @@ const ProxmoxBalanceManager = () => {
       checkForUpdates={updates.checkForUpdates} checkingUpdates={updates.checkingUpdates}
       setUpdateChannel={updates.setUpdateChannel} savingChannel={updates.savingChannel}
       systemInfo={updates.systemInfo}
-      showBranchModal={updates.showBranchModal} setShowBranchModal={updates.setShowBranchModal}
-      loadingBranches={updates.loadingBranches} availableBranches={updates.availableBranches}
-      branchPreview={updates.branchPreview} setBranchPreview={updates.setBranchPreview}
-      loadingPreview={updates.loadingPreview} switchingBranch={updates.switchingBranch}
-      rollingBack={updates.rollingBack}
-      fetchBranches={updates.fetchBranches} switchBranch={updates.switchBranch}
-      rollbackBranch={updates.rollbackBranch} clearTestingMode={updates.clearTestingMode} fetchBranchPreview={updates.fetchBranchPreview}
+
     />
   );
 

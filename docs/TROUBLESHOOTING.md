@@ -162,7 +162,7 @@ Wait for the collector to complete (typically 30-90 seconds), then refresh the d
 
 ### UI looks stale or styles broken after an update
 
-Symptoms: a new feature is missing, colours look wrong (for example pale light-mode panels on a dark page), or the layout is broken right after an update or branch switch.
+Symptoms: a new feature is missing, colours look wrong (for example pale light-mode panels on a dark page), or the layout is broken right after an update.
 
 Each frontend deploy stamps a build id into the `app.js?v=` and `tailwind.css?v=` URLs in `/var/www/html/index.html`, so browsers should fetch the new files. First do a hard refresh (Ctrl+Shift+R, or Cmd+Shift+R on macOS). If that does not help, check the stamp:
 
@@ -173,9 +173,18 @@ pct exec <ctid> -- git -C /opt/proxmox-balance-manager rev-parse --short HEAD
 
 Both URLs should carry the same `<commit>-<timestamp>` id, starting with the current commit. If they still show the fixed value from the repository's `index.html` (for example `?v=20260207-0001`), or an older commit, the frontend was not redeployed; see the next entry.
 
-### Branch switch or in-app update didn't update the UI
+### An in-app update failed or didn't update the UI
 
-The branch manager and the in-app updater run `post_update.sh`, which calls `deploy-frontend.sh` to build the frontend and copy it to `/var/www/html`, and installs the systemd unit files. They run inside `proxmox-balance.service`, which uses `ProtectSystem=strict`, so the unit must allow writes to those paths:
+Updates run in their own systemd unit, `proxbalance-update`, outside the API service. Check what happened:
+
+```bash
+pct exec <ctid> -- /opt/proxmox-balance-manager/venv/bin/python3 /opt/proxmox-balance-manager/release_updater.py status
+pct exec <ctid> -- journalctl -u proxbalance-update --no-pager | tail -50
+```
+
+`state` is `succeeded`, `failed` (it stopped before changing anything, or the rollback also failed) or `rolled_back` (the new version didn't come back healthy, so the updater returned to the previous one). Each step lists what it did. Backups of the database, settings and web files are under `backups/updates/` in the install folder.
+
+**First update from an install older than v2.16.** That update is still done by the old updater, inside `proxmox-balance.service`, which uses `ProtectSystem=strict`. If the unit only allows writes to `/opt/proxmox-balance-manager`, the code updates but the copy to the web root is refused and the browser keeps getting the old frontend:
 
 ```bash
 pct exec <ctid> -- systemctl cat proxmox-balance | grep ReadWritePaths
@@ -183,14 +192,14 @@ pct exec <ctid> -- systemctl cat proxmox-balance | grep ReadWritePaths
 # ReadWritePaths=/opt/proxmox-balance-manager /var/www/html /etc/systemd/system
 ```
 
-Installs from before this change only list `/opt/proxmox-balance-manager`: the code is checked out and built, but the copy to the web root and the unit install are refused, so the browser keeps getting the old frontend. The installed unit cannot update itself from inside the service, so run the post-update step once as root in the container:
+Run the post-update step once as root in the container:
 
 ```bash
 pct exec <ctid> -- bash -c 'cd /opt/proxmox-balance-manager && bash post_update.sh'
 pct exec <ctid> -- systemctl restart proxmox-balance
 ```
 
-This builds and deploys the frontend, installs the current unit files (with the wider `ReadWritePaths`) and reloads systemd. Later updates and branch switches from the UI then deploy the frontend on their own.
+Later updates use the new updater and don't depend on the service's write permissions.
 
 ---
 

@@ -379,7 +379,7 @@ API tokens, notification credentials and AI keys are never returned by the API. 
 
 ### Updates
 
-The version and branch shown in the top nav open the update and branch manager dialogs from any page.
+The version number in the top nav opens the update window from any page: pick the update channel (stable, beta or dev), read the release notes and update. See [Releasing and updating](RELEASING.md).
 
 ---
 

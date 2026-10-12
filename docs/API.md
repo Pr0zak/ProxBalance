@@ -883,32 +883,6 @@ Progress or result of the last update: `state` (`idle`, `running`, `succeeded`, 
 
 Sets `updates.channel` to `stable`, `beta` or `dev`. Body: `{"channel": "beta"}`. Returns the new channel and a fresh update check.
 
-### GET /api/system/branches
-
-Lists available git branches.
-
-### POST /api/system/switch-branch
-
-Switches to a different branch and runs the same build pipeline as an update (`post_update.sh`), so the frontend served by nginx matches the new branch.
-
-```bash
-curl -X POST http://<host>/api/system/switch-branch \
-  -H "Content-Type: application/json" \
-  -d '{"branch": "dev"}'
-```
-
-### GET /api/system/branch-preview/{branch}
-
-Previews commits on a branch compared to main before switching.
-
-### POST /api/system/rollback-branch
-
-Switches back to the previously active branch.
-
-### POST /api/system/clear-testing-mode
-
-Forgets the previously active branch, leaving "testing mode" without switching.
-
 ### POST /api/system/restart-service
 
 Restarts a ProxBalance service. Valid services: `proxmox-balance`, `proxmox-collector`.
