@@ -1,10 +1,10 @@
 import { INNER_CARD } from '../utils/designTokens.js';
 
-export default function Toggle({ checked, onChange, color = 'green' }) {
+export default function Toggle({ checked, onChange, color = 'green', className = 'ml-4' }) {
   const colorClass = color === 'yellow' ? 'peer-checked:bg-yellow-600' : 'peer-checked:bg-green-600';
 
   return (
-    <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+    <label className={`relative inline-flex items-center cursor-pointer shrink-0 ${className}`}>
       <input
         type="checkbox"
         checked={checked}

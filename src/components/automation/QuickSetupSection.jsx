@@ -2,8 +2,7 @@ import {
   AlertTriangle, X, Power
 } from '../Icons.jsx';
 import {
-  GLASS_CARD, INNER_CARD, ICON, iconBadge, statusBadge, BTN_SECONDARY,
-} from '../../utils/designTokens.js';
+  GLASS_CARD, INNER_CARD, ICON, iconBadge, statusBadge, BTN_SECONDARY, TAP_TARGET } from '../../utils/designTokens.js';
 import Toggle from '../Toggle.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 import {
@@ -93,9 +92,9 @@ export default function QuickSetupSection({
         )}
       </div>
 
-      {/* The two master switches, side by side at every width */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <div className={`${INNER_CARD} !py-2 sm:!py-3 flex items-center justify-between gap-2`}>
+      {/* The two master switches, side by side (stacked on the narrowest phones) */}
+      <div className="grid grid-cols-1 min-[375px]:grid-cols-2 gap-2 sm:gap-3">
+        <div className={`${INNER_CARD} !py-2 sm:!py-3 min-h-[44px] flex items-center justify-between gap-2`}>
           <div className="min-w-0">
             <div className="font-semibold text-sm text-pb-text dark:text-white leading-tight">
               <span className="sm:hidden">Automation</span>
@@ -106,6 +105,7 @@ export default function QuickSetupSection({
             </div>
           </div>
           <Toggle
+            className="ml-0"
             checked={enabled}
             onChange={(e) => {
               if (e.target.checked) {
@@ -117,7 +117,7 @@ export default function QuickSetupSection({
           />
         </div>
 
-        <div className={`${INNER_CARD} !py-2 sm:!py-3 flex items-center justify-between gap-2`}>
+        <div className={`${INNER_CARD} !py-2 sm:!py-3 min-h-[44px] flex items-center justify-between gap-2`}>
           <div className="min-w-0">
             <div className="font-semibold text-sm text-pb-text dark:text-white leading-tight">Dry run</div>
             <div className={`hidden sm:block text-xs ${dryRun ? 'text-pb-text2 dark:text-gray-400' : 'text-amber-600 dark:text-amber-400 font-medium'}`}>
@@ -125,6 +125,7 @@ export default function QuickSetupSection({
             </div>
           </div>
           <Toggle
+            className="ml-0"
             checked={dryRun}
             color="yellow"
             onChange={(e) => {
@@ -162,7 +163,7 @@ export default function QuickSetupSection({
                   </button>
                   <button
                     onClick={() => setConfirmEnableAutomation(false)}
-                    className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+                    className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5`}
                   >
                     <X size={14} />
                     Cancel
@@ -198,7 +199,7 @@ export default function QuickSetupSection({
                   </button>
                   <button
                     onClick={() => setConfirmDisableDryRun(false)}
-                    className={`${BTN_SECONDARY} !px-3 !py-1.5`}
+                    className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5`}
                   >
                     <X size={14} />
                     Cancel (Keep Dry Run On)

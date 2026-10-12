@@ -18,6 +18,9 @@ const WORKLOAD_BADGE_COLORS = {
 
 const TOTAL_COLS = 12;
 
+// Narrower cell padding on phones so the visible columns fit without scrolling.
+const PHONE_PAD_X = '!px-2 md:!px-3';
+
 /** Inline progress bar with label */
 function MetricBar({ pct, detail, title }) {
   const clampedPct = Math.min(100, Math.max(0, pct || 0));
@@ -655,7 +658,7 @@ export default function NodeSummaryTable({
   const SortHeader = ({ field, children, title, className = '' }) => (
     <th
       title={title}
-      className={`${TABLE_HEADER} ${className} cursor-pointer hover:text-pb-text dark:hover:text-gray-200`}
+      className={`${TABLE_HEADER} ${PHONE_PAD_X} ${className} cursor-pointer hover:text-pb-text dark:hover:text-gray-200`}
       onClick={() => handleSort(field)}
     >
       <span className="flex items-center gap-1">
@@ -729,13 +732,13 @@ export default function NodeSummaryTable({
             <table className="w-full md:min-w-[700px]">
               <thead>
                 <tr className="border-b border-pb-border dark:border-slate-700/50">
-                  <th className={`${TABLE_HEADER} w-8`}></th>
+                  <th className={`${TABLE_HEADER} ${PHONE_PAD_X} w-8`}></th>
                   <SortHeader field="name">Node</SortHeader>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`} title={`Offline, Maintenance, or what is over its threshold (CPU ${thresholds.cpu}%, memory ${thresholds.mem}%, IOWait ${thresholds.iowait}%); otherwise OK`}>Condition</th>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`}>Uptime</th>
                   <SortHeader field="cpu">CPU</SortHeader>
                   <th className={`${TABLE_HEADER} hidden lg:table-cell`} title="CPU over the last 24 hours (20-minute averages). Hover the line for a time.">CPU · 24h</th>
-                  <SortHeader field="mem">Memory</SortHeader>
+                  <SortHeader field="mem"><span className="hidden sm:inline">Memory</span><span className="sm:hidden">Mem</span></SortHeader>
                   <SortHeader field="iowait" className="hidden md:table-cell">IOWait</SortHeader>
                   <th className={`${TABLE_HEADER} hidden md:table-cell`} title="Fullest local storage pool on the node. Shared storage (CIFS/NFS/PBS/Ceph) is left out: it shows the same fill on every node.">Local disk</th>
                   <SortHeader field="score" title={HEADROOM_HINT}><span className="hidden md:inline">Headroom</span><span className="md:hidden">Room</span></SortHeader>
@@ -754,10 +757,10 @@ export default function NodeSummaryTable({
                         className={`${TABLE_ROW} cursor-pointer`}
                         onClick={() => onNodeClick?.(node.raw)}
                       >
-                        <td className="p-3 w-8">
+                        <td className="px-2 py-3 md:p-3 w-8">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleNode(node.name); }}
-                            className="flex items-center justify-center w-5 h-5 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
+                            className="flex items-center justify-center w-10 h-10 -m-2.5 md:w-5 md:h-5 md:m-0 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
                             aria-label={isExpanded ? 'Collapse guests' : 'Expand guests'}
                           >
                             <ChevronDown
@@ -766,7 +769,7 @@ export default function NodeSummaryTable({
                             />
                           </button>
                         </td>
-                        <td className="p-3">
+                        <td className="px-2 py-3 md:p-3">
                           <div className="flex items-center gap-2">
                             <span className={`md:hidden w-2 h-2 rounded-full shrink-0 ${node.online ? 'bg-green-400' : 'bg-red-400'}`} />
                             <span className="text-sm font-medium text-pb-text dark:text-white">{node.name}</span>
@@ -792,13 +795,13 @@ export default function NodeSummaryTable({
                           <ConditionCell online={node.online} maintenance={node.maintenance} over={node.over} />
                         </td>
                         <td className="p-3 hidden md:table-cell text-xs text-pb-text2 dark:text-gray-400 font-mono tabular-nums">{formatUptime(node.uptime)}</td>
-                        <td className="p-3">
+                        <td className="px-2 py-3 md:p-3">
                           <CpuBar pct={node.cpuPct} anchored={node.raw.anchored_cpu} anchoredGuests={node.raw.anchored_guests} detail={node.cpuDetail} nodeName={node.name} />
                         </td>
                         <td className="p-3 hidden lg:table-cell">
                           <CpuSparkline trendData={node.raw.trend_data} nodeName={node.name} />
                         </td>
-                        <td className="p-3">
+                        <td className="px-2 py-3 md:p-3">
                           <MetricBar pct={node.memPct} detail={node.memDetail} />
                         </td>
                         <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} exempt={node.iowaitExempt} exemptGuests={node.raw.iowait_exempt_guests} /></td>
@@ -809,7 +812,7 @@ export default function NodeSummaryTable({
                             <span className="text-xs text-pb-text2 dark:text-gray-500" title="This node has no local storage pool; only shared storage">shared only</span>
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="px-2 py-3 md:p-3">
                           {node.score != null ? (
                             <span className={`text-sm font-bold font-mono tabular-nums ${scoreColor(node.score)}`} title={`${HEADROOM_HINT}\n\n${node.penaltyTip}`}>
                               {Math.round(node.score)}
