@@ -121,15 +121,15 @@ export function runOutcome(run, ctx = {}) {
   const movedCount = moved.length || Number(run.migrations_successful || 0);
   if (movedCount > 0) {
     return dry
-      ? { kind: 'would_move', count: movedCount, chip: `would move ${movedCount}`, tone: 'yellow', reason: null, failed: failedMoves.length }
-      : { kind: 'moved', count: movedCount, chip: `moved ${movedCount}`, tone: failedMoves.length ? 'orange' : 'green', reason: null, failed: failedMoves.length };
+      ? { kind: 'would_move', count: movedCount, chip: movedCount > 1 ? `would move ${movedCount}` : 'would move', tone: 'yellow', reason: null, failed: failedMoves.length }
+      : { kind: 'moved', count: movedCount, chip: movedCount > 1 ? `moved ${movedCount}` : 'moved', tone: failedMoves.length ? 'orange' : 'green', reason: null, failed: failedMoves.length };
   }
   if (failedMoves.length > 0) {
     return { kind: 'failed', count: failedMoves.length, chip: 'failed', tone: 'red', reason: failedMoves[0].error || runFailureReason(run) };
   }
   const observing = decisions.filter(d => d.action === 'observing');
   const held = decisions.filter(d => HELD_ACTIONS.has(d.action));
-  if (held.length > 0) return { kind: 'held', count: held.length, chip: `held back ${held.length}`, tone: 'orange', reason: null };
+  if (held.length > 0) return { kind: 'held', count: held.length, chip: 'held back', tone: 'orange', reason: null };
   if (observing.length > 0) return { kind: 'waiting', count: observing.length, chip: 'waiting', tone: 'purple', reason: null };
   return { kind: 'nothing', count: 0, chip: 'nothing to do', tone: 'gray', reason: null };
 }
@@ -201,97 +201,166 @@ export function lastCheckSentence(run, ctx = {}) {
 }
 
 /**
- * Short story of one run for the expanded view.
- * Returns { lines: string[], held: [{ name, text }], moreHeld: number }.
- *   ctx.observationPeriods — checks in a row a guest must be suggested (intelligent mode)
+ * A short "why" for a moved/suggested guest, from the engine's reason:
+ * "pve5 has elevated CPU usage (51% CPU, 45% mem; CPU rising), …" → "CPU on pve5 rising".
  */
-export function runStory(run, ctx = {}) {
-  if (!run) return { lines: ['No checks have run yet.'], held: [], moreHeld: 0 };
-  const o = runOutcome(run, ctx);
-  const decisions = Array.isArray(run.decisions) ? run.decisions : [];
-  const dry = isDryRun(run);
-  const moved = decisions.filter(d => MOVE_ACTIONS.has(d.action));
-  const failed = decisions.filter(d => d.action === 'failed');
-  const observing = decisions.filter(d => d.action === 'observing');
-  const heldDs = decisions.filter(d => HELD_ACTIONS.has(d.action));
-  const lines = [];
-
-  if (o.kind === 'skipped') {
-    lines.push(`Skipped before looking at guests: ${o.reason || 'the run exited early'}.`);
-  } else if (o.kind === 'failed' && moved.length === 0 && failed.length === 0) {
-    lines.push(`The check failed${o.reason ? `: ${o.reason}` : ''}.`);
-  } else if (o.kind === 'running') {
-    lines.push('This check is still running.');
-  } else if (o.kind === 'off') {
-    lines.push('Automation was switched off, so nothing was checked.');
-  } else if (o.kind === 'nothing') {
-    lines.push('No guest was suggested for a move — all nodes are within their thresholds.');
-  } else {
-    const vmids = new Set(decisions.map(d => String(d.vmid)));
-    const total = Math.max(vmids.size, Number(moved[0]?.total_candidates || 0));
-    lines.push(`Checked ${plural(total, 'suggestion')}.`);
-    const n = ctx.observationPeriods;
-    for (const d of moved.slice(0, 3)) {
-      const ready = d.distribution_balancing
-        ? 'It was picked to even out guest counts'
-        : n ? `It had been suggested ${n} checks in a row, so it was ready` : 'It was the top suggestion';
-      const why = whyText(d);
-      lines.push(`${guestName(d)} ${route(d)}: ${why ? `${why}. ` : ''}${ready}.`.replace(/\s+/g, ' '));
-    }
-    for (const d of failed.slice(0, 2)) {
-      lines.push(`Moving ${guestName(d)} ${route(d)} failed${d.error ? `: ${d.error}` : ''}.`.replace(/\s+/g, ' '));
-    }
-    if (moved.length > 0) lines.push(dry ? 'Dry run: logged, not moved.' : `Moved ${plural(moved.length, 'guest')}.`);
-    if (observing.length > 0) {
-      const names = observing.slice(0, 3).map(d => {
-        const p = observationProgress(d);
-        return `${guestName(d)}${p ? ` (${p.seen} of ${p.need})` : ''}`;
-      });
-      const more = observing.length > 3 ? ` and ${observing.length - 3} more` : '';
-      lines.push(`Still watching ${names.join(', ')}${more} — a guest moves once it has been suggested enough checks in a row.`);
-    }
+export function shortWhy(d) {
+  const reason = d?.reason || '';
+  const evac = /because (\S+) is entering maintenance/.exec(reason);
+  if (evac) return `${evac[1]} entering maintenance`;
+  const m = /because (\S+) has (\w+) (I\/O wait|CPU usage|memory usage)\s*\(([^)]*)\)/.exec(reason);
+  if (m) {
+    const [, node, severity, what, detail] = m;
+    const metric = what.startsWith('I/O') ? 'I/O wait' : what.startsWith('CPU') ? 'CPU' : 'memory';
+    const trend = detail.split(';')[1] || '';
+    const rising = /upward trend/.test(detail)
+      || (/rising/.test(trend) && (metric === 'I/O wait' || new RegExp(metric, 'i').test(trend)));
+    return `${metric} on ${node} ${rising ? 'rising' : severity}`;
   }
-  const held = heldDs.slice(0, 3).map(d => ({ name: guestName(d), text: heldReason(d) }));
-  return { lines, held, moreHeld: Math.max(0, heldDs.length - 3) };
+  if (d?.distribution_balancing) return 'evens out guest counts';
+  const why = whyText(d);
+  return why.length > 60 ? `${why.slice(0, 57)}…` : why;
 }
 
-/** Key used to decide whether two neighbouring runs read the same. */
-function sameKey(run, ctx) {
-  const o = runOutcome(run, ctx);
-  if (o.kind === 'nothing') return 'nothing';
-  if (o.kind === 'skipped') return `skipped:${o.reason || ''}`;
-  return null;
+/** Shorten a held-back reason to fit a chip. */
+function shortHeld(d) {
+  const label = decisionSkipLabel(d);
+  if (label) return label.toLowerCase();
+  const r = (d?.reason || 'held back').replace(/\.\s*$/, '');
+  return r.length > 48 ? `${r.slice(0, 45)}…` : r;
 }
 
 /**
- * Group runs (newest first) for the "Recent checks" list. Consecutive runs
- * that read the same — "nothing to do", or skipped for the same reason —
- * collapse into one group. Returns [{ runs, outcome, count, newest, oldest }].
+ * The banner's last-check line as parts: lead text, an outcome chip and a
+ * short subject ("zentry-det-pve5 pve5 → pve3"). Returns
+ * { lead, chip, tone, kind, subject }.
  */
-export function groupRuns(runs, ctx = {}) {
-  const out = [];
-  for (const run of runs || []) {
-    const key = sameKey(run, ctx);
-    const prev = out[out.length - 1];
-    if (key && prev && prev.key === key) {
-      prev.runs.push(run);
-      prev.count += 1;
-      prev.oldest = run.timestamp;
-      continue;
-    }
-    out.push({ key, runs: [run], outcome: runOutcome(run, ctx), count: 1, newest: run.timestamp, oldest: run.timestamp });
-  }
-  return out;
+export function lastCheckParts(run, ctx = {}) {
+  if (!run) return { lead: 'No checks yet', chip: null, tone: 'gray', kind: 'none', subject: '' };
+  const now = ctx.now || new Date();
+  const o = runOutcome(run, ctx);
+  const ago = agoText(run.timestamp, now);
+  const decisions = Array.isArray(run.decisions) ? run.decisions : [];
+  const lead = o.kind === 'running' ? 'Checking now' : `Last check${ago ? ` ${ago}` : ''}`;
+  let subject = '';
+  const first = (ds) => (ds.length ? `${guestName(ds[0])} ${route(ds[0])}${ds.length > 1 ? ` +${ds.length - 1} more` : ''}`.replace(/\s+/g, ' ').trim() : '');
+  if (o.kind === 'moved' || o.kind === 'would_move') subject = first(decisions.filter(d => MOVE_ACTIONS.has(d.action)));
+  else if (o.kind === 'waiting') {
+    const obs = decisions.filter(d => d.action === 'observing');
+    const p = observationProgress(obs[0]);
+    subject = `${first(obs)}${p ? ` · ${p.seen} of ${p.need} checks` : ''}`;
+  } else if (o.kind === 'held') {
+    const held = decisions.filter(d => HELD_ACTIONS.has(d.action));
+    subject = `${first(held)} · ${shortHeld(held[0])}`;
+  } else if (o.kind === 'skipped' || o.kind === 'failed') subject = o.reason || '';
+  return { lead, chip: o.kind === 'running' ? null : o.chip, tone: o.tone, kind: o.kind, subject };
 }
 
-/** One-line text for a group in "Recent checks". */
-export function groupLine(group, ctx = {}) {
-  if (group.count > 1) {
-    const span = `${clockTime(group.oldest)}–${clockTime(group.newest)}`;
-    if (group.outcome.kind === 'nothing') return `${group.count} checks, nothing to do · ${span}`;
-    return `${group.count} checks skipped: ${group.outcome.reason || 'exited early'} · ${span}`;
+/**
+ * One row per guest worth mentioning in a run, or null when the run had
+ * nothing to say ("nothing to do"). Each row:
+ *   { name, route, chip, tone, pips: { seen, need } | null, why }
+ * Skipped/failed runs return a single row with no guest and the reason.
+ */
+export function lastCheckRows(run, ctx = {}) {
+  if (!run) return null;
+  const o = runOutcome(run, ctx);
+  if (o.kind === 'nothing' || o.kind === 'none') return null;
+  if (o.kind === 'skipped' || o.kind === 'off' || o.kind === 'running' || (o.kind === 'failed' && !(run.decisions || []).some(d => d.action === 'failed'))) {
+    return [{ name: null, route: '', chip: o.chip, tone: o.tone, pips: null, why: o.reason || '' }];
   }
-  return runSummary(group.runs[0], ctx);
+  const dry = isDryRun(run);
+  const n = ctx.observationPeriods || null;
+  const rows = [];
+  for (const d of run.decisions || []) {
+    const base = { name: guestName(d), route: route(d) };
+    if (MOVE_ACTIONS.has(d.action)) {
+      rows.push({ ...base, chip: dry ? 'would move' : 'moved', tone: dry ? 'yellow' : 'green',
+        pips: n && !d.distribution_balancing ? { seen: n, need: n } : null, why: shortWhy(d), order: 0 });
+    } else if (d.action === 'failed') {
+      rows.push({ ...base, chip: 'failed', tone: 'red', pips: null, why: d.error || shortWhy(d), order: 0 });
+    } else if (d.action === 'observing') {
+      rows.push({ ...base, chip: 'waiting', tone: 'purple', pips: observationProgress(d), why: '', order: 1 });
+    } else if (HELD_ACTIONS.has(d.action)) {
+      rows.push({ ...base, chip: `held back: ${shortHeld(d)}`, tone: 'orange', pips: null, why: '', order: 2, title: heldReason(d) });
+    }
+  }
+  return rows.sort((a, b) => a.order - b.order);
+}
+
+// ---------------------------------------------------------------------------
+// Recent checks: one square per run over the last 24 h
+// ---------------------------------------------------------------------------
+
+/** Strip category of a run: nothing | waiting | would_move | moved | held | failed | skipped | running. */
+export function runCategory(run) {
+  const k = runOutcome(run).kind;
+  if (k === 'off' || k === 'none') return 'skipped';
+  return k;
+}
+
+/** Legend order and labels for the strip. */
+export const CATEGORY_LABELS = [
+  ['nothing', 'nothing to do'],
+  ['waiting', 'waiting'],
+  ['would_move', 'would move (dry run)'],
+  ['moved', 'moved'],
+  ['held', 'held back'],
+  ['skipped', 'skipped'],
+  ['failed', 'failed'],
+  ['running', 'running'],
+];
+
+const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+/**
+ * Lay out runs (any order) for the 24 h strip, oldest at the left.
+ * Returns {
+ *   items: [{ run, t, cat }],
+ *   ticks: [{ index, label }] — first run at/after each local 00/06/12/18 h,
+ *          dropped when it would crowd the previous tick or the "now" label,
+ *   days:  [{ label, items }] — the same items split by local day (phones),
+ *   categories: categories present, in legend order,
+ * }
+ */
+export function stripLayout(runs, { now = new Date(), hours = 24, tickEveryHours = 6 } = {}) {
+  const start = now.getTime() - hours * 3600000;
+  const items = (runs || [])
+    .map(run => ({ run, t: parseTimestamp(run?.timestamp) }))
+    .filter(x => x.t && x.t.getTime() >= start && x.t.getTime() <= now.getTime() + 60000)
+    .sort((a, b) => a.t - b.t)
+    .map(x => ({ ...x, cat: runCategory(x.run) }));
+  const n = items.length;
+  const ticks = [];
+  if (n > 0) {
+    const minGap = Math.max(3, Math.ceil(n * 0.12));
+    const b = new Date(items[0].t);
+    b.setMinutes(0, 0, 0);
+    while (b < items[0].t || b.getHours() % tickEveryHours !== 0) b.setHours(b.getHours() + 1);
+    for (; b.getTime() <= now.getTime(); b.setHours(b.getHours() + tickEveryHours)) {
+      const index = items.findIndex(x => x.t >= b);
+      if (index < 0) break;
+      const prev = ticks[ticks.length - 1];
+      if (prev && index - prev.index < minGap) continue;
+      if (n - index < minGap) continue; // leave room for "now"
+      ticks.push({ index, label: clockTime(b) });
+    }
+  }
+  const days = [];
+  const today = dayKey(now);
+  const yest = dayKey(new Date(now.getTime() - 86400000));
+  for (const it of items) {
+    const k = dayKey(it.t);
+    let day = days[days.length - 1];
+    if (!day || day.key !== k) {
+      const label = k === today ? 'Today' : k === yest ? 'Yesterday' : it.t.toLocaleDateString('en-US', { weekday: 'short' });
+      day = { key: k, label, items: [] };
+      days.push(day);
+    }
+    day.items.push(it);
+  }
+  const present = new Set(items.map(x => x.cat));
+  return { items, ticks, days, categories: CATEGORY_LABELS.filter(([c]) => present.has(c)).map(([c]) => c) };
 }
 
 /** The latest real (not dry-run) move from status.recent_migrations, or null. */
@@ -358,6 +427,54 @@ export function outcomesSummary(outcomes) {
   if (count('unclear')) parts.push(`${count('unclear')} unclear`);
   if (count('measuring')) parts.push(`${count('measuring')} still measuring`);
   return hs.length === 1 ? `Last move: ${parts.join(', ').replace(/^1 /, '')}` : `Last ${hs.length} moves: ${parts.join(', ')}`;
+}
+
+/**
+ * Change in source-node CPU after the move, in percentage points (after −
+ * before; negative = quieter), or null when either side is missing.
+ */
+export function cpuChange(h) {
+  if (h?.before == null || h?.after == null) return null;
+  return Math.round(Number(h.after) - Number(h.before));
+}
+
+/** "−43" / "+14" / "0" with a true minus sign, or "—". */
+export function signedPoints(v) {
+  if (v == null || Number.isNaN(v)) return '—';
+  if (v === 0) return '0';
+  return v < 0 ? `−${Math.abs(v)}` : `+${v}`;
+}
+
+/** Shared bar scale: the largest |change| rounded up to 10 points (at least 10). */
+export function barScale(changes) {
+  const max = Math.max(0, ...(changes || []).filter(c => c != null).map(c => Math.abs(c)));
+  return Math.max(10, Math.ceil(max / 10) * 10);
+}
+
+/**
+ * Geometry for a diverging bar around a centre zero line:
+ * { side: 'left' | 'right' | null, pct } where pct is the share of HALF the
+ * track (0–100). Left = quieter (negative change), right = busier.
+ */
+export function barGeometry(change, scale) {
+  if (change == null || !scale) return { side: null, pct: 0 };
+  const pctOfHalf = Math.min(100, (Math.abs(change) / scale) * 100);
+  if (change === 0) return { side: null, pct: 0 };
+  return { side: change < 0 ? 'left' : 'right', pct: pctOfHalf };
+}
+
+/**
+ * Tally of measured moves for "Helped 8 of 10": still-measuring moves are
+ * left out. Returns { helped, worse, other, total, segments } where segments
+ * lists each move's tone, grouped green, gray, red.
+ */
+export function helpedTally(outcomes) {
+  const hs = (outcomes || []).map(outcomeHeadline).filter(h => h.verdict !== 'measuring');
+  const helped = hs.filter(h => h.verdict === 'helped').length;
+  const worse = hs.filter(h => h.verdict === 'worse').length;
+  const rank = { green: 0, gray: 1, red: 2 };
+  const segments = hs.map(h => h.tone).sort((a, b) => (rank[a] ?? 1) - (rank[b] ?? 1));
+  return { helped, worse, other: hs.length - helped - worse, total: hs.length, segments };
 }
 
 export { pct as formatPct };

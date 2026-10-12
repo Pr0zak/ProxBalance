@@ -312,6 +312,11 @@ def set_automation_state_bulk(state: Dict[str, Any]) -> None:
 # Run history
 # ---------------------------------------------------------------------------
 
+# Runs kept in automation_run_history: enough for a day of history at a
+# 5-minute check interval (the dashboard draws the last 24 h).
+RUN_HISTORY_KEEP = 300
+
+
 def archive_run(summary: Dict[str, Any]) -> None:
     """Archive an automation run summary.
 
@@ -326,10 +331,11 @@ def archive_run(summary: Dict[str, Any]) -> None:
          summary.get("status"), json.dumps(summary)),
     )
 
-    # Trim to keep only last 50 entries
+    # Trim to the newest RUN_HISTORY_KEEP entries
     conn.execute(
         "DELETE FROM automation_run_history WHERE id NOT IN "
-        "(SELECT id FROM automation_run_history ORDER BY id DESC LIMIT 50)"
+        "(SELECT id FROM automation_run_history ORDER BY id DESC LIMIT ?)",
+        (RUN_HISTORY_KEEP,),
     )
     conn.commit()
 

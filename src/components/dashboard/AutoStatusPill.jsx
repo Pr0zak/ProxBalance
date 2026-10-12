@@ -1,19 +1,21 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown, MoveRight, Eye } from '../Icons.jsx';
-import { RecentChecks } from './RunHistoryDisplay.jsx';
+import { RunStrip } from './RunHistoryDisplay.jsx';
 import RunDetailBlock from './RunDetailBlock.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
 import { useAppStatus } from '../AppStatus.jsx';
-import { lastCheckSentence, lastRealMove, runOutcome, shortDateTime } from '../../utils/automationStory.js';
+import { statusBadge } from '../../utils/designTokens.js';
+import { lastCheckSentence, lastCheckParts, lastRealMove, shortDateTime } from '../../utils/automationStory.js';
 
 const { useState, useEffect, useMemo } = React;
 
 /**
  * Reusable auto-migration status indicator. Three sizes:
  *  - 'pill'   : compact inline strip (TopNav-style)
- *  - 'banner' : full horizontal bar with controls, one sentence about the
- *               last check, and an expandable view of what happened and why
+ *  - 'banner' : full horizontal bar with controls, the last check as a chip
+ *               plus the guest it concerned, and an expandable view of
+ *               recent checks and whether past moves helped
  *  - 'card'   : KPI-card-shaped (KpiRow)
  *  - 'strip'  : medium horizontal strip
  */
@@ -70,16 +72,6 @@ const COLOR_TO_BG = {
   yellow: 'bg-yellow-50 dark:bg-yellow-900/15 border-yellow-200 dark:border-yellow-800/40',
   orange: 'bg-orange-50 dark:bg-orange-900/15 border-orange-200 dark:border-orange-800/40',
   gray: 'bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50',
-};
-// Colour of the last-check sentence, keyed by runOutcome().tone.
-const SENTENCE_TONE = {
-  green: 'text-green-700 dark:text-green-300',
-  yellow: 'text-yellow-800 dark:text-yellow-200',
-  red: 'text-red-700 dark:text-red-300',
-  orange: 'text-orange-700 dark:text-orange-300',
-  purple: 'text-violet-700 dark:text-violet-300',
-  blue: 'text-pb-text dark:text-gray-200',
-  gray: 'text-pb-text dark:text-gray-200',
 };
 
 export default function AutoStatusPill({
@@ -191,8 +183,10 @@ export default function AutoStatusPill({
   const nextAt = parseTimestamp(automationStatus.next_check);
   const opensAt = nextAct?.blocked && actAt ? formatInZone(nextAct.opensAt || actAt, nextAct.tz, now) : null;
   const storyCtx = { now, opensAt, observationPeriods: tracking?.enabled ? periods : null };
-  const sentence = lastRunObj ? lastCheckSentence(lastRunObj, storyCtx) : null;
-  const sentenceTone = lastRunObj ? runOutcome(lastRunObj, storyCtx).tone : 'gray';
+  const last = lastRunObj ? lastCheckParts(lastRunObj, storyCtx) : null;
+  // The banner line already says "nothing to do"; the section only appears
+  // when the last check has guests or a reason to show.
+  const showLastCheck = last && last.kind !== 'nothing';
   const realMove = lastRealMove(automationStatus.recent_migrations);
   const sectionTitle = 'text-[11px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-1.5';
   return (
@@ -278,10 +272,14 @@ export default function AutoStatusPill({
           </div>
         )}
       </div>
-      {size === 'banner' && automationStatus.enabled && (sentence || realMove || watching.length > 0) && (
+      {size === 'banner' && automationStatus.enabled && (last || realMove || watching.length > 0) && (
         <div className="px-4 pb-2">
-          {sentence && (
-            <p className={`text-xs sm:text-sm ${SENTENCE_TONE[sentenceTone] || SENTENCE_TONE.gray}`}>{sentence}</p>
+          {last && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm" title={lastCheckSentence(lastRunObj, storyCtx)}>
+              <span className="text-pb-text2 dark:text-gray-400">{last.lead}</span>
+              {last.chip && <span className={statusBadge(last.tone)}>{last.chip}</span>}
+              {last.subject && <span className="text-pb-text dark:text-gray-200 min-w-0 break-words">{last.subject}</span>}
+            </p>
           )}
           {(realMove || watching.length > 0) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
@@ -329,16 +327,18 @@ export default function AutoStatusPill({
       )}
       {canExpand && expanded && (
         <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
-          <section className="min-w-0">
-            <h4 className={sectionTitle}>Last check</h4>
-            <RunDetailBlock run={lastRunObj} compact ctx={storyCtx} />
+          <section className="min-w-0 lg:col-span-2">
+            <h4 className={sectionTitle}>Recent checks · last 24 h</h4>
+            <RunStrip runs={runHistory && runHistory.length ? runHistory : [lastRunObj]} ctx={storyCtx} />
           </section>
-          <section className="min-w-0 lg:row-span-2">
-            <h4 className={sectionTitle}>Recent checks</h4>
-            <RecentChecks runs={runHistory && runHistory.length ? runHistory : [lastRunObj]} ctx={storyCtx} />
-          </section>
-          {API_BASE && (
+          {showLastCheck && (
             <section className="min-w-0">
+              <h4 className={sectionTitle}>Last check</h4>
+              <RunDetailBlock run={lastRunObj} compact ctx={storyCtx} />
+            </section>
+          )}
+          {API_BASE && (
+            <section className={`min-w-0 ${showLastCheck ? '' : 'lg:max-w-xl'}`}>
               <h4 className={sectionTitle}>Did past moves help?</h4>
               <MigrationOutcomes
                 active={expanded}

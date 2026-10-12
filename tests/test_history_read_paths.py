@@ -68,3 +68,19 @@ def test_outcomes_vmid_filter_matches_text_vmid_and_total_counts_matches(tmp_db)
     assert len(body["outcomes"]) == 2
     assert all(o["vmid"] == "240" for o in body["outcomes"])
     assert body["total"] == 3
+
+
+def test_run_history_keeps_a_day_at_five_minute_checks(tmp_db):
+    """The dashboard draws 24 h of runs; at a 5-minute interval that is 288."""
+    from proxbalance.routes.automation import automation_bp
+
+    for i in range(320):
+        migration_db.archive_run({"timestamp": f"2026-10-11T00:00:{i:03d}", "status": "no_action", "n": i})
+
+    resp = _client(automation_bp).get("/api/automigrate/history?type=runs&limit=300")
+    body = resp.get_json()
+
+    assert resp.status_code == 200
+    assert body["total"] == migration_db.RUN_HISTORY_KEEP == 300
+    assert len(body["runs"]) == 300
+    assert body["runs"][0]["n"] == 319

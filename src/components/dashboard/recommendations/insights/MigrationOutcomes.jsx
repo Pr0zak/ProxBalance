@@ -1,8 +1,11 @@
-import { RefreshCw, ChevronDown, ArrowRight } from '../../../Icons.jsx';
+import { RefreshCw } from '../../../Icons.jsx';
 import { statusBadge } from '../../../../utils/designTokens.js';
 import { fetchMigrationOutcomes } from '../../../../api/client.js';
 import { parseTimestamp } from '../../../../utils/formatters.js';
-import { outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct } from '../../../../utils/automationStory.js';
+import {
+  outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct,
+  cpuChange, signedPoints, barScale, barGeometry, helpedTally,
+} from '../../../../utils/automationStory.js';
 
 const { useState, useEffect } = React;
 
@@ -30,15 +33,16 @@ export function usableOutcomes(outcomes) {
   return { list: [...pending, ...reliable], excluded: all.length - pending.length - reliable.length };
 }
 
-const HEADLINE_TEXT = {
-  green: 'text-green-700 dark:text-green-400',
-  red: 'text-red-700 dark:text-red-400',
-  gray: 'text-pb-text dark:text-gray-200',
-  blue: 'text-pb-text dark:text-gray-200',
+// Bar / segment fill per verdict tone. Text never takes these colours.
+const TONE_FILL = {
+  green: 'bg-emerald-500 dark:bg-emerald-400',
+  red: 'bg-red-500 dark:bg-red-400',
+  gray: 'bg-slate-300 dark:bg-slate-600',
+  blue: 'ring-1 ring-inset ring-slate-400 dark:ring-slate-500',
 };
 
 /** Secondary numbers for one move, uncoloured so they never fight the verdict. */
-function OutcomeDetail({ o }) {
+function OutcomeDetail({ o, h }) {
   const pre = o.pre_migration || {};
   const p5 = o.post_5min || o.post_migration || {};
   const p24 = o.post_24h && !o.post_24h.late ? o.post_24h : null;
@@ -48,7 +52,10 @@ function OutcomeDetail({ o }) {
     [`${o.target_node} CPU`, pre.target_node?.cpu, p5.target_node?.cpu, p24?.target_node?.cpu],
   ];
   return (
-    <div className="mt-1.5 ml-5 overflow-x-auto">
+    <div className="mt-1.5 mb-1 ml-1 overflow-x-auto">
+      <div className="text-[11px] text-pb-text2 dark:text-gray-400 mb-1">
+        <span className="font-mono">{o.source_node} → {o.target_node}</span> · {shortDateTime(o.pre_migration?.timestamp)} · <span className={statusBadge(h.tone)}>{h.label}</span>
+      </div>
       <table className="text-[11px] tabular-nums text-pb-text2 dark:text-gray-400">
         <thead>
           <tr className="text-left">
@@ -69,43 +76,57 @@ function OutcomeDetail({ o }) {
           ))}
         </tbody>
       </table>
-      <p className="mt-1 text-[11px] text-pb-text2 dark:text-gray-500">The verdict follows {o.source_node}'s CPU 24 h after the move.</p>
     </div>
   );
 }
 
-function OutcomeRow({ o }) {
+/** Diverging bar around a centre zero line, on the shared scale. */
+function DivergingBar({ change, scale, tone }) {
+  const g = barGeometry(change, scale);
+  return (
+    <div className="relative h-3 flex-1 min-w-0">
+      <div className="absolute inset-y-[-3px] left-1/2 w-px bg-slate-300 dark:bg-slate-600" />
+      {g.side && (
+        <div
+          className={`absolute top-0 bottom-0 ${TONE_FILL[tone] || TONE_FILL.gray} ${g.side === 'left' ? 'rounded-l' : 'rounded-r'}`}
+          style={g.side === 'left'
+            ? { right: '50%', width: `${g.pct / 2}%` }
+            : { left: '50%', width: `${g.pct / 2}%` }}
+        />
+      )}
+    </div>
+  );
+}
+
+function OutcomeRow({ o, scale }) {
   const [open, setOpen] = useState(false);
   const h = outcomeHeadline(o);
-  const when = shortDateTime(o.pre_migration?.timestamp);
+  const change = cpuChange(h);
   const name = o.guest_name || `${o.guest_type || 'guest'} ${o.vmid}`;
+  const aria = `${name}: ${headlineText(h)}, ${h.label}`;
   return (
-    <li className="py-1.5 text-xs">
+    <li>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 text-left rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
+        className="w-full flex items-center gap-2 py-1 text-left text-xs rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
         aria-expanded={open}
+        aria-label={aria}
+        title={aria}
       >
-        <ChevronDown size={12} className={`shrink-0 text-pb-text2 dark:text-gray-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        <span className="font-medium text-pb-text dark:text-gray-200 truncate max-w-[10rem]">{name}</span>
-        <span className="font-mono text-pb-text2 dark:text-gray-400 inline-flex items-center gap-1 shrink-0">
-          {o.source_node}<ArrowRight size={10} />{o.target_node}
-        </span>
-        <span className="text-pb-text2 dark:text-gray-500 shrink-0">{when}</span>
-        <span className="basis-full sm:basis-auto sm:ml-auto pl-5 sm:pl-0 flex items-center gap-2">
-          <span className={`tabular-nums ${HEADLINE_TEXT[h.tone] || HEADLINE_TEXT.gray}`}>{headlineText(h)}</span>
-          <span className={`${statusBadge(h.tone)} shrink-0`}>{h.label}</span>
-        </span>
+        <span className="w-24 sm:w-32 shrink-0 truncate text-pb-text dark:text-gray-200">{name}</span>
+        <DivergingBar change={change} scale={scale} tone={h.tone} />
+        <span className="w-10 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">{signedPoints(change)}</span>
       </button>
-      {open && <OutcomeDetail o={o} />}
+      {open && <OutcomeDetail o={o} h={h} />}
     </li>
   );
 }
 
 /**
- * "Did past moves help?" — a one-line tally, then one row per move with the
- * single number its verdict is based on. Other metrics sit in a row expand.
+ * "Did past moves help?" — "Helped 8 of 10" with a segment bar, then one
+ * diverging bar per recent move: the change in source-node CPU 24 h after
+ * the move (left = quieter, right = busier), the number the verdict uses.
  */
 export default function MigrationOutcomes({ active, limit = 5, onOpenInsights }) {
   const [outcomes, setOutcomes] = useState(null);
@@ -131,20 +152,34 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
 
   const { list, excluded } = usableOutcomes(outcomes);
   const shown = list.slice(0, limit);
-  const summarised = list.slice(0, 10);
+  const tally = helpedTally(list.slice(0, 10));
+  const scale = barScale(shown.map(o => cpuChange(outcomeHeadline(o))));
 
   return (
     <div>
       {shown.length === 0 ? (
-        <p className="text-xs text-pb-text2 dark:text-gray-500">
-          No measured moves yet. Each live move is measured before, 5 minutes after and 24 hours after.
-        </p>
+        <p className="text-xs text-pb-text2 dark:text-gray-500">No measured moves yet.</p>
       ) : (
         <>
-          <p className="text-sm text-pb-text dark:text-gray-200">{outcomesSummary(summarised)}.</p>
-          <ul className="mt-1 divide-y divide-pb-border dark:divide-slate-700/50">
-            {shown.map(o => <OutcomeRow key={o.key} o={o} />)}
+          {tally.total > 0 && (
+            <div className="flex items-center gap-3 mb-2" title={outcomesSummary(list.slice(0, 10))}>
+              <span className="text-sm font-medium text-pb-text dark:text-gray-200 whitespace-nowrap tabular-nums">Helped {tally.helped} of {tally.total}</span>
+              <div className="flex gap-0.5 flex-1 max-w-[12rem]" aria-hidden="true">
+                {tally.segments.map((t, i) => <span key={i} className={`h-2 flex-1 rounded-sm ${TONE_FILL[t] || TONE_FILL.gray}`} />)}
+              </div>
+            </div>
+          )}
+          <ul>
+            {shown.map(o => <OutcomeRow key={o.key} o={o} scale={scale} />)}
           </ul>
+          <div className="flex items-center gap-2 text-[10px] text-pb-text2 dark:text-gray-500">
+            <span className="w-24 sm:w-32 shrink-0" title="Change in the source node's CPU 24 h after the move">CPU change</span>
+            <div className="flex-1 flex justify-between tabular-nums">
+              <span>quieter −{scale}</span>
+              <span>busier +{scale}</span>
+            </div>
+            <span className="w-10 shrink-0 text-right">pts</span>
+          </div>
         </>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-500">
@@ -153,7 +188,7 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
             All outcomes → Insights
           </button>
         )}
-        {excluded > 0 && <span>{excluded} older record{excluded !== 1 ? 's' : ''} not shown: measured too late to count.</span>}
+        {excluded > 0 && <span>{excluded} older not shown (measured too late).</span>}
       </div>
     </div>
   );
