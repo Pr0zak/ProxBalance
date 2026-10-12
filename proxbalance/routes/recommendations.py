@@ -1049,42 +1049,6 @@ def simulate_penalty_config():
     })
 
 
-@recommendations_bp.route("/api/score-history", methods=["GET"])
-@api_route
-def get_score_history():
-    """Return historical score snapshots, optionally filtered by hours and node."""
-    from proxbalance.forecasting import get_score_history as fetch_score_history
-
-    history = fetch_score_history(limit=720)
-
-    # Filter by time range
-    hours = int(request.args.get("hours", 24))
-    cutoff = datetime.utcnow().timestamp() - (hours * 3600)
-
-    filtered = []
-    for entry in history:
-        ts = entry.get("timestamp", "")
-        try:
-            entry_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-            if entry_dt.timestamp() < cutoff:
-                continue
-        except (ValueError, TypeError):
-            continue
-        filtered.append(entry)
-
-    # Filter to a single node if requested
-    node = request.args.get("node")
-    if node:
-        for entry in filtered:
-            nodes_data = entry.get("nodes", {})
-            if node in nodes_data:
-                entry["nodes"] = {node: nodes_data[node]}
-            else:
-                entry["nodes"] = {}
-
-    return jsonify({"success": True, "history": filtered})
-
-
 FEEDBACK_FILE = os.path.join(BASE_PATH, 'recommendation_feedback.json')
 
 
