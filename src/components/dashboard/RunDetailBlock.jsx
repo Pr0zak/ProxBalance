@@ -1,109 +1,61 @@
-import { CheckCircle, AlertTriangle, Eye, ChevronDown } from '../Icons.jsx';
-import { formatRelativeTime, runStatusLabel, decisionSkipLabel } from '../../utils/formatters.js';
+import { CheckCircle, AlertTriangle, ChevronDown } from '../Icons.jsx';
+import { statusBadge } from '../../utils/designTokens.js';
+import { decisionSkipLabel } from '../../utils/formatters.js';
+import { runStory, runOutcome, isDryRun, agoText, shortDateTime, whyText } from '../../utils/automationStory.js';
 
 const { useState } = React;
 
-const TONE_COLOR = {
-  success: 'text-green-600 dark:text-green-400',
-  warn:    'text-yellow-600 dark:text-yellow-400',
-  error:   'text-red-600 dark:text-red-400',
-  info:    'text-blue-600 dark:text-blue-400',
-  neutral: 'text-pb-text2 dark:text-gray-400',
-};
-
 function fmtDuration(s) {
-  if (s == null) return 'N/A';
+  if (s == null) return '—';
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
-const ACTION_BORDER = {
-  executed: 'border-green-500',
-  failed: 'border-red-500',
-  pending: 'border-blue-500',
-  observing: 'border-cyan-500',
-  deferred: 'border-amber-500',
-  skipped: 'border-yellow-500',
-  filtered: 'border-gray-400',
-};
-const ACTION_BADGE = {
-  executed: 'bg-white dark:bg-slate-800 text-green-600 dark:text-green-400',
-  failed: 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400',
-  pending: 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400',
-  observing: 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400',
-  deferred: 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400',
-  skipped: 'bg-white dark:bg-slate-800 text-yellow-600 dark:text-yellow-400',
-  filtered: 'bg-white dark:bg-slate-800 text-pb-text dark:text-gray-300',
-};
-const ACTION_ICON = {
-  filtered: '⊗', skipped: '⏭', pending: '🔄', executed: '✅', deferred: '🕐', failed: '✗',
-};
+/** What a decision's action means, worded for the run's mode. */
+function actionLabel(d, dry) {
+  if (d.action === 'executed') return dry ? 'dry run' : 'moved';
+  if (d.action === 'pending') return dry ? 'dry run' : 'moving';
+  if (d.action === 'observing') return 'waiting';
+  if (d.action === 'filtered' || d.action === 'skipped') return 'held back';
+  return d.action || '—';
+}
+const ACTION_TONE = { executed: 'green', pending: 'blue', failed: 'red', observing: 'purple', deferred: 'yellow', skipped: 'orange', filtered: 'gray' };
 
-function DecisionsList({ decisions }) {
+/** Full per-guest list, used inside "Details". */
+function DecisionsList({ decisions, dry }) {
   if (!decisions || decisions.length === 0) return null;
-  const sorted = [...decisions].sort((a, b) => {
-    const order = (d) => {
-      if (d.action === 'executed' || d.action === 'pending' || d.action === 'failed') return 0;
-      if (d.action === 'observing' || d.action === 'deferred') return 1;
-      if (d.action === 'skipped') return 2;
-      return 3;
-    };
-    return (order(a) - order(b)) || ((a.priority_rank || 999) - (b.priority_rank || 999));
-  });
+  const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['observing', 'deferred'].includes(d.action) ? 1 : d.action === 'skipped' ? 2 : 3);
+  const sorted = [...decisions].sort((a, b) => (order(a) - order(b)) || ((a.priority_rank || 999) - (b.priority_rank || 999)));
   return (
-    <div className="bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 rounded p-3 max-h-64 overflow-y-auto">
-      <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Decisions ({decisions.length})</div>
-      <div className="space-y-2">
-        {sorted.map((d, idx) => (
-          <div key={idx} className={`text-xs bg-pb-surface2 dark:bg-slate-700/50 rounded p-2 border-l-4 ${ACTION_BORDER[d.action] || 'border-gray-400'}`}>
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {d.priority_rank && (
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.priority_rank === 1 ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' : 'bg-gray-600 text-pb-text dark:text-gray-300'}`}>
-                      #{d.priority_rank}
-                    </span>
-                  )}
-                  <span className="font-semibold text-pb-text dark:text-white">
-                    {d.action === 'observing' ? <Eye size={12} className="inline text-cyan-600 dark:text-cyan-400 mr-1" /> : (ACTION_ICON[d.action] || '·')}{' '}
-                    {d.name || `VM/CT ${d.vmid}`}
-                  </span>
-                  {d.type && <span className="px-1 py-0 rounded text-[9px] bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400">{d.type}</span>}
-                </div>
+    <div>
+      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Guests considered ({decisions.length})</div>
+      <ul className="divide-y divide-pb-border dark:divide-slate-700/50">
+        {sorted.map((d, idx) => {
+          const tone = d.action === 'executed' && dry ? 'yellow' : (ACTION_TONE[d.action] || 'gray');
+          const why = ['executed', 'pending', 'failed'].includes(d.action) ? whyText(d) : (d.reason || '');
+          return (
+            <li key={idx} className="py-1.5 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-pb-text dark:text-gray-200">{d.name || `guest ${d.vmid}`}</span>
                 {(d.source_node || d.target_node) && (
-                  <div className="text-pb-text2 dark:text-gray-400 text-[11px]">
-                    {d.source_node || '?'} → {d.target_node || '?'}
-                    {d.target_node_score && <span className="text-pb-text2 dark:text-gray-500"> (score {d.target_node_score})</span>}
-                  </div>
+                  <span className="font-mono text-pb-text2 dark:text-gray-400">{d.source_node || '—'} → {d.target_node || '—'}</span>
                 )}
+                <span className={statusBadge(tone)}>{d.action === 'failed' ? 'failed' : actionLabel(d, dry)}</span>
+                {decisionSkipLabel(d) && <span className={statusBadge('yellow')}>{decisionSkipLabel(d)}</span>}
               </div>
-              <span className="flex items-center gap-1">
-                {decisionSkipLabel(d) && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
-                    {decisionSkipLabel(d)}
-                  </span>
-                )}
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${ACTION_BADGE[d.action] || 'bg-white dark:bg-slate-800 text-pb-text2 dark:text-gray-400'}`}>
-                  {d.action}
-                </span>
-              </span>
-            </div>
-            {(d.selected_reason || d.reason) && (
-              <div className="mt-1 text-pb-text2 dark:text-gray-400 text-[11px]">{d.selected_reason || d.reason}</div>
-            )}
-            {d.confidence_score != null && (
-              <div className="mt-1 text-blue-600 dark:text-blue-400 text-[10px] font-semibold">Confidence: {d.confidence_score}%</div>
-            )}
-            {d.reasoning && (
-              <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-pb-text2 dark:text-gray-400">
-                {d.reasoning.score_improvement != null && <span>Score: +{Number(d.reasoning.score_improvement).toFixed(1)}</span>}
-                {d.reasoning.cost_benefit != null && <span>Cost-benefit: {Number(d.reasoning.cost_benefit).toFixed(1)}x</span>}
-                {d.reasoning.observation_count != null && <span>{d.reasoning.observation_count}/{d.reasoning.required_observations} obs</span>}
-              </div>
-            )}
-            {d.error && <div className="mt-1 text-red-600 dark:text-red-400 text-[10px]">Error: {d.error}</div>}
-          </div>
-        ))}
-      </div>
+              {why && <div className="mt-0.5 text-pb-text2 dark:text-gray-400">{why}</div>}
+              {(d.confidence_score != null || d.target_node_score != null) && (
+                <div className="mt-0.5 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
+                  {d.confidence_score != null && <>confidence {d.confidence_score}%</>}
+                  {d.confidence_score != null && d.target_node_score != null && ' · '}
+                  {d.target_node_score != null && <>target score {d.target_node_score}</>}
+                  {d.reasoning?.score_improvement != null && <> · improvement +{Number(d.reasoning.score_improvement).toFixed(1)}</>}
+                </div>
+              )}
+              {d.error && <div className="mt-0.5 text-red-600 dark:text-red-400">Error: {d.error}</div>}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -112,8 +64,8 @@ function ActivityLogList({ log }) {
   if (!log || log.length === 0) return null;
   const colorFor = (lv) => lv === 'error' ? 'text-red-600 dark:text-red-400' : lv === 'warn' ? 'text-yellow-600 dark:text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
   return (
-    <div className="bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 rounded p-3">
-      <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Logs ({log.length})</div>
+    <div>
+      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Log ({log.length})</div>
       <div className="font-mono text-[11px] space-y-0.5 max-h-48 overflow-y-auto">
         {log.map((entry, i) => {
           const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
@@ -121,7 +73,7 @@ function ActivityLogList({ log }) {
             <div key={i} className="flex gap-2">
               {ts && <span className="text-pb-text2 dark:text-gray-600 shrink-0">{ts}</span>}
               <span className={`uppercase shrink-0 ${colorFor(entry.level)}`}>{(entry.level || 'info').padEnd(5)}</span>
-              <span className="text-pb-text dark:text-gray-300 break-words">{entry.message}</span>
+              <span className="text-pb-text dark:text-gray-300 break-words min-w-0">{entry.message || [entry.name, entry.reason].filter(Boolean).join(': ')}</span>
             </div>
           );
         })}
@@ -133,23 +85,21 @@ function ActivityLogList({ log }) {
 function SafetyChecksList({ safety }) {
   if (!safety || Object.keys(safety).length === 0) return null;
   const rows = [];
-  if (safety.migration_window) rows.push({ k: 'Migration Window', v: safety.migration_window, ok: !/^not in|blackout/i.test(safety.migration_window) });
-  if (safety.cluster_health) rows.push({ k: 'Cluster Health', v: safety.cluster_health, ok: /passed|disabled/i.test(safety.cluster_health) });
-  if (safety.running_migrations != null) rows.push({ k: 'Running Migrations', v: safety.running_migrations, ok: true });
+  if (safety.migration_window) rows.push({ k: 'Schedule', v: safety.migration_window, ok: !/^outside|^not in|blackout/i.test(safety.migration_window) });
+  if (safety.cluster_health) rows.push({ k: 'Cluster health', v: safety.cluster_health, ok: /passed|disabled/i.test(safety.cluster_health) });
+  if (safety.running_migrations != null) rows.push({ k: 'Migrations already running', v: safety.running_migrations, ok: true });
   if (rows.length === 0) return null;
   return (
-    <div className="bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 rounded p-3">
-      <div className="text-xs font-semibold text-pb-text dark:text-gray-300 mb-2">Safety Checks</div>
-      <div className="space-y-1.5">
+    <div>
+      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Safety checks</div>
+      <div className="space-y-1">
         {rows.map((r, i) => (
           <div key={i} className="flex items-start gap-2 text-xs">
             {r.ok
               ? <CheckCircle size={12} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
               : <AlertTriangle size={12} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />}
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-pb-text dark:text-gray-300">{r.k}</div>
-              <div className="text-pb-text2 dark:text-gray-400 text-[11px] break-words">{String(r.v)}</div>
-            </div>
+            <span className="text-pb-text dark:text-gray-300 shrink-0">{r.k}:</span>
+            <span className="text-pb-text2 dark:text-gray-400 break-words min-w-0">{String(r.v)}</span>
           </div>
         ))}
       </div>
@@ -158,96 +108,65 @@ function SafetyChecksList({ safety }) {
 }
 
 /**
- * Reusable run-detail block — shows everything the existing Last Run Summary
- * shows: status header, counts (X/Y), duration, mode, balanced banner,
- * decisions list, safety checks. Used by all RunHistoryDisplay variants.
+ * The short story of one run: what it looked at, what it did and why, and
+ * one line per guest it held back (top 3, then "+N more").
  */
-export default function RunDetailBlock({ run, compact = false }) {
-  if (!run) return <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4">No run selected.</div>;
-  const status = run.status;
-  const rsl = runStatusLabel(run);
+export function RunStory({ run, ctx = {} }) {
+  const story = runStory(run, ctx);
+  const outcome = runOutcome(run, ctx);
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
-          <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Status</div>
-          <div className={`text-sm font-bold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>{rsl.label}</div>
-        </div>
-        <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
-          <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Migrations</div>
-          <div className="text-sm font-bold text-pb-text dark:text-white tabular-nums">
-            {run.migrations_successful || 0}<span className="text-pb-text2 dark:text-gray-500"> / {run.migrations_executed || 0}</span>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
-          <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Duration</div>
-          <div className="text-sm font-bold text-pb-text dark:text-white">{fmtDuration(run.duration_seconds)}</div>
-        </div>
-        <div className="bg-white dark:bg-slate-800/60 rounded p-2 border border-pb-border dark:border-slate-700/50">
-          <div className="text-[10px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Mode</div>
-          <div className="text-sm font-bold text-pb-text dark:text-white">{run.mode === 'dry_run' ? 'Dry Run' : 'Live'}</div>
-        </div>
-      </div>
-      {run.timestamp && (
-        <div className="text-[11px] text-pb-text2 dark:text-gray-500">{formatRelativeTime(run.timestamp)}</div>
+    <div className="space-y-1.5 text-sm">
+      {story.lines.map((l, i) => (
+        <p key={i} className={i === story.lines.length - 1 && outcome.kind === 'would_move'
+          ? 'text-yellow-700 dark:text-yellow-300'
+          : 'text-pb-text dark:text-gray-200'}
+        >{l}</p>
+      ))}
+      {story.held.length > 0 && (
+        <ul className="text-xs text-pb-text2 dark:text-gray-400 space-y-0.5">
+          {story.held.map((h, i) => (
+            <li key={i}><span className="text-pb-text dark:text-gray-300">{h.name}</span> held back — {h.text}</li>
+          ))}
+          {story.moreHeld > 0 && <li>+{story.moreHeld} more</li>}
+        </ul>
       )}
-      {rsl.banner && (
-        <div className={`flex items-center gap-2 text-xs rounded px-3 py-2 border ${
-          rsl.tone === 'success' ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/40' :
-          rsl.tone === 'info'    ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/40' :
-          rsl.tone === 'warn'    ? 'text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/40' :
-          rsl.tone === 'error'   ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40' :
-          'text-pb-text2 dark:text-gray-300 bg-pb-surface2 dark:bg-slate-700/30 border-pb-border dark:border-slate-700/40'
-        }`}>
-          {rsl.tone === 'error' ? <AlertTriangle size={14} className="shrink-0" /> : <CheckCircle size={14} className="shrink-0" />} {rsl.banner}
-        </div>
-      )}
-      <DecisionsList decisions={run.decisions} />
-      <ActivityLogList log={run.activity_log} />
-      {!compact && <SafetyChecksList safety={run.safety_checks} />}
     </div>
   );
 }
 
 /**
- * Simple-by-default summary row with click-to-expand for full RunDetailBlock.
- * Used wherever a "last run" or "recent run" is shown alongside other content.
+ * One run: the story first, the raw numbers (duration, confidence, score,
+ * safety checks, log) inside a "Details" toggle. `compact` starts with
+ * Details closed (dashboard); the modal opens it.
  */
-const TONE_DOT = {
-  success: 'bg-green-500',
-  warn:    'bg-yellow-400',
-  error:   'bg-red-400',
-  info:    'bg-blue-400',
-  neutral: 'bg-gray-500',
-};
-
-export function RunSummaryRow({ run, defaultExpanded = false, label = 'Last run' }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  if (!run) return null;
-  const rsl = runStatusLabel(run);
+export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
+  const [showDetails, setShowDetails] = useState(!compact);
+  if (!run) return <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4">No run selected.</div>;
+  const dry = isDryRun(run);
+  const meta = [
+    run.timestamp && `${shortDateTime(run.timestamp)} (${agoText(run.timestamp)})`,
+    `took ${fmtDuration(run.duration_seconds)}`,
+    run.mode === 'dry_run' ? 'dry run' : run.mode === 'live' ? 'live' : null,
+    run.migrations_executed != null && `${run.migrations_successful ?? 0} of ${run.migrations_executed} ${dry ? 'logged' : 'moves succeeded'}`,
+  ].filter(Boolean).join(' · ');
   return (
-    <div className="bg-pb-surface2 dark:bg-slate-800/40 border border-pb-border dark:border-slate-700/50 rounded-lg overflow-hidden">
+    <div className="space-y-2">
+      <RunStory run={run} ctx={ctx} />
       <button
-        onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30 transition-colors flex-wrap"
+        type="button"
+        onClick={() => setShowDetails(v => !v)}
+        className="inline-flex items-center gap-1 text-xs text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
+        aria-expanded={showDetails}
       >
-        <ChevronDown size={14} className={`text-pb-text2 dark:text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
-        <span className="text-[11px] uppercase tracking-wider text-pb-text2 dark:text-gray-500 shrink-0">{label}</span>
-        <span className={`w-2 h-2 rounded-full shrink-0 ${TONE_DOT[rsl.tone] || TONE_DOT.neutral}`} />
-        <span className={`text-sm font-semibold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>
-          {rsl.label}
-        </span>
-        <span className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">
-          · {run.migrations_successful || 0}/{run.migrations_executed || 0} migrations
-        </span>
-        <span className="text-xs text-pb-text2 dark:text-gray-500 tabular-nums">· {fmtDuration(run.duration_seconds)}</span>
-        {run.timestamp && (
-          <span className="text-xs text-pb-text2 dark:text-gray-500 ml-auto">{formatRelativeTime(run.timestamp)}</span>
-        )}
+        <ChevronDown size={12} className={`transition-transform duration-200 ${showDetails ? 'rotate-180' : ''}`} />
+        Details
       </button>
-      {expanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-pb-border dark:border-slate-700/40">
-          <RunDetailBlock run={run} />
+      {showDetails && (
+        <div className="space-y-3 pl-4 border-l-2 border-pb-border dark:border-slate-700/60">
+          <div className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">{meta}</div>
+          <DecisionsList decisions={run.decisions} dry={dry} />
+          <SafetyChecksList safety={run.safety_checks} />
+          <ActivityLogList log={run.activity_log} />
         </div>
       )}
     </div>

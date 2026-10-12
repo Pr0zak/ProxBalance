@@ -1,6 +1,8 @@
-import { ArrowRight, RefreshCw } from '../../../Icons.jsx';
+import { RefreshCw, ChevronDown, ArrowRight } from '../../../Icons.jsx';
+import { statusBadge } from '../../../../utils/designTokens.js';
 import { fetchMigrationOutcomes } from '../../../../api/client.js';
 import { parseTimestamp } from '../../../../utils/formatters.js';
+import { outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct } from '../../../../utils/automationStory.js';
 
 const { useState, useEffect } = React;
 
@@ -20,33 +22,92 @@ export function isReliableOutcome(o) {
   return post - pre < MAX_GAP_MS;
 }
 
-const VERDICT_CLASS = {
-  beneficial: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-  harmful: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-  neutral: 'bg-pb-surface2 dark:bg-slate-700/60 text-pb-text2 dark:text-gray-300',
+/** Records worth showing: measuring now, or measured on time. Newest first. */
+export function usableOutcomes(outcomes) {
+  const all = outcomes || [];
+  const pending = all.filter(o => o.status?.startsWith('pending_') && (o.status === 'pending_5min' || isReliableOutcome(o)));
+  const reliable = all.filter(o => !o.status?.startsWith('pending_') && isReliableOutcome(o));
+  return { list: [...pending, ...reliable], excluded: all.length - pending.length - reliable.length };
+}
+
+const HEADLINE_TEXT = {
+  green: 'text-green-700 dark:text-green-400',
+  red: 'text-red-700 dark:text-red-400',
+  gray: 'text-pb-text dark:text-gray-200',
+  blue: 'text-pb-text dark:text-gray-200',
 };
 
-function Delta({ label, before, after }) {
-  if (before == null || after == null) return null;
-  const better = after < before;
+/** Secondary numbers for one move, uncoloured so they never fight the verdict. */
+function OutcomeDetail({ o }) {
+  const pre = o.pre_migration || {};
+  const p5 = o.post_5min || o.post_migration || {};
+  const p24 = o.post_24h && !o.post_24h.late ? o.post_24h : null;
+  const rows = [
+    [`${o.source_node} CPU`, pre.source_node?.cpu, p5.source_node?.cpu, p24?.source_node?.cpu],
+    [`${o.source_node} memory`, pre.source_node?.mem, p5.source_node?.mem, p24?.source_node?.mem],
+    [`${o.target_node} CPU`, pre.target_node?.cpu, p5.target_node?.cpu, p24?.target_node?.cpu],
+  ];
   return (
-    <div>
-      <div className="text-[10px] text-pb-text2 dark:text-gray-500">{label}</div>
-      <div className="flex items-center gap-1 tabular-nums">
-        <span className="text-pb-text2 dark:text-gray-400">{Math.round(before)}%</span>
-        <ArrowRight size={8} className="text-pb-text2 dark:text-gray-400" />
-        <span className={`font-medium ${better ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{Math.round(after)}%</span>
-      </div>
+    <div className="mt-1.5 ml-5 overflow-x-auto">
+      <table className="text-[11px] tabular-nums text-pb-text2 dark:text-gray-400">
+        <thead>
+          <tr className="text-left">
+            <th className="font-normal pr-3"></th>
+            <th className="font-normal pr-3">before</th>
+            <th className="font-normal pr-3">5 min</th>
+            <th className="font-normal">24 h</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, a, b, c]) => (
+            <tr key={label}>
+              <td className="pr-3 text-pb-text dark:text-gray-300 whitespace-nowrap">{label}</td>
+              <td className="pr-3">{formatPct(a)}</td>
+              <td className="pr-3">{formatPct(b)}</td>
+              <td>{formatPct(c)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-1 text-[11px] text-pb-text2 dark:text-gray-500">The verdict follows {o.source_node}'s CPU 24 h after the move.</p>
     </div>
   );
 }
 
+function OutcomeRow({ o }) {
+  const [open, setOpen] = useState(false);
+  const h = outcomeHeadline(o);
+  const when = shortDateTime(o.pre_migration?.timestamp);
+  const name = o.guest_name || `${o.guest_type || 'guest'} ${o.vmid}`;
+  return (
+    <li className="py-1.5 text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-0.5 text-left rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
+        aria-expanded={open}
+      >
+        <ChevronDown size={12} className={`shrink-0 text-pb-text2 dark:text-gray-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <span className="font-medium text-pb-text dark:text-gray-200 truncate max-w-[10rem]">{name}</span>
+        <span className="font-mono text-pb-text2 dark:text-gray-400 inline-flex items-center gap-1 shrink-0">
+          {o.source_node}<ArrowRight size={10} />{o.target_node}
+        </span>
+        <span className="text-pb-text2 dark:text-gray-500 shrink-0">{when}</span>
+        <span className="basis-full sm:basis-auto sm:ml-auto pl-5 sm:pl-0 flex items-center gap-2">
+          <span className={`tabular-nums ${HEADLINE_TEXT[h.tone] || HEADLINE_TEXT.gray}`}>{headlineText(h)}</span>
+          <span className={`${statusBadge(h.tone)} shrink-0`}>{h.label}</span>
+        </span>
+      </button>
+      {open && <OutcomeDetail o={o} />}
+    </li>
+  );
+}
+
 /**
- * Predicted-vs-actual outcomes for recent migrations: source-node load right
- * before the move vs. 5 minutes and 24 hours after. Records whose post
- * snapshots weren't taken near their window are counted but not shown.
+ * "Did past moves help?" — a one-line tally, then one row per move with the
+ * single number its verdict is based on. Other metrics sit in a row expand.
  */
-export default function MigrationOutcomes({ active, limit = 10 }) {
+export default function MigrationOutcomes({ active, limit = 5, onOpenInsights }) {
   const [outcomes, setOutcomes] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -62,64 +123,38 @@ export default function MigrationOutcomes({ active, limit = 10 }) {
 
   if (loading || !outcomes) {
     return (
-      <div className="text-xs text-pb-text2 dark:text-gray-400 py-4 flex items-center gap-2">
+      <div className="text-xs text-pb-text2 dark:text-gray-400 py-2 flex items-center gap-2">
         <RefreshCw size={12} className="animate-spin" /> Loading outcomes…
       </div>
     );
   }
 
-  // A pending record past its first window must still have a timely 5-min snapshot.
-  const pending = outcomes.filter(o => o.status?.startsWith('pending_') && (o.status === 'pending_5min' || isReliableOutcome(o)));
-  const reliable = outcomes.filter(o => !o.status?.startsWith('pending_') && isReliableOutcome(o));
-  const excluded = outcomes.length - pending.length - reliable.length;
-  const shown = [...pending, ...reliable].slice(0, limit);
+  const { list, excluded } = usableOutcomes(outcomes);
+  const shown = list.slice(0, limit);
+  const summarised = list.slice(0, 10);
 
   return (
-    <div className="space-y-2">
-      {shown.length === 0 && (
-        <div className="text-xs text-pb-text2 dark:text-gray-500 py-2">
-          No measured outcomes yet. Each live migration is snapshotted before the move and compared at 5 minutes and 24 hours after.
-        </div>
-      )}
-      {shown.map(o => {
-        const pre = o.pre_migration || {};
-        const p5 = o.post_5min || o.post_migration || {};
-        const p24 = o.post_24h;
-        const isPending = o.status?.startsWith('pending_');
-        const when = parseTimestamp(pre.timestamp);
-        return (
-          <div key={o.key} className="text-xs p-2.5 rounded-lg border border-pb-border dark:border-slate-700 bg-pb-surface2/60 dark:bg-slate-800/40">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span className="font-medium text-pb-text dark:text-gray-300">
-                [{o.guest_type} {o.vmid}] {o.source_node} → {o.target_node}
-                {when && <span className="ml-2 font-normal text-pb-text3 dark:text-gray-500">{when.toLocaleDateString()}</span>}
-              </span>
-              {isPending ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  measuring · {o.status.replace('pending_', '')} next
-                </span>
-              ) : o.verdict ? (
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${VERDICT_CLASS[o.verdict] || VERDICT_CLASS.neutral}`}>{o.verdict}</span>
-              ) : null}
-            </div>
-            {!isPending || p5.source_node ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <Delta label="Source CPU · 5 min" before={pre.source_node?.cpu} after={p5.source_node?.cpu} />
-                <Delta label="Source mem · 5 min" before={pre.source_node?.mem} after={p5.source_node?.mem} />
-                {p24 && !p24.late && <Delta label="Source CPU · 24 h" before={pre.source_node?.cpu} after={p24.source_node?.cpu} />}
-                {p24 && !p24.late && <Delta label="Source mem · 24 h" before={pre.source_node?.mem} after={p24.source_node?.mem} />}
-              </div>
-            ) : (
-              <div className="text-[10px] text-amber-600 dark:text-amber-400">First post-migration snapshot is taken 5 minutes after the move.</div>
-            )}
-          </div>
-        );
-      })}
-      {excluded > 0 && (
-        <p className="text-[11px] text-pb-text3 dark:text-gray-500">
-          {excluded} older record{excluded !== 1 ? 's' : ''} hidden: their post-migration metrics were captured long after the move, so they don't measure it.
+    <div>
+      {shown.length === 0 ? (
+        <p className="text-xs text-pb-text2 dark:text-gray-500">
+          No measured moves yet. Each live move is measured before, 5 minutes after and 24 hours after.
         </p>
+      ) : (
+        <>
+          <p className="text-sm text-pb-text dark:text-gray-200">{outcomesSummary(summarised)}.</p>
+          <ul className="mt-1 divide-y divide-pb-border dark:divide-slate-700/50">
+            {shown.map(o => <OutcomeRow key={o.key} o={o} />)}
+          </ul>
+        </>
       )}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-500">
+        {onOpenInsights && (
+          <button type="button" onClick={onOpenInsights} className="text-pb-accent dark:text-pb-accent-dark hover:underline">
+            All outcomes → Insights
+          </button>
+        )}
+        {excluded > 0 && <span>{excluded} older record{excluded !== 1 ? 's' : ''} not shown: measured too late to count.</span>}
+      </div>
     </div>
   );
 }
