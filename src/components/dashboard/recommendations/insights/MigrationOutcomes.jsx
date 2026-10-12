@@ -4,7 +4,7 @@ import { fetchMigrationOutcomes } from '../../../../api/client.js';
 import { parseTimestamp } from '../../../../utils/formatters.js';
 import {
   outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct,
-  cpuChange, barScale, barGeometry, helpedTally,
+  cpuChange, helpedTally,
 } from '../../../../utils/automationStory.js';
 
 import useIsMobile from '../../../../utils/useIsMobile.js';
@@ -82,57 +82,45 @@ function OutcomeDetail({ o, h }) {
   );
 }
 
-/** Diverging bar around a centre zero line, on the shared scale. */
-function DivergingBar({ change, scale, tone }) {
-  const g = barGeometry(change, scale);
-  return (
-    <div className="relative h-3 flex-1 min-w-0">
-      <div className="absolute inset-y-[-3px] left-1/2 w-px bg-slate-300 dark:bg-slate-600" />
-      {g.side && (
-        <div
-          className={`absolute top-0 bottom-0 ${TONE_FILL[tone] || TONE_FILL.gray} ${g.side === 'left' ? 'rounded-l' : 'rounded-r'}`}
-          style={g.side === 'left'
-            ? { right: '50%', width: `${g.pct / 2}%` }
-            : { left: '50%', width: `${g.pct / 2}%` }}
-        />
-      )}
-    </div>
-  );
+// Change text colour per verdict (the only colour on the row).
+const TONE_TEXT = {
+  green: 'text-emerald-600 dark:text-emerald-400',
+  red: 'text-red-600 dark:text-red-400',
+  gray: 'text-pb-text2 dark:text-gray-400',
+  blue: 'text-pb-text2 dark:text-gray-400',
+};
+
+/** "▼17" (lower), "▲14" (higher), "±0", or the verdict word when unmeasured. */
+function changeText(change, h) {
+  if (change == null) return h.label;
+  const n = Math.round(Math.abs(change));
+  if (n === 0) return '±0';
+  return `${change < 0 ? '▼' : '▲'}${n}`;
 }
 
-function OutcomeRow({ o, scale }) {
+const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[minmax(0,1fr)_7.5rem_4.5rem_6.5rem_3rem] items-center gap-x-3';
+
+function OutcomeRow({ o }) {
   const [open, setOpen] = useState(false);
   const h = outcomeHeadline(o);
   const change = cpuChange(h);
   const name = o.guest_name || `${o.guest_type || 'guest'} ${o.vmid}`;
   const when = shortDateTime(o.pre_migration?.timestamp);
-  const cpuNumbers = h.before == null && h.after == null ? '—' : `${formatPct(h.before)} → ${formatPct(h.after)}`;
+  const day = when.split(',')[0];
+  const nums = h.before == null && h.after == null ? '—' : `${formatPct(h.before)} → ${formatPct(h.after)}`;
   const aria = `${name} moved ${o.source_node} to ${o.target_node} ${when}: ${headlineText(h)}, ${h.label}`;
   return (
-    <li className="border-b border-pb-border/60 dark:border-slate-700/50 last:border-0">
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="w-full py-1.5 text-left text-xs rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
-        aria-expanded={open}
-        aria-label={aria}
-        title={aria}
-      >
-        {/* What moved, where, when */}
-        <div className="flex items-center gap-x-2 min-w-0">
-          <span className="font-medium text-pb-text dark:text-gray-200 truncate">{name}</span>
-          <span className="font-mono text-pb-text2 dark:text-gray-400 shrink-0">{o.source_node} → {o.target_node}</span>
-          <span className="text-pb-text2 dark:text-gray-500 shrink-0 hidden sm:inline">{when}</span>
-          <span className="text-pb-text2 dark:text-gray-500 shrink-0 sm:hidden">{when.split(',')[0]}</span>
-          <span className={`ml-auto shrink-0 ${statusBadge(h.tone)}`}>{h.label}</span>
-        </div>
-        {/* What it did to the node it left */}
-        <div className="mt-1 flex items-center gap-2">
-          <DivergingBar change={change} scale={scale} tone={h.tone} />
-          <span className="w-20 sm:w-32 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">
-            <span className="hidden sm:inline">{h.node} CPU </span>{cpuNumbers}
-          </span>
-        </div>
+    <li>
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={aria} title={aria}
+        className={`${ROW_GRID} w-full py-1 text-left text-xs rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30`}>
+        <span className="min-w-0 truncate">
+          <span className="text-pb-text dark:text-gray-200">{name}</span>
+          <span className="sm:hidden text-pb-text2 dark:text-gray-500"> · {o.source_node}→{o.target_node} · {day}</span>
+        </span>
+        <span className="hidden sm:block font-mono text-pb-text2 dark:text-gray-400 truncate">{o.source_node} → {o.target_node}</span>
+        <span className="hidden sm:block text-pb-text2 dark:text-gray-500">{day}</span>
+        <span className="tabular-nums text-right text-pb-text dark:text-gray-300">{nums}</span>
+        <span className={`tabular-nums text-right font-medium ${TONE_TEXT[h.tone] || TONE_TEXT.gray}`}>{changeText(change, h)}</span>
       </button>
       {open && <OutcomeDetail o={o} h={h} />}
     </li>
@@ -172,7 +160,6 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
   const { list, excluded } = usableOutcomes(outcomes);
   const shown = list.slice(0, limit);
   const tally = helpedTally(list.slice(0, 10));
-  const scale = barScale(shown.map(o => cpuChange(outcomeHeadline(o))));
 
   return (
     <div>
@@ -191,17 +178,16 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
             </button>
           )}
           {showRows && <>
-          <ul>
-            {shown.map(o => <OutcomeRow key={o.key} o={o} scale={scale} />)}
-          </ul>
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-pb-text2 dark:text-gray-500">
-            <div className="flex-1 flex justify-between tabular-nums">
-              <span>◀ lower (helped)</span>
-              <span>higher (worse) ▶</span>
-            </div>
-            <span className="w-20 sm:w-32 shrink-0" />
+          <div className={`${ROW_GRID} text-[10px] text-pb-text2 dark:text-gray-500 pb-0.5 border-b border-pb-border dark:border-slate-700/50`}>
+            <span>Guest moved</span>
+            <span className="hidden sm:block">From → to</span>
+            <span className="hidden sm:block">When</span>
+            <span className="text-right" title="CPU on the node the guest left: just before the move → 24 h after">Old node CPU</span>
+            <span className="text-right">Change</span>
           </div>
-          <p className="text-[10px] text-pb-text2 dark:text-gray-500">Each bar: CPU on the node the guest left, 24 h after the move compared with just before.</p>
+          <ul>
+            {shown.map(o => <OutcomeRow key={o.key} o={o} />)}
+          </ul>
           </>}
         </>
       )}
