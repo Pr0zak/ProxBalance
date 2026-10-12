@@ -4,7 +4,7 @@ import { fetchMigrationOutcomes } from '../../../../api/client.js';
 import { parseTimestamp } from '../../../../utils/formatters.js';
 import {
   outcomeHeadline, headlineText, outcomesSummary, shortDateTime, formatPct,
-  cpuChange, signedPoints, barScale, barGeometry, helpedTally,
+  cpuChange, barScale, barGeometry, helpedTally,
 } from '../../../../utils/automationStory.js';
 
 const { useState, useEffect } = React;
@@ -103,20 +103,33 @@ function OutcomeRow({ o, scale }) {
   const h = outcomeHeadline(o);
   const change = cpuChange(h);
   const name = o.guest_name || `${o.guest_type || 'guest'} ${o.vmid}`;
-  const aria = `${name}: ${headlineText(h)}, ${h.label}`;
+  const when = shortDateTime(o.pre_migration?.timestamp);
+  const cpuText = h.before == null && h.after == null
+    ? `${h.node} CPU —`
+    : `${h.node} CPU ${formatPct(h.before)} → ${formatPct(h.after)}`;
+  const aria = `${name} moved ${o.source_node} to ${o.target_node} ${when}: ${headlineText(h)}, ${h.label}`;
   return (
-    <li>
+    <li className="border-b border-pb-border/60 dark:border-slate-700/50 last:border-0">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 py-1 text-left text-xs rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
+        className="w-full py-1.5 text-left text-xs rounded hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30"
         aria-expanded={open}
         aria-label={aria}
         title={aria}
       >
-        <span className="w-24 sm:w-32 shrink-0 truncate text-pb-text dark:text-gray-200">{name}</span>
-        <DivergingBar change={change} scale={scale} tone={h.tone} />
-        <span className="w-10 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">{signedPoints(change)}</span>
+        {/* What moved, where, when */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
+          <span className="font-medium text-pb-text dark:text-gray-200 truncate">{name}</span>
+          <span className="font-mono text-pb-text2 dark:text-gray-400">{o.source_node} → {o.target_node}</span>
+          <span className="text-pb-text2 dark:text-gray-500">{when}</span>
+          <span className={`ml-auto ${statusBadge(h.tone)}`}>{h.label}</span>
+        </div>
+        {/* What it did to the node it left */}
+        <div className="mt-1 flex items-center gap-2">
+          <DivergingBar change={change} scale={scale} tone={h.tone} />
+          <span className="w-32 shrink-0 text-right tabular-nums text-pb-text dark:text-gray-200">{cpuText}</span>
+        </div>
       </button>
       {open && <OutcomeDetail o={o} h={h} />}
     </li>
@@ -126,7 +139,7 @@ function OutcomeRow({ o, scale }) {
 /**
  * "Did past moves help?" — "Helped 8 of 10" with a segment bar, then one
  * diverging bar per recent move: the change in source-node CPU 24 h after
- * the move (left = quieter, right = busier), the number the verdict uses.
+ * the move (left = lower CPU, right = higher), the number the verdict uses.
  */
 export default function MigrationOutcomes({ active, limit = 5, onOpenInsights }) {
   const [outcomes, setOutcomes] = useState(null);
@@ -172,14 +185,14 @@ export default function MigrationOutcomes({ active, limit = 5, onOpenInsights })
           <ul>
             {shown.map(o => <OutcomeRow key={o.key} o={o} scale={scale} />)}
           </ul>
-          <div className="flex items-center gap-2 text-[10px] text-pb-text2 dark:text-gray-500">
-            <span className="w-24 sm:w-32 shrink-0" title="Change in the source node's CPU 24 h after the move">CPU change</span>
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-pb-text2 dark:text-gray-500">
             <div className="flex-1 flex justify-between tabular-nums">
-              <span>quieter −{scale}</span>
-              <span>busier +{scale}</span>
+              <span>◀ lower CPU (helped)</span>
+              <span>higher CPU (worse) ▶</span>
             </div>
-            <span className="w-10 shrink-0 text-right">pts</span>
+            <span className="w-32 shrink-0" />
           </div>
+          <p className="text-[10px] text-pb-text2 dark:text-gray-500">Each bar: CPU on the node the guest left, 24 h after the move compared with just before.</p>
         </>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-500">
