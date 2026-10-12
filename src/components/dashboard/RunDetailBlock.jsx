@@ -1,7 +1,6 @@
 import { AlertTriangle, ChevronDown } from '../Icons.jsx';
 import { statusBadge } from '../../utils/designTokens.js';
-import { decisionSkipLabel } from '../../utils/formatters.js';
-import { lastCheckRows, isDryRun, agoText, shortDateTime, whyText } from '../../utils/automationStory.js';
+import { lastCheckRows, isDryRun, agoText, shortDateTime, observationProgress, heldKey } from '../../utils/automationStory.js';
 
 const { useState } = React;
 
@@ -18,56 +17,54 @@ function actionLabel(d, dry) {
   if (d.action === 'filtered' || d.action === 'skipped') return 'held back';
   return d.action || '—';
 }
-const ACTION_TONE = { executed: 'green', pending: 'blue', failed: 'red', observing: 'purple', deferred: 'yellow', skipped: 'orange', filtered: 'gray' };
 
-/** Full per-guest list, used inside "Details". */
-function DecisionsList({ decisions, dry, shown = new Set() }) {
+/** Result of one decision as plain words for the Details table. */
+function resultText(d, dry) {
+  if (d.action === 'failed') return 'failed';
+  if (d.action === 'observing') {
+    const p = observationProgress(d);
+    return p ? `waiting ${p.seen}/${p.need}` : 'waiting';
+  }
+  if (d.action === 'filtered' || d.action === 'skipped' || d.action === 'deferred') return `held back: ${heldKey(d)}`;
+  return actionLabel(d, dry);
+}
+
+/**
+ * Every guest the run looked at, one compact line each, in the same
+ * format: guest, route, result, confidence, target score. Used inside
+ * "Details"; the rows above it already tell the story.
+ */
+function DecisionsList({ decisions, dry }) {
   if (!decisions || decisions.length === 0) return null;
-  const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['observing', 'deferred'].includes(d.action) ? 1 : d.action === 'skipped' ? 2 : 3);
+  const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['observing'].includes(d.action) ? 1 : 2);
   const sorted = [...decisions].sort((a, b) => (order(a) - order(b)) || ((a.priority_rank || 999) - (b.priority_rank || 999)));
   return (
-    <div>
-      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Scores</div>
-      <ul className="divide-y divide-pb-border dark:divide-slate-700/50">
-        {sorted.map((d, idx) => {
-          const tone = d.action === 'executed' && dry ? 'yellow' : (ACTION_TONE[d.action] || 'gray');
-          const why = ['executed', 'pending', 'failed'].includes(d.action) ? whyText(d) : (d.reason || '');
-          // Guests already shown in the rows above only add their numbers here.
-          if (shown.has(d.name || `guest ${d.vmid}`)) {
-            if (d.confidence_score == null && d.target_node_score == null && !d.error) return null;
-            return (
-              <li key={idx} className="py-1 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
-                <span className="text-pb-text dark:text-gray-300">{d.name || `guest ${d.vmid}`}</span>
-                {d.confidence_score != null && <> · confidence {d.confidence_score}%</>}
-                {d.target_node_score != null && <> · target score {d.target_node_score}</>}
-                {d.error && <div className="mt-0.5 text-red-600 dark:text-red-400">Error: {d.error}</div>}
-              </li>
-            );
-          }
-          return (
-            <li key={idx} className="py-1.5 text-xs">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-pb-text dark:text-gray-200">{d.name || `guest ${d.vmid}`}</span>
-                {(d.source_node || d.target_node) && (
-                  <span className="font-mono text-pb-text2 dark:text-gray-400">{d.source_node || '—'} → {d.target_node || '—'}</span>
-                )}
-                <span className={statusBadge(tone)}>{d.action === 'failed' ? 'failed' : actionLabel(d, dry)}</span>
-                {decisionSkipLabel(d) && <span className={statusBadge('yellow')}>{decisionSkipLabel(d)}</span>}
-              </div>
-              {why && <div className="mt-0.5 text-pb-text2 dark:text-gray-400">{why}</div>}
-              {(d.confidence_score != null || d.target_node_score != null) && (
-                <div className="mt-0.5 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
-                  {d.confidence_score != null && <>confidence {d.confidence_score}%</>}
-                  {d.confidence_score != null && d.target_node_score != null && ' · '}
-                  {d.target_node_score != null && <>target score {d.target_node_score}</>}
-                  {d.reasoning?.score_improvement != null && <> · improvement +{Number(d.reasoning.score_improvement).toFixed(1)}</>}
-                </div>
-              )}
-              {d.error && <div className="mt-0.5 text-red-600 dark:text-red-400">Error: {d.error}</div>}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="overflow-x-auto">
+      <table className="text-[11px] tabular-nums">
+        <thead>
+          <tr className="text-left text-pb-text2 dark:text-gray-500">
+            <th className="font-normal pr-3 pb-0.5">Guest</th>
+            <th className="font-normal pr-3 pb-0.5">From → to</th>
+            <th className="font-normal pr-3 pb-0.5">Result</th>
+            <th className="font-normal pr-3 pb-0.5 text-right">Confidence</th>
+            <th className="font-normal pb-0.5 text-right" title="Lower is better">Target score</th>
+          </tr>
+        </thead>
+        <tbody className="text-pb-text2 dark:text-gray-400">
+          {sorted.map((d, idx) => (
+            <tr key={idx} className="align-top">
+              <td className="pr-3 py-0.5 text-pb-text dark:text-gray-300 whitespace-nowrap">{d.name || `guest ${d.vmid}`}</td>
+              <td className="pr-3 py-0.5 font-mono whitespace-nowrap">{d.source_node || '—'} → {d.target_node || '—'}</td>
+              <td className="pr-3 py-0.5">
+                {resultText(d, dry)}
+                {d.error && <div className="text-red-600 dark:text-red-400">Error: {d.error}</div>}
+              </td>
+              <td className="pr-3 py-0.5 text-right">{d.confidence_score != null ? `${Math.round(d.confidence_score)}%` : '—'}</td>
+              <td className="py-0.5 text-right">{d.target_node_score != null ? Number(d.target_node_score).toFixed(1) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -192,8 +189,7 @@ export default function RunDetailBlock({ run, compact = false, ctx = {}, headerC
       {showDetails && (
         <div className="space-y-3 pl-4 border-l-2 border-pb-border dark:border-slate-700/60">
           <div className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">{meta}</div>
-          <DecisionsList decisions={run.decisions} dry={dry}
-            shown={new Set((lastCheckRows(run, ctx) || []).slice(0, 5).map(r => r.name).filter(Boolean))} />
+          <DecisionsList decisions={run.decisions} dry={dry} />
           <ActivityLogList log={run.activity_log} />
         </div>
       )}
