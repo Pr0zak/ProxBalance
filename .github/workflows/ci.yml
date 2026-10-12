@@ -63,4 +63,4 @@ jobs:
           test -s assets/css/tailwind.css
 
       - name: JavaScript tests
-        run: node tests/js/schedule-agree.mjs
+        run: for t in tests/js/*.mjs; do echo "== $t"; node "$t"; done

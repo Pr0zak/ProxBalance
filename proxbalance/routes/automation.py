@@ -571,7 +571,7 @@ def get_automigrate_history():
         history = {
             "migrations": mdb.get_all_migrations(limit=2000),
             "state": mdb.get_all_automation_state(),
-            "run_history": mdb.get_run_history(limit=50),
+            "run_history": mdb.get_run_history(limit=mdb.RUN_HISTORY_KEEP),
         }
 
         # Get query parameters

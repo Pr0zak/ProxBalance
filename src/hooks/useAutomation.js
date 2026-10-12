@@ -60,7 +60,7 @@ export function useAutomation(API_BASE, deps = {}) {
     }
   };
 
-  const fetchRunHistory = async (limit = 10) => {
+  const fetchRunHistory = async (limit = 300) => {
     setLoadingRunHistory(true);
     try {
       const response = await fetch(`${API_BASE}/automigrate/history?type=runs&limit=${limit}`);

@@ -1,16 +1,21 @@
 import { Clock, Pause, Play, Loader, Settings, ChevronDown, MoveRight, Eye } from '../Icons.jsx';
-import RunHistoryDisplay from './RunHistoryDisplay.jsx';
+import { RunStrip } from './RunHistoryDisplay.jsx';
+import RunDetailBlock from './RunDetailBlock.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
 import { useAppStatus } from '../AppStatus.jsx';
+import { statusBadge } from '../../utils/designTokens.js';
+import { lastCheckSentence, lastCheckParts, lastRealMove, shortDateTime } from '../../utils/automationStory.js';
 
 const { useState, useEffect, useMemo } = React;
 
 /**
  * Reusable auto-migration status indicator. Three sizes:
  *  - 'pill'   : compact inline strip (TopNav-style)
- *  - 'banner' : full horizontal bar with controls + expandable last-run detail
+ *  - 'banner' : full horizontal bar with controls, the last check as a chip
+ *               plus the guest it concerned, and an expandable view of
+ *               recent checks and whether past moves helped
  *  - 'card'   : KPI-card-shaped (KpiRow)
  *  - 'strip'  : medium horizontal strip
  */
@@ -136,15 +141,13 @@ export default function AutoStatusPill({
   const outsideWindow = automationStatus.enabled
     && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
 
-  // Banner context: what automation last moved, and which guests it is
-  // watching before it moves them.
+  // Banner context: which guests automation is watching before it moves them.
   const now = new Date();
   const actAt = nextAct?.firstRunAt || nextAct?.opensAt || null;
   // "until HH:MM" only when the blackout is the last thing in the way;
   // otherwise the "can act next" time says it.
   const blackoutUntil = nextAct?.blackoutUntil && nextAct?.opensAt
     && nextAct.blackoutUntil.getTime() === nextAct.opensAt.getTime() ? nextAct.blackoutUntil : null;
-  const lastMove = (automationStatus.recent_migrations || []).find(m => m.status === 'completed' || m.status === 'failed');
   const tracking = automationStatus.intelligent_tracking;
   const watching = (tracking?.items || []).filter(i => i.status === 'observing');
   const periods = tracking?.observation_periods || null;
@@ -175,22 +178,36 @@ export default function AutoStatusPill({
   }
 
   // banner OR strip
+  const modeLabel = status.label === 'Dry-Run' ? 'Dry run' : status.label;
+  const tz = nextAct?.tz || automationConfig?.schedule?.timezone;
+  const nextAt = parseTimestamp(automationStatus.next_check);
+  const opensAt = nextAct?.blocked && actAt ? formatInZone(nextAct.opensAt || actAt, nextAct.tz, now) : null;
+  const storyCtx = { now, opensAt, observationPeriods: tracking?.enabled ? periods : null };
+  const last = lastRunObj ? lastCheckParts(lastRunObj, storyCtx) : null;
+  // The banner line already says "nothing to do"; the section only appears
+  // when the last check has guests or a reason to show.
+  const showLastCheck = last && last.kind !== 'nothing';
+  const realMove = lastRealMove(automationStatus.recent_migrations);
+  const sectionTitle = 'text-[11px] font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-500 mb-1.5';
   return (
     <div className={`rounded-lg border ${COLOR_TO_BG[status.color]}`}>
-      <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-2">
-        <div className="flex items-center gap-2 text-sm flex-wrap min-w-0">
+      <div className="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap px-4 pt-2 pb-1">
+        <div className="flex items-center gap-x-2 gap-y-0.5 text-sm flex-wrap min-w-0">
           {canExpand && (
             <button
               onClick={() => setExpanded(e => !e)}
               className="p-0.5 rounded hover:bg-pb-surface2 dark:hover:bg-slate-700/50 transition-colors"
-              title={expanded ? 'Hide last-run detail' : 'Show last-run detail'}
+              title={expanded ? 'Hide what automation did' : 'Show what automation did and why'}
               aria-label={expanded ? 'Collapse' : 'Expand'}
+              aria-expanded={expanded}
             >
-              <ChevronDown size={14} className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : '-rotate-90'}`} />
+              <ChevronDown size={14} className={`text-pb-text2 dark:text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
             </button>
           )}
           <span className={`w-2 h-2 rounded-full ${status.dotColor}`} />
-          <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}><span className="hidden sm:inline">Auto-migration: </span><span className="sm:hidden">Auto: </span>{status.label}</span>
+          <span className="font-medium text-pb-text dark:text-gray-200">Automation</span>
+          <span className="text-pb-text2 dark:text-gray-500" aria-hidden="true">·</span>
+          <span className={`font-medium ${COLOR_TO_TEXT[status.color]}`}>{modeLabel}</span>
           {nextAct?.blocked && actAt ? (
             <span
               className="text-pb-text2 dark:text-gray-400 text-xs"
@@ -200,18 +217,20 @@ export default function AutoStatusPill({
                 'Run Now still works, but exits early until then.',
               ].filter(Boolean).join('\n')}
             >
-              {nextAct.reason === 'blackout'
+              <span className="hidden sm:inline">· </span>{nextAct.reason === 'blackout'
                 ? <>{nextAct.blackoutName || 'Blackout'}{nextAct.blackoutName ? ' blackout' : ''}{blackoutUntil ? <> until {formatInZone(blackoutUntil, nextAct.tz, now)}</> : null}</>
                 : <>outside migration windows</>}
               {' '}· can act next <span className="text-pb-text dark:text-gray-200 font-medium">{formatInZone(actAt, nextAct.tz, now)}</span>
               <span className="text-pb-text2 dark:text-gray-500"> (in {formatIn(actAt, now)})</span>
             </span>
-          ) : (
-            nextCheck && <span className="text-pb-text2 dark:text-gray-400 text-xs">next check {nextCheck}</span>
-          )}
-          {lastRun && (
-            <span className="hidden sm:inline text-pb-text2 dark:text-gray-500 text-xs">· last run {relativeAgo(lastRun)}</span>
-          )}
+          ) : nextAt && automationStatus.enabled && automationStatus.timer_active ? (
+            <span className="text-pb-text2 dark:text-gray-400 text-xs">
+              <span className="hidden sm:inline">· </span>next check <span className="text-pb-text dark:text-gray-200 font-medium">{formatInZone(nextAt, tz, now)}</span>
+              <span className="text-pb-text2 dark:text-gray-500"> (in {formatIn(nextAt, now)})</span>
+            </span>
+          ) : nextCheck ? (
+            <span className="text-pb-text2 dark:text-gray-400 text-xs"><span className="hidden sm:inline">· </span>next check {nextCheck}</span>
+          ) : null}
         </div>
         {showActions && (
           <div className="flex items-center gap-1.5">
@@ -245,6 +264,7 @@ export default function AutoStatusPill({
                 onClick={() => setCurrentPage('automation')}
                 className="px-2.5 py-1 text-xs rounded border bg-white dark:bg-slate-800/60 border-pb-border dark:border-slate-700/50 text-pb-text dark:text-gray-300 hover:bg-pb-surface2 dark:hover:bg-slate-700/60 inline-flex items-center gap-1"
                 title="Open automation settings"
+                aria-label="Open automation settings"
               >
                 <Settings size={12} />
               </button>
@@ -252,43 +272,53 @@ export default function AutoStatusPill({
           </div>
         )}
       </div>
-      {size === 'banner' && automationStatus.enabled && (lastMove || watching.length > 0) && (
-        <div className="hidden sm:block px-4 pb-2 -mt-0.5">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
-            {lastMove && (
-              <span className="inline-flex items-center gap-1.5 min-w-0" title={lastMove.reason || undefined}>
-                <MoveRight size={12} className={lastMove.status === 'failed' ? 'text-red-500' : 'text-blue-500 dark:text-blue-400'} />
-                Last move
-                <span className="text-pb-text dark:text-gray-200">{lastMove.name || lastMove.vmid}</span>
-                <span className="font-mono">{lastMove.source_node} → {lastMove.target_node}</span>
-                {lastMove.status === 'failed' && <span className="text-red-600 dark:text-red-400">failed</span>}
-                <span className="text-pb-text2 dark:text-gray-500">· {relativeAgo(lastMove.timestamp)}</span>
-              </span>
-            )}
-            {watching.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowWatching(v => !v)}
-                className="inline-flex items-center gap-1.5 hover:text-pb-text dark:hover:text-gray-200"
-                title="Guests the engine keeps recommending. It moves one only after it has been recommended on enough consecutive checks."
-              >
-                <Eye size={12} className="text-violet-500 dark:text-violet-400" />
-                Watching <span className="text-pb-text dark:text-gray-200">{watching.length}</span> guest{watching.length !== 1 ? 's' : ''} before moving
-                <ChevronDown size={12} className={`transition-transform duration-200 ${showWatching ? 'rotate-180' : ''}`} />
-              </button>
-            )}
-          </div>
+      {size === 'banner' && automationStatus.enabled && (last || realMove || watching.length > 0) && (
+        <div className="px-4 pb-2">
+          {last && (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm" title={lastCheckSentence(lastRunObj, storyCtx)}>
+              <span className="text-pb-text2 dark:text-gray-400">{last.lead}</span>
+              {last.chip && <span className={statusBadge(last.tone)}>{last.chip}</span>}
+              {last.subject && <span className="text-pb-text dark:text-gray-200 min-w-0 break-words">{last.subject}</span>}
+            </p>
+          )}
+          {(realMove || watching.length > 0) && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
+              {realMove && (
+                <span className="inline-flex items-center gap-1.5 min-w-0 flex-wrap" title={realMove.reason || undefined}>
+                  <MoveRight size={12} className={realMove.status === 'failed' ? 'text-red-500' : 'text-blue-500 dark:text-blue-400'} />
+                  {automationStatus.dry_run ? 'Last real move' : 'Last move'}
+                  <span className="text-pb-text dark:text-gray-200">{realMove.name || realMove.vmid}</span>
+                  <span className="font-mono">{realMove.source_node} → {realMove.target_node}</span>
+                  {realMove.status === 'failed' && <span className="text-red-600 dark:text-red-400">failed</span>}
+                  <span className="text-pb-text2 dark:text-gray-500">· {shortDateTime(realMove.timestamp)}</span>
+                </span>
+              )}
+              {watching.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowWatching(v => !v)}
+                  className="inline-flex items-center gap-1.5 hover:text-pb-text dark:hover:text-gray-200"
+                  title="Guests the engine keeps suggesting. It moves one only after it has been suggested on enough checks in a row."
+                  aria-expanded={showWatching}
+                >
+                  <Eye size={12} className="text-violet-500 dark:text-violet-400" />
+                  Watching <span className="text-pb-text dark:text-gray-200">{watching.length}</span> guest{watching.length !== 1 ? 's' : ''} before moving
+                  <ChevronDown size={12} className={`transition-transform duration-200 ${showWatching ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </div>
+          )}
           {showWatching && watching.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {watching.map(w => (
                 <span
                   key={w.vmid}
                   className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/25 text-violet-800 dark:text-violet-200"
-                  title={`Recommended on ${w.consecutive_count}${periods ? ` of ${periods}` : ''} consecutive checks · first seen ${relativeAgo(w.first_seen)}`}
+                  title={`Suggested on ${w.consecutive_count}${periods ? ` of ${periods}` : ''} checks in a row · first seen ${relativeAgo(w.first_seen)}`}
                 >
                   {w.name}
                   <span className="font-mono text-violet-600 dark:text-violet-300/80">{w.source_node} → {w.last_target_node}</span>
-                  {periods && <span className="tabular-nums text-violet-600/80 dark:text-violet-300/70">{w.consecutive_count}/{periods}</span>}
+                  {periods && <span className="tabular-nums text-violet-600/80 dark:text-violet-300/70">{w.consecutive_count} of {periods}</span>}
                 </span>
               ))}
             </div>
@@ -296,22 +326,25 @@ export default function AutoStatusPill({
         </div>
       )}
       {canExpand && expanded && (
-        <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 space-y-4">
-          {(runHistory && runHistory.length > 0) || lastRunObj ? (
-            <div>
-              <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Run history</div>
-              <RunHistoryDisplay
-                embedded
-                runHistory={runHistory}
-                automationStatus={automationStatus}
-              />
-            </div>
-          ) : null}
+        <div className="px-4 pb-4 pt-3 border-t border-pb-border dark:border-slate-700/40 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
+          <section className="min-w-0 lg:col-span-2">
+            <h4 className={sectionTitle}>Recent checks · last 24 h</h4>
+            <RunStrip runs={runHistory && runHistory.length ? runHistory : [lastRunObj]} ctx={storyCtx} />
+          </section>
+          {showLastCheck && (
+            <section className="min-w-0">
+              <h4 className={sectionTitle}>Last check</h4>
+              <RunDetailBlock run={lastRunObj} compact ctx={storyCtx} headerChip={last?.chip} />
+            </section>
+          )}
           {API_BASE && (
-            <div>
-              <div className="text-xs text-pb-text2 dark:text-gray-500 mb-2 uppercase tracking-wider">Migration outcomes — predicted vs actual</div>
-              <MigrationOutcomes API_BASE={API_BASE} active={expanded} />
-            </div>
+            <section className={`min-w-0 ${showLastCheck ? '' : 'lg:max-w-xl'}`}>
+              <h4 className={sectionTitle}>Did past moves help?</h4>
+              <MigrationOutcomes
+                active={expanded}
+                onOpenInsights={setCurrentPage ? () => setCurrentPage('insights') : undefined}
+              />
+            </section>
           )}
         </div>
       )}

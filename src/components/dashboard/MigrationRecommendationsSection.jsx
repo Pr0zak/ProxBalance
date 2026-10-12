@@ -147,6 +147,12 @@ export default function MigrationRecommendationsSection({
   // (the selection, else everything not deferred). Warns; does not block.
   const inflowCap = automationConfig?.rules?.max_target_inflow_per_cycle ?? 0;
   const inflowOver = inflowOverCap(subsetPlan(enginePlan, selectedRecs.length ? selectedRecs : runnableRecs), inflowCap);
+  // Moves automation's per-node inflow cap would leave out of its next run
+  // (judged on the whole active plan, the way automation sees it).
+  const inflowOf = {};
+  for (const o of inflowOverCap(activePlan, inflowCap)) {
+    for (const x of o.extra) inflowOf[vkey(x.vmid)] = { target: o.target, cap: Number(inflowCap) };
+  }
   const overTargets = new Set((impact?.nodes || []).filter(n => n.overCpu || n.overMem).map(n => n.name));
 
   // --- Selection ---
@@ -269,10 +275,10 @@ export default function MigrationRecommendationsSection({
     <RecommendationCard
       key={`${rec.vmid}-${rec.target_node}`}
       rec={rec}
-      idx={idx}
       step={step}
-      penaltyConfig={penaltyConfig}
       recommendationData={recommendationData}
+      guest={data?.guests?.[String(rec.vmid)]}
+      inflow={inflowOf[vkey(rec.vmid)]}
       migrationStatus={migrationStatus}
       setMigrationStatus={setMigrationStatus}
       completedMigrations={completedMigrations}
@@ -281,9 +287,8 @@ export default function MigrationRecommendationsSection({
       cancelMigration={cancelMigration}
       setConfirmMigration={setConfirmMigration}
       canMigrate={canMigrate}
-      collapsedSections={collapsedSections}
-      setCollapsedSections={setCollapsedSections}
       automationStatus={automationStatus}
+      automationConfig={automationConfig}
       selectable
       selected={selectedVmids.has(vkey(rec.vmid))}
       onToggleSelect={toggleSelect}

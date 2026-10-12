@@ -1,149 +1,146 @@
-import { GLASS_CARD, MODAL_OVERLAY, MODAL_CONTAINER, iconBadge, ICON } from '../../utils/designTokens.js';
-import { ClipboardList, CheckCircle, ChevronDown, X } from '../Icons.jsx';
-import { formatRelativeTime, runStatusLabel } from '../../utils/formatters.js';
-import RunDetailBlock, { RunSummaryRow } from './RunDetailBlock.jsx';
+import { GLASS_CARD, MODAL_OVERLAY, MODAL_CONTAINER, iconBadge, ICON, statusBadge } from '../../utils/designTokens.js';
+import { ClipboardList, X } from '../Icons.jsx';
+import { stripLayout, CATEGORY_LABELS, runSummary, lastCheckParts, clockTime, agoText } from '../../utils/automationStory.js';
+import RunDetailBlock from './RunDetailBlock.jsx';
 
 const { useState } = React;
 
-const TONE_COLOR = {
-  success: 'text-green-600 dark:text-green-400',
-  warn:    'text-yellow-600 dark:text-yellow-400',
-  error:   'text-red-600 dark:text-red-400',
-  info:    'text-blue-600 dark:text-blue-400',
-  neutral: 'text-pb-text2 dark:text-gray-400',
-};
-const TONE_DOT = {
-  success: 'bg-green-500',
-  warn:    'bg-yellow-400',
-  error:   'bg-red-400',
-  info:    'bg-blue-400',
-  neutral: 'bg-gray-500',
-};
-
-function fmtDuration(s) {
-  if (s == null) return '—';
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
-}
-
-function EmptyState() {
-  return (
-    <div className="text-center py-8 text-sm text-pb-text2 dark:text-gray-500">
-      No run history yet. Once auto-migration executes, runs appear here.
-    </div>
-  );
-}
-
-function HeaderRow({ count }) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-3">
-        <div className={iconBadge('green', 'emerald')}>
-          <ClipboardList size={ICON.action} className="text-pb-text dark:text-white" />
-        </div>
-        <div>
-          <h3 className="text-base font-bold text-pb-text dark:text-white">Run History</h3>
-          <p className="text-[11px] text-pb-text2 dark:text-gray-500">{count} run{count !== 1 ? 's' : ''}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function DetailModal({ run, onClose }) {
+export function DetailModal({ run, onClose, ctx }) {
   if (!run) return null;
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
       <div className={`${MODAL_CONTAINER} max-w-3xl`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-pb-text dark:text-white">Run details</h3>
+          <h3 className="text-lg font-bold text-pb-text dark:text-white">Check details</h3>
           <button onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={18} /></button>
         </div>
-        <RunDetailBlock run={run} />
+        <RunDetailBlock run={run} ctx={ctx} />
       </div>
     </div>
   );
 }
 
-/** Result-card layout: prominent last-run summary card, older runs collapse to "Show N more" */
-function ResultCardVariant({ runHistory, lastRun }) {
-  const [showAll, setShowAll] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const hasLast = lastRun && typeof lastRun === 'object';
-  if (!hasLast && (!runHistory || runHistory.length === 0)) return <EmptyState />;
-  const olderRuns = runHistory ? runHistory.slice(hasLast ? 1 : 0) : [];
+// Square fill per run category. Skipped runs are hatched (see HATCH).
+const CAT_CLASS = {
+  nothing: 'bg-slate-200 dark:bg-slate-700',
+  waiting: 'bg-violet-400 dark:bg-violet-500',
+  would_move: 'bg-amber-100 dark:bg-amber-400/15 ring-2 ring-inset ring-amber-500 dark:ring-amber-400',
+  moved: 'bg-blue-600 dark:bg-blue-400',
+  held: 'bg-orange-300 dark:bg-orange-400/80',
+  failed: 'bg-red-500 dark:bg-red-400',
+  skipped: 'text-slate-400 dark:text-slate-500 ring-1 ring-inset ring-slate-300 dark:ring-slate-600',
+  running: 'bg-sky-300 dark:bg-sky-600',
+};
+const HATCH = { backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 4px)' };
 
+function Square({ item, selected, onSelect, className = '' }) {
+  const label = `${clockTime(item.t)}: ${runSummary(item.run)}`;
   return (
-    <div className="space-y-3">
-      {hasLast && (
-        <div className="bg-white dark:bg-slate-800/80 border-2 border-slate-700/80 rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-            <div>
-              <div className="text-[11px] text-pb-text2 dark:text-gray-500 uppercase tracking-wider">Last Run</div>
-              {(() => {
-                const rsl = runStatusLabel(lastRun);
-                return (
-                  <div className={`text-2xl font-bold ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>
-                    {rsl.label}
-                  </div>
-                );
-              })()}
-              <div className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">
-                {formatRelativeTime(lastRun.timestamp)} · {fmtDuration(lastRun.duration_seconds)} · {lastRun.mode === 'dry_run' ? 'dry run' : 'live'}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold tabular-nums text-pb-text dark:text-white">
-                {lastRun.migrations_successful || 0}
-                <span className="text-lg text-pb-text2 dark:text-gray-500">/{lastRun.migrations_executed || 0}</span>
-              </div>
-              <div className="text-[11px] text-pb-text2 dark:text-gray-500">migrations succeeded</div>
-            </div>
-          </div>
-          <RunDetailBlock run={lastRun} compact />
-        </div>
-      )}
-      {olderRuns.length > 0 && (
-        <button
-          onClick={() => setShowAll(s => !s)}
-          className="w-full text-xs text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 flex items-center justify-center gap-2 py-2 rounded border border-pb-border dark:border-slate-700/50 hover:bg-pb-surface2/60 dark:hover:bg-slate-700/30 transition-colors"
-        >
-          <ChevronDown size={14} className={`transition-transform ${showAll ? 'rotate-180' : ''}`} />
-          {showAll ? 'Hide' : `Show ${olderRuns.length} previous run${olderRuns.length !== 1 ? 's' : ''}`}
-        </button>
-      )}
-      {showAll && olderRuns.map((r, i) => {
-        const rsl = runStatusLabel(r);
-        return (
-          <button
-            key={i}
-            onClick={() => setSelected(r)}
-            className="w-full text-left bg-pb-surface2 dark:bg-slate-800/40 border border-pb-border dark:border-slate-700/50 rounded p-2 flex items-center gap-2 text-xs hover:bg-pb-surface2/60 dark:hover:bg-slate-700/40 transition-colors"
-          >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${TONE_DOT[rsl.tone] || TONE_DOT.neutral}`} />
-            <span className="text-pb-text dark:text-gray-300">{formatRelativeTime(r.timestamp)}</span>
-            <span className={`text-[10px] ${TONE_COLOR[rsl.tone] || TONE_COLOR.neutral}`}>{rsl.label}</span>
-            <span className="ml-auto text-pb-text2 dark:text-gray-500 tabular-nums">
-              {r.migrations_successful || 0}/{r.migrations_executed || 0} · {fmtDuration(r.duration_seconds)} · click for detail
-            </span>
-          </button>
-        );
-      })}
-      <DetailModal run={selected} onClose={() => setSelected(null)} />
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={label}
+      aria-pressed={selected}
+      title={label}
+      style={item.cat === 'skipped' ? HATCH : undefined}
+      className={`rounded-sm ${CAT_CLASS[item.cat] || CAT_CLASS.nothing} ${selected
+        ? 'outline outline-2 outline-offset-1 outline-slate-900 dark:outline-white'
+        : 'hover:opacity-80'} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 ${className}`}
+    />
+  );
+}
+
+function Legend({ categories }) {
+  const labels = Object.fromEntries(CATEGORY_LABELS);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-400">
+      {categories.map(c => (
+        <span key={c} className="inline-flex items-center gap-1">
+          <span className={`inline-block w-2.5 h-2.5 rounded-sm ${CAT_CLASS[c]}`} style={c === 'skipped' ? HATCH : undefined} />
+          {labels[c]}
+        </span>
+      ))}
     </div>
   );
 }
 
-export default function RunHistoryDisplay({ runHistory, automationStatus, embedded = false }) {
-  const lastRun = automationStatus?.state?.last_run;
-  const count = runHistory?.length || 0;
-  if (embedded) {
-    return <ResultCardVariant runHistory={runHistory} lastRun={lastRun} />;
+/**
+ * "Recent checks": one square per automation run over the last 24 h, newest
+ * at the right, coloured by outcome. Clicking a square opens that run below
+ * the strip. On phones the strip wraps into one row per day.
+ */
+export function RunStrip({ runs, ctx: parentCtx = {} }) {
+  const [selectedKey, setSelectedKey] = useState(null);
+  // "opens HH:MM" describes the schedule now, not when an old run was skipped.
+  const ctx = { ...parentCtx, opensAt: null };
+  const layout = stripLayout(runs || [], { now: ctx.now || new Date() });
+  const { items, ticks, days, categories } = layout;
+  if (items.length === 0) {
+    return <div className="text-xs text-pb-text2 dark:text-gray-500 py-2">No checks in the last 24 hours.</div>;
   }
+  const n = items.length;
+  const keyOf = (it) => String(it.run.timestamp);
+  const selected = items.find(it => keyOf(it) === selectedKey) || null;
+  const toggle = (it) => setSelectedKey(k => (k === keyOf(it) ? null : keyOf(it)));
+  const gap = n > 120 ? 'gap-px' : 'gap-0.5';
+  const parts = selected ? lastCheckParts(selected.run, ctx) : null;
+  return (
+    <div>
+      {/* Desktop: one row, shared time axis */}
+      <div className="hidden sm:block" style={{ maxWidth: `${n * 18}px` }}>
+        <div className={`flex ${gap} h-6`}>
+          {items.map(it => (
+            <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className="flex-1 min-w-0 h-full" />
+          ))}
+        </div>
+        <div className="relative h-4 mt-1 text-[10px] tabular-nums text-pb-text2 dark:text-gray-500">
+          {ticks.map(t => (
+            <span key={t.index} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${((t.index + 0.5) / n) * 100}%` }}>{t.label}</span>
+          ))}
+          <span className="absolute right-0">now</span>
+        </div>
+      </div>
+      {/* Phones: one row per day */}
+      <div className="sm:hidden space-y-2">
+        {days.map(d => (
+          <div key={d.key}>
+            <div className="text-[10px] text-pb-text2 dark:text-gray-500 mb-0.5">{d.label}</div>
+            <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
+              {d.items.map(it => (
+                <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className="w-full h-4" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5">
+        <Legend categories={categories} />
+      </div>
+      {selected && (
+        <div className="mt-2 p-3 rounded-lg border border-pb-border dark:border-slate-700/60 bg-white/60 dark:bg-slate-900/40">
+          <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
+            <span className="font-medium text-pb-text dark:text-gray-200 tabular-nums">{clockTime(selected.t)}</span>
+            <span className="text-pb-text2 dark:text-gray-500">{agoText(selected.t)}</span>
+            {parts.chip && <span className={statusBadge(parts.tone)}>{parts.chip}</span>}
+          </div>
+          <RunDetailBlock run={selected.run} compact ctx={ctx} headerChip={parts.chip} showTime={false} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function RunHistoryDisplay({ runHistory, embedded = false, ctx }) {
+  if (embedded) return <RunStrip runs={runHistory} ctx={ctx} />;
   return (
     <div className={`${GLASS_CARD} overflow-hidden`}>
-      <HeaderRow count={count} />
-      <ResultCardVariant runHistory={runHistory} lastRun={lastRun} />
+      <div className="flex items-center gap-3 mb-3">
+        <div className={iconBadge('green', 'emerald')}>
+          <ClipboardList size={ICON.action} className="text-pb-text dark:text-white" />
+        </div>
+        <h3 className="text-base font-bold text-pb-text dark:text-white">Recent checks</h3>
+      </div>
+      <RunStrip runs={runHistory} ctx={ctx} />
     </div>
   );
 }
