@@ -56,39 +56,61 @@ eq('failed sentence', S.lastCheckSentence(failed, { now }), 'Last check 3 min ag
 has('held sentence names reason', S.lastCheckSentence(held, { now }), 'held back db01 — In cooldown period (+1 more)');
 
 // --- outcome kinds / chips -----------------------------------------------------
-eq('dry-run chip', S.runOutcome(dryRun).chip, 'would move 1');
-eq('live chip', S.runOutcome(realMove).chip, 'moved 1');
+eq('dry-run chip', S.runOutcome(dryRun).chip, 'would move');
+eq('live chip', S.runOutcome(realMove).chip, 'moved');
 eq('waiting kind', S.runOutcome(waiting).kind, 'waiting');
 eq('skipped kind', S.runOutcome(skippedWindow).kind, 'skipped');
 eq('failed kind', S.runOutcome(failed).kind, 'failed');
 eq('nothing kind', S.runOutcome(nothing(1)).kind, 'nothing');
 
-// --- story -----------------------------------------------------------------------
-const story = S.runStory(dryRun, { observationPeriods: 3 });
-eq('story first line', story.lines[0], 'Checked 1 suggestion.');
-has('story says why', story.lines[1], 'pve5 has elevated CPU usage');
-has('story says ready', story.lines[1], 'suggested 3 checks in a row, so it was ready');
-eq('story dry-run ending', story.lines[story.lines.length - 1], 'Dry run: logged, not moved.');
-lacks('story has no jargon', story.lines.join(' '), 'SELECTED');
-lacks('story has no score', story.lines.join(' '), '40.87');
-eq('live story ending', S.runStory(realMove).lines.slice(-1)[0], 'Moved 1 guest.');
-const heldStory = S.runStory(held);
-eq('held lines', heldStory.held.length, 2);
-has('inflow cap reason', heldStory.held[1].text, 'tried again next check');
-const manyHeld = { ...held, decisions: Array.from({ length: 5 }, (_, i) => ({ action: 'filtered', name: `g${i}`, vmid: i, reason: 'Has \'ignore\' tag' })) };
-eq('held top 3', S.runStory(manyHeld).held.length, 3);
-eq('held +N more', S.runStory(manyHeld).moreHeld, 2);
-has('skipped story', S.runStory(skippedWindow, { opensAt: '03:00' }).lines[0], 'outside the migration window (opens 03:00)');
+// --- banner parts (chip + short subject) ----------------------------------------
+const pDry = S.lastCheckParts(dryRun, { now });
+eq('dry parts lead', pDry.lead, 'Last check 3 min ago');
+eq('dry parts chip', pDry.chip, 'would move');
+eq('dry parts subject', pDry.subject, 'zentry-det-pve5 pve5 → pve3');
+eq('nothing parts has no subject', S.lastCheckParts(nothing(3), { now }).subject, '');
+eq('nothing parts chip', S.lastCheckParts(nothing(3), { now }).chip, 'nothing to do');
+eq('waiting parts subject', S.lastCheckParts(waiting, { now }).subject, 'zentry-det-pve5 pve5 → pve3 · 2 of 3 checks');
+eq('skipped parts subject', S.lastCheckParts(skippedWindow, { now, opensAt: '03:00' }).subject, 'outside the migration window (opens 03:00)');
+eq('real move parts chip', S.lastCheckParts(realMove, { now }).chip, 'moved');
 
-// --- grouping ----------------------------------------------------------------------
-const runs = [dryRun, nothing(30), nothing(60), nothing(90), skippedWindow, { ...skippedWindow, timestamp: ago(150) }, realMove, nothing(240)];
-const groups = S.groupRuns(runs);
-eq('group count', groups.length, 5);
-eq('nothing runs collapse', groups[1].count, 3);
-eq('same-reason skips collapse', groups[2].count, 2);
-has('collapsed line', S.groupLine(groups[1]), '3 checks, nothing to do · ');
-eq('single run line', S.groupLine(groups[0]), 'would have moved zentry-det-pve5 pve5 → pve3 — dry run, nothing moved');
-eq('non-adjacent nothing stays separate', groups[4].count, 1);
+// --- last-check rows -----------------------------------------------------------------
+eq('nothing to do has no rows', S.lastCheckRows(nothing(3)), null);
+const rDry = S.lastCheckRows(dryRun, { observationPeriods: 3 });
+eq('dry row chip', rDry[0].chip, 'would move');
+eq('dry row pips full', JSON.stringify(rDry[0].pips), '{"seen":3,"need":3}');
+eq('dry row short why', rDry[0].why, 'CPU on pve5 rising');
+eq('live row chip', S.lastCheckRows(realMove)[0].chip, 'moved');
+const rWait = S.lastCheckRows(waiting, { observationPeriods: 3 });
+eq('waiting row pips', JSON.stringify(rWait[0].pips), '{"seen":2,"need":3}');
+const rHeld = S.lastCheckRows(held);
+eq('held row chip', rHeld[0].chip, 'held back: In cooldown period');
+eq('inflow cap row chip', rHeld[1].chip, 'held back: per-node inflow cap');
+eq('skipped row reason', S.lastCheckRows(skippedWindow)[0].why, 'outside the migration window');
+eq('old-format reason rising', S.shortWhy({ reason: 'atlas should move to pve6 because pve5 has elevated CPU usage (63% CPU, 35% mem with an upward trend), while pve6 has more capacity (42% CPU, 19% mem).' }), 'CPU on pve5 rising');
+eq('memory reason not rising', S.shortWhy({ reason: 'x should move to pve3 because pve4 has high memory usage (20% CPU, 81% mem), while pve3 has more capacity.' }), 'memory on pve4 high');
+eq('only memory rising does not make CPU rising', S.shortWhy({ reason: 'x should move to pve3 because pve4 has high CPU usage (75% CPU, 40% mem; memory rising), while pve3 has more.' }), 'CPU on pve4 high');
+
+// --- strip layout ------------------------------------------------------------------------
+eq('category dry', S.runCategory(dryRun), 'would_move');
+eq('category live', S.runCategory(realMove), 'moved');
+eq('category skipped', S.runCategory(skippedWindow), 'skipped');
+eq('category failed', S.runCategory(failed), 'failed');
+eq('category waiting', S.runCategory(waiting), 'waiting');
+eq('category nothing', S.runCategory(nothing(1)), 'nothing');
+const every30 = Array.from({ length: 60 }, (_, i) => nothing(i * 30)); // 30 h of runs, newest first
+const lay = S.stripLayout(every30, { now });
+eq('strip keeps only 24 h', lay.items.length, 49);
+eq('strip oldest first', lay.items[0].t < lay.items[lay.items.length - 1].t, true);
+eq('strip ticks every 6 h', lay.ticks.length >= 3 && lay.ticks.length <= 4, true);
+eq('ticks never crowd', lay.ticks.every((t, i) => i === 0 || t.index - lay.ticks[i - 1].index >= 3), true);
+eq('tick leaves room for now', lay.ticks.every(t => lay.items.length - t.index >= 3), true);
+eq('days split', lay.days.length >= 1 && lay.days.reduce((a, d) => a + d.items.length, 0), 49);
+eq('legend only present categories', JSON.stringify(lay.categories), '["nothing"]');
+const few = S.stripLayout([dryRun, waiting, nothing(40)], { now });
+eq('short history shows what exists', few.items.length, 3);
+eq('mixed legend order', JSON.stringify(few.categories), '["nothing","waiting","would_move"]');
+eq('empty strip', S.stripLayout([], { now }).items.length, 0);
 
 // --- last real move --------------------------------------------------------------------
 const recent = [{ dry_run: true, status: 'completed', name: 'zentry-det-pve5' }, { dry_run: false, status: 'completed', name: 'atlas' }];
@@ -118,5 +140,27 @@ eq('late 24 h is unclear', late.verdict, 'unclear');
 eq('summary', S.outcomesSummary([helped, helped, outcome('harmful', 40, 45, 52)]), 'Last 3 moves: 2 helped, 1 made things worse');
 eq('summary single', S.outcomesSummary([helped]), 'Last move: helped');
 eq('missing value is a dash', S.formatPct(null), '—');
+
+// --- diverging bars ----------------------------------------------------------------------
+eq('cpu change helped', S.cpuChange(h), -17);
+eq('signed minus', S.signedPoints(-43), '−43');
+eq('signed plus', S.signedPoints(14), '+14');
+eq('signed missing', S.signedPoints(null), '—');
+eq('bar scale rounds up', S.barScale([-43, 14, null]), 50);
+eq('bar scale floor', S.barScale([2]), 10);
+eq('bar left for quieter', JSON.stringify(S.barGeometry(-25, 50)), '{"side":"left","pct":50}');
+eq('bar right for busier', S.barGeometry(14, 50).side, 'right');
+eq('bar clamps', S.barGeometry(80, 50).pct, 100);
+// Verdict colour must match bar direction for every real-shaped case.
+for (const [v, pre, p24] of [['beneficial', 88, 72], ['harmful', 52, 85], ['beneficial', 40, 50], ['harmful', 60, 40], ['neutral', 50, 49]]) {
+  const hh = S.outcomeHeadline(outcome(v, pre, pre, p24));
+  const side = S.barGeometry(S.cpuChange(hh), 50).side;
+  const ok = (hh.tone === 'green' && side === 'left') || (hh.tone === 'red' && side === 'right') || hh.tone === 'gray';
+  eq(`bar/verdict agree ${v} ${pre}->${p24}`, ok, true);
+}
+const tally = S.helpedTally([helped, helped, outcome('harmful', 40, 45, 52), outcome('neutral', 50, 50, 49), outcome(null, 80, 60, null, 'pending_24h')]);
+eq('tally helped', tally.helped, 2);
+eq('tally excludes measuring', tally.total, 4);
+eq('tally segments grouped', tally.segments.join(','), 'green,green,gray,red');
 
 console.log(bad ? `${bad} failed` : 'all passed'); process.exit(bad ? 1 : 0);

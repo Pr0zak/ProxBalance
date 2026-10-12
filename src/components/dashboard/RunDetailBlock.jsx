@@ -1,7 +1,7 @@
-import { CheckCircle, AlertTriangle, ChevronDown } from '../Icons.jsx';
+import { AlertTriangle, ChevronDown } from '../Icons.jsx';
 import { statusBadge } from '../../utils/designTokens.js';
 import { decisionSkipLabel } from '../../utils/formatters.js';
-import { runStory, runOutcome, isDryRun, agoText, shortDateTime, whyText } from '../../utils/automationStory.js';
+import { lastCheckRows, isDryRun, agoText, shortDateTime, whyText } from '../../utils/automationStory.js';
 
 const { useState } = React;
 
@@ -82,62 +82,77 @@ function ActivityLogList({ log }) {
   );
 }
 
-function SafetyChecksList({ safety }) {
-  if (!safety || Object.keys(safety).length === 0) return null;
+/** Only the safety checks that failed; nothing when all passed. */
+function FailedSafetyChecks({ safety }) {
+  if (!safety) return null;
   const rows = [];
-  if (safety.migration_window) rows.push({ k: 'Schedule', v: safety.migration_window, ok: !/^outside|^not in|blackout/i.test(safety.migration_window) });
-  if (safety.cluster_health) rows.push({ k: 'Cluster health', v: safety.cluster_health, ok: /passed|disabled/i.test(safety.cluster_health) });
-  if (safety.running_migrations != null) rows.push({ k: 'Migrations already running', v: safety.running_migrations, ok: true });
+  if (safety.migration_window && /^outside|^not in|blackout/i.test(safety.migration_window)) rows.push(['Schedule', safety.migration_window]);
+  if (safety.cluster_health && !/passed|disabled|^unknown$/i.test(safety.cluster_health)) rows.push(['Cluster health', safety.cluster_health]);
   if (rows.length === 0) return null;
   return (
-    <div>
-      <div className="text-[11px] font-semibold text-pb-text2 dark:text-gray-400 mb-1">Safety checks</div>
-      <div className="space-y-1">
-        {rows.map((r, i) => (
-          <div key={i} className="flex items-start gap-2 text-xs">
-            {r.ok
-              ? <CheckCircle size={12} className="text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-              : <AlertTriangle size={12} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />}
-            <span className="text-pb-text dark:text-gray-300 shrink-0">{r.k}:</span>
-            <span className="text-pb-text2 dark:text-gray-400 break-words min-w-0">{String(r.v)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * The short story of one run: what it looked at, what it did and why, and
- * one line per guest it held back (top 3, then "+N more").
- */
-export function RunStory({ run, ctx = {} }) {
-  const story = runStory(run, ctx);
-  const outcome = runOutcome(run, ctx);
-  return (
-    <div className="space-y-1.5 text-sm">
-      {story.lines.map((l, i) => (
-        <p key={i} className={i === story.lines.length - 1 && outcome.kind === 'would_move'
-          ? 'text-yellow-700 dark:text-yellow-300'
-          : 'text-pb-text dark:text-gray-200'}
-        >{l}</p>
+    <div className="space-y-1">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-start gap-2 text-xs">
+          <AlertTriangle size={12} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+          <span className="text-pb-text dark:text-gray-300 shrink-0">{k}:</span>
+          <span className="text-pb-text2 dark:text-gray-400 break-words min-w-0">{String(v)}</span>
+        </div>
       ))}
-      {story.held.length > 0 && (
-        <ul className="text-xs text-pb-text2 dark:text-gray-400 space-y-0.5">
-          {story.held.map((h, i) => (
-            <li key={i}><span className="text-pb-text dark:text-gray-300">{h.name}</span> held back — {h.text}</li>
-          ))}
-          {story.moreHeld > 0 && <li>+{story.moreHeld} more</li>}
-        </ul>
-      )}
     </div>
   );
 }
 
+/** Progress pips: filled = checks the guest has been suggested in a row. */
+export function Pips({ seen, need }) {
+  if (!need) return null;
+  const label = `${seen} of ${need} checks`;
+  return (
+    <span className="inline-flex items-center gap-1.5 shrink-0" title={`Suggested ${label} in a row`}>
+      {need <= 10 && (
+        <span className="inline-flex gap-0.5" aria-hidden="true">
+          {Array.from({ length: need }, (_, i) => (
+            <span
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full ${i < seen
+                ? 'bg-violet-500 dark:bg-violet-400'
+                : 'border border-violet-400 dark:border-violet-500'}`}
+            />
+          ))}
+        </span>
+      )}
+      <span className="text-[11px] tabular-nums text-pb-text2 dark:text-gray-400">{label}</span>
+    </span>
+  );
+}
+
 /**
- * One run: the story first, the raw numbers (duration, confidence, score,
- * safety checks, log) inside a "Details" toggle. `compact` starts with
- * Details closed (dashboard); the modal opens it.
+ * One row per guest worth mentioning: name, route, progress pips, outcome
+ * chip and a short reason. Nothing-to-do runs render nothing.
+ */
+export function GuestRows({ run, ctx = {} }) {
+  const rows = lastCheckRows(run, ctx);
+  if (!rows) return null; // the outcome chip beside it already says "nothing to do"
+  const shown = rows.slice(0, 5);
+  return (
+    <ul className="space-y-1.5">
+      {shown.map((r, i) => (
+        <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs min-w-0">
+          <span className={`${statusBadge(r.tone)} shrink-0`} title={r.title || undefined}>{r.chip}</span>
+          {r.name && <span className="font-medium text-pb-text dark:text-gray-200">{r.name}</span>}
+          {r.route && <span className="font-mono text-pb-text2 dark:text-gray-400">{r.route}</span>}
+          {r.pips && <Pips seen={r.pips.seen} need={r.pips.need} />}
+          {r.why && <span className="text-pb-text2 dark:text-gray-400 min-w-0 break-words">{r.why}</span>}
+        </li>
+      ))}
+      {rows.length > shown.length && <li className="text-[11px] text-pb-text2 dark:text-gray-500">+{rows.length - shown.length} more in Details</li>}
+    </ul>
+  );
+}
+
+/**
+ * One run: guest rows first; duration, confidence, scores and the log
+ * inside a "Details" toggle. `compact` starts with Details closed
+ * (dashboard); the modal opens it.
  */
 export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
   const [showDetails, setShowDetails] = useState(!compact);
@@ -151,7 +166,8 @@ export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
   ].filter(Boolean).join(' · ');
   return (
     <div className="space-y-2">
-      <RunStory run={run} ctx={ctx} />
+      <GuestRows run={run} ctx={ctx} />
+      <FailedSafetyChecks safety={run.safety_checks} />
       <button
         type="button"
         onClick={() => setShowDetails(v => !v)}
@@ -165,7 +181,6 @@ export default function RunDetailBlock({ run, compact = false, ctx = {} }) {
         <div className="space-y-3 pl-4 border-l-2 border-pb-border dark:border-slate-700/60">
           <div className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums">{meta}</div>
           <DecisionsList decisions={run.decisions} dry={dry} />
-          <SafetyChecksList safety={run.safety_checks} />
           <ActivityLogList log={run.activity_log} />
         </div>
       )}
