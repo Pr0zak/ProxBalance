@@ -509,7 +509,42 @@ Returns a guest's CPU and memory time series (0-100%), downsampled to about 80 p
 | `hours` | int | 24 |
 
 ```json
-{"success": true, "vmid": "100", "points": [{"time": "...", "cpu": 12.5, "mem": 48.2}]}
+{"success": true, "vmid": "100", "points": [{"time": "...", "cpu": 12.5, "mem": 48.2}],
+ "rightsizing": {"status": "ok", "running_pct": 99.6, "days": 7.0, "ignored": false,
+                 "hints": [{"kind": "cpu", "current": 4, "suggested": 2, "avg_pct": 3.4, "p95_pct": 9.0, "vcpus_freed": 2, "gb_freed": 0.0}]}}
+```
+
+`rightsizing` always covers the last 7 days whatever `hours` is, and is the same assessment `GET /api/insights/rightsizing` makes (see there for hint shapes). `status` is `ok` (assessed; `hints` may be empty), `not_enough_history` (under 3 days of samples), `no_data` or `template`. It is `null` when the guest isn't in the cluster cache.
+
+### GET /api/insights/rightsizing
+
+Guests whose allocation doesn't match their last 7 days of use, read from the stored metrics history (never from Proxmox). Rules, evaluated per guest:
+
+- **Mostly stopped**: running under 30% of the window. A note with no size; it replaces the CPU and memory checks.
+- **Idle CPU**: running over 50% of the window, average CPU under 10% of its vCPUs and p95 at most 60% → `ceil(vcpus × 0.4)` vCPUs, never below 1 and never below the cores its p95 load needs, only when lower than now.
+- **Oversized memory**: average use under 30% of the allocation → p95 use plus 30% headroom, rounded up to 512 MB, only when lower than now. VMs only when the guest agent is running and the reading isn't ~100% (without the agent Proxmox reports the host's view).
+
+A guest needs at least 3 days of samples; with less, or none, it gets no hint. "Running" is the guest's sample count over the collector runs since its first sample (the collector stores samples only for running guests). Guests tagged `ignore` are still assessed and marked `ignored`. Aggregated history contributes its own p95 to the window's p95, so the p95 is at or above the true one.
+
+Sorted by what each could free: vCPUs plus GB converted to vCPUs at the cluster's host memory-per-CPU ratio; mostly-stopped guests last.
+
+```json
+{
+  "success": true, "window_days": 7, "min_history_days": 3,
+  "guests": [
+    {"vmid": 241, "name": "claude-dev", "node": "pve4", "type": "CT", "ignored": true,
+     "running_pct": 100.0, "days": 7.0, "vcpus_freed": 2, "gb_freed": 9.5,
+     "hints": [
+       {"kind": "cpu", "current": 4, "suggested": 2, "avg_pct": 3.4, "p95_pct": 9.0, "vcpus_freed": 2, "gb_freed": 0.0},
+       {"kind": "memory", "current_gb": 16.0, "suggested_gb": 6.5, "suggested_mb": 6656, "avg_gb": 3.89, "p95_gb": 4.87, "avg_pct": 24.3, "vcpus_freed": 0, "gb_freed": 9.5}
+     ]},
+    {"vmid": 238, "name": "networkoptimizer", "node": "pve4", "type": "CT", "ignored": false,
+     "running_pct": 4.4, "days": 7.0, "vcpus_freed": 0, "gb_freed": 0.0,
+     "hints": [{"kind": "stopped", "running_pct": 4.4, "vcpus_freed": 0, "gb_freed": 0.0}]}
+  ],
+  "totals": {"vcpus_freed": 31, "gb_freed": 77.9, "guests_with_hints": 33, "mostly_stopped": 2,
+             "assessed": 40, "not_enough_history": 6, "no_data": 27}
+}
 ```
 
 ### GET /api/guest-profiles
