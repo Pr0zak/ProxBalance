@@ -324,3 +324,20 @@ export const BANNER_INFO =
 
 export const BANNER_WARN =
   'flex items-center gap-3 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300';
+
+// ---------------------------------------------------------------------------
+// Node roles in balancing (see utils/nodeRoles.js): one colour per role, the
+// same on the Nodes table, the node panel and the Cluster Map.
+//   edge — hex for the thin left edge (mid-tone: reads on light and dark)
+//   text — icon / label colour
+// ---------------------------------------------------------------------------
+
+export const NODE_ROLE = {
+  giving: { edge: '#f97316', text: 'text-orange-700 dark:text-orange-300', label: 'Giving', hint: 'suggestions move guests off it' },
+  receiving: { edge: '#10b981', text: 'text-emerald-700 dark:text-emerald-300', label: 'Receiving', hint: 'suggestions move guests onto it' },
+  maintenance: { edge: '#eab308', text: 'text-yellow-700 dark:text-yellow-300', label: 'Maintenance', hint: 'nothing is placed on it' },
+};
+
+/** Inline style for the thin coloured left edge of a node row or card. */
+export const nodeRoleEdge = (role, width = 3) =>
+  (role && NODE_ROLE[role.kind] ? { boxShadow: `inset ${width}px 0 0 0 ${NODE_ROLE[role.kind].edge}` } : undefined);

@@ -4,7 +4,9 @@ import {
 } from '../Icons.jsx';
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
-  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET } from '../../utils/designTokens.js';
+  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET, NODE_ROLE } from '../../utils/designTokens.js';
+import { nodeRoles } from '../../utils/nodeRoles.js';
+import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 import { HEADROOM_HINT } from '../../utils/constants.js';
 import {
   QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration,
@@ -124,6 +126,7 @@ export default function ClusterMap({
   clusterMapViewMode,
   setClusterMapViewMode,
   maintenanceNodes,
+  nodeRoleMap = null,
   setSelectedNode,
   setSelectedGuestDetails,
   guestsMigrating,
@@ -154,6 +157,7 @@ export default function ClusterMap({
   const quickDef = QUICK_FILTERS.find(f => f.id === quick);
   const findActive = !!q || !!quickDef;
   const allGuests = Object.values(data.guests || {});
+  const roles = nodeRoleMap || nodeRoles({ nodes: data.nodes, recommendations, maintenanceNodes });
   const isMatch = (g) => matchesQuery(g, q) && (!quickDef || quickDef.test(g));
   const matches = findActive ? allGuests.filter(isMatch) : [];
   const visibleMatches = matches.filter(g => showPoweredOffGuests || g.status === 'running');
@@ -533,6 +537,7 @@ export default function ClusterMap({
               const ns = nodeScores && nodeScores[node.name];
               const rating = ns && typeof ns.suitability_rating === 'number' ? ns.suitability_rating : null;
               const isMaint = maintenanceNodes.has(node.name);
+              const role = roles[node.name] || null;
               const scored = node.status === 'online' && !isMaint && rating != null;
               const sc = scored ? scoreHex(rating) : null;
               const nodeIowait = node.metrics?.current_iowait || 0;
@@ -589,7 +594,7 @@ export default function ClusterMap({
                       style={isDropTarget
                         ? { borderColor: '#38bdf8', boxShadow: '0 0 0 3px rgba(56,189,248,0.35)' }
                         : scored ? { borderColor: `${sc}55`, boxShadow: `0 0 14px -4px ${sc}66, inset 0 0 26px -12px ${sc}99` } : undefined}
-                      className={`w-48 rounded-lg border-4 flex flex-col items-center justify-between p-2.5 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
+                      className={`relative w-48 rounded-lg border-4 flex flex-col items-center justify-between p-2.5 cursor-pointer transition-all hover:shadow-xl hover:scale-105 ${
                       isMaint
                         ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-600 hover:border-yellow-500'
                         : scored
@@ -598,15 +603,15 @@ export default function ClusterMap({
                         ? 'bg-pb-bg dark:bg-gray-900 border-blue-600 hover:border-blue-500'
                         : 'bg-white dark:bg-slate-800 border-gray-600'
                     }`}>
+                      {/* Role in balancing: thin left edge (inside the headroom border) */}
+                      {role && (
+                        <span aria-hidden="true" className="absolute left-0 inset-y-0 w-1 rounded-l-sm" style={{ background: NODE_ROLE[role.kind].edge }} />
+                      )}
                       {/* Node header */}
                       <div className="flex flex-col items-center z-10">
                         <Server className={`w-5 h-5 sm:w-7 sm:h-7 ${maintenanceNodes.has(node.name) ? 'text-yellow-600 dark:text-yellow-400' : node.status === 'online' ? 'text-blue-600 dark:text-blue-400' : 'text-pb-text2 dark:text-gray-500'}`} />
                         <div className="text-sm font-bold text-pb-text dark:text-white mt-1">{node.name}</div>
-                        {maintenanceNodes.has(node.name) && (
-                          <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500 text-white rounded mt-0.5">
-                            MAINTENANCE
-                          </div>
-                        )}
+                        <NodeRoleMarker role={role} label size={12} />
                         <div className="text-xs text-pb-text2 dark:text-gray-400">
                           {runningGuests.length} running
                           {!showPoweredOffGuests && poweredOffCount > 0 && (
@@ -922,6 +927,7 @@ export default function ClusterMap({
               </span>
               <GuestFlagLegend />
             </div>
+            <NodeRoleLegend roles={roles} className="justify-center" />
           </div>
         </div>
       )}

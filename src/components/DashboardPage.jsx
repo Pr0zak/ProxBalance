@@ -15,7 +15,8 @@ import ClusterMap from './dashboard/ClusterMap.jsx';
 import ClusterHealthChart from './dashboard/ClusterHealthChart.jsx';
 import NodeStatusSection from './dashboard/NodeStatusSection.jsx';
 import MigrationRecommendationsSection from './dashboard/MigrationRecommendationsSection.jsx';
-import { recsByNode, recsByGuest } from './dashboard/recsHelpers.js';
+import { recsByGuest } from './dashboard/recsHelpers.js';
+import { nodeRoles } from '../utils/nodeRoles.js';
 import NodeDetailPanel from './dashboard/NodeDetailPanel.jsx';
 import GuestDetailPanel from './dashboard/GuestDetailPanel.jsx';
 import EvacuationModals from './dashboard/EvacuationModals.jsx';
@@ -92,7 +93,12 @@ export default function DashboardPage({
   const [showCrsEditor, setShowCrsEditor] = useState(false);
 
   // Recommendation cross-reference badges shown on Nodes/Guests tabs
-  const nodeRecCounts = useMemo(() => recsByNode(recommendations), [recommendations]);
+  // Each node's role in balancing (maintenance / giving / receiving), shared by
+  // the Nodes table, the Cluster Map and the node panel so all three agree.
+  const nodeRoleMap = useMemo(
+    () => nodeRoles({ nodes: data?.nodes, recommendations, maintenanceNodes }),
+    [data, recommendations, maintenanceNodes],
+  );
   const guestRecMap = useMemo(() => recsByGuest(recommendations), [recommendations]);
 
   // Every path that opens the guest window goes through here, so the window (and
@@ -259,7 +265,7 @@ export default function DashboardPage({
           handleRemoveTag={handleRemoveTag}
           setTagModalGuest={setTagModalGuest}
           setShowTagModal={setShowTagModal}
-          nodeRecCounts={nodeRecCounts}
+          nodeRoleMap={nodeRoleMap}
           guestRecMap={guestRecMap}
           loadingRecommendations={loadingRecommendations}
           generateRecommendations={generateRecommendations}
@@ -334,6 +340,7 @@ export default function DashboardPage({
             clusterMapViewMode={clusterMapViewMode}
             setClusterMapViewMode={setClusterMapViewMode}
             maintenanceNodes={maintenanceNodes}
+            nodeRoleMap={nodeRoleMap}
             setSelectedNode={openNode}
             setSelectedGuestDetails={openGuestDetails}
             guestsMigrating={guestsMigrating}
@@ -380,6 +387,7 @@ export default function DashboardPage({
           penaltyConfig={penaltyConfig}
           API_BASE={API_BASE}
           data={data}
+          nodeRoleMap={nodeRoleMap}
           recommendations={recommendations}
           guestRecMap={guestRecMap}
           skippedGuests={recommendationData?.skipped_guests}
