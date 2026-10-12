@@ -1,6 +1,6 @@
 /**
  * Shared series helpers for the node resource charts: the per-node chart
- * (NodeChart) and the cross-node metric comparison (MetricCompareCard).
+ * (NodeChart) and the all-nodes comparison chart (NodeCompareChart).
  */
 
 /**

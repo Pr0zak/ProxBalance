@@ -40,7 +40,7 @@ Five view modes (CPU, Memory, Allocated, Disk I/O, Network), colour by type or b
 - Migration markers on the timeline; the cursor snaps to a marker on hover and the tooltip lists its migrations
 - Click to pin a moment and see every node's headroom, CPU and memory then, the change from a day earlier, and nearby migrations with their reasons; step between migrations with the arrow buttons or the Left/Right keys
 - Per-node CPU, memory and IOWait charts from 1 hour to 1 year, with threshold lines, migration markers and min/max bands
-- Compare **by node** (one chart per node) or **by metric** (one chart per metric with every node overlaid, ranked chips, and click-to-focus on one node)
+- **One chart** with every node overlaid for one metric (CPU / Memory / IO wait), threshold line, show/hide and highlight per node, and the current spread; or **Per node** (one chart per node)
 
 ### Insights
 

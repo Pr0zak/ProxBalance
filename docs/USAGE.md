@@ -121,8 +121,8 @@ A visual view of each node and its guests as bubbles.
 
 **Node charts** show CPU, memory and IOWait per node for 1 hour up to 1 year, with Markers, Thresholds and Min/Max toggles.
 
-- **Compare: By node** gives one chart per node. Each card header shows status, cores, guest count and a Headroom badge. The CPU/Mem/IOWait chips act as the legend: click one to hide or show that series on every card.
-- **Compare: By metric** gives one chart each for CPU, Memory and IOWait with a line per node. Chips above each chart rank nodes by current value and turn red at the recommendation threshold. Click a chip to focus that node across all three charts.
+- **One chart** (the default) puts every node on one chart, one metric at a time (CPU, Memory or IO wait). The recommendation threshold is a thin dashed line. Click a node name under the chart to hide or show it; click a line to highlight that node (click again or "Clear highlight" to undo). The line under the chart gives the spread right now, lowest node to highest.
+- **Per node** gives one chart per node. Each card header shows status, cores, guest count and a Headroom badge. The CPU/Mem/IOWait chips act as the legend: click one to hide or show that series on every card.
 
 ### Suggestions tab
 

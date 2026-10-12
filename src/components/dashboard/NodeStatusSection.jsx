@@ -1,15 +1,17 @@
 import { HardDrive, ChevronDown, Eye, TrendingUp, TrendingDown, Minus, X } from '../Icons.jsx';
 import { GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON, SELECT_FIELD, MODAL_OVERLAY, MODAL_CONTAINER, FILTER_CHIP, FILTER_CHIP_INACTIVE, statusBadge, headroomBadge, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import NodeChart from './NodeChart.jsx';
-import MetricCompareCard from './MetricCompareCard.jsx';
-import { NODE_COLORS, RESOURCE_METRICS, hasTrendData, useChartPeriod, CHART_PERIODS } from './nodeSeries.js';
+import NodeCompareChart from './NodeCompareChart.jsx';
+import { RESOURCE_METRICS, hasTrendData, useChartPeriod, CHART_PERIODS } from './nodeSeries.js';
+import { nodeColors } from './compareSeries.js';
 
 const { useState, useMemo, useEffect } = React;
 
-const COMPARE_MODES = [
-  { id: 'node',   label: 'By node',   title: 'One chart per node (CPU, memory, IOWait together)' },
-  { id: 'metric', label: 'By metric', title: 'One chart per metric with every node overlaid' },
+const VIEW_MODES = [
+  { id: 'one',  label: 'One chart', title: 'Every node on one chart, one metric at a time' },
+  { id: 'node', label: 'Per node',  title: 'One chart per node (CPU, memory, IO wait together)' },
 ];
+const VIEW_KEY = 'nodeChartView';
 
 const headroomTone = headroomBadge;
 
@@ -105,23 +107,17 @@ export default function NodeStatusSection({
   const [showThresholds, setShowThresholds] = useState(() => lsBool('nodeChartThresholds', true));
   const [showEnvelope, setShowEnvelope] = useState(() => lsBool('nodeChartEnvelope', false));
   const overlayToggle = (key, val, setter) => { setter(val); try { localStorage.setItem(key, String(val)); } catch {} };
-  // Group charts by node (default) or by metric; focusNode highlights one node in metric view.
-  const [compareBy, setCompareBy] = useState(() => { try { return localStorage.getItem('nodeChartCompare') === 'metric' ? 'metric' : 'node'; } catch { return 'node'; } });
-  const setCompare = (id) => { setCompareBy(id); try { localStorage.setItem('nodeChartCompare', id); } catch {} };
-  const [focusNode, setFocusNode] = useState(null);
-  // Colors follow the sorted node order, matching the Cluster Health chart's per-node views.
-  // Memoized so hover re-renders don't rebuild the comparison charts.
-  const compareNodes = useMemo(() => Object.values(data.nodes || {})
-    .slice().sort((a, b) => a.name.localeCompare(b.name))
-    .map((n, i) => ({ node: n, name: n.name, color: NODE_COLORS[i % NODE_COLORS.length], trendData: n.trend_data }))
-    .filter(n => hasTrendData(n.node)), [data.nodes]);
-  const metricNodes = useMemo(() => Object.fromEntries(RESOURCE_METRICS.map(m => [
-    m.key, compareNodes.map(({ node, ...rest }) => ({ ...rest, current: m.current(node), exempt: m.key === 'iowait' && !!node.iowait_exempt })),
-  ])), [compareNodes]);
-  // Drop a focus whose node has gone away (renamed, removed from the cluster).
-  useEffect(() => {
-    if (focusNode && !compareNodes.some(n => n.name === focusNode)) setFocusNode(null);
-  }, [compareNodes, focusNode]);
+  // One chart with every node (default) or one chart per node (persisted).
+  const [view, setViewState] = useState(() => { try { return localStorage.getItem(VIEW_KEY) === 'node' ? 'node' : 'one'; } catch { return 'one'; } });
+  const setView = (id) => { setViewState(id); try { localStorage.setItem(VIEW_KEY, id); } catch {} };
+  // Colors follow the sorted node names, matching the Cluster Health chart.
+  // Memoized so unrelated re-renders don't rebuild the comparison chart.
+  const compareNodes = useMemo(() => {
+    const all = Object.values(data.nodes || {});
+    const colors = nodeColors(all.map(n => n.name));
+    return all.filter(hasTrendData).sort((a, b) => a.name.localeCompare(b.name))
+      .map(n => ({ name: n.name, color: colors[n.name], trendData: n.trend_data }));
+  }, [data.nodes]);
   // Series hidden on every node chart (toggled from the metric chips; persisted).
   const [hiddenMetrics, setHiddenMetrics] = useState(() => { try { return JSON.parse(localStorage.getItem('nodeChartHidden') || '[]'); } catch { return []; } });
   const toggleMetric = (key) => {
@@ -156,15 +152,16 @@ export default function NodeStatusSection({
             )}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-pb-text2 dark:text-gray-400">Compare:</label>
-                <div className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
-                  {COMPARE_MODES.map(m => (
+                <div role="group" aria-label="Chart layout" className="flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
+                  {VIEW_MODES.map(m => (
                     <button
                       key={m.id}
-                      onClick={() => setCompare(m.id)}
+                      type="button"
+                      aria-pressed={view === m.id}
+                      onClick={() => setView(m.id)}
                       title={m.title}
                       className={`${TAP_TARGET} px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                        compareBy === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
+                        view === m.id ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                       }`}
                     >
                       {m.label}
@@ -172,7 +169,7 @@ export default function NodeStatusSection({
                   ))}
                 </div>
               </div>
-              <div className="hidden md:flex items-center gap-2">
+              {view === 'node' && <div className="hidden md:flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Grid:</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4].map(cols => (
@@ -190,7 +187,7 @@ export default function NodeStatusSection({
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-pb-text2 dark:text-gray-400">Period:</label>
                 <div className="flex flex-wrap items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
@@ -432,31 +429,18 @@ export default function NodeStatusSection({
                 );
               })}
             </div>
-          ) : compareBy === 'metric' ? (
-          <div className={`grid gap-4 ${
-            nodeGridColumns === 1 ? 'grid-cols-1' :
-            nodeGridColumns === 2 ? 'grid-cols-1 lg:grid-cols-2' :
-            'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-          }`}>
-            {RESOURCE_METRICS.map(m => (
-              <MetricCompareCard
-                key={m.key}
-                metric={m}
-                nodes={metricNodes[m.key]}
-                threshold={thresholds[m.key]}
-                focusNode={focusNode}
-                onFocusNode={setFocusNode}
-                chartPeriod={chartPeriod}
-                migrationHistory={migrationHistory}
-                hoverTime={hoverTime}
-                onHoverTime={setHoverTime}
-                showMarkers={showMarkers}
-                showThresholds={showThresholds}
-                showEnvelope={showEnvelope}
-                chartReady={!!chartJsLoaded}
-              />
-            ))}
-          </div>
+          ) : view === 'one' ? (
+            <NodeCompareChart
+              nodes={compareNodes}
+              thresholds={thresholds}
+              clusterSpread={data.cluster_spread}
+              chartPeriod={chartPeriod}
+              chartReady={!!chartJsLoaded}
+              migrationHistory={migrationHistory}
+              showMarkers={showMarkers}
+              showThresholds={showThresholds}
+              showEnvelope={showEnvelope}
+            />
           ) : (
           <div className={`grid gap-4 transition-all duration-300 ease-in-out ${
             nodeGridColumns === 1 ? 'grid-cols-1' :
