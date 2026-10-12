@@ -65,6 +65,36 @@ test('status: paused, HA block and inflow cap', () => {
   assert.equal(s.color, 'red');
 });
 
+test('status: target storage full blocks, 90%+ flags, shared/missing shows nothing', () => {
+  const st = (level, before, after, extra = {}) => ({
+    storage: 'local-lvm', node: 'pve3', size_gb: 10, pending_gb: 0, total_gb: 100,
+    used_before_pct: before, used_after_pct: after, level, ...extra,
+  });
+  const full = { ...ready, target_storage: [st('wont_fit', 95, 105)] };
+  // Blocked even with automation off: the move can't run at all.
+  for (const ctx of [{ automation: live, config: imOn }, { automation: { enabled: false } }]) {
+    const s = M.autoStatus(full, ctx);
+    assert.equal(s.label, 'Blocked: storage full');
+    assert.equal(s.key, 'blocked');
+    assert.equal(s.color, 'red');
+    assert.match(s.lines[0], /local-lvm on pve3: 95% → 105% \(10 GB won't fit\)/);
+  }
+  const crit = M.autoStatus({ ...ready, target_storage: [st('critical', 85, 95)] }, { automation: live, config: imOn });
+  assert.equal(crit.label, 'Storage nearly full');
+  assert.equal(crit.key, 'storage');
+  assert.ok(crit.lines.some(l => /Automation still runs it \(Ready · will run next check\)/.test(l)));
+  // Warning level keeps the normal chip and goes to Details warnings.
+  const warnRec = { ...ready, target_storage: [st('warning', 72, 88)] };
+  assert.equal(M.autoStatus(warnRec, { automation: live, config: imOn }).key, 'ready');
+  assert.deepEqual(M.storageWarnings(warnRec), ['Target storage: local-lvm on pve3: 72% → 88%']);
+  assert.equal(M.storageLine(st('warning', 70, 90, { pending_gb: 8 })), 'local-lvm on pve3: 70% → 90% (incl. 8 GB from other planned moves)');
+  // ok entries, an empty list (all shared) or no field at all: nothing shown.
+  for (const r of [{ ...ready, target_storage: [st('ok', 10, 20)] }, { ...ready, target_storage: [] }, ready]) {
+    assert.deepEqual(M.storageWarnings(r), []);
+    assert.equal(M.autoStatus(r, { automation: live, config: imOn }).key, 'ready');
+  }
+});
+
 test('driving metric follows the structured reason', () => {
   assert.equal(M.drivingMetric(base), 'cpu');
   assert.equal(M.drivingMetric({ structured_reason: { primary_reason: 'mem_imbalance' } }), 'mem');

@@ -50,6 +50,7 @@ export function runFailureReason(run) {
  */
 export const SKIP_CODE_LABELS = {
   target_inflow_cap: 'Per-node inflow cap',
+  target_storage_full: 'Target storage full',
 };
 
 /** Short label for a decision's skip code, or null when it has none. */

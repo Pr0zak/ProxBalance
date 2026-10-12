@@ -45,6 +45,10 @@ from proxbalance.inflow_cap import (
     SKIP_CODE as TARGET_INFLOW_SKIP_CODE,
 )
 from proxbalance.ha_rules import check_ha_placement, check_move_live
+from proxbalance.storage_projection import (
+    LEVEL_CRITICAL, LEVEL_WONT_FIT, entries_at_least, format_storage_line,
+    project_target_storage, SKIP_CODE as TARGET_STORAGE_SKIP_CODE,
+)
 
 # Logging
 logging.basicConfig(
@@ -605,6 +609,44 @@ def check_target_node_safety(target_node: str, config: Dict[str, Any], cache_dat
         return False, f"Target node {target_node} memory too high: {mem_pct:.1f}%"
 
     return True, "Target node is safe"
+
+
+def check_target_storage_for_move(
+    guest: Dict[str, Any],
+    target_node: str,
+    cache_data: Dict[str, Any],
+    already_moved: Optional[List[Dict[str, Any]]] = None,
+) -> Tuple[bool, str, Optional[str]]:
+    """
+    Check whether the target's local storage can hold the guest's disks.
+
+    Uses the same projection as the recommendation engine, counting guests
+    this run has already moved onto the target (the cache doesn't show them
+    yet). Shared storage is never counted.
+
+    Args:
+        guest: The guest's collector record.
+        target_node: Node the guest would move to.
+        cache_data: Current cluster data.
+        already_moved: Guests migrated onto ``target_node`` earlier this run.
+
+    Returns:
+        Tuple of (ok, message, warning). ``ok`` is False when a disk won't fit
+        (the move must be skipped); ``warning`` is a line for any storage that
+        would end above 90%, else None.
+    """
+    try:
+        entries = project_target_storage(guest, target_node, cache_data.get('nodes', {}), already_moved or [])
+    except Exception as e:
+        logger.warning(f"Target storage projection failed for {guest.get('vmid')} -> {target_node}: {e}")
+        return True, "Target storage check failed, proceeding", None
+    full = entries_at_least(entries, LEVEL_WONT_FIT)
+    if full:
+        return False, f"Target storage full: {format_storage_line(full[0])}", None
+    critical = entries_at_least(entries, LEVEL_CRITICAL)
+    if critical:
+        return True, "Target storage OK", "Target storage nearly full: " + "; ".join(format_storage_line(e) for e in critical)
+    return True, "Target storage OK", None
 
 
 def validates_resource_improvement(recommendation: Dict[str, Any]) -> Tuple[bool, str]:
@@ -1687,6 +1729,8 @@ def main():
                         'has_conflict': recommendation.get('has_conflict', False),
                     },
                 }
+                if recommendation.get('storage_warning'):
+                    decision['storage_warning'] = recommendation['storage_warning']
                 return decision
 
             # Re-filter recommendations with current cooldown/confidence/tag rules
@@ -1710,6 +1754,24 @@ def main():
                 if not ha_ok:
                     filtered_reasons.append(f"{vm_name} ({vmid}): {ha_msg}")
                     last_run_summary['decisions'].append(create_decision(vmid, guest, source_node, target_node, 'filtered', ha_msg, r))
+                    continue
+
+                # Target storage: skip a move whose disks can't fit on the target's
+                # local storage (counting moves already made this run); flag 90%+.
+                # Applies to every move, maintenance evacuations included.
+                storage_ok, storage_msg, storage_warning = check_target_storage_for_move(
+                    guest, target_node, cache_data, batch_migrated_guests.get(target_node, [])
+                )
+                if storage_warning:
+                    r['storage_warning'] = storage_warning
+                else:
+                    r.pop('storage_warning', None)
+                if not storage_ok:
+                    logger.info(f"Skipping VM {vmid}: {storage_msg}")
+                    filtered_reasons.append(f"{vm_name} ({vmid}): {storage_msg.lower()}")
+                    decision = create_decision(vmid, guest, source_node, target_node, 'skipped', storage_msg, r)
+                    decision['skip_code'] = TARGET_STORAGE_SKIP_CODE
+                    last_run_summary['decisions'].append(decision)
                     continue
 
                 # Check cooldown
@@ -2058,6 +2120,9 @@ def main():
                 'has_passthrough': guest_info.get('local_disks', {}).get('has_passthrough', False),
                 'distribution_balancing': rec.get('distribution_balancing', False)
             }
+            if rec.get('storage_warning'):
+                pending_decision['storage_warning'] = rec['storage_warning']
+                logger.warning(f"VM {vmid} -> {target}: {rec['storage_warning']}")
             last_run_summary['decisions'].append(pending_decision)
 
             # 2. Add all remaining recommendations as "skipped" (lower priority)
@@ -2226,6 +2291,18 @@ def main():
                                 'affinity_group': ag,
                                 'affinity_leader_vmid': vmid
                             }
+                            comp_guest = cache_data.get('guests', {}).get(str(comp_vmid), {})
+                            comp_ok, comp_storage_msg, comp_storage_warning = check_target_storage_for_move(
+                                comp_guest, target, cache_data, batch_migrated_guests.get(target, [])
+                            )
+                            if not comp_ok:
+                                logger.info(f"Skipping affinity companion {comp_vmid}: {comp_storage_msg}")
+                                comp_decision.update({'action': 'skipped', 'reason': comp_storage_msg,
+                                                      'skip_code': TARGET_STORAGE_SKIP_CODE})
+                                last_run_summary['decisions'].append(comp_decision)
+                                continue
+                            if comp_storage_warning:
+                                comp_decision['storage_warning'] = comp_storage_warning
                             last_run_summary['decisions'].append(comp_decision)
 
                             comp_pre = None
@@ -2271,6 +2348,7 @@ def main():
                                 # Companions land on the same node, so they use up its inflow
                                 # allowance too (they are never held back by it).
                                 target_inflow[target] = target_inflow.get(target, 0) + 1
+                                batch_migrated_guests.setdefault(target, []).append(comp_guest)
                                 success_count += 1
                                 last_run_summary['migrations_successful'] = success_count
                                 logger.info(f"Affinity companion {comp_vmid} migrated successfully")

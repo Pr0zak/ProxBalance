@@ -20,6 +20,7 @@ from proxbalance.pve_client import (
     retry_read,
 )
 from proxbalance.pve_errors import classify_pve_error, describe_pve_error
+from proxbalance.storage_projection import parse_guest_disks
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -696,6 +697,9 @@ class ProxmoxAPICollector:
                     "type": storage.get("type", "unknown"),
                     "content": storage.get("content", ""),
                     "active": bool(storage.get("active", 0)),
+                    # Shared storage (NFS, CIFS, PBS, Ceph, shared LVM ...) is not
+                    # copied on migration; storage_projection skips it.
+                    "shared": bool(storage.get("shared", 0)),
                     "total_gb": round(total_gb, 2),
                     "used_gb": round(used_gb, 2),
                     "avail_gb": round(avail_gb, 2),
@@ -937,7 +941,10 @@ class ProxmoxAPICollector:
                 "agent_running": len(agent_info) > 0,
                 "agent_info": agent_info if agent_info else None,
                 "mount_points": mount_point_info,
-                "local_disks": local_disk_info
+                "local_disks": local_disk_info,
+                # Storage-backed volumes (storage id + provisioned size) for the
+                # target storage projection.
+                "disks": parse_guest_disks(config),
             }
             
             self.guests[str(vmid)] = guest_info

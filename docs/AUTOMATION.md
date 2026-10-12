@@ -158,6 +158,15 @@ Safety checks run before every migration. If any check fails, the migration is s
 
 Manual plans on the dashboard (Suggestions > Run plan) are not blocked by the cap, in the same way `max_migrations_per_run` does not limit them. When the plan you are about to run sends more guests to one node than the cap allows, the Suggestions tab shows a warning naming the node and offers to leave the extra moves out of this run; you can still run the plan as it is.
 
+### Target storage
+
+A migration copies every disk on node-local storage (local-lvm, a ZFS pool, a directory) onto the storage with the same id on the target node. Before each move the engine projects that storage's usage after the copy, adding the disks of guests this run has already moved there. Shared storage (NFS, CIFS, PBS, Ceph, shared LVM/iSCSI: anything Proxmox marks `shared`) is not copied and never counts. Disk sizes are the provisioned sizes from the guest config, which is the worst case for thin storage.
+
+- If a disk won't fit (projected usage above 100%, or more data than the storage's free space), the move is skipped with the reason "Target storage full: local-lvm on pve6: 96% → 104% (40 GB won't fit)" and `skip_code: "target_storage_full"` on its decision. This applies to maintenance evacuations and affinity companions too, because Proxmox would fail the migration anyway.
+- If any storage would end above 90%, the move still runs, and its decision carries `storage_warning` (for example "Target storage nearly full: local-lvm on pve6: 85% → 95%"), which is also written to the automation log.
+- The recommendation engine already avoids targets whose storage can't hold the guest, so a skip here usually means storage filled up since the recommendations were generated, or an earlier move in the same run took the room.
+- No disk data (a cache from a collector before this feature) or no usage numbers for the storage means no check: missing data never blocks a move.
+
 ### Duplicate migration prevention
 
 Before starting a migration, the engine queries the Proxmox task API for running migrations. If a guest already has an active migration, it is skipped. This prevents lock conflicts from overlapping automation cycles.
