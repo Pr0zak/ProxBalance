@@ -532,7 +532,11 @@ export async function fetchRightsizing() {
     return await response.json();
   } catch (err) {
     console.error('Error fetching right-sizing hints:', err);
+    return { error: true, message: err.message };
+  }
+}
 
+/**
  * "What if a node fails?" simulation from the latest collected data.
  * With a node: that node's result. Without: the N-1 summary for every node.
  * storage: 'capacity' (default; node-local disks assumed restored) or
