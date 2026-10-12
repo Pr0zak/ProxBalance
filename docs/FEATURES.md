@@ -51,6 +51,7 @@ A separate page for analysis over time:
 - **Node trends** over 24h, 7d, 30d or 90d: direction, average and rate for CPU, memory and IOWait, with sparklines and time-to-threshold for confident fits only
 - **Forecasts**: projected threshold crossings, plus the recommendation engine's 48-hour look-ahead that feeds automation
 - **Workload rhythm**: hour-of-day heatmap over 30 days in the schedule's time zone, with the hours your migration windows allow and the quietest stretch
+- **Right-sizing**: guests whose vCPUs or memory don't match their last 7 days of use, biggest savings first. VMs lead with a total of what they could free ("VMs could free 9 vCPUs and 14 GB"); containers sit in a collapsed "Containers (limits only)" group and aren't counted, because their cores and memory are limits the host doesn't reserve. Idle CPU (average under 10%, p95 at most 60%) suggests 40% of the vCPUs; oversized memory (average under 30%) suggests p95 plus 30% headroom rounded up to 512 MB; guests running under 30% of the week are marked mostly stopped. Needs 3 days of history; VMs' memory only with the guest agent
 - **Migration outcomes**: source-node CPU and memory before each migration versus 5 minutes and 24 hours after, for manual, automated and companion migrations
 
 ### Light + Dark Mode
@@ -83,7 +84,7 @@ Manual light/dark toggle in the top nav, persisted in the browser. Both modes ar
 ### Node and Guest Windows
 
 - The node window leads with headroom, load now versus 24h and 7d averages and peak, and a points bar showing what is using headroom
-- The guest window lists every possible target with the headroom it would have, the gain versus staying, load after the move and a Best pick, plus an IOWait-exempt toggle
+- The guest window lists every possible target with the headroom it would have, the gain versus staying, load after the move and a Best pick, plus an IOWait-exempt toggle, and the guest's right-sizing hint when it has one (marked "(limit)" for containers)
 
 ### Penalty-Based Scoring
 

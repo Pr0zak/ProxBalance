@@ -521,6 +521,21 @@ export async function fetchForecasts(params = {}) {
   }
 }
 
+/**
+ * Fetch right-sizing hints: guests whose vCPUs or memory don't match their
+ * last 7 days of use, biggest savings first.
+ * @returns {Promise<Object>} { guests: [...], totals: {...}, window_days } or { error, message }
+ */
+export async function fetchRightsizing() {
+  try {
+    const response = await fetch(`${API_BASE}/insights/rightsizing`);
+    return await response.json();
+  } catch (err) {
+    console.error('Error fetching right-sizing hints:', err);
+    return { error: true, message: err.message };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // F2: Workload Pattern Recognition
 // ---------------------------------------------------------------------------

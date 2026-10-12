@@ -9,6 +9,7 @@ import { behaviorTitle } from './workloadBehavior.js';
 import { guestMobility } from './guestMobility.js';
 import { seenCountDetail } from './recommendations/seenCount.js';
 import { storageEntries, storageLine } from './recommendations/cardModel.js';
+import { panelParts } from '../../utils/rightsizing.js';
 
 const { useState, useEffect } = React;
 
@@ -120,6 +121,9 @@ export default function GuestDetailPanel({
   const [optsDoneFor, setOptsDoneFor] = useState(null);
   const [history, setHistory] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  // Right-sizing rides along with the history payload; it always covers the
+  // last 7 days whatever chart period is picked.
+  const [rightsizing, setRightsizing] = useState(null);
   const [period, setPeriod] = useState('24h');
   const [showTargets, setShowTargets] = useState(false);
   const [showDisks, setShowDisks] = useState(false);
@@ -136,12 +140,16 @@ export default function GuestDetailPanel({
 
   const hours = (PANEL_PERIODS.find(p => p.id === period) || PANEL_PERIODS[2]).hours;
   useEffect(() => {
-    if (vmid == null) { setHistory(null); return; }
+    if (vmid == null) { setHistory(null); setRightsizing(null); return; }
     let cancelled = false;
     setLoadingHistory(true); setHistory(null);
     fetch(`${API_BASE}/guests/${vmid}/history?hours=${hours}`)
       .then(r => r.json())
-      .then(j => { if (!cancelled && j.success) setHistory(j.points || []); })
+      .then(j => {
+        if (cancelled || !j.success) return;
+        setHistory(j.points || []);
+        setRightsizing(j.rightsizing || null);
+      })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoadingHistory(false); });
     return () => { cancelled = true; };
@@ -159,7 +167,7 @@ export default function GuestDetailPanel({
       .finally(() => { if (!cancelled) setOptsDoneFor(vmid); });
     return () => { cancelled = true; };
   };
-  useEffect(() => { setExemptError(null); setShowTargets(false); setShowDisks(false); return loadOptions(); }, [vmid]);
+  useEffect(() => { setExemptError(null); setShowTargets(false); setShowDisks(false); setRightsizing(null); return loadOptions(); }, [vmid]);
 
   if (!guest) return null;
 
@@ -408,6 +416,17 @@ export default function GuestDetailPanel({
             );
           })() : <span className="text-pb-text2 dark:text-gray-500">No profile yet</span>}
         </FactRow>
+
+        {panelParts(rightsizing) && (
+          <FactRow label="Right-sizing">
+            <span
+              className={rightsizing.status === 'ok' && rightsizing.hints?.length ? 'text-pb-text dark:text-gray-200' : 'text-pb-text2 dark:text-gray-400'}
+              title="From the last 7 days of samples"
+            >
+              {panelParts(rightsizing).map((p, i) => <span key={i} className="block">{p}</span>)}
+            </span>
+          </FactRow>
+        )}
 
         {(affinityGroups.length > 0 || excludeGroups.length > 0) && (
           <FactRow label="Placement rules">
