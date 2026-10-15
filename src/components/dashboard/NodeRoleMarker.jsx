@@ -44,7 +44,7 @@ export function NodeRoleLegend({ roles, className = '' }) {
           </span>
         );
       })}
-      <span>Number = guests moving; open a node for names</span>
+      <span>number = guests; open a node for names</span>
     </div>
   );
 }

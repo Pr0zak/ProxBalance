@@ -42,12 +42,15 @@ export default function ConflictResolver({
           <div className="min-w-0">
             <div className="font-semibold text-pb-text dark:text-gray-100">
               {st.fits
-                ? `Conflict on ${conflict.target_node} resolved: ${label} lands at ${st.total.toFixed(1)}%`
-                : `Target conflict: ${conflict.target_node} would go over its ${label} limit`}
+                ? `${conflict.target_node} fits its ${label} limit`
+                : `${conflict.target_node} over its ${label} limit`}
             </div>
-            <div className="text-xs text-pb-text2 dark:text-gray-400">
-              {st.active.length} of {st.incoming.length} incoming migrations · {label} {st.now.toFixed(0)}% now
-              {st.freed >= 0.5 ? ` (−${st.freed.toFixed(1)} from guests leaving)` : ''} → {st.total.toFixed(1)}% · limit {st.limit}%
+            <div
+              className="text-xs text-pb-text2 dark:text-gray-400 tabular-nums"
+              title={st.freed >= 0.5 ? `Now ${st.now.toFixed(0)}%, ${st.freed.toFixed(1)} of it freed by guests leaving` : undefined}
+            >
+              {st.active.length === st.incoming.length ? st.incoming.length : `${st.active.length} of ${st.incoming.length}`} incoming
+              {' '}· {label} {st.now.toFixed(0)}%{st.freed >= 0.5 ? ` (−${st.freed.toFixed(1)})` : ''} → {st.total.toFixed(1)}%
             </div>
           </div>
         </div>
@@ -75,7 +78,7 @@ export default function ConflictResolver({
       </div>
 
       <div className="text-xs text-pb-text2 dark:text-gray-400 mb-1.5">
-        Incoming to {conflict.target_node}. Click a guest to leave it out of this run:
+        Tap a guest to leave it out of this run:
       </div>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {st.incoming.map(g => (

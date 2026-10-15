@@ -180,14 +180,14 @@ export function MoveToSheet({
           </>
         ) : (
           <>
-            <div className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-500 mb-1.5">
-              Move to… <span className="normal-case font-normal">(estimate)</span>
-            </div>
-            {pinned ? (
-              <p className="text-sm text-red-600 dark:text-red-400 mb-2">
-                Can't migrate: {guest.local_disks.pinned_reason || 'pinned to its host'}.
-              </p>
-            ) : (
+            {/* A pinned guest's flag row above already says it can't move and
+                why, so there is no "Move to…" list to show. */}
+            {!pinned && (
+              <div className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-500 mb-1.5">
+                Move to… <span className="normal-case font-normal">(estimate)</span>
+              </div>
+            )}
+            {pinned ? null : (
               <div className="space-y-1.5">
                 {others.map(n => {
                   const p = nodePreview(n, guest, maintenanceNodes, allGuests);

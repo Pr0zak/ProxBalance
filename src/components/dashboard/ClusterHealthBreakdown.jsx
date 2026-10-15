@@ -111,6 +111,8 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
     score: tightest ? nodeScores?.[tightest.name] : null,
   });
 
+  const subShort = (summary.sub || '').replace(/(^| · )headroom \d+\/100$/, '').replace(/^./, c => c.toLowerCase());
+
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
       <div
@@ -126,9 +128,10 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
-              <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5">
+              <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5" title={tightest && summary.sub ? summary.sub : undefined}>
+                {/* The big number is the headroom, so the sub line leaves it out. */}
                 {tightest
-                  ? <>{summary.headline}{summary.sub ? ` · ${summary.sub}` : ''} · mean {avgScore ?? '—'}</>
+                  ? <>{summary.headline}{subShort ? ` · ${subShort}` : ''}</>
                   : <>{healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier</>}
               </p>
             </div>
@@ -143,19 +146,19 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
           {/* Why */}
           {entries.length > 0 && (
             <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-xs text-pb-text dark:text-gray-300 space-y-1">
-              <div className="font-semibold text-pb-text dark:text-gray-200">Why {avgScore ?? '—'}?</div>
+              <div className="font-semibold text-pb-text dark:text-gray-200">Node mean {avgScore ?? '—'}</div>
               {worst && (
                 <div>
-                  Lowest: <span className={`font-semibold ${scoreColor(worst.rating)}`}>{worst.name}</span> at {worst.rating.toFixed(0)} — drags the average down most.
+                  Lowest: <span className={`font-semibold ${scoreColor(worst.rating)}`}>{worst.name}</span> at {worst.rating.toFixed(0)}
                 </div>
               )}
               {drag.length > 0 && drag.length !== entries.length && (
                 <div className="text-pb-text2 dark:text-gray-400">
-                  {drag.length} of {entries.length} nodes below the average ({drag.map(d => d.name).join(', ')}).
+                  Below the average: {drag.map(d => d.name).join(', ')}
                 </div>
               )}
               {drag.length === 0 && (
-                <div className="text-pb-text2 dark:text-gray-400">All nodes at or above the average — cluster is well-balanced.</div>
+                <div className="text-pb-text2 dark:text-gray-400">All nodes at or above the average</div>
               )}
             </div>
           )}
@@ -180,9 +183,6 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
             />
           ))}
 
-          <div className="text-[11px] text-pb-text2 dark:text-gray-500 px-1 pt-1">
-            Tap "Why" on a node for each penalty and the arithmetic; tap a node row in the Cluster section's Nodes tab for full metric detail.
-          </div>
         </div>
       </div>
     </div>

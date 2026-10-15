@@ -207,11 +207,11 @@ export function spreadAtLast(lines, hidden = []) {
 const num = (v) => (Math.abs(v) >= 10 ? String(Math.round(v)) : String(+v.toFixed(1)));
 
 /**
- * "Spread at last point (14:35): 24 pts (vega 26% → lyra 50%)", or
- * "Spread at last point: —". `when` is the point's time label.
+ * "Spread 24 pts at 14:35 (vega 26% → lyra 50%)", or "Spread at 14:35: —".
+ * `when` is the last point's time label.
  */
 export function spreadText(s, when) {
-  const head = `Spread at last point${when ? ` (${when})` : ''}`;
-  if (!s) return `${head}: —`;
-  return `${head}: ${num(s.spread)} pts (${s.low.name} ${num(s.low.value)}% → ${s.high.name} ${num(s.high.value)}%)`;
+  const at = when ? ` at ${when}` : '';
+  if (!s) return `Spread${at}: —`;
+  return `Spread ${num(s.spread)} pts${at} (${s.low.name} ${num(s.low.value)}% → ${s.high.name} ${num(s.high.value)}%)`;
 }

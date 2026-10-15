@@ -9,6 +9,7 @@ import { HEADROOM_HINT, DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IO
 import { penaltyList, penaltyTooltip, toNodeSet, ioPressureFact } from '../../utils/nodeCondition.js';
 import { nodeRoles } from '../../utils/nodeRoles.js';
 import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 
 const { useState, useMemo } = React;
 
@@ -459,11 +460,14 @@ function GuestList({
   return (
     <div className="border-l border-pb-border dark:border-slate-700/40 ml-2">
       {/* Caption: what the running guests add up to on this node */}
-      <div className="px-3 pt-1 pb-1.5 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums">
+      <div
+        className="px-3 pt-1 pb-1.5 text-[11px] text-pb-text2 dark:text-gray-500 tabular-nums"
+        title={running.length > 0 && nodeCores > 0 ? `What the running guests use together, as a share of ${node?.name || 'the node'}` : undefined}
+      >
         {running.length} running{stopped.length > 0 && ` · ${stopped.length} stopped`}
         {running.length > 0 && nodeCores > 0 && (
-          <> — together <span className="text-pb-text dark:text-gray-300">{totals.cpu.toFixed(1)}%</span> of {node?.name || 'node'} CPU
-            {' '}and <span className="text-pb-text dark:text-gray-300">{formatMem(totals.memGB)}</span> RAM</>
+          <> · <span className="text-pb-text dark:text-gray-300">{totals.cpu.toFixed(1)}%</span> CPU
+            {' '}· <span className="text-pb-text dark:text-gray-300">{formatMem(totals.memGB)}</span> RAM</>
         )}
       </div>
 
@@ -857,7 +861,9 @@ export default function NodeSummaryTable({
           {nodes.some(n => (n.raw.anchored_cpu || 0) >= 0.5) && (
             <div className="flex items-center gap-1.5 pt-2 text-[11px] text-pb-text2 dark:text-gray-500">
               <span className="inline-block w-4 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
-              CPU used by guests ProxBalance won't move (ignored, or tied to the host's hardware)<span className="hidden sm:inline"> — hover a bar for names</span>
+              <MoreInfo as="span" detail="Guests ProxBalance won't move: ignored ones, or ones tied to the host's hardware (passthrough or local-only disks). On desktop, hover a bar for their names.">
+                CPU of guests that stay put
+              </MoreInfo>
             </div>
           )}
 

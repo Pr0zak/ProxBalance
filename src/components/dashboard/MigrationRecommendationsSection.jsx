@@ -52,6 +52,19 @@ const pruneTo = (live) => (prev) => {
   return next.size === prev.size ? prev : next;
 };
 
+// The planner's reason for a wave, shortened. The generic ones repeat what the
+// wave header already says (first wave, "parallel", "after wave N"), so they
+// are dropped; the ones that name a node stay.
+export function waveReason(reason) {
+  const r = String(reason || '');
+  if (/^No dependencies|^Independent|^Depends on prior/.test(r)) return null;
+  const freed = r.match(/^Waits for capacity to be freed on (.+)$/);
+  if (freed) return `waits for room on ${freed[1]}`;
+  const frees = r.match(/^Frees capacity on (.+)$/);
+  if (frees) return `frees room on ${frees[1]}`;
+  return r;
+}
+
 export default function MigrationRecommendationsSection({
   // Data
   data,
@@ -191,7 +204,8 @@ export default function MigrationRecommendationsSection({
       target_node: target,
       command: (rec.command || '').replace(` ${rec.target_node} `, ` ${target} `),
       score_improvement: undefined,
-      reason: `Resolves the ${rec.target_node} conflict: the engine's alternative target for ${rec.name}.`,
+      structured_reason: undefined,
+      reason: `Alternative to ${rec.target_node}, which this plan puts over its limit`,
     });
   };
 
@@ -582,9 +596,9 @@ export default function MigrationRecommendationsSection({
                       <span className="text-pb-text2 dark:text-gray-400 min-w-0">
                         {w.items.length} migration{w.items.length !== 1 ? 's' : ''}
                         {!w.done && w.items.length < w.total ? ` of ${w.total} shown` : ''}
-                        {!w.done && w.total > 1 ? ' · can run in parallel' : ''}
-                        {!w.done && wi > 0 ? ` · starts after wave ${w.wave - 1}` : ''}
-                        {w.reason && !w.done ? ` · ${w.reason}` : ''}
+                        {!w.done && w.total > 1 ? ' · parallel' : ''}
+                        {!w.done && wi > 0 ? ` · after wave ${w.wave - 1}` : ''}
+                        {w.reason && !w.done && waveReason(w.reason) ? ` · ${waveReason(w.reason)}` : ''}
                       </span>
                       <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/60" />
                     </div>

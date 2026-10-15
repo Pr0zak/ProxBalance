@@ -478,6 +478,7 @@ export default function DashboardPage({
       showMigrationDialog={showMigrationDialog}
       setShowMigrationDialog={setShowMigrationDialog}
       selectedGuest={selectedGuest}
+      recParams={recommendationData?.parameters}
       canMigrate={canMigrate}
       migrationTarget={migrationTarget}
       setMigrationTarget={setMigrationTarget}

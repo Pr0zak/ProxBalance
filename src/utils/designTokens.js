@@ -337,9 +337,9 @@ export const BANNER_WARN =
 // ---------------------------------------------------------------------------
 
 export const NODE_ROLE = {
-  giving: { edge: '#f97316', text: 'text-orange-700 dark:text-orange-300', label: 'Giving', hint: 'suggestions move guests off it' },
-  receiving: { edge: '#10b981', text: 'text-emerald-700 dark:text-emerald-300', label: 'Receiving', hint: 'suggestions move guests onto it' },
-  maintenance: { edge: '#eab308', text: 'text-yellow-700 dark:text-yellow-300', label: 'Maintenance', hint: 'nothing is placed on it' },
+  giving: { edge: '#f97316', text: 'text-orange-700 dark:text-orange-300', label: 'Giving', hint: 'guests move off' },
+  receiving: { edge: '#10b981', text: 'text-emerald-700 dark:text-emerald-300', label: 'Receiving', hint: 'guests move on' },
+  maintenance: { edge: '#eab308', text: 'text-yellow-700 dark:text-yellow-300', label: 'Maintenance', hint: 'nothing placed on it' },
 };
 
 /**

@@ -5,6 +5,7 @@ import { TAP_TARGET } from '../../utils/designTokens.js';
  * /api/analyze (`cluster_spread`). Missing figures show "—", never 0.
  */
 import { ChevronDown } from '../Icons.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 
 const { useState } = React;
 
@@ -122,9 +123,13 @@ export function SpreadFigure({ spread }) {
     <div className="text-xs space-y-0.5">
       {row('Memory', spread?.memory)}
       {row('CPU', spread?.cpu)}
-      <p className="text-[11px] text-pb-text2 dark:text-gray-500">
-        Max − min across {isNum(spread?.online_nodes) ? spread.online_nodes : DASH} online nodes (CPU is the 15-min average). CV = std-dev ÷ mean.
-      </p>
+      <MoreInfo
+        className="text-[11px] text-pb-text2 dark:text-gray-500"
+        label="How spread is measured"
+        detail="Spread = highest minus lowest node. CPU uses the 15-minute average. CV = standard deviation ÷ mean; lower means more even."
+      >
+        Across {isNum(spread?.online_nodes) ? spread.online_nodes : DASH} online nodes
+      </MoreInfo>
     </div>
   );
 }

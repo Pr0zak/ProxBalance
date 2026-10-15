@@ -5,8 +5,9 @@ import {
 import { API_BASE } from '../../utils/constants.js';
 import { MODAL_OVERLAY, MODAL_CONTAINER, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, ICON, INPUT_FIELD, SELECT_FIELD } from '../../utils/designTokens.js';
 import { haPlacementChecks } from './clusterMapHelpers.js';
-import { storageEntries, storageLine } from './recommendations/cardModel.js';
+import { storageEntries, storageLine, reasonSentence } from './recommendations/cardModel.js';
 import { fetchGuestMigrationOptions } from '../../api/client.js';
+import MoreInfo from '../MoreInfo.jsx';
 
 // Proxmox HA rule blocks/warnings for moving guest `vmid` to `target`, from the
 // collector's per-guest verdicts. Renders nothing when no HA rule applies.
@@ -101,7 +102,8 @@ export default function MigrationModals({
   collapsedSections, setCollapsedSections,
   cancelMigrationModal, setCancelMigrationModal,
   cancellingMigration, setCancellingMigration,
-  fetchAutomationStatus
+  fetchAutomationStatus,
+  recParams
 }) {
   // Set by TargetStorageNotes when a disk won't fit on the chosen target.
   const [dialogStorageFull, setDialogStorageFull] = React.useState(false);
@@ -353,9 +355,13 @@ export default function MigrationModals({
                 className={INPUT_FIELD}
                 placeholder="e.g., exclude_database, affinity_web"
               />
-              <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity | <span className="font-mono">affinity_[name]</span> = prefer together | <span className="font-mono">affinity_req_[name]</span> = keep together
-              </p>
+              <MoreInfo
+                className="text-xs text-pb-text2 dark:text-gray-400 mt-1"
+                label="What the tags mean"
+                detail={'ignore: never migrate\nexclude_<name>: keep apart from others with the same tag\naffinity_<name>: prefer the same node\naffinity_req_<name>: always the same node'}
+              >
+                What the tags do
+              </MoreInfo>
             </div>
 
             {/* Current Tags */}
@@ -443,7 +449,7 @@ export default function MigrationModals({
 
           <div className="p-4 sm:p-6">
             <p className="text-pb-text dark:text-gray-300 mb-4">
-              Start migration for <span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> ({confirmMigration.name})?
+<span className="font-semibold text-blue-600 dark:text-blue-400">{confirmMigration.type} {confirmMigration.vmid}</span> {confirmMigration.name}
             </p>
 
             <div className="bg-pb-surface2 dark:bg-gray-900/50 rounded-lg p-4 space-y-2 text-sm">
@@ -467,11 +473,17 @@ export default function MigrationModals({
               )}
             </div>
 
-            {confirmMigration.reason && (
+            {confirmMigration.reason && (confirmMigration.structured_reason ? (
+              // The engine's sentence restates guest, source and target; show the
+              // cause in a few words and keep the full sentence one tap away.
+              <MoreInfo className="mt-4 text-xs text-pb-text2 dark:text-gray-400" label="Full reason" detail={confirmMigration.reason}>
+                <span className="font-medium">Why:</span> {reasonSentence(confirmMigration, recParams)}
+              </MoreInfo>
+            ) : (
               <div className="mt-4 text-xs text-pb-text2 dark:text-gray-400">
-                <span className="font-medium">Reason:</span> {confirmMigration.reason}
+                <span className="font-medium">Why:</span> {confirmMigration.reason}
               </div>
-            )}
+            ))}
 
             <HaRuleNotes data={data} vmid={confirmMigration.vmid} target={confirmMigration.target_node} />
             <TargetStorageNotes

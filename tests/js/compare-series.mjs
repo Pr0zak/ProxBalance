@@ -85,12 +85,12 @@ eq('iowait with no data has a floor', S.axisMax('iowait', [{ values: [null] }], 
 const lines = [{ name: 'lyra', values: [40, 50] }, { name: 'vega', values: [20, 26] }, { name: 'rigel', values: [30, null] }];
 const sp = S.spreadAtLast(lines);
 eq('spread from last bucket, offline node left out', sp, { spread: 24, low: { name: 'vega', value: 26 }, high: { name: 'lyra', value: 50 } });
-eq('spread text', S.spreadText(sp, '14:35'), 'Spread at last point (14:35): 24 pts (vega 26% → lyra 50%)');
+eq('spread text', S.spreadText(sp, '14:35'), 'Spread 24 pts at 14:35 (vega 26% → lyra 50%)');
 eq('hidden node left out', S.spreadAtLast([...lines, { name: 'x', values: [0, 99] }], ['x']), sp);
-eq('zero spread is a value', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }, { name: 'b', values: [5] }]), '1:00'), 'Spread at last point (1:00): 0 pts (a 5% → b 5%)');
-eq('small values keep a decimal', S.spreadText({ spread: 1.25, low: { name: 'a', value: 0.4 }, high: { name: 'b', value: 1.66 } }), 'Spread at last point: 1.3 pts (a 0.4% → b 1.7%)');
-eq('one node -> dash', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }]), '1:00'), 'Spread at last point (1:00): —');
-eq('missing last values -> dash, not 0', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5, null] }, { name: 'b', values: [7, null] }])), 'Spread at last point: —');
+eq('zero spread is a value', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }, { name: 'b', values: [5] }]), '1:00'), 'Spread 0 pts at 1:00 (a 5% → b 5%)');
+eq('small values keep a decimal', S.spreadText({ spread: 1.25, low: { name: 'a', value: 0.4 }, high: { name: 'b', value: 1.66 } }), 'Spread 1.3 pts (a 0.4% → b 1.7%)');
+eq('one node -> dash', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }]), '1:00'), 'Spread at 1:00: —');
+eq('missing last values -> dash, not 0', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5, null] }, { name: 'b', values: [7, null] }])), 'Spread: —');
 
 console.log(bad ? `\n${bad} failure(s)` : '\nall passed');
 process.exit(bad ? 1 : 0);

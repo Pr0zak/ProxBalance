@@ -4,6 +4,7 @@ import {
   BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, metricColor, metricTextColor
 } from '../../utils/designTokens.js';
 import { haPlacementChecks } from './clusterMapHelpers.js';
+import MoreInfo from '../MoreInfo.jsx';
 
 // Load past this on a target after the plan runs is flagged red.
 const TIGHT_PCT = 85;
@@ -223,7 +224,11 @@ export default function EvacuationModals({
                   <div className="text-sm text-pb-text dark:text-gray-200">
                     <span className="font-semibold">{movingItems.length}</span> to migrate
                     {ignoredCount > 0 && <> · <span className="font-semibold">{ignoredCount}</span> left in place</>}
-                    {evacuationPlan.will_skip > 0 && <> · <span className="font-semibold text-yellow-600 dark:text-yellow-400">{evacuationPlan.will_skip}</span> can't move</>}
+                    {evacuationPlan.will_skip > 0 && <> · <MoreInfo
+                      as="span"
+                      label="Why some guests can't move"
+                      detail={'Shown in yellow below. Usual causes: no target has the guest\'s storage, an error reading the guest, or the \'ignore\' tag.'}
+                    ><span className="font-semibold text-yellow-600 dark:text-yellow-400">{evacuationPlan.will_skip}</span> can't move</MoreInfo></>}
                     {restartCount > 0 && <> · <span className="font-semibold text-orange-600 dark:text-orange-400">{restartCount}</span> will restart</>}
                   </div>
                   <label className="flex items-center gap-2 text-xs text-pb-text2 dark:text-gray-400">
@@ -244,8 +249,7 @@ export default function EvacuationModals({
                       <li className="flex items-start gap-1.5">
                         <AlertTriangle size={13} className="shrink-0 mt-px" />
                         <span>
-                          {storageProblems.length === 1 ? '1 guest is' : `${storageProblems.length} guests are`} sent to a node without its storage
-                          ({storageProblems.map(p => `${p.item.vmid} → ${p.target}`).join(', ')}) and will fail instead of moving.
+                          {storageProblems.map(p => `${p.item.vmid} → ${p.target}`).join(', ')}: target lacks the storage, will fail
                         </span>
                       </li>
                     )}
@@ -259,28 +263,23 @@ export default function EvacuationModals({
                 )}
               </div>
 
-              {evacuationPlan.will_skip > 0 && (
-                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                    <span className="font-semibold">{evacuationPlan.will_skip}</span> guest(s) cannot be migrated. Reasons may include: missing storage on target nodes, errors, or "ignore" tag. These are shown in yellow below.
-                  </p>
-                </div>
-              )}
-
               {stoppedCount > 0 && (
-                <div className="mb-4 p-3 bg-pb-surface2 dark:bg-slate-700/40 border border-pb-border dark:border-slate-700 rounded flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-pb-text dark:text-gray-200">
+                <div className="mb-4 p-3 bg-pb-surface2 dark:bg-slate-700/40 border border-pb-border dark:border-slate-700 rounded">
+                  <MoreInfo
+                    className="text-sm font-medium text-pb-text dark:text-gray-200"
+                    label="About stopped guests"
+                    detail="Off by default: stopped guests stay on the node so their disks aren't copied. Turn it on for maintenance or upgrades, when the disks must leave the node."
+                  >
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={includeStopped}
                       onChange={(e) => setIncludeStopped(e.target.checked)}
                       className="w-4 h-4"
                     />
-                    Include {stoppedCount} stopped guest{stoppedCount !== 1 ? 's' : ''} in the migration
+                    Include {stoppedCount} stopped guest{stoppedCount !== 1 ? 's' : ''}
                   </label>
-                  <span className="text-xs text-pb-text2 dark:text-gray-400">
-                    Off by default — stopped guests are ignored so their cold disks aren't streamed. Enable for maintenance/upgrade evacuations where the disks must move off the node.
-                  </span>
+                  </MoreInfo>
                 </div>
               )}
 
@@ -381,16 +380,15 @@ export default function EvacuationModals({
                 </table>
               </div>
 
-              <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Important Notes:</h4>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
-                  <li>Running VMs will use live migration (no downtime)</li>
-                  <li>Running containers will restart during migration (brief downtime)</li>
-                  <li>Stopped guests are <span className="font-semibold">ignored by default</span> — tick "Include stopped guests" above to move their disks too (recommended for maintenance/upgrade evacuations)</li>
-                  <li>Migrations are performed one at a time to avoid overloading hosts</li>
-                  <li>Available target nodes: {evacuationPlan.available_targets.join(', ')}</li>
-                </ul>
-              </div>
+              {/* Stopped guests and the target list are said above (checkbox,
+                  landing cards); only the how-it-runs facts remain here. */}
+              <MoreInfo
+                className="mt-4 text-xs text-pb-text2 dark:text-gray-400"
+                label="How the evacuation runs"
+                detail="Running VMs live-migrate with no downtime. Running containers restart on the target, a brief outage. Guests go one at a time so no host gets overloaded."
+              >
+                One at a time · VMs live · containers restart briefly
+              </MoreInfo>
             </div>
 
             <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-pb-border dark:border-slate-700">
@@ -483,9 +481,13 @@ export default function EvacuationModals({
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto space-y-3">
-                <p className="text-sm text-pb-text2 dark:text-gray-300">
-                  Guests move one at a time to the node shown. If a node can't take a guest (for example it lacks the guest's storage), that guest fails and stays on {planNode}; it is not sent anywhere else.
-                </p>
+                <MoreInfo
+                  className="text-sm text-pb-text2 dark:text-gray-300"
+                  label="If a move fails"
+                  detail={`If a node can't take a guest (for example it lacks the guest's storage), that guest fails and stays on ${planNode}; it is not sent anywhere else.`}
+                >
+                  One at a time, each to the node shown
+                </MoreInfo>
 
                 {Object.keys(byTarget).sort().map(target => {
                   const t = landingFor[target];

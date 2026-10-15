@@ -957,11 +957,13 @@ export default function ClusterMap({
                 <div className="w-5 h-5 rounded-full bg-green-600"></div>
                 <span>Container</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900" style={{ background: '#22c55e' }} />
-                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#f97316' }} />
-                <span className="inline-block w-4 h-4 rounded-full ring-2 ring-white dark:ring-slate-900 -ml-1.5" style={{ background: '#ef4444' }} />
-                <span className="ml-1">node border: amber = headroom under 50, red = under 30</span>
+              <div className="flex items-center gap-1.5" title="Node border colour by headroom score">
+                <span>Border = headroom</span>
+                {[['#22c55e', '50+'], ['#f97316', '<50'], ['#ef4444', '<30']].map(([c, l]) => (
+                  <span key={l} className="inline-flex items-center gap-1 ml-1">
+                    <span className="inline-block w-3 h-3 rounded-full" style={{ background: c }} />{l}
+                  </span>
+                ))}
               </div>
               <div className="flex items-center gap-2">
                 <span>
@@ -990,9 +992,9 @@ export default function ClusterMap({
               )}
             </div>
             <div className="flex items-center justify-center gap-x-5 gap-y-1.5 flex-wrap">
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5" title="CPU used by guests ProxBalance won't move: ignored ones, or ones tied to the host's hardware">
                 <span className="inline-block w-5 h-2 rounded-full bg-slate-400 dark:bg-slate-500" style={{ backgroundImage: HATCH }} />
-                CPU used by guests ProxBalance won't move
+                CPU of guests that stay put
               </span>
               <GuestFlagLegend />
               {showPlan && arrows.length > 0 && [...new Set(arrows.map(a => a.kind))].sort().reverse().map(kind => (

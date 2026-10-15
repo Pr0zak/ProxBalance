@@ -330,7 +330,8 @@ export default function RecommendationCard({
           {(seen || isNewRec) && (
             <DetailRow label="Seen in automation">
               {seen && <div>{seen}</div>}
-              {seen && seenCountDetail(rec).map((t, i) => (
+              {/* Line 1 of the detail restates the summary above; skip it. */}
+              {seen && seenCountDetail(rec).slice(1).map((t, i) => (
                 <p key={i} className="text-pb-text2 dark:text-gray-400">{t}</p>
               ))}
               {isNewRec && <p className="text-pb-text2 dark:text-gray-400">New in this generation.</p>}
