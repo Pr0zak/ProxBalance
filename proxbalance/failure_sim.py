@@ -106,7 +106,10 @@ def restart_blocker(guest: Dict[str, Any], local_storages: set, storage_mode: st
             with the node; ``capacity`` assumes they can be restored elsewhere.
     """
     ld = guest.get("local_disks") or {}
-    if ld.get("is_pinned") or ld.get("has_passthrough"):
+    # is_pinned also covers VM PCI/USB passthrough (``pinned_devices``); those
+    # are reported once, below, from passthrough_devices.
+    pinned_by_disk = ld.get("is_pinned") and not ld.get("pinned_devices")
+    if pinned_by_disk or ld.get("has_passthrough") or ld.get("passthrough_disks"):
         devices = _paths(ld.get("passthrough_disks") or [], "device")
         return f"passthrough disk{f' {devices}' if devices else ''}"
     hardware = [d.get("key") for d in guest.get("passthrough_devices") or [] if isinstance(d, dict) and d.get("key")]

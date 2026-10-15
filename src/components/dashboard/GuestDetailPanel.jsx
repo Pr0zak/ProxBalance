@@ -272,10 +272,15 @@ export default function GuestDetailPanel({
     ? `Counted as unmovable load: ${anchored.cpu_share.toFixed(0)}% of ${hostNode}'s CPU, so ${hostNode} isn't drained because of it.`
     : null;
   if (mob.key === 'pinned') {
+    // PCI/USB passthrough reasons name device keys ("PCI passthrough (hostpci0)"),
+    // so they keep their case; the disk-only reason reads "2 hardware passthrough disks".
     const n = disks.total_pinned_disks || disks.passthrough_count;
+    const tie = disks.pinned_devices?.length
+      ? `${disks.pinned_reason} ${(disks.pinned_reasons || []).length > 1 ? 'tie' : 'ties'} it to this host.`
+      : `${n ? `${n} ` : ''}${(disks.pinned_reason || 'Local hardware').toLowerCase()} tie it to this host.`;
     verdict = {
       tone: 'red', icon: Lock, title: `Stays on ${hostNode}`,
-      body: [`${n ? `${n} ` : ''}${(disks.pinned_reason || 'Local hardware').toLowerCase()} tie it to this host.${guest.tags?.has_ignore ? ' It also has the ignore tag.' : ''}`, anchoredLine],
+      body: [`${tie}${guest.tags?.has_ignore ? ' It also has the ignore tag.' : ''}`, anchoredLine],
     };
   } else if (mob.key === 'suggested') {
     verdict = {
@@ -456,7 +461,17 @@ export default function GuestDetailPanel({
           </FactRow>
         ))}
 
-        {pinned && (
+        {pinned && disks.pinned_devices?.length > 0 && (
+          <FactRow label="Passthrough">
+            <span className="text-right break-all">
+              {(guest.passthrough_devices || []).filter(d => disks.pinned_devices.includes(d.key)).map(d => (
+                <div key={d.key} className="text-[11px] text-pb-text2 dark:text-gray-400"><span className="font-mono text-pb-text dark:text-gray-200">{d.key}</span> {d.device}</div>
+              ))}
+            </span>
+          </FactRow>
+        )}
+
+        {pinned && (!disks.pinned_devices?.length || (disks.passthrough_disks || []).length > 0) && (
           <FactRow label="Pinned disks">
             <button onClick={() => setShowDisks(s => !s)} className="text-blue-600 dark:text-blue-400 hover:underline">
               {disks.total_pinned_disks || (disks.passthrough_disks || []).length} {showDisks ? '· hide' : '· show'}

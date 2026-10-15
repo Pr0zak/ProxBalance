@@ -44,7 +44,7 @@ Combinable Node, Type, State, Rules and Balancer filters, search by name, VMID o
 **Markers on guests:**
 - Cyan: container with shared mount points (safe to migrate)
 - Orange: container with unshared bind mounts (may need manual migration)
-- Red: VM with pinned or passthrough disks (cannot migrate, left out of suggestions)
+- Red: pinned guest, with passthrough disks or PCI/USB passthrough (cannot migrate, left out of suggestions)
 
 ### Charts
 

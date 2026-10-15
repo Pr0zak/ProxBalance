@@ -49,6 +49,7 @@ export const SKIP_REASONS = {
   no_suitable_target: { label: 'No node has room', tone: 'red' },
   ha_managed: { label: 'Managed by PVE HA', tone: 'blue' },
   passthrough_disk: { label: 'Has passthrough disk', tone: 'orange' },
+  passthrough_device: { label: 'Has PCI/USB passthrough', tone: 'orange' },
   unshared_bind_mount: { label: 'Has local bind mount', tone: 'orange' },
   seasonal_baseline: { label: 'Normal for this time of day', tone: 'green' },
 };

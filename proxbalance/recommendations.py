@@ -518,15 +518,22 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 })
                 continue
 
-            # Skip guests with passthrough disks (hardware-bound, cannot migrate)
+            # Skip guests with passthrough disks or VM PCI/USB passthrough
+            # (hardware-bound, cannot migrate)
             local_disk_info = guest.get("local_disks", {})
             if local_disk_info.get("is_pinned", False):
-                # Passthrough disks cannot be migrated even for maintenance
+                # Pinned guests cannot be migrated even for maintenance
+                by_device = (bool(local_disk_info.get("pinned_devices"))
+                             and not local_disk_info.get("has_passthrough"))
                 skipped_guests.append({
                     "vmid": int(vmid_key) if isinstance(vmid_key, str) and vmid_key.isdigit() else vmid_key,
                     "name": guest_name, "type": guest_type, "node": src_node_name,
-                    "reason": "passthrough_disk",
-                    "detail": "Guest has passthrough/local disk hardware that prevents migration."
+                    "reason": "passthrough_device" if by_device else "passthrough_disk",
+                    "detail": (
+                        f"Guest has {local_disk_info.get('pinned_reason') or 'passthrough hardware'}, "
+                        "which prevents migration."
+                    ) if local_disk_info.get("pinned_devices") else
+                    "Guest has passthrough/local disk hardware that prevents migration."
                 })
                 continue
 

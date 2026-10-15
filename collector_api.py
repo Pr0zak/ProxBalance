@@ -611,6 +611,47 @@ class ProxmoxAPICollector:
         return sorted(devices, key=lambda d: d["key"])
 
     @staticmethod
+    def pin_for_passthrough_devices(local_disks: Dict, devices: List[Dict], guest_type: str) -> Dict:
+        """Mark a VM with PCI or USB passthrough as pinned in ``local_disks``.
+
+        Proxmox refuses to migrate a VM that has ``hostpciN`` or host ``usbN``
+        devices, so such a VM is treated like one with passthrough disks.
+        Container ``devN`` entries do not pin: Proxmox can restart-migrate a
+        container whose device node also exists on the target.
+
+        ``has_passthrough`` and the disk counts keep describing disks only.
+        Adds ``pinned_devices`` (the device keys that pin it) and
+        ``pinned_reasons`` (one phrase per cause, joined into ``pinned_reason``).
+
+        Args:
+            local_disks: Result of ``detect_local_disks``; not modified.
+            devices: Result of ``detect_passthrough_devices``.
+            guest_type: ``"VM"`` or ``"CT"``.
+
+        Returns:
+            A new ``local_disks`` dict.
+        """
+        out = dict(local_disks)
+        reasons = ["Hardware passthrough disks"] if out.get("has_passthrough") else []
+        pinned_devices: List[str] = []
+        if guest_type == "VM":
+            keys = [d.get("key", "") for d in devices]
+            pci = [k for k in keys if k.startswith("hostpci")]
+            usb = [k for k in keys if k.startswith("usb")]
+            if pci:
+                reasons.append(f"PCI passthrough ({', '.join(pci)})")
+            if usb:
+                reasons.append(f"USB passthrough ({', '.join(usb)})")
+            pinned_devices = pci + usb
+        out["pinned_devices"] = pinned_devices
+        out["pinned_reasons"] = reasons
+        if pinned_devices:
+            out["is_pinned"] = True
+            out["pinned_reason"] = (reasons[0] if len(reasons) == 1
+                                    else ", ".join(reasons[:-1]) + " and " + reasons[-1])
+        return out
+
+    @staticmethod
     def _extract_rrd_values(rrd_data, key, scale=100, filter_fn=None):
         """Extract and scale values from RRD data points."""
         if filter_fn:
@@ -979,7 +1020,9 @@ class ProxmoxAPICollector:
                 mount_point_info = self.detect_mount_points(config)
 
             # Detect local/passthrough disks for both VMs and CTs
-            local_disk_info = self.detect_local_disks(config)
+            passthrough_devices = self.detect_passthrough_devices(config)
+            local_disk_info = self.pin_for_passthrough_devices(
+                self.detect_local_disks(config), passthrough_devices, guest_type)
 
             # Get RRD data for I/O metrics - skip if guest is stopped and optimization enabled
             disk_read_bps = 0
@@ -1085,7 +1128,7 @@ class ProxmoxAPICollector:
                 "disks": parse_guest_disks(config),
                 # Host hardware passed through (hostpci/usb/dev); ties the guest
                 # to its node for the failure simulation.
-                "passthrough_devices": self.detect_passthrough_devices(config),
+                "passthrough_devices": passthrough_devices,
             }
             
             self.guests[str(vmid)] = guest_info

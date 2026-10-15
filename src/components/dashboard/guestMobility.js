@@ -96,7 +96,7 @@ export function guestMobility(g, rec, skipped) {
     detail = `Suggested now: move it from ${rec.source_node} to ${rec.target_node}. Click Move to review.`;
   } else if (pinned) {
     key = 'pinned';
-    detail = engine('passthrough_disk') || 'It cannot migrate, not even when its node is emptied for maintenance.';
+    detail = engine('passthrough_disk') || engine('passthrough_device') || 'It cannot migrate, not even when its node is emptied for maintenance.';
   } else if (bind) {
     key = 'manual';
     detail = engine('unshared_bind_mount') || 'Move it by hand with a restart, after checking the folder exists on the new node.';

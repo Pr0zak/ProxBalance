@@ -323,7 +323,10 @@ def _movable(guest: Dict[str, Any]) -> Optional[str]:
     tags = guest.get("tags") or {}
     if isinstance(tags, dict) and tags.get("has_ignore"):
         return "has the 'ignore' tag"
-    if (guest.get("local_disks") or {}).get("is_pinned"):
+    local_disks = guest.get("local_disks") or {}
+    if local_disks.get("is_pinned"):
+        if local_disks.get("pinned_devices"):
+            return f"has {local_disks.get('pinned_reason') or 'passthrough hardware'}"
         return "has passthrough disks"
     if guest.get("type") == "CT" and (guest.get("mount_points") or {}).get("has_unshared_bind_mount"):
         return "has an unshared bind mount"

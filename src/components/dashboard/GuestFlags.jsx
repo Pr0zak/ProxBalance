@@ -40,7 +40,8 @@ export function getGuestFlags(guest) {
   const disks = guest.local_disks || {};
   const mounts = guest.mount_points || {};
   if (disks.is_pinned) {
-    const n = disks.total_pinned_disks;
+    // The disk count only fits a disk-only reason; PCI/USB reasons name their devices.
+    const n = disks.pinned_devices?.length ? 0 : disks.total_pinned_disks;
     flags.push({
       key: 'pinned',
       detail: `${disks.pinned_reason || 'Pinned to its host'}${n ? ` (${n} disk${n > 1 ? 's' : ''})` : ''}`,
