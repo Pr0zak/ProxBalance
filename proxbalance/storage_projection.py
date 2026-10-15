@@ -257,7 +257,7 @@ def entries_at_least(entries: Iterable[Mapping[str, Any]], level: str) -> List[M
 
 
 def format_storage_line(entry: Mapping[str, Any]) -> str:
-    """Human-readable line: ``local-lvm on pve6: 72% → 88%``.
+    """Human-readable line: ``local-lvm on vega: 72% → 88%``.
 
     Mentions data from other planned moves and the won't-fit case.
     """

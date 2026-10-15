@@ -18,7 +18,7 @@ def client():
 def test_run_now_blocked_by_inflight_migration(client, monkeypatch):
     def fake_status():
         return jsonify({"success": True, "in_progress_migrations": [
-            {"name": "web01", "vmid": 101, "source_node": "pve4", "target_node": "pve5"}]})
+            {"name": "web01", "vmid": 101, "source_node": "orion", "target_node": "rigel"}]})
     monkeypatch.setattr(automation, "get_automigrate_status", fake_status)
     started = []
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: started.append(a))
@@ -26,5 +26,5 @@ def test_run_now_blocked_by_inflight_migration(client, monkeypatch):
     resp = client.post("/api/automigrate/run")
 
     assert resp.status_code == 409
-    assert "web01 (101) is currently migrating from pve4 to pve5" in resp.get_json()["error"]
+    assert "web01 (101) is currently migrating from orion to rigel" in resp.get_json()["error"]
     assert started == []

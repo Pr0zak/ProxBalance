@@ -16,60 +16,60 @@ from proxbalance.inflow_cap import (
 )
 
 
-def rec(vmid, target, source="pve4"):
+def rec(vmid, target, source="orion"):
     return {"vmid": vmid, "name": f"guest-{vmid}", "source_node": source, "target_node": target}
 
 
 # ---------------------------------------------------------------- selection
 
 def test_cap_one_three_recs_same_target_only_first_executes():
-    recs = [rec(101, "pve5"), rec(102, "pve5"), rec(103, "pve5")]
+    recs = [rec(101, "rigel"), rec(102, "rigel"), rec(103, "rigel")]
     selected, capped = select_with_target_inflow_cap(recs, cap=1)
     assert [r["vmid"] for r in selected] == [101]
     assert [r["vmid"] for r, _ in capped] == [102, 103]
     for _, reason in capped:
-        assert reason.startswith("Target inflow cap: pve5 already received 1 migration this run")
+        assert reason.startswith("Target inflow cap: rigel already received 1 migration this run")
         assert "max 1" in reason
 
 
 def test_cap_zero_is_unlimited():
-    recs = [rec(101, "pve5"), rec(102, "pve5"), rec(103, "pve5")]
+    recs = [rec(101, "rigel"), rec(102, "rigel"), rec(103, "rigel")]
     selected, capped = select_with_target_inflow_cap(recs, cap=0)
     assert [r["vmid"] for r in selected] == [101, 102, 103]
     assert capped == []
 
 
 def test_different_targets_unaffected():
-    recs = [rec(101, "pve5"), rec(102, "pve6"), rec(103, "pve3"), rec(104, "pve5")]
+    recs = [rec(101, "rigel"), rec(102, "vega"), rec(103, "lyra"), rec(104, "rigel")]
     selected, capped = select_with_target_inflow_cap(recs, cap=1)
     assert [r["vmid"] for r in selected] == [101, 102, 103]
     assert [r["vmid"] for r, _ in capped] == [104]
 
 
 def test_cap_two_and_max_selected():
-    recs = [rec(i, "pve5") for i in range(1, 5)] + [rec(9, "pve6")]
+    recs = [rec(i, "rigel") for i in range(1, 5)] + [rec(9, "vega")]
     selected, capped = select_with_target_inflow_cap(recs, cap=2, max_selected=3)
-    # Two into pve5, the next two pve5 moves are capped, then pve6 fills slot 3.
+    # Two into rigel, the next two rigel moves are capped, then vega fills slot 3.
     assert [r["vmid"] for r in selected] == [1, 2, 9]
     assert [r["vmid"] for r, _ in capped] == [3, 4]
 
 
 def test_apply_respects_inflow_already_sent_this_run():
     """The automation loop applies the cap one slot at a time with running counts."""
-    recs = [rec(102, "pve5"), rec(103, "pve6")]
-    allowed, capped = apply_target_inflow_cap(recs, {"pve5": 1}, cap=1)
+    recs = [rec(102, "rigel"), rec(103, "vega")]
+    allowed, capped = apply_target_inflow_cap(recs, {"rigel": 1}, cap=1)
     assert [r["vmid"] for r in allowed] == [103]
     assert capped[0][0]["vmid"] == 102
-    assert capped[0][1] == inflow_cap_reason("pve5", 1, 1)
+    assert capped[0][1] == inflow_cap_reason("rigel", 1, 1)
 
-    allowed, capped = apply_target_inflow_cap(recs, {"pve5": 1}, cap=0)
+    allowed, capped = apply_target_inflow_cap(recs, {"rigel": 1}, cap=0)
     assert [r["vmid"] for r in allowed] == [102, 103]
     assert capped == []
 
 
 def test_automation_loop_simulation():
     """Mimic automigrate: regenerate (same list), filter, take the first, count."""
-    pool = [rec(101, "pve5"), rec(102, "pve5"), rec(103, "pve5"), rec(104, "pve6")]
+    pool = [rec(101, "rigel"), rec(102, "rigel"), rec(103, "rigel"), rec(104, "vega")]
     inflow = {}
     executed, skip_reasons = [], {}
     for _ in range(3):  # max_migrations_per_run = 3

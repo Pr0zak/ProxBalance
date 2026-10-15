@@ -45,23 +45,23 @@ test('biggest problem: largest penalty_items entry, else penalty_breakdown', () 
 });
 
 test('summary: room on every node', () => {
-  const r = M.healthSummary({ node: 'pve4', headroom: 57.4, score: {} });
+  const r = M.healthSummary({ node: 'orion', headroom: 57.4, score: {} });
   assert.equal(r.level, 'ok');
   assert.equal(r.headline, 'All nodes have room');
-  assert.equal(r.sub, 'Least room: pve4 · headroom 57/100');
+  assert.equal(r.sub, 'Least room: orion · headroom 57/100');
 });
 
 test('summary: busy node names its biggest problem', () => {
   const score = { penalty_items: [{ key: 'iowait_sustained', label: 'IOWait 7-day avg', points: 20 }] };
-  const warn = M.healthSummary({ node: 'pve4', headroom: 33, score });
+  const warn = M.healthSummary({ node: 'orion', headroom: 33, score });
   assert.equal(warn.level, 'warn');
-  assert.equal(warn.headline, 'pve4: disk wait high this week');
+  assert.equal(warn.headline, 'orion: disk wait high this week');
   assert.equal(warn.sub, 'Busiest node · headroom 33/100');
-  assert.equal(M.healthSummary({ node: 'pve4', headroom: 12, score }).level, 'crit');
+  assert.equal(M.healthSummary({ node: 'orion', headroom: 12, score }).level, 'crit');
 });
 
 test('summary: no penalties but low headroom reads as high base load', () => {
-  assert.equal(M.healthSummary({ node: 'pve5', headroom: 40, score: { penalty_items: [] } }).headline, 'pve5: high base load');
+  assert.equal(M.healthSummary({ node: 'rigel', headroom: 40, score: { penalty_items: [] } }).headline, 'rigel: high base load');
 });
 
 test('summary: missing headroom is a dash', () => {

@@ -91,7 +91,7 @@ const VERDICT = {
   harmful: ['made it worse', 'text-red-600 dark:text-red-400'],
 };
 
-/** "pve5 CPU 89% -> 70% after the move, 73% after 1h, 75% after 24h · helped". */
+/** "rigel CPU 89% -> 70% after the move, 73% after 1h, 75% after 24h · helped". */
 function OutcomeLine({ m, o }) {
   const before = o.pre_migration?.source_node?.cpu;
   const after = (o.post_migration || o.post_5min)?.source_node?.cpu;

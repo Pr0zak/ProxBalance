@@ -74,7 +74,7 @@ export function observationProgress(d) {
 
 /**
  * The "because …" half of a recommendation reason, e.g.
- * "pve5 has elevated CPU usage (51% CPU), while pve3 has more capacity".
+ * "rigel has elevated CPU usage (51% CPU), while lyra has more capacity".
  */
 export function whyText(d) {
   const reason = d?.reason || '';
@@ -163,7 +163,7 @@ function waitingPhrase(observing) {
   return `${plural(n, 'suggestion')} still waiting${tail}`;
 }
 
-/** What the run did, after the colon: "would have moved x pve5 → pve3 — dry run, nothing moved". */
+/** What the run did, after the colon: "would have moved x rigel → lyra — dry run, nothing moved". */
 export function runSummary(run, ctx = {}) {
   const o = runOutcome(run, ctx);
   const decisions = Array.isArray(run?.decisions) ? run.decisions : [];
@@ -208,7 +208,7 @@ export function runSummary(run, ctx = {}) {
 
 /**
  * The one-sentence banner line for the latest run, e.g.
- *   "Last check 3 min ago: would have moved zentry-det-pve5 pve5 → pve3 — dry run, nothing moved."
+ *   "Last check 3 min ago: would have moved worker-02 rigel → lyra — dry run, nothing moved."
  *   "Last check skipped: outside the migration window (opens 03:00)."
  */
 export function lastCheckSentence(run, ctx = {}) {
@@ -225,7 +225,7 @@ export function lastCheckSentence(run, ctx = {}) {
 
 /**
  * A short "why" for a moved/suggested guest, from the engine's reason:
- * "pve5 has elevated CPU usage (51% CPU, 45% mem; CPU rising), …" → "CPU on pve5 rising".
+ * "rigel has elevated CPU usage (51% CPU, 45% mem; CPU rising), …" → "CPU on rigel rising".
  */
 export function shortWhy(d) {
   const reason = d?.reason || '';
@@ -247,7 +247,7 @@ export function shortWhy(d) {
 
 /**
  * Why a move ran, for a moved row: in semi-automatic mode the engine says
- * why it didn't need approval ("approved", "pve5 CPU 92% > 85%").
+ * why it didn't need approval ("approved", "rigel CPU 92% > 85%").
  */
 export function autoRunWhy(d) {
   if (d?.auto_run === 'approved') return `approved · ${shortWhy(d)}`;
@@ -274,7 +274,7 @@ function shortHeld(d) {
 
 /**
  * The banner's last-check line as parts: lead text, an outcome chip and a
- * short subject ("zentry-det-pve5 pve5 → pve3"). Returns
+ * short subject ("worker-02 rigel → lyra"). Returns
  * { lead, chip, tone, kind, subject }.
  */
 export function lastCheckParts(run, ctx = {}) {
@@ -464,7 +464,7 @@ export function outcomeHeadline(o) {
 
 const pct = (v) => (v == null || Number.isNaN(Number(v)) ? '—' : `${Math.round(Number(v))}%`);
 
-/** "pve5 CPU 89% → 72% after 24 h". */
+/** "rigel CPU 89% → 72% after 24 h". */
 export function headlineText(h) {
   if (h.before == null && h.after == null) return `${h.node} CPU —`;
   return `${h.node} CPU ${pct(h.before)} → ${pct(h.after)}${h.window ? ` after ${h.window}` : ''}`;

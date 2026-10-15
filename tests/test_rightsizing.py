@@ -36,11 +36,11 @@ def _samples(cpu=5.0, mem=10.0, days=7.0, running=1.0, step=STEP, cpu_peaks=None
 
 
 def _ct(cores=4, mem_gb=8.0, **kw):
-    return {"vmid": 101, "name": "ct", "node": "pve3", "type": "CT", "cpu_cores": cores, "mem_max_gb": mem_gb, **kw}
+    return {"vmid": 101, "name": "ct", "node": "lyra", "type": "CT", "cpu_cores": cores, "mem_max_gb": mem_gb, **kw}
 
 
 def _vm(agent, cores=4, mem_gb=8.0):
-    return {"vmid": 201, "name": "vm", "node": "pve5", "type": "VM", "cpu_cores": cores,
+    return {"vmid": 201, "name": "vm", "node": "rigel", "type": "VM", "cpu_cores": cores,
             "mem_max_gb": mem_gb, "agent_running": agent}
 
 
@@ -210,7 +210,7 @@ def test_report_ranks_by_savings_and_totals():
         "3": _ct(cores=2, mem_gb=2, name="parked"),
     }
     samples = {"1": _samples(cpu=1, mem=50), "2": _samples(cpu=1, mem=5), "3": _samples(cpu=1, mem=5, running=0.1)}
-    nodes = {"pve3": {"cpu_cores": 4, "total_mem_gb": 32}}
+    nodes = {"lyra": {"cpu_cores": 4, "total_mem_gb": 32}}
     rep = build_report(guests, nodes, samples, _runs(), NOW)
     assert [g["name"] for g in rep["guests"]] == ["big", "small", "parked"]
     assert rep["guests"][0]["ignored"] is True
@@ -262,14 +262,14 @@ def test_route_and_guest_history_payload(tmp_db):
     conn = db.get_connection()
     for i in range(int(5 * 24)):
         ts = now - 5 * DAY + i * STEP + 1
-        conn.execute("INSERT INTO node_metrics (node_name, ts, cpu, memory) VALUES ('pve3', ?, 10, 10)", (ts,))
-        conn.execute("INSERT INTO guest_metrics (vmid, ts, node, cpu, memory) VALUES ('101', ?, 'pve3', 2, 10)", (ts,))
+        conn.execute("INSERT INTO node_metrics (node_name, ts, cpu, memory) VALUES ('lyra', ?, 10, 10)", (ts,))
+        conn.execute("INSERT INTO guest_metrics (vmid, ts, node, cpu, memory) VALUES ('101', ?, 'lyra', 2, 10)", (ts,))
     conn.commit()
 
     app = Flask(__name__)
     app.config["cache_manager"] = _Cache({
         "guests": {"101": _ct(cores=4, mem_gb=8, name="idle"), "102": _ct(name="nodata")},
-        "nodes": {"pve3": {"cpu_cores": 4, "total_mem_gb": 32}},
+        "nodes": {"lyra": {"cpu_cores": 4, "total_mem_gb": 32}},
     })
     app.register_blueprint(guests_bp)
     client = app.test_client()

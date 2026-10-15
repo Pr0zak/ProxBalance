@@ -5,14 +5,14 @@ import pytest
 from proxbalance import evacuation
 
 AVAILABLE = [
-    {"node": "pve4", "cpu": 80.0, "mem": 80.0},  # busiest: auto-pick never chooses it
-    {"node": "pve5", "cpu": 10.0, "mem": 10.0},  # idlest: auto-pick's favourite
-    {"node": "pve6", "cpu": 40.0, "mem": 40.0},
+    {"node": "orion", "cpu": 80.0, "mem": 80.0},  # busiest: auto-pick never chooses it
+    {"node": "rigel", "cpu": 10.0, "mem": 10.0},  # idlest: auto-pick's favourite
+    {"node": "vega", "cpu": 40.0, "mem": 40.0},
 ]
 STORAGE = {
-    "pve4": {"local-lvm", "shared"},
-    "pve5": {"local-lvm", "shared"},
-    "pve6": {"shared"},  # no local-lvm
+    "orion": {"local-lvm", "shared"},
+    "rigel": {"local-lvm", "shared"},
+    "vega": {"shared"},  # no local-lvm
 }
 
 
@@ -86,7 +86,7 @@ def run(monkeypatch):
         sessions["s"] = {"status": "starting", "progress": {"processed": 0, "successful": 0, "failed": 0}, "results": []}
         px = FakeProxmox(guests)
         evacuation._execute_evacuation(
-            "s", "pve3", list(guests), AVAILABLE, actions or {}, px,
+            "s", "lyra", list(guests), AVAILABLE, actions or {}, px,
             guest_targets=guest_targets, target_node=target_node,
         )
         return px.migrations, sessions["s"]
@@ -98,8 +98,8 @@ def test_per_guest_targets_are_honoured(run):
         101: ("lxc", {"rootfs": "local-lvm:subvol-101"}),
         102: ("qemu", {"scsi0": "shared:vm-102-disk-0"}),
     }
-    moves, session = run(guests, guest_targets={"101": "pve4", "102": "pve6"})
-    assert moves == [(101, "pve4"), (102, "pve6")]
+    moves, session = run(guests, guest_targets={"101": "orion", "102": "vega"})
+    assert moves == [(101, "orion"), (102, "vega")]
     assert session["progress"]["failed"] == 0
 
 
@@ -108,20 +108,20 @@ def test_unpicked_guests_still_auto_select(run):
         101: ("lxc", {"rootfs": "local-lvm:subvol-101"}),
         102: ("qemu", {"scsi0": "shared:vm-102-disk-0"}),
     }
-    moves, _ = run(guests, guest_targets={"102": "pve4"})
-    assert moves == [(101, "pve5"), (102, "pve4")]
+    moves, _ = run(guests, guest_targets={"102": "orion"})
+    assert moves == [(101, "rigel"), (102, "orion")]
 
 
 def test_pick_without_storage_fails_that_guest_only(run):
     guests = {
-        101: ("lxc", {"rootfs": "local-lvm:subvol-101"}),  # pve6 lacks local-lvm
+        101: ("lxc", {"rootfs": "local-lvm:subvol-101"}),  # vega lacks local-lvm
         102: ("qemu", {"scsi0": "shared:vm-102-disk-0"}),
     }
-    moves, session = run(guests, guest_targets={"101": "pve6", "102": "pve6"})
-    assert moves == [(102, "pve6")]  # 101 is NOT quietly sent to pve4/pve5
+    moves, session = run(guests, guest_targets={"101": "vega", "102": "vega"})
+    assert moves == [(102, "vega")]  # 101 is NOT quietly sent to orion/rigel
     failures = [r for r in session["results"] if not r.get("success")]
     assert len(failures) == 1 and failures[0]["vmid"] == 101
-    assert "pve6" in failures[0]["error"] and "local-lvm" in failures[0]["error"]
+    assert "vega" in failures[0]["error"] and "local-lvm" in failures[0]["error"]
 
 
 def test_pick_of_unavailable_node_fails(run):
@@ -137,12 +137,12 @@ def test_forced_target_node_applies_when_no_pick(run):
         101: ("lxc", {"rootfs": "shared:subvol-101"}),
         102: ("qemu", {"scsi0": "shared:vm-102-disk-0"}),
     }
-    moves, _ = run(guests, guest_targets={"102": "pve5"}, target_node="pve6")
-    assert moves == [(101, "pve6"), (102, "pve5")]
+    moves, _ = run(guests, guest_targets={"102": "rigel"}, target_node="vega")
+    assert moves == [(101, "vega"), (102, "rigel")]
 
 
 def test_ignored_guest_is_not_moved_even_with_a_pick(run):
     guests = {101: ("lxc", {"rootfs": "shared:subvol-101"})}
-    moves, session = run(guests, guest_targets={"101": "pve4"}, actions={"101": "ignore"})
+    moves, session = run(guests, guest_targets={"101": "orion"}, actions={"101": "ignore"})
     assert moves == []
     assert session["results"][0]["action"] == "ignored"

@@ -759,7 +759,7 @@ def run_automigrate():
                 log_content = f.read()
 
                 # Parse log for migration start message
-                # Format: "2025-10-25 22:38:14,176 - __main__ - INFO - Migrating CT 109 (influxdb) from pve3 to pve6 (score: 58.91) - Balance CPU load (src: 53.4%, target: 38.6%)"
+                # Format: "2025-10-25 22:38:14,176 - __main__ - INFO - Migrating CT 109 (postgres-primary) from lyra to vega (score: 58.91) - Balance CPU load (src: 53.4%, target: 38.6%)"
                 # Pattern matches: Migrating (VM|CT) {vmid} ({name}) from {source} to {target}
                 match = re.search(r'INFO - Migrating (VM|CT) (\d+) \(([^)]+)\) from (\S+) to (\S+)', log_content)
                 if match:

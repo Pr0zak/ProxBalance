@@ -72,7 +72,7 @@ def make_node(name, cpu_pct, mem_pct, total_mem_gb, cpu_cores=16,
 
 
 def make_guest(vmid, name, cpu_current=10, mem_used_gb=2.0, mem_max_gb=4.0,
-               cpu_cores=2, disk_read_bps=0, disk_write_bps=0, node="pve1",
+               cpu_cores=2, disk_read_bps=0, disk_write_bps=0, node="cygnus",
                status="running", guest_type="VM"):
     """Build a guest dict matching the structure used by scoring/recommendations."""
     return {
@@ -506,12 +506,12 @@ print("=" * 70)
 class FakeCollector:
     def __init__(self):
         self.nodes = {
-            "pve1": {
-                "name": "pve1", "total_mem_gb": 128.0, "guests": [100, 101, 102],
+            "cygnus": {
+                "name": "cygnus", "total_mem_gb": 128.0, "guests": [100, 101, 102],
                 "status": "online", "metrics": {}, "storage": [],
             },
-            "pve2": {
-                "name": "pve2", "total_mem_gb": 64.0, "guests": [200, 201],
+            "draco": {
+                "name": "draco", "total_mem_gb": 64.0, "guests": [200, 201],
                 "status": "online", "metrics": {}, "storage": [],
             },
         }
@@ -539,20 +539,20 @@ for node_name, node_data in collector.nodes.items():
         committed_mem_gb / total_mem_gb, 2
     ) if total_mem_gb > 0 else 0.0
 
-# pve1: guest 100 (running, 32GB) + 101 (running, 16GB) = 48GB. Guest 102 is stopped.
-test("pve1 committed_mem_gb = 48.0 (32+16, stopped guest excluded)",
-     abs(collector.nodes["pve1"]["committed_mem_gb"] - 48.0) < 0.01,
-     f"Got: {collector.nodes['pve1']['committed_mem_gb']}")
-test("pve1 overcommit ratio = 0.38 (48/128)",
-     abs(collector.nodes["pve1"]["mem_overcommit_ratio"] - 0.38) < 0.01,
-     f"Got: {collector.nodes['pve1']['mem_overcommit_ratio']}")
-# pve2: guest 200 (running, 48GB) only. Guest 201 (stopped, 24GB) excluded.
-test("pve2 committed_mem_gb = 48.0 (stopped guest excluded)",
-     abs(collector.nodes["pve2"]["committed_mem_gb"] - 48.0) < 0.01,
-     f"Got: {collector.nodes['pve2']['committed_mem_gb']}")
-test("pve2 overcommit ratio = 0.75 (48/64)",
-     abs(collector.nodes["pve2"]["mem_overcommit_ratio"] - 0.75) < 0.01,
-     f"Got: {collector.nodes['pve2']['mem_overcommit_ratio']}")
+# cygnus: guest 100 (running, 32GB) + 101 (running, 16GB) = 48GB. Guest 102 is stopped.
+test("cygnus committed_mem_gb = 48.0 (32+16, stopped guest excluded)",
+     abs(collector.nodes["cygnus"]["committed_mem_gb"] - 48.0) < 0.01,
+     f"Got: {collector.nodes['cygnus']['committed_mem_gb']}")
+test("cygnus overcommit ratio = 0.38 (48/128)",
+     abs(collector.nodes["cygnus"]["mem_overcommit_ratio"] - 0.38) < 0.01,
+     f"Got: {collector.nodes['cygnus']['mem_overcommit_ratio']}")
+# draco: guest 200 (running, 48GB) only. Guest 201 (stopped, 24GB) excluded.
+test("draco committed_mem_gb = 48.0 (stopped guest excluded)",
+     abs(collector.nodes["draco"]["committed_mem_gb"] - 48.0) < 0.01,
+     f"Got: {collector.nodes['draco']['committed_mem_gb']}")
+test("draco overcommit ratio = 0.75 (48/64)",
+     abs(collector.nodes["draco"]["mem_overcommit_ratio"] - 0.75) < 0.01,
+     f"Got: {collector.nodes['draco']['mem_overcommit_ratio']}")
 
 
 # ====================================================================

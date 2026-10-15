@@ -18,8 +18,8 @@ const eq = (label, got, want) => {
 const now = new Date('2026-10-14T12:00:00Z');
 const ago = (min) => new Date(now - min * 60000).toISOString();
 const inMin = (min) => new Date(now.getTime() + min * 60000).toISOString();
-const reason = 'web01 should move to pve6 because pve4 has elevated CPU usage (71% CPU, 50% mem), while pve6 has more capacity (20% CPU, 30% mem).';
-const queuedD = { action: 'queued', name: 'web01', vmid: 101, source_node: 'pve4', target_node: 'pve6', reason };
+const reason = 'web01 should move to vega because orion has elevated CPU usage (71% CPU, 50% mem), while vega has more capacity (20% CPU, 30% mem).';
+const queuedD = { action: 'queued', name: 'web01', vmid: 101, source_node: 'orion', target_node: 'vega', reason };
 const live = (decisions, extra = {}) => ({ timestamp: ago(2), status: 'no_action', mode: 'live', decisions, safety_checks: {}, ...extra });
 
 // --- outcome ---------------------------------------------------------------------
@@ -30,18 +30,18 @@ eq('queued tone differs from moved', [S.runOutcome(q).tone, S.runOutcome(live([{
 eq('dry-run queued chip', S.runOutcome({ ...q, mode: 'dry_run' }).chip, 'would ask');
 eq('queued strip category', S.runCategory(q), 'queued');
 eq('legend has queued', S.CATEGORY_LABELS.some(([c, l]) => c === 'queued' && l === 'needs approval'), true);
-eq('queued summary', S.runSummary(q), 'asks approval to move web01 pve4 → pve6');
-eq('dry-run queued summary', S.runSummary({ ...q, mode: 'dry_run' }), 'would ask approval to move web01 pve4 → pve6 — dry run, nothing queued');
-eq('queued last-check subject', S.lastCheckParts(q, { now }).subject, 'web01 pve4 → pve6');
+eq('queued summary', S.runSummary(q), 'asks approval to move web01 orion → vega');
+eq('dry-run queued summary', S.runSummary({ ...q, mode: 'dry_run' }), 'would ask approval to move web01 orion → vega — dry run, nothing queued');
+eq('queued last-check subject', S.lastCheckParts(q, { now }).subject, 'web01 orion → vega');
 
 // A run that moved one guest and queued another: moved wins, summary says both.
-const mixed = live([{ action: 'executed', name: 'db01', vmid: 102, source_node: 'pve5', target_node: 'pve6', reason, auto_run: 'critical', auto_run_detail: 'pve5 CPU 92% > 85%' }, queuedD], { status: 'success' });
+const mixed = live([{ action: 'executed', name: 'db01', vmid: 102, source_node: 'rigel', target_node: 'vega', reason, auto_run: 'critical', auto_run_detail: 'rigel CPU 92% > 85%' }, queuedD], { status: 'success' });
 eq('mixed kind', S.runOutcome(mixed).kind, 'moved');
-eq('mixed summary', S.runSummary(mixed), 'moved db01 pve5 → pve6; 1 move needs approval');
+eq('mixed summary', S.runSummary(mixed), 'moved db01 rigel → vega; 1 move needs approval');
 const rows = S.lastCheckRows(mixed, { now });
 eq('mixed rows chips', rows.map(r => r.chip), ['moved', 'needs approval']);
-eq('critical auto-run why', rows[0].why, 'pve5 CPU 92% > 85%');
-eq('approved auto-run why', S.autoRunWhy({ ...queuedD, auto_run: 'approved' }), 'approved · CPU on pve4 elevated');
+eq('critical auto-run why', rows[0].why, 'rigel CPU 92% > 85%');
+eq('approved auto-run why', S.autoRunWhy({ ...queuedD, auto_run: 'approved' }), 'approved · CPU on orion elevated');
 
 // Automatic-mode runs are unchanged by the new kind.
 eq('plain held run still held', S.runOutcome(live([{ ...queuedD, action: 'filtered', reason: 'In cooldown period' }])).kind, 'held');
@@ -56,10 +56,10 @@ eq('mode lines', S.automationModes({ cpu: 80, mem: 88 }).map(m => [m.id, m.line]
   ['automatic', 'Runs every move that passes the rules.'],
   ['semi', 'Runs evacuations and moves off nodes over 80% CPU or 88% memory; asks you about the rest.'],
 ]);
-const entry = { vmid: 101, name: 'web01', source_node: 'pve4', target_node: 'pve6', reason, confidence: 81.6,
+const entry = { vmid: 101, name: 'web01', source_node: 'orion', target_node: 'vega', reason, confidence: 81.6,
   status: 'pending', queued_at: ago(90), expires_at: inMin(22 * 60 + 30) };
 const r = S.approvalRow(entry, now);
-eq('row parts', [r.name, r.route, r.why, r.approved], ['web01', 'pve4 → pve6', 'CPU on pve4 elevated', false]);
+eq('row parts', [r.name, r.route, r.why, r.approved], ['web01', 'orion → vega', 'CPU on orion elevated', false]);
 eq('row detail', r.detail, `${reason.replace(/\.$/, '')} · confidence 82% · queued 1 h ago · expires in 22 h`);
 eq('approved row', S.approvalRow({ ...entry, status: 'approved' }, now).approved, true);
 eq('pending approvals', S.pendingApprovals([entry, { ...entry, vmid: 2, status: 'approved' }, { ...entry, vmid: 3, status: 'dismissed' }]).map(e => e.vmid), [101]);

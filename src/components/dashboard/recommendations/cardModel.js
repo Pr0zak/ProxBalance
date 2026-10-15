@@ -66,7 +66,7 @@ export function storageEntries(rec, level = 'warning') {
   return list.filter(e => (STORAGE_RANK[e?.level] ?? -1) >= floor);
 }
 
-/** "local-lvm on pve6: 72% → 88%", plus planned-move and won't-fit notes. */
+/** "local-lvm on vega: 72% → 88%", plus planned-move and won't-fit notes. */
 export function storageLine(e) {
   const pct = (v) => (num(v) == null ? '—' : `${Math.round(v)}%`);
   const base = `${e?.storage || '—'} on ${e?.node || '—'}: ${pct(e?.used_before_pct)} → ${pct(e?.used_after_pct)}`;

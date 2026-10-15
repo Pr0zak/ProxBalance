@@ -49,7 +49,7 @@ export function defaultNode(summaryRows, routed) {
 }
 
 /**
- * Short verdict without the node name, for "If pve4 fails: …".
+ * Short verdict without the node name, for "If orion fails: …".
  * Returns null when there is nothing to say (no result or node offline).
  */
 export function shortVerdict(res) {

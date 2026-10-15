@@ -80,10 +80,10 @@ def test_sanitize_floats_walks_nested_structures():
 
 
 def test_client_responses_are_sanitised_and_json_safe():
-    body = b'{"data": [{"node": "pve3", "cpu": NaN, "mem": Infinity, "maxmem": -Infinity, "uptime": 5}]}'
+    body = b'{"data": [{"node": "lyra", "cpu": NaN, "mem": Infinity, "maxmem": -Infinity, "uptime": 5}]}'
     client, _ = make_client(lambda *a: FakeResponse(body=body))
     result = client.cluster.resources.get()
-    assert result == [{"node": "pve3", "cpu": None, "mem": None, "maxmem": None, "uptime": 5}]
+    assert result == [{"node": "lyra", "cpu": None, "mem": None, "maxmem": None, "uptime": 5}]
     # Strict JSON (what browsers accept) must be able to encode it.
     json.dumps(result, allow_nan=False)
 
@@ -91,7 +91,7 @@ def test_client_responses_are_sanitised_and_json_safe():
 def test_error_bodies_are_parsed_with_the_same_serializer():
     client, _ = make_client(lambda *a: FakeResponse(400, b'{"errors": {"x": NaN}}', reason="Bad"))
     with pytest.raises(ResourceException) as info:
-        client.nodes("pve3").status.get()
+        client.nodes("lyra").status.get()
     assert info.value.errors == {"x": None}
 
 
@@ -146,15 +146,15 @@ def test_get_proxmox_client_uses_hardened_builder():
 
 @pytest.mark.parametrize("exc, kind", [
     (requests.exceptions.ConnectionError(
-        "HTTPSConnectionPool(host='10.0.0.3', port=8006): Max retries exceeded with url: /api2/json/version "
+        "HTTPSConnectionPool(host='192.168.1.3', port=8006): Max retries exceeded with url: /api2/json/version "
         "(Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object>: Failed to establish a new "
         "connection: [Errno 111] Connection refused'))"), "network"),
     (ConnectionRefusedError(errno.ECONNREFUSED, "Connection refused"), "network"),
     (ConnectionResetError(errno.ECONNRESET, "Connection reset by peer"), "network"),
     (OSError(errno.EHOSTUNREACH, "No route to host"), "network"),
     (socket.gaierror(-2, "Name or service not known"), "network"),
-    (requests.exceptions.ConnectTimeout("Connection to 10.0.0.3 timed out. (connect timeout=5)"), "connect_timeout"),
-    (requests.exceptions.ReadTimeout("HTTPSConnectionPool(host='10.0.0.3', port=8006): Read timed out. (read timeout=8)"),
+    (requests.exceptions.ConnectTimeout("Connection to 192.168.1.3 timed out. (connect timeout=5)"), "connect_timeout"),
+    (requests.exceptions.ReadTimeout("HTTPSConnectionPool(host='192.168.1.3', port=8006): Read timed out. (read timeout=8)"),
      "read_timeout"),
     (requests.exceptions.ConnectionError("HTTPSConnectionPool(...): Read timed out."), "read_timeout"),
     (http_error(401, "authentication failure"), "auth"),
@@ -254,9 +254,9 @@ def test_collector_records_error_kind(monkeypatch):
     collector = object.__new__(collector_api.ProxmoxAPICollector)
     collector.proxmox_slow = client
     collector.collection_errors = []
-    assert collector.get_storage_status("pve5") == []
+    assert collector.get_storage_status("rigel") == []
     assert collector.collection_errors[0]["kind"] == "application"
-    assert collector.collection_errors[0]["node"] == "pve5"
+    assert collector.collection_errors[0]["node"] == "rigel"
 
 
 def _migrate_handler(post_exc, tasks):
@@ -272,36 +272,36 @@ def _migrate_handler(post_exc, tasks):
 def test_migrate_post_is_sent_once_on_read_timeout_and_reports_unknown():
     client, transport = make_client(_migrate_handler(requests.exceptions.ReadTimeout("Read timed out."), []))
     with pytest.raises(MigrationOutcomeUnknown) as info:
-        submit_migration(client, "pve3", 101, "VM", {"target": "pve4", "online": 1}, clock=lambda: 1000.0)
+        submit_migration(client, "lyra", 101, "VM", {"target": "orion", "online": 1}, clock=lambda: 1000.0)
     assert transport.count("POST") == 1
     assert "NOT resent" in str(info.value)
     # It looked up the task list instead (a GET) for this guest's migrate tasks.
     method, url, _, params = transport.calls[-1]
-    assert method == "GET" and url.endswith("/nodes/pve3/tasks")
+    assert method == "GET" and url.endswith("/nodes/lyra/tasks")
     assert params["vmid"] == 101 and params["typefilter"] == "qmigrate"
 
 
 def test_migrate_post_timeout_recovers_task_started_by_the_lost_request():
-    upid = "UPID:pve3:000A:0001:00000400:vzmigrate:105:root@pam!test:"
+    upid = "UPID:lyra:000A:0001:00000400:vzmigrate:105:root@pam!test:"
     tasks = [
         {"upid": "UPID:old", "id": "105", "type": "vzmigrate", "starttime": 10},
         {"upid": upid, "id": "105", "type": "vzmigrate", "starttime": 1001},
     ]
     client, transport = make_client(_migrate_handler(requests.exceptions.ReadTimeout("Read timed out."), tasks))
-    assert submit_migration(client, "pve3", 105, "CT", {"target": "pve4", "restart": 1},
+    assert submit_migration(client, "lyra", 105, "CT", {"target": "orion", "restart": 1},
                             clock=lambda: 1000.0) == upid
     assert transport.count("POST") == 1
 
 
 @pytest.mark.parametrize("exc", [
-    requests.exceptions.ConnectTimeout("Connection to pve3 timed out. (connect timeout=5)"),
+    requests.exceptions.ConnectTimeout("Connection to lyra timed out. (connect timeout=5)"),
     requests.exceptions.ConnectionError("Failed to establish a new connection: [Errno 111] Connection refused"),
     http_error(500, "migration aborted"),
 ])
 def test_migrate_post_failures_that_started_nothing_are_raised_unchanged(exc):
     client, transport = make_client(_migrate_handler(exc, []))
     with pytest.raises(type(exc)):
-        submit_migration(client, "pve3", 101, "VM", {"target": "pve4"})
+        submit_migration(client, "lyra", 101, "VM", {"target": "orion"})
     assert transport.count("POST") == 1
     assert transport.count("GET") == 0
 
@@ -311,7 +311,7 @@ def test_execute_migration_reports_unknown_outcome_without_resending(monkeypatch
 
     monkeypatch.setattr(migrations, "trigger_collection", lambda: None)
     client, transport = make_client(_migrate_handler(requests.exceptions.ReadTimeout("Read timed out."), []))
-    result, status = migrations.execute_migration(client, 101, "pve4", "pve3", "VM")
+    result, status = migrations.execute_migration(client, 101, "orion", "lyra", "VM")
     assert status == 504
     assert result["success"] is False and result["outcome_unknown"] is True
     assert transport.count("POST") == 1
@@ -323,7 +323,7 @@ def test_batch_migration_never_resends(monkeypatch):
     monkeypatch.setattr(migrations, "trigger_collection", lambda: None)
     client, transport = make_client(_migrate_handler(requests.exceptions.ReadTimeout("Read timed out."), []))
     result, _ = migrations.execute_batch_migration(client, [
-        {"vmid": 101, "target_node": "pve4", "source_node": "pve3", "type": "VM"},
+        {"vmid": 101, "target_node": "orion", "source_node": "lyra", "type": "VM"},
     ])
     assert result["succeeded"] == 0
     assert result["results"][0]["outcome_unknown"] is True

@@ -35,30 +35,30 @@ def _insert(conn, ts, nodes, health=80.0):
 
 
 def test_bucket_averages_cpu_and_mem(tmp_db):
-    _insert(tmp_db, T1, {"pve3": {"suitability": 70.0, "cpu": 20.0, "mem": 40.0}})
-    _insert(tmp_db, T2, {"pve3": {"suitability": 80.0, "cpu": 30.0, "mem": 50.0}})
+    _insert(tmp_db, T1, {"lyra": {"suitability": 70.0, "cpu": 20.0, "mem": 40.0}})
+    _insert(tmp_db, T2, {"lyra": {"suitability": 80.0, "cpu": 30.0, "mem": 50.0}})
     rows = forecasting.get_score_history_bucketed(bucket_minutes=60)
     assert len(rows) == 1
-    assert rows[0]["nodes"]["pve3"] == {"suitability": 75.0, "cpu": 25.0, "mem": 45.0}
+    assert rows[0]["nodes"]["lyra"] == {"suitability": 75.0, "cpu": 25.0, "mem": 45.0}
 
 
 def test_missing_cpu_does_not_skew_other_fields(tmp_db):
-    _insert(tmp_db, T1, {"pve3": {"suitability": 70.0, "cpu": None, "mem": 40.0}})
-    _insert(tmp_db, T2, {"pve3": {"suitability": 80.0, "cpu": 30.0, "mem": 50.0}})
-    node = forecasting.get_score_history_bucketed(bucket_minutes=60)[0]["nodes"]["pve3"]
+    _insert(tmp_db, T1, {"lyra": {"suitability": 70.0, "cpu": None, "mem": 40.0}})
+    _insert(tmp_db, T2, {"lyra": {"suitability": 80.0, "cpu": 30.0, "mem": 50.0}})
+    node = forecasting.get_score_history_bucketed(bucket_minutes=60)[0]["nodes"]["lyra"]
     assert node == {"suitability": 75.0, "cpu": 30.0, "mem": 45.0}
 
 
 def test_node_without_suitability_is_skipped(tmp_db):
-    _insert(tmp_db, T1, {"pve3": {"cpu": 30.0}, "pve4": {"suitability": 60.0}})
+    _insert(tmp_db, T1, {"lyra": {"cpu": 30.0}, "orion": {"suitability": 60.0}})
     nodes = forecasting.get_score_history_bucketed(bucket_minutes=60)[0]["nodes"]
-    assert "pve3" not in nodes
-    assert nodes["pve4"] == {"suitability": 60.0}
+    assert "lyra" not in nodes
+    assert nodes["orion"] == {"suitability": 60.0}
 
 
 def test_rows_older_than_requested_window_are_not_scanned(tmp_db):
     old = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
-    _insert(tmp_db, old, {"pve3": {"suitability": 10.0}})
-    _insert(tmp_db, T1, {"pve3": {"suitability": 70.0}})
+    _insert(tmp_db, old, {"lyra": {"suitability": 10.0}})
+    _insert(tmp_db, T1, {"lyra": {"suitability": 70.0}})
     rows = forecasting.get_score_history_bucketed(bucket_minutes=60, limit=48)
-    assert [r["nodes"]["pve3"]["suitability"] for r in rows] == [70.0]
+    assert [r["nodes"]["lyra"]["suitability"] for r in rows] == [70.0]

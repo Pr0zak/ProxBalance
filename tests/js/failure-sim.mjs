@@ -20,9 +20,9 @@ test('chip: green can fail, amber tight / stranded, red left out', () => {
 });
 
 test('default node: routed pick, else worst, else first', () => {
-  const rows = [{ node: 'pve3', status: 'ok' }, { node: 'pve4', status: 'tight' }, { node: 'pve5', status: 'short' }];
-  assert.equal(M.defaultNode(rows, 'pve3'), 'pve3');
-  assert.equal(M.defaultNode(rows, 'nope'), 'pve5');
+  const rows = [{ node: 'lyra', status: 'ok' }, { node: 'orion', status: 'tight' }, { node: 'rigel', status: 'short' }];
+  assert.equal(M.defaultNode(rows, 'lyra'), 'lyra');
+  assert.equal(M.defaultNode(rows, 'nope'), 'rigel');
   assert.equal(M.defaultNode([{ node: 'a', status: 'ok' }, { node: 'b', status: 'ok' }]), 'a');
   assert.equal(M.defaultNode([], null), null);
 });
@@ -30,8 +30,8 @@ test('default node: routed pick, else worst, else first', () => {
 test('short verdict', () => {
   const placed = [{ mem_gb: 2 }, { mem_gb: 4 }];
   assert.equal(
-    M.shortVerdict({ status: 'ok', placements: placed, cant_restart: [], doesnt_fit: [], busiest: { node: 'pve3', mem_after: 86.4 } }),
-    'all 2 guests restart elsewhere, busiest node pve3 at 86% memory',
+    M.shortVerdict({ status: 'ok', placements: placed, cant_restart: [], doesnt_fit: [], busiest: { node: 'lyra', mem_after: 86.4 } }),
+    'all 2 guests restart elsewhere, busiest node lyra at 86% memory',
   );
   assert.equal(
     M.shortVerdict({ status: 'short', placements: placed, cant_restart: [{}], doesnt_fit: [{ mem_gb: 8 }, { mem_gb: 4 }] }),

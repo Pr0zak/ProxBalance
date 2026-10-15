@@ -13,7 +13,7 @@ def _history(cpu_for_utc_hour, days=3):
         ts = start + timedelta(hours=i)
         out.append({
             "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "nodes": {"pve3": {"cpu": cpu_for_utc_hour(ts.hour)}},
+            "nodes": {"lyra": {"cpu": cpu_for_utc_hour(ts.hour)}},
         })
     return out
 
@@ -36,7 +36,7 @@ def test_timing_is_contiguous_not_scattered_lows():
     def cpu(h):
         return {4: 5, 5: 6, 6: 7, 21: 4, 22: 30}.get(h, 40)
 
-    res = analyze_workload_patterns(_history(cpu), "pve3")
+    res = analyze_workload_patterns(_history(cpu), "lyra")
     assert res["quiet_window"]["start_hour"] == 4
     assert res["quiet_window"]["end_hour"] == 7
     assert res["recommendation_timing"].startswith("Migrate during 04:00-07:00")
@@ -47,8 +47,8 @@ def test_hours_bucketed_in_schedule_timezone():
     def cpu(h):
         return 5 if 8 <= h < 11 else 40
 
-    utc = analyze_workload_patterns(_history(cpu), "pve3")
-    chicago = analyze_workload_patterns(_history(cpu), "pve3", tz_name="America/Chicago")
+    utc = analyze_workload_patterns(_history(cpu), "lyra")
+    chicago = analyze_workload_patterns(_history(cpu), "lyra", tz_name="America/Chicago")
     assert utc["quiet_window"]["start_hour"] == 8
     assert chicago["quiet_window"]["start_hour"] == 3
 
@@ -57,5 +57,5 @@ def test_unknown_timezone_falls_back_to_utc():
     def cpu(h):
         return 5 if 8 <= h < 11 else 40
 
-    res = analyze_workload_patterns(_history(cpu), "pve3", tz_name="Not/AZone")
+    res = analyze_workload_patterns(_history(cpu), "lyra", tz_name="Not/AZone")
     assert res["quiet_window"]["start_hour"] == 8

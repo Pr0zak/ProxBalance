@@ -5,15 +5,15 @@ import pytest
 from proxbalance.recommendation_analysis import detect_migration_conflicts
 from proxbalance.reporting import build_summary
 
-# pve3 uses ~14 GB of 31 GB. Three guests leave it; their *allocations*
+# lyra uses ~14 GB of 31 GB. Three guests leave it; their *allocations*
 # (6 + 6 + 4 GB) exceed what it actually uses, which used to drive the
 # simulated "after" to 0% CPU / 0% memory while guests remained.
 NODES = {
-    "pve3": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
+    "lyra": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
              "metrics": {"current_cpu": 14.6, "current_mem": 44.6}, "guests": list(range(15))},
-    "pve4": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
+    "orion": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
              "metrics": {"current_cpu": 18.6, "current_mem": 31.2}, "guests": list(range(31))},
-    "pve5": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
+    "rigel": {"status": "online", "cpu_cores": 4, "total_mem_gb": 31.0,
              "metrics": {"current_cpu": 8.6, "current_mem": 44.4}, "guests": list(range(12))},
 }
 
@@ -30,12 +30,12 @@ def _rec(vmid, src, tgt, mem_gb, improvement=20.0, rtype="CT"):
             "target_node": tgt, "mem_gb": mem_gb, "score_improvement": improvement}
 
 
-RECS = [_rec(230, "pve3", "pve4", 6.0), _rec(238, "pve3", "pve4", 6.0), _rec(239, "pve3", "pve4", 4.0)]
+RECS = [_rec(230, "lyra", "orion", 6.0), _rec(238, "lyra", "orion", 6.0), _rec(239, "lyra", "orion", 4.0)]
 
 
 def test_source_with_remaining_guests_is_not_zeroed():
     impact = build_summary(RECS, [], NODES, {}, guests=GUESTS)["batch_impact"]
-    after = impact["after"]["node_scores"]["pve3"]
+    after = impact["after"]["node_scores"]["lyra"]
     assert after["guest_count"] == 12
     assert after["cpu"] > 0 and after["mem"] > 0
     # Source only gets back what the guests actually use: 2.9 GB of 31 GB.
@@ -46,7 +46,7 @@ def test_source_with_remaining_guests_is_not_zeroed():
 
 def test_target_uses_allocation_like_conflict_detector():
     impact = build_summary(RECS, [], NODES, {}, guests=GUESTS)["batch_impact"]
-    after = impact["after"]["node_scores"]["pve4"]
+    after = impact["after"]["node_scores"]["orion"]
     assert after["guest_count"] == 34
     assert after["mem"] == pytest.approx(31.2 + 16.0 / 31 * 100, abs=0.1)
 
@@ -74,25 +74,25 @@ def test_moves_resimulate_the_after_state():
 
 def test_without_guest_records_falls_back_without_crashing():
     impact = build_summary(RECS, [], NODES, {})["batch_impact"]
-    assert set(impact["after"]["node_scores"]) == {"pve3", "pve4", "pve5"}
+    assert set(impact["after"]["node_scores"]) == {"lyra", "orion", "rigel"}
     assert len(impact["moves"]) == 3
 
 
 def test_conflict_has_structured_resolution():
-    # pve4: 31.2% + 16 GB allocated (~51.6%) = ~82.8% memory, over a 70% limit.
+    # orion: 31.2% + 16 GB allocated (~51.6%) = ~82.8% memory, over a 70% limit.
     conflicts = detect_migration_conflicts(RECS, NODES, GUESTS, cpu_threshold=85, mem_threshold=70, penalty_cfg={})
     assert len(conflicts) == 1
     c = conflicts[0]
-    assert c["target_node"] == "pve4" and c["exceeds_mem"]
+    assert c["target_node"] == "orion" and c["exceeds_mem"]
     assert c["resolution_vmid"] in (230, 238, 239)
-    # The alternative is never the guest's own source (pve3) or the conflicted target.
+    # The alternative is never the guest's own source (lyra) or the conflicted target.
     assert c["resolution_action"] == "retarget"
-    assert c["resolution_target"] == "pve5"
-    assert "pve5 instead" in c["resolution"] and "(CT " in c["resolution"]
+    assert c["resolution_target"] == "rigel"
+    assert "rigel instead" in c["resolution"] and "(CT " in c["resolution"]
 
 
 def test_conflict_without_alternative_is_a_defer():
-    busy = {k: dict(v, metrics={"current_cpu": 80.0, "current_mem": 80.0}) if k != "pve4" else v
+    busy = {k: dict(v, metrics={"current_cpu": 80.0, "current_mem": 80.0}) if k != "orion" else v
             for k, v in NODES.items()}
     c = detect_migration_conflicts(RECS, busy, GUESTS, cpu_threshold=85, mem_threshold=70, penalty_cfg={})[0]
     assert c["resolution_action"] == "defer"
@@ -101,14 +101,14 @@ def test_conflict_without_alternative_is_a_defer():
 
 
 def test_conflict_does_not_net_outgoing_moves():
-    # pve4 receives three guests (~51.6% allocated) and is also recommended to
+    # orion receives three guests (~51.6% allocated) and is also recommended to
     # send away a guest using 9.3 GB. automigrate may never run that outgoing
     # move (filters, per-run cap, no planner ordering), so it must not hide the
     # conflict; it is only listed as a possible resolution.
     guests = dict(GUESTS, **{"150": {"cpu_current": 10.0, "cpu_cores": 2, "mem_used_gb": 9.3, "mem_max_gb": 12.0}})
-    recs = RECS + [_rec(150, "pve4", "pve5", 12.0, improvement=5.0)]
+    recs = RECS + [_rec(150, "orion", "rigel", 12.0, improvement=5.0)]
     c = detect_migration_conflicts(recs, NODES, guests, cpu_threshold=85, mem_threshold=70, penalty_cfg={})
-    assert len(c) == 1 and c[0]["target_node"] == "pve4"
+    assert len(c) == 1 and c[0]["target_node"] == "orion"
     assert [g["vmid"] for g in c[0]["outgoing_guests"]] == [150]
     assert c[0]["combined_predicted_mem"] == pytest.approx(31.2 + 16.0 / 31 * 100, abs=0.2)
 

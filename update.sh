@@ -14,12 +14,12 @@
 
 set -euo pipefail
 
-CTID=${1:-336}
+CTID=${1:-}
 ASSUME_YES=0
 [ "${2:-}" = "-y" ] && ASSUME_YES=1
 
 if [ -z "$CTID" ]; then
-    echo "Usage: $0 <container-id>"
+    echo "Usage: $0 <container-id> [-y]  (the ProxBalance LXC ID, see pct list)"
     exit 1
 fi
 

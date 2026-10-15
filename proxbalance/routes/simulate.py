@@ -30,7 +30,7 @@ def _pct_arg(name: str, default: float) -> float:
 @simulate_bp.route("/api/simulate/node-failure", methods=["GET"])
 @api_route
 def simulate_failure():
-    """Simulate one node failing (``?node=pve4``) or every node in turn.
+    """Simulate one node failing (``?node=orion``) or every node in turn.
 
     Query args:
         node: Node to fail. Omitted: N-1 summary across all online nodes.

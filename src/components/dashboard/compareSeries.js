@@ -207,7 +207,7 @@ export function spreadAtLast(lines, hidden = []) {
 const num = (v) => (Math.abs(v) >= 10 ? String(Math.round(v)) : String(+v.toFixed(1)));
 
 /**
- * "Spread at last point (14:35): 24 pts (pve6 26% → pve3 50%)", or
+ * "Spread at last point (14:35): 24 pts (vega 26% → lyra 50%)", or
  * "Spread at last point: —". `when` is the point's time label.
  */
 export function spreadText(s, when) {

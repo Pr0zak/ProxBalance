@@ -12,13 +12,13 @@ const { buildSearchItems, rankSearch, scoreToken, isOpenShortcut } = await impor
 
 const tags = (...t) => ({ has_ignore: false, all_tags: t });
 const data = {
-  nodes: { pve3: { name: 'pve3', status: 'online' }, pve4: { name: 'pve4', status: 'online' } },
+  nodes: { lyra: { name: 'lyra', status: 'online' }, orion: { name: 'orion', status: 'online' } },
   guests: {
-    100: { vmid: 100, name: 'proxbalance', type: 'CT', node: 'pve3', status: 'running', tags: tags('ignore') },
-    1001: { vmid: 1001, name: 'media-sonarr', type: 'CT', node: 'pve4', status: 'running', tags: tags('media') },
-    106: { vmid: 106, name: 'homeassistant', type: 'VM', node: 'pve3', status: 'running', tags: tags() },
-    201: { vmid: 201, name: 'proxbalance-mcp', type: 'CT', node: 'pve4', status: 'stopped', tags: tags('claude') },
-    10: { vmid: 10, name: '100-days', type: 'VM', node: 'pve4', status: 'stopped', tags: tags() },
+    100: { vmid: 100, name: 'proxbalance', type: 'CT', node: 'lyra', status: 'running', tags: tags('ignore') },
+    1001: { vmid: 1001, name: 'media-nextcloud', type: 'CT', node: 'orion', status: 'running', tags: tags('media') },
+    106: { vmid: 106, name: 'fileserver', type: 'VM', node: 'lyra', status: 'running', tags: tags() },
+    201: { vmid: 201, name: 'proxbalance-mcp', type: 'CT', node: 'orion', status: 'stopped', tags: tags('backup') },
+    10: { vmid: 10, name: '100-days', type: 'VM', node: 'orion', status: 'stopped', tags: tags() },
   },
 };
 const items = buildSearchItems(data);
@@ -26,12 +26,12 @@ const keys = (q, n) => rankSearch(items, q, n).map(i => i.key);
 
 test('items: guests, nodes with guest counts, four pages', () => {
   assert.equal(items.filter(i => i.kind === 'guest').length, 5);
-  const pve4 = items.find(i => i.key === 'node:pve4');
-  assert.equal(pve4.guestCount, 3);
+  const orion = items.find(i => i.key === 'node:orion');
+  assert.equal(orion.guestCount, 3);
   assert.deepEqual(items.filter(i => i.kind === 'page').map(i => i.page), ['dashboard', 'insights', 'automation', 'settings']);
   const g = items.find(i => i.key === 'guest:106');
   assert.equal(g.vmid, '106');
-  assert.equal(g.node, 'pve3');
+  assert.equal(g.node, 'lyra');
   assert.equal(g.guestType, 'VM');
 });
 
@@ -47,17 +47,17 @@ test('vmid prefix ranks below name prefix', () => {
 
 test('name prefix, then word start, then substring', () => {
   assert.deepEqual(keys('prox'), ['guest:100', 'guest:201']);
-  assert.deepEqual(keys('sonarr'), ['guest:1001']);
-  assert.deepEqual(keys('assist'), ['guest:106']);
+  assert.deepEqual(keys('nextcloud'), ['guest:1001']);
+  assert.deepEqual(keys('serv'), ['guest:106']);
 });
 
 test('tags match exact and partial', () => {
   assert.deepEqual(keys('media'), ['guest:1001']);
-  assert.deepEqual(keys('clau'), ['guest:201']);
+  assert.deepEqual(keys('back'), ['guest:201']);
 });
 
 test('nodes and pages are searchable; empty query lists them, not guests', () => {
-  assert.deepEqual(keys('pve4'), ['node:pve4']);
+  assert.deepEqual(keys('orion'), ['node:orion']);
   assert.deepEqual(keys('sett'), ['page:settings']);
   const empty = keys('');
   assert.ok(empty.every(k => !k.startsWith('guest:')));
@@ -65,10 +65,10 @@ test('nodes and pages are searchable; empty query lists them, not guests', () =>
 });
 
 test('subsequence fallback, case-insensitive, multi-token AND', () => {
-  assert.deepEqual(keys('HMAS'), ['guest:106']);
+  assert.deepEqual(keys('FLSV'), ['guest:106']);
   assert.deepEqual(keys('prox mcp'), ['guest:201']);
   assert.deepEqual(keys('zzz'), []);
-  assert.equal(scoreToken(items.find(i => i.key === 'guest:106'), 'h'), 2);
+  assert.equal(scoreToken(items.find(i => i.key === 'guest:106'), 'f'), 2);
 });
 
 test('limit caps results', () => {

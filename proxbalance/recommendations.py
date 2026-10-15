@@ -936,7 +936,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 "target_node_score": round(best_score, 2),  # Raw penalty score (internal use)
                 "suitability_rating": suitability_rating,  # 0-100, higher is better (user-facing)
                 # Source node's headroom on the same 0-100 scale, so the log can
-                # show "pve5 31 -> pve6 58" instead of a raw penalty difference.
+                # show "rigel 31 -> vega 58" instead of a raw penalty difference.
                 "source_suitability_rating": round(max(0, 100 - min(candidate["current_score"], 100)), 1),
                 "score_improvement": round(score_improvement, 2),  # How much better
                 "reason": reason,  # Backward-compatible string (now the full summary sentence)

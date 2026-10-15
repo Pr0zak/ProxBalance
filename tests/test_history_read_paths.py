@@ -47,7 +47,7 @@ def test_migration_history_limit_returns_newest_first(tmp_db):
 def _insert_outcome(conn, key, vmid):
     conn.execute(
         "INSERT INTO migration_outcomes (key, vmid, source_node, target_node, guest_type, "
-        "status, pre_migration_json) VALUES (?, ?, 'pve3', 'pve4', 'CT', 'completed', ?)",
+        "status, pre_migration_json) VALUES (?, ?, 'lyra', 'orion', 'CT', 'completed', ?)",
         (key, vmid, json.dumps({})),
     )
 

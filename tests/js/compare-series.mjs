@@ -14,10 +14,10 @@ const eq = (name, got, want) => {
 };
 
 // Colours: sorted-name order, stable regardless of input order, cycled.
-const c1 = S.nodeColors(['pve6', 'pve3', 'pve5', 'pve4']);
-const c2 = S.nodeColors(['pve3', 'pve4', 'pve5', 'pve6']);
+const c1 = S.nodeColors(['vega', 'lyra', 'rigel', 'orion']);
+const c2 = S.nodeColors(['lyra', 'orion', 'rigel', 'vega']);
 eq('colours follow sorted names', c1, c2);
-eq('first sorted node gets the first colour', c1.pve3, '#3b82f6');
+eq('first sorted node gets the first colour', c1.lyra, '#3b82f6');
 const many = S.nodeColors(Array.from({ length: 9 }, (_, i) => `n${i}`));
 eq('colours cycle past the palette', many.n8, many.n0);
 
@@ -82,10 +82,10 @@ eq('iowait includes threshold', S.axisMax('iowait', [{ values: [1, 2] }], 30), 3
 eq('iowait with no data has a floor', S.axisMax('iowait', [{ values: [null] }], undefined), 10);
 
 // Spread line: from the last plotted bucket, visible nodes only.
-const lines = [{ name: 'pve3', values: [40, 50] }, { name: 'pve6', values: [20, 26] }, { name: 'pve5', values: [30, null] }];
+const lines = [{ name: 'lyra', values: [40, 50] }, { name: 'vega', values: [20, 26] }, { name: 'rigel', values: [30, null] }];
 const sp = S.spreadAtLast(lines);
-eq('spread from last bucket, offline node left out', sp, { spread: 24, low: { name: 'pve6', value: 26 }, high: { name: 'pve3', value: 50 } });
-eq('spread text', S.spreadText(sp, '14:35'), 'Spread at last point (14:35): 24 pts (pve6 26% → pve3 50%)');
+eq('spread from last bucket, offline node left out', sp, { spread: 24, low: { name: 'vega', value: 26 }, high: { name: 'lyra', value: 50 } });
+eq('spread text', S.spreadText(sp, '14:35'), 'Spread at last point (14:35): 24 pts (vega 26% → lyra 50%)');
 eq('hidden node left out', S.spreadAtLast([...lines, { name: 'x', values: [0, 99] }], ['x']), sp);
 eq('zero spread is a value', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }, { name: 'b', values: [5] }]), '1:00'), 'Spread at last point (1:00): 0 pts (a 5% → b 5%)');
 eq('small values keep a decimal', S.spreadText({ spread: 1.25, low: { name: 'a', value: 0.4 }, high: { name: 'b', value: 1.66 } }), 'Spread at last point: 1.3 pts (a 0.4% → b 1.7%)');

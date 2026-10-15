@@ -145,7 +145,7 @@ def _collector(with_psi):
     return col
 
 
-NODE = {"node": "pve4", "cpu": 0.2, "mem": 8, "maxmem": 32, "maxcpu": 4, "status": "online"}
+NODE = {"node": "orion", "cpu": 0.2, "mem": 8, "maxmem": 32, "maxcpu": 4, "status": "online"}
 
 
 def test_collector_keeps_psi_fields():
@@ -191,11 +191,11 @@ def tmp_db(tmp_path, monkeypatch):
 
 
 def test_store_keeps_io_pressure_and_null_when_absent(tmp_db):
-    metrics_store.append_node_sample("pve4", {"cpu": 10.0, "iowait": 2.0, "io_pressure": 33.333})
-    metrics_store.append_node_sample("pve5", {"cpu": 10.0, "iowait": 2.0})
-    metrics_store.append_guest_sample("101", {"cpu": 5.0, "node": "pve4", "io_pressure": 0.0})
-    assert metrics_store.get_node_history("pve4")[0]["io_pressure"] == 33.33
-    assert metrics_store.get_node_history("pve5")[0]["io_pressure"] is None
+    metrics_store.append_node_sample("orion", {"cpu": 10.0, "iowait": 2.0, "io_pressure": 33.333})
+    metrics_store.append_node_sample("rigel", {"cpu": 10.0, "iowait": 2.0})
+    metrics_store.append_guest_sample("101", {"cpu": 5.0, "node": "orion", "io_pressure": 0.0})
+    assert metrics_store.get_node_history("orion")[0]["io_pressure"] == 33.33
+    assert metrics_store.get_node_history("rigel")[0]["io_pressure"] is None
     assert metrics_store.get_guest_history("101")[0]["io_pressure"] == 0.0
 
 
@@ -220,7 +220,7 @@ def test_init_db_adds_io_pressure_to_an_old_database(tmp_path, monkeypatch):
                 "ts REAL NOT NULL, cpu REAL, memory REAL, iowait REAL, load_avg REAL, guest_count INTEGER, "
                 "storage_usage_pct REAL, aggregated INTEGER DEFAULT 0, tier TEXT, ts_start REAL, ts_end REAL, "
                 "sample_count INTEGER DEFAULT 1, agg_stats TEXT)")
-    old.execute("INSERT INTO node_metrics (node_name, ts, cpu) VALUES ('pve3', 1.0, 5.0)")
+    old.execute("INSERT INTO node_metrics (node_name, ts, cpu) VALUES ('lyra', 1.0, 5.0)")
     old.commit()
     old.close()
     monkeypatch.setattr(db, "get_db_path", lambda: str(path))

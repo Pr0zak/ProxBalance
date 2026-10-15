@@ -17,9 +17,9 @@ const metric = (days, confidence = 'high', limit = 80) => ({
 const trends = (nodes) => ({ nodes: Object.fromEntries(Object.entries(nodes).map(([node, ms]) => [node, { node, ...ms }])) });
 
 test('headline in plain words', () => {
-  assert.equal(M.headline({ node: 'pve5', metric: 'memory', limit: 85, days: 12.4 }), 'pve5 memory reaches 85% in about 12 days');
-  assert.equal(M.headline({ node: 'pve3', metric: 'cpu', limit: 80, days: 1.2 }), 'pve3 CPU reaches 80% in about 1 day');
-  assert.equal(M.headline({ node: 'pve4', metric: 'iowait', limit: 20, days: 0.2 }), 'pve4 IO wait reaches 20% in about 5 hours');
+  assert.equal(M.headline({ node: 'rigel', metric: 'memory', limit: 85, days: 12.4 }), 'rigel memory reaches 85% in about 12 days');
+  assert.equal(M.headline({ node: 'lyra', metric: 'cpu', limit: 80, days: 1.2 }), 'lyra CPU reaches 80% in about 1 day');
+  assert.equal(M.headline({ node: 'orion', metric: 'iowait', limit: 20, days: 0.2 }), 'orion IO wait reaches 20% in about 5 hours');
 });
 
 test('unknown time is a dash, never 0', () => {
@@ -27,7 +27,7 @@ test('unknown time is a dash, never 0', () => {
   assert.equal(M.timePhrase(0), '—');
   assert.equal(M.timePhrase(-3), '—');
   assert.equal(M.timePhrase(0.001), 'about 1 hour');
-  assert.equal(M.headline({ node: 'pve4', metric: 'cpu', limit: 80, days: null }), 'pve4 CPU is heading for 80%');
+  assert.equal(M.headline({ node: 'orion', metric: 'cpu', limit: 80, days: null }), 'orion CPU is heading for 80%');
 });
 
 test('clear line', () => {
@@ -36,20 +36,20 @@ test('clear line', () => {
 
 test('crossings: soonest first, low confidence and no crossing left out', () => {
   const t = trends({
-    pve3: { cpu: metric(20), memory: metric(null), iowait: metric(2, 'low') },
-    pve5: { cpu: metric(4, 'medium'), memory: metric(12) },
-    pve6: { memory: { confidence: 'high' } }, // old backend: no forecast block
+    lyra: { cpu: metric(20), memory: metric(null), iowait: metric(2, 'low') },
+    rigel: { cpu: metric(4, 'medium'), memory: metric(12) },
+    vega: { memory: { confidence: 'high' } }, // old backend: no forecast block
   });
   const c = M.projectedCrossings(t);
-  assert.deepEqual(c.map(x => `${x.node}-${x.metric}`), ['pve5-cpu', 'pve5-memory', 'pve3-cpu']);
+  assert.deepEqual(c.map(x => `${x.node}-${x.metric}`), ['rigel-cpu', 'rigel-memory', 'lyra-cpu']);
   assert.equal(c[0].rough, true);
   assert.equal(c[1].rough, false);
   assert.equal(c[1].limit, 80);
 });
 
 test('crossings: ties break by node then metric order', () => {
-  const t = trends({ pve6: { cpu: metric(5) }, pve4: { memory: metric(5), cpu: metric(5) } });
-  assert.deepEqual(M.projectedCrossings(t).map(x => `${x.node}-${x.metric}`), ['pve4-cpu', 'pve4-memory', 'pve6-cpu']);
+  const t = trends({ vega: { cpu: metric(5) }, orion: { memory: metric(5), cpu: metric(5) } });
+  assert.deepEqual(M.projectedCrossings(t).map(x => `${x.node}-${x.metric}`), ['orion-cpu', 'orion-memory', 'vega-cpu']);
 });
 
 test('empty or missing data', () => {
@@ -77,10 +77,10 @@ test('now line', () => {
 
 test('engine alerts become crossings', () => {
   const c = M.engineCrossings([
-    { node: 'pve5', metric: 'cpu', threshold: 80, estimated_hours_to_crossing: 30 },
-    { node: 'pve4', metric: 'memory', threshold: 85, estimated_hours_to_crossing: 6 },
+    { node: 'rigel', metric: 'cpu', threshold: 80, estimated_hours_to_crossing: 30 },
+    { node: 'orion', metric: 'memory', threshold: 85, estimated_hours_to_crossing: 6 },
     { metric: 'cpu', threshold: 80 },
   ]);
-  assert.deepEqual(c.map(x => x.node), ['pve4', 'pve5']);
-  assert.equal(M.headline(c[0]), 'pve4 memory reaches 85% in about 6 hours');
+  assert.deepEqual(c.map(x => x.node), ['orion', 'rigel']);
+  assert.equal(M.headline(c[0]), 'orion memory reaches 85% in about 6 hours');
 });
