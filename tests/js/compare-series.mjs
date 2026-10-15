@@ -58,22 +58,39 @@ eq('metric with no samples -> null', S.bucketSeries([{ name: 'a', trendData: { h
 eq('falls back to day rows', S.bucketSeries([{ name: 'a', trendData: { day: rows(all) } }], H1, 'cpu', 300).lines[0].values[0], 2);
 eq('nothing to draw -> null', S.bucketSeries([{ name: 'a', trendData: { hour: [] } }], H1, 'cpu'), null);
 
+// Band when each bucket holds one raw sample (bucket == RRD step): rolling
+// min/max over BAND_REACH buckets either side, never zero width, gaps kept.
+const vals1 = [10, 30, 20, 50, 40, 60, 0, 25];
+const one = S.bucketSeries([{ name: 'a', trendData: { hour: vals1.map((v, k) => ({ time: T0 + k * 60, cpu: v })) } }], H1, 'cpu', 60);
+eq('single-sample buckets switch to a rolling band', one.band, { rolling: true, seconds: 300 });
+eq('line stays the raw samples', one.lines[0].values.slice(-8), vals1);
+eq('rolling min', one.lines[0].min.slice(-8), [10, 10, 10, 20, 0, 0, 0, 0]);
+eq('rolling max', one.lines[0].max.slice(-8), [30, 50, 50, 60, 60, 60, 60, 60]);
+eq('line inside band', one.lines[0].values.every((v, k) => v == null || (one.lines[0].min[k] <= v && v <= one.lines[0].max[k])), true);
+eq('label says raw', one.label, 'raw samples every 1 min');
+eq('multi-sample buckets keep the in-bucket band', bs.band, { rolling: false, seconds: 300 });
+eq('rollingExtreme keeps gaps', S.rollingExtreme([5, null, 1, 9], 1, Math.max), [5, null, 9, 9]);
+eq('band text rolling', S.bandText(one.band), 'band: lowest to highest sample over 5 min around each point');
+eq('band text in-bucket', S.bandText(bs.band), 'band: lowest to highest sample in each 5-min average');
+eq('band text for 7d at 30-min step', S.bandText({ rolling: true, seconds: 5 * 1800 }), 'band: lowest to highest sample over 2.5 hours around each point');
+eq('span text', [S.spanText(300), S.spanText(3600), S.spanText(5 * 21600), S.spanText(86400)], ['5 min', '1 hour', '1.3 days', '1 day']);
+
 // Axis ceiling.
 eq('cpu axis is 0-100', S.axisMax('cpu', bs.lines, 80), 100);
 eq('iowait scales to data', S.axisMax('iowait', [{ values: [1, 3.2, null] }], undefined), 5);
 eq('iowait includes threshold', S.axisMax('iowait', [{ values: [1, 2] }], 30), 35);
 eq('iowait with no data has a floor', S.axisMax('iowait', [{ values: [null] }], undefined), 10);
 
-// Spread line.
+// Spread line: from the last plotted bucket, visible nodes only.
 const lines = [{ name: 'pve3', values: [40, 50] }, { name: 'pve6', values: [20, 26] }, { name: 'pve5', values: [30, null] }];
-const sp = S.spreadNow('iowait', lines, null);
-eq('spread from last points', sp, { spread: 24, low: { name: 'pve6', value: 26 }, high: { name: 'pve3', value: 50 } });
-eq('spread text', S.spreadText(sp), 'Spread now: 24 pts (pve6 26% → pve3 50%)');
-const api = { memory: { min: 23.5, min_node: 'pve4', max: 48.3, max_node: 'pve3', spread: 24.8 }, cpu: null };
-eq('memory prefers the API figure', S.spreadText(S.spreadNow('mem', lines, api)), 'Spread now: 25 pts (pve4 24% → pve3 48%)');
-eq('cpu falls back to chart when API has none', S.spreadNow('cpu', lines, api).high.name, 'pve3');
-eq('small values keep a decimal', S.spreadText({ spread: 1.25, low: { name: 'a', value: 0.4 }, high: { name: 'b', value: 1.66 } }), 'Spread now: 1.3 pts (a 0.4% → b 1.7%)');
-eq('one node -> dash', S.spreadText(S.spreadNow('cpu', [{ name: 'a', values: [5] }], null)), 'Spread now: —');
+const sp = S.spreadAtLast(lines);
+eq('spread from last bucket, offline node left out', sp, { spread: 24, low: { name: 'pve6', value: 26 }, high: { name: 'pve3', value: 50 } });
+eq('spread text', S.spreadText(sp, '14:35'), 'Spread at last point (14:35): 24 pts (pve6 26% → pve3 50%)');
+eq('hidden node left out', S.spreadAtLast([...lines, { name: 'x', values: [0, 99] }], ['x']), sp);
+eq('zero spread is a value', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }, { name: 'b', values: [5] }]), '1:00'), 'Spread at last point (1:00): 0 pts (a 5% → b 5%)');
+eq('small values keep a decimal', S.spreadText({ spread: 1.25, low: { name: 'a', value: 0.4 }, high: { name: 'b', value: 1.66 } }), 'Spread at last point: 1.3 pts (a 0.4% → b 1.7%)');
+eq('one node -> dash', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5] }]), '1:00'), 'Spread at last point (1:00): —');
+eq('missing last values -> dash, not 0', S.spreadText(S.spreadAtLast([{ name: 'a', values: [5, null] }, { name: 'b', values: [7, null] }])), 'Spread at last point: —');
 
 console.log(bad ? `\n${bad} failure(s)` : '\nall passed');
 process.exit(bad ? 1 : 0);

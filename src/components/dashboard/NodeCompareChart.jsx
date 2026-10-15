@@ -3,7 +3,7 @@ import useIsMobile from '../../utils/useIsMobile.js';
 import {
   periodConfig, timeLabel, migrationAnnotations, chartTheme, withAlpha, useIsDark,
 } from './nodeSeries.js';
-import { COMPARE_METRICS, bucketSeries, axisMax, spreadNow, spreadText } from './compareSeries.js';
+import { COMPARE_METRICS, bucketSeries, axisMax, spreadAtLast, spreadText, bandText } from './compareSeries.js';
 
 const { useRef, useEffect, useMemo, useState } = React;
 
@@ -19,11 +19,15 @@ const METRIC_KEY = 'nodeCompareMetric';
  *    with no samples (node offline) stays a gap.
  *  - Legend under the chart: each item shows or hides its node; hovering it
  *    highlights the line. Tapping a line highlights that node (tap again to
- *    clear) and, with Min/Max on, draws its min/max band.
+ *    clear) and, with Min/Max on, draws its min/max band. With only one node
+ *    visible, its band shows without a tap. Where each bucket holds a single
+ *    raw sample (1h, 7d, 90d) the band spans the samples a few buckets either
+ *    side instead (see compareSeries.bucketSeries); the text says which.
  *  - The recommendation threshold for the metric is one thin dashed line,
  *    labelled on the line itself.
  *  - One line of text under the chart: the spread between the lowest and
- *    highest node right now, and which average the lines use.
+ *    highest visible node at the last plotted point (the same values the lines
+ *    end on), and which average the lines use.
  *  - `toolbarExtra` sits at the end of the metric row and `toolbarPanel` right
  *    under it (the parent's phone-only Options button and its panel).
  *
@@ -35,7 +39,7 @@ const METRIC_KEY = 'nodeCompareMetric';
  * `pixelRatio` sharpens the canvas when the wall is drawn scaled up.
  */
 export default function NodeCompareChart({
-  nodes, thresholds, clusterSpread, chartPeriod, chartReady, migrationHistory,
+  nodes, thresholds, chartPeriod, chartReady, migrationHistory,
   showMarkers = true, showThresholds = true, showEnvelope = false,
   toolbarExtra = null, toolbarPanel = null,
   wall = false, fixedMetric = null, pixelRatio = null,
@@ -66,7 +70,17 @@ export default function NodeCompareChart({
 
   const colorOf = useMemo(() => Object.fromEntries(nodes.map(n => [n.name, n.color])), [nodes]);
   const threshold = typeof thresholds?.[metric] === 'number' ? thresholds[metric] : null;
-  const spread = useMemo(() => spreadNow(metric, aligned?.lines, clusterSpread), [metric, aligned, clusterSpread]);
+  const hiddenKey = hidden.join(',');
+  const spread = useMemo(() => spreadAtLast(aligned?.lines, hidden), [aligned, hiddenKey]);
+  // Date and time even on multi-day periods: the last point is one bucket, not a day.
+  const lastLabel = aligned ? new Date(aligned.times[aligned.times.length - 1] * 1000).toLocaleString([], {
+    ...(aligned.multiDay ? { month: 'short', day: 'numeric' } : {}), hour: '2-digit', minute: '2-digit',
+  }) : null;
+  // The node whose min/max band is drawn: the highlighted one, else the only visible one.
+  const visibleLines = aligned ? aligned.lines.filter(l => !hidden.includes(l.name)) : [];
+  const bandNode = !showEnvelope ? null
+    : (highlight && visibleLines.some(l => l.name === highlight)) ? highlight
+    : visibleLines.length === 1 ? visibleLines[0].name : null;
 
   return (
     <div className={wall ? 'h-full flex flex-col min-h-0' : undefined}>
@@ -93,8 +107,8 @@ export default function NodeCompareChart({
       {aligned ? (
         <CompareCanvas
           aligned={aligned} metric={metric} colorOf={colorOf} threshold={showThresholds ? threshold : null}
-          hidden={hidden} highlight={highlight} hoverNode={hoverNode} onPickNode={(n) => setHighlight(h => (h === n ? null : n))}
-          chartReady={chartReady} migrationHistory={migrationHistory} showMarkers={showMarkers} showEnvelope={showEnvelope}
+          hidden={hidden} highlight={highlight} bandNode={bandNode} hoverNode={hoverNode} onPickNode={(n) => setHighlight(h => (h === n ? null : n))}
+          chartReady={chartReady} migrationHistory={migrationHistory} showMarkers={showMarkers}
           fill={wall} pixelRatio={pixelRatio}
         />
       ) : (
@@ -139,15 +153,18 @@ export default function NodeCompareChart({
 
       {aligned && (
         <p className="mt-1.5 text-sm text-pb-text2 dark:text-gray-400 tabular-nums">
-          {spreadText(spread)}<span className="text-xs text-pb-text2 dark:text-gray-500 whitespace-nowrap"> · {aligned.label}</span>
-          {showEnvelope && !highlight && <span className="block sm:inline sm:ml-3 text-xs text-pb-text2 dark:text-gray-500">Tap a line to see its min/max band</span>}
+          {visibleLines.length >= 2 && <>{spreadText(spread, lastLabel)}<span className="text-xs text-pb-text2 dark:text-gray-500 whitespace-nowrap"> · </span></>}
+          <span className="text-xs text-pb-text2 dark:text-gray-500 whitespace-nowrap">{aligned.label}</span>
+          {showEnvelope && (bandNode
+            ? <span className="block text-xs text-pb-text2 dark:text-gray-500">{bandNode} {bandText(aligned.band)}</span>
+            : <span className="block sm:inline sm:ml-3 text-xs text-pb-text2 dark:text-gray-500">Tap a line to see its min/max band</span>)}
         </p>
       )}
     </div>
   );
 }
 
-function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight, hoverNode, onPickNode, chartReady, migrationHistory, showMarkers, showEnvelope, fill = false, pixelRatio = null }) {
+function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight, bandNode, hoverNode, onPickNode, chartReady, migrationHistory, showMarkers, fill = false, pixelRatio = null }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -187,7 +204,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
         ...lineStyle(l.name, highlight),
         tension: 0, pointRadius: 0, pointHoverRadius: 3, fill: false, spanGaps: false, hidden: isHidden,
       });
-      if (highlight === l.name && showEnvelope && !isHidden) {
+      if (bandNode === l.name && !isHidden) {
         datasets.push({ label: '__band_max', data: l.max, borderColor: 'transparent', backgroundColor: withAlpha(colorOf[l.name], 0.2), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0, order: 2 });
         datasets.push({ label: '__band_min', data: l.min, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0, order: 2 });
       }
@@ -247,7 +264,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
       console.error('Error creating node comparison chart:', error);
     }
     return () => { if (chartRef.current) { try { chartRef.current.destroy(); } catch (e) {} chartRef.current = null; } };
-  }, [chartReady, sized, aligned, metric, threshold, isDark, isMobile, migrationHistory, showMarkers, showEnvelope, hiddenKey, highlight, colorOf, pixelRatio]);
+  }, [chartReady, sized, aligned, metric, threshold, isDark, isMobile, migrationHistory, showMarkers, bandNode, hiddenKey, highlight, colorOf, pixelRatio]);
 
   // Hovering a legend item restyles the lines in place (no rebuild).
   useEffect(() => {
