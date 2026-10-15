@@ -150,6 +150,53 @@ export default function EvacuationModals({
     setGuestTargets(next);
   };
 
+  // Target and action controls, shared by the table (sm and up) and the
+  // phone list below it.
+  const targetCell = (item) => (item.skipped ? (
+      <span className="text-yellow-600 dark:text-yellow-400 text-xs italic">{item.skip_reason}</span>
+    ) : (
+      <>
+        <select
+          value={targetFor(item)}
+          onChange={(e) => setGuestTargets({...guestTargets, [item.vmid]: e.target.value})}
+          className={`${SELECT_FIELD} !py-1 !text-sm font-medium`}
+          aria-label={`Target node for ${item.name || item.vmid}`}
+        >
+          {evacuationPlan.available_targets.map(target => (
+            <option key={target} value={target}>
+              {target}{missingStorage(item, target, data).length ? ' (no storage)' : ''}
+              {haPlacementChecks(data?.guests?.[String(item.vmid)], target).some(c => c.level === 'block') ? ' (HA rule)' : ''}
+            </option>
+          ))}
+        </select>
+        {actionFor(item) === 'migrate' && haPlacementChecks(data?.guests?.[String(item.vmid)], targetFor(item)).map((c, i) => (
+          <div
+            key={i}
+            className={`mt-1 text-[11px] ${c.level === 'block' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'}`}
+          >
+            {c.text}
+          </div>
+        ))}
+        {actionFor(item) === 'migrate' && missingStorage(item, targetFor(item), data).length > 0 && (
+          <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+            missing {missingStorage(item, targetFor(item), data).join(', ')}
+          </div>
+        )}
+      </>
+    ));
+  const actionSelect = (item) => (
+    <select
+      value={guestActions[item.vmid] || defaultActionFor(item)}
+      onChange={(e) => setGuestActions({...guestActions, [item.vmid]: e.target.value})}
+      className={`${SELECT_FIELD} !py-1 !text-sm w-full sm:w-auto`}
+      aria-label={`Action for ${item.name || item.vmid}`}
+    >
+      <option value="migrate">Migrate</option>
+      <option value="ignore">Ignore</option>
+      <option value="poweroff">Power Off</option>
+    </select>
+  );
+
   return (
     <>
       {/* Global Evacuation Plan Modal */}
@@ -237,7 +284,37 @@ export default function EvacuationModals({
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              {/* Phone: one card per guest instead of an 8-column table */}
+              <ul className="sm:hidden divide-y divide-pb-border dark:divide-slate-700 border-y border-pb-border dark:border-slate-700">
+                {evacuationPlan.plan.map((item) => (
+                  <li key={item.vmid} className={`py-3 space-y-2 ${item.skipped ? 'bg-yellow-50 dark:bg-yellow-900/10 px-2' : ''}`}>
+                    <div className="flex items-baseline gap-2 text-sm min-w-0">
+                      <span className={`px-1.5 py-0.5 text-[10px] rounded shrink-0 ${item.type === 'qemu' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'}`}>
+                        {item.type === 'qemu' ? 'VM' : 'CT'}
+                      </span>
+                      <span className="font-mono text-xs text-pb-text2 dark:text-gray-400 shrink-0">{item.vmid}</span>
+                      <span className="font-medium text-pb-text dark:text-white truncate">{item.name}</span>
+                      <span className="ml-auto text-[11px] text-pb-text2 dark:text-gray-400 shrink-0">
+                        {item.status !== 'running' && item.status}
+                        {!item.skipped && item.will_restart && <span className="text-orange-600 dark:text-orange-400">restarts</span>}
+                      </span>
+                    </div>
+                    {item.storage_volumes && item.storage_volumes.length > 0 && (
+                      <div className={`text-[11px] ${!item.storage_compatible ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-pb-text2 dark:text-gray-400'}`}>
+                        {item.storage_volumes.join(', ')}
+                      </div>
+                    )}
+                    {item.skipped ? targetCell(item) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="min-w-0 [&_select]:w-full">{targetCell(item)}</div>
+                        {actionSelect(item)}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-pb-surface2 dark:bg-slate-700">
                     <tr>
@@ -283,40 +360,7 @@ export default function EvacuationModals({
                             {item.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
-                          {item.skipped ? (
-                            <span className="text-yellow-600 dark:text-yellow-400 text-xs italic">{item.skip_reason}</span>
-                          ) : (
-                            <>
-                              <select
-                                value={targetFor(item)}
-                                onChange={(e) => setGuestTargets({...guestTargets, [item.vmid]: e.target.value})}
-                                className={`${SELECT_FIELD} !py-1 !text-sm font-medium`}
-                                aria-label={`Target node for ${item.name || item.vmid}`}
-                              >
-                                {evacuationPlan.available_targets.map(target => (
-                                  <option key={target} value={target}>
-                                    {target}{missingStorage(item, target, data).length ? ' (no storage)' : ''}
-                                    {haPlacementChecks(data?.guests?.[String(item.vmid)], target).some(c => c.level === 'block') ? ' (HA rule)' : ''}
-                                  </option>
-                                ))}
-                              </select>
-                              {actionFor(item) === 'migrate' && haPlacementChecks(data?.guests?.[String(item.vmid)], targetFor(item)).map((c, i) => (
-                                <div
-                                  key={i}
-                                  className={`mt-1 text-[11px] ${c.level === 'block' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'}`}
-                                >
-                                  {c.text}
-                                </div>
-                              ))}
-                              {actionFor(item) === 'migrate' && missingStorage(item, targetFor(item), data).length > 0 && (
-                                <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
-                                  missing {missingStorage(item, targetFor(item), data).join(', ')}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </td>
+                        <td className="px-4 py-3">{targetCell(item)}</td>
                         <td className="px-4 py-3">
                           {!item.skipped && (
                             item.will_restart ? (
@@ -329,18 +373,7 @@ export default function EvacuationModals({
                         <td className="px-4 py-3">
                           {item.skipped ? (
                             <span className="text-xs text-pb-text2 dark:text-gray-500 italic">N/A</span>
-                          ) : (
-                            <select
-                              value={guestActions[item.vmid] || defaultActionFor(item)}
-                              onChange={(e) => setGuestActions({...guestActions, [item.vmid]: e.target.value})}
-                              className={`${SELECT_FIELD} !py-1 !text-sm`}
-                              aria-label={`Action for ${item.name || item.vmid}`}
-                            >
-                              <option value="migrate">Migrate</option>
-                              <option value="ignore">Ignore</option>
-                              <option value="poweroff">Power Off</option>
-                            </select>
-                          )}
+                          ) : actionSelect(item)}
                         </td>
                       </tr>
                     ))}
@@ -349,7 +382,7 @@ export default function EvacuationModals({
               </div>
 
               <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
-                <h4 className="font-semibold text-blue-100 mb-2">Important Notes:</h4>
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Important Notes:</h4>
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
                   <li>Running VMs will use live migration (no downtime)</li>
                   <li>Running containers will restart during migration (brief downtime)</li>
@@ -367,7 +400,7 @@ export default function EvacuationModals({
               <button
                 onClick={() => setShowConfirmModal(true)}
                 disabled={movingItems.length === 0 && !evacuationPlan.plan.some(p => !p.skipped && actionFor(p) === 'poweroff')}
-                className={`${BTN_PRIMARY} flex-1 sm:flex-none justify-center`}
+                className={`${BTN_PRIMARY} flex-1 sm:flex-none justify-center whitespace-nowrap`}
               >
                 <Check size={16} /> Review & confirm
               </button>
@@ -505,7 +538,7 @@ export default function EvacuationModals({
                 <button onClick={() => setShowConfirmModal(false)} className={`${BTN_SECONDARY} flex-1 sm:flex-none justify-center`}>
                   Back
                 </button>
-                <button onClick={startEvacuation} className={`${BTN_DANGER} flex-1 sm:flex-none justify-center`}>
+                <button onClick={startEvacuation} className={`${BTN_DANGER} flex-1 sm:flex-none justify-center whitespace-nowrap`}>
                   <AlertTriangle size={14} /> Start evacuation
                 </button>
               </div>

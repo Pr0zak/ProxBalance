@@ -200,6 +200,9 @@ export default function NodeDetailPanel({
     .map(g => ({ g, share: g.status === 'running' ? shareOf(g) : 0, mob: guestMobility(g, guestRecMap?.[String(g.vmid)], skippedByVmid[String(g.vmid)]) }))
     .sort((a, b) => b.share - a.share || String(a.g.name).localeCompare(String(b.g.name)));
 
+  // Offline and maintenance nodes get a sentinel score (999999) with a reason
+  // from /api/node-scores, not a breakdown.
+  const unscored = !!score && (score.disqualified || score.score >= 999999);
   const cats = score && score.penalty_categories;
   // Headroom = 100 - score, where score = base load (weighted health, predicted
   // load, capacity, storage fill) + penalty points. Show every part on a fixed
@@ -316,7 +319,7 @@ export default function NodeDetailPanel({
       </div>
       {score && (
         <div className="shrink-0 text-right leading-tight px-1" title="Headroom: 0–100, how much room this node has to take on guests (higher = more room)">
-          <div className={`text-2xl font-bold tabular-nums ${headroomTone(score.suitability_rating)}`}>{Math.round(score.suitability_rating)}</div>
+          <div className={`text-2xl font-bold tabular-nums ${unscored ? 'text-pb-text2 dark:text-gray-500' : headroomTone(score.suitability_rating)}`}>{unscored ? '—' : Math.round(score.suitability_rating)}</div>
           <div className="text-[9px] uppercase tracking-wide text-pb-text2 dark:text-gray-500">Headroom</div>
         </div>
       )}
@@ -484,8 +487,14 @@ export default function NodeDetailPanel({
         />
       </div>
 
-      {/* What is using headroom */}
-      {score && (
+      {/* What is using headroom. A disqualified node (offline, maintenance)
+          carries a sentinel score, not a breakdown, so say why instead. */}
+      {score && unscored && (
+        <div className="text-xs text-pb-text2 dark:text-gray-400">
+          <span className="text-pb-text dark:text-gray-200 font-semibold">Headroom not scored:</span> {String(score.reason || 'not a target').toLowerCase()}, so nothing is placed here.
+        </div>
+      )}
+      {score && !unscored && (
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs mb-1.5">
             <span className="text-pb-text dark:text-gray-200 font-semibold">What is using headroom</span>
