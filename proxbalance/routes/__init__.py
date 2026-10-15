@@ -21,6 +21,7 @@ def register_blueprints(app):
     from proxbalance.routes.metrics import metrics_bp
     from proxbalance.routes.simulate import simulate_bp
     from proxbalance.routes.rules import rules_bp
+    from proxbalance.routes.diagnostics import diagnostics_bp
 
     app.register_blueprint(analysis_bp)
     app.register_blueprint(recommendations_bp)
@@ -35,3 +36,4 @@ def register_blueprints(app):
     app.register_blueprint(metrics_bp)
     app.register_blueprint(simulate_bp)
     app.register_blueprint(rules_bp)
+    app.register_blueprint(diagnostics_bp)

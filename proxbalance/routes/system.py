@@ -993,17 +993,18 @@ def _systemctl_show(units: list, props: str) -> dict:
     return out
 
 
-@system_bp.route("/api/system/services", methods=["GET"])
-@api_route
-def services_status():
-    """State of each ProxBalance service and timer.
+def services_snapshot() -> dict:
+    """State of each ProxBalance service and timer, keyed by unit name.
 
     Per unit: active state, result of the last run (success/failed), when
     the last run started and finished and, for timer-driven units, when the
-    next run is due. Times are UTC ISO-8601 or null.
+    next run is due. Times are UTC ISO-8601 or null. Read-only.
+
+    Raises:
+        RuntimeError: systemctl is not available on this host.
     """
     if not os.path.exists(_SYSTEMCTL):
-        return jsonify({"success": False, "error": "systemctl is not available here"}), 503
+        raise RuntimeError("systemctl is not available here")
 
     names = list(SERVICE_UNITS)
     svc = _systemctl_show(
@@ -1046,7 +1047,17 @@ def services_status():
                 "last_trigger": _usec_to_iso(t.get('last')),
             }
         services[name] = entry
+    return services
 
+
+@system_bp.route("/api/system/services", methods=["GET"])
+@api_route
+def services_status():
+    """State of each ProxBalance service and timer (see services_snapshot)."""
+    try:
+        services = services_snapshot()
+    except RuntimeError as e:
+        return jsonify({"success": False, "error": str(e)}), 503
     return jsonify({"success": True, "services": services})
 
 
