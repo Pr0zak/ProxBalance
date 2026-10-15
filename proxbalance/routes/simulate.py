@@ -1,7 +1,10 @@
 """
-Simulation routes: "what if a node fails?" (N-1 capacity).
+Simulation routes: "what if a node fails?" (N-1 capacity) and the rolling
+update plan.
 
-Both endpoints read the latest collected snapshot only; nothing calls Proxmox.
+All read the latest collected snapshot. The rolling update plan may read
+corosync votes from Proxmox (GET only) when the snapshot predates them;
+nothing here changes anything.
 """
 
 from flask import Blueprint, current_app, request
@@ -60,3 +63,55 @@ def simulate_failure():
         result = simulate_all_failures(nodes, guests, ha_rules, **kwargs)
     result["collected_at"] = data.get("collected_at")
     return api_success(result)
+
+
+@simulate_bp.route("/api/rolling-update/plan", methods=["GET"])
+@api_route
+def rolling_update_plan():
+    """Plan updating/rebooting the nodes one at a time. Read-only, plan only.
+
+    Query args:
+        order: Comma-separated node order (default: suggested order).
+        mem_ceiling: Highest memory % a target may reach (default 95).
+        tight_pct: Target memory % above which a step is "tight" (85).
+    """
+    from proxbalance.config_manager import get_proxmox_client, load_config
+    from proxbalance.rolling_update import (
+        fetch_quorum_inputs, find_self_guest, plan_rolling_update, quorum_from_cache,
+    )
+
+    data = current_app.config["cache_manager"].get()
+    if not data or not data.get("nodes"):
+        return api_error("No cached data available", 503)
+    nodes = data.get("nodes", {})
+    guests = data.get("guests", {})
+    config = load_config()
+    if config.get("error"):
+        config = {}
+
+    live = None
+    if "quorum" not in (data.get("cluster_health") or {}):
+        # Collected before votes were recorded: read them now (GET only).
+        try:
+            live = fetch_quorum_inputs(get_proxmox_client(config))
+        except Exception:
+            live = None
+    quorum = quorum_from_cache(data, live)
+
+    order = [n.strip() for n in (request.args.get("order") or "").split(",") if n.strip()] or None
+    try:
+        plan = plan_rolling_update(
+            nodes, guests, order=order,
+            ha_rules=data.get("ha_rules"),
+            rules_cfg=(config.get("automated_migrations") or {}).get("rules"),
+            pools_available=data.get("pools_available"),
+            quorum=quorum,
+            self_vmid=find_self_guest(guests, config),
+            mem_ceiling=_pct_arg("mem_ceiling", DEFAULT_MEM_CEILING),
+            tight_pct=_pct_arg("tight_pct", DEFAULT_TIGHT_PCT),
+        )
+    except ValueError as e:
+        return api_error(str(e), 400)
+    plan["quorum"] = quorum
+    plan["collected_at"] = data.get("collected_at")
+    return api_success(plan)

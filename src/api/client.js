@@ -545,6 +545,20 @@ export async function fetchRightsizing() {
  * storage: 'capacity' (default; node-local disks assumed restored) or
  * 'strict' (unplanned failure: node-local disks can't restart elsewhere).
  */
+/** Rolling update plan (plan only). `order` is an optional list of node names. */
+export async function fetchRollingUpdatePlan(order = null) {
+  try {
+    const query = order && order.length ? `?${new URLSearchParams({ order: order.join(',') })}` : '';
+    const response = await fetch(`${API_BASE}/rolling-update/plan${query}`);
+    const result = await response.json();
+    if (!result.success) return { error: true, message: result.error || 'plan failed' };
+    return result.data;
+  } catch (err) {
+    console.error('Error loading rolling update plan:', err);
+    return { error: true, message: err.message };
+  }
+}
+
 export async function fetchNodeFailure(node, storage = 'capacity') {
   try {
     const query = new URLSearchParams({ storage });
