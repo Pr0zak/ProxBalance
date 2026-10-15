@@ -24,6 +24,13 @@ from proxbalance.pve_client import (
 from proxbalance.pve_errors import AUTH, classify_pve_error, describe_pve_error
 from proxbalance.disk_health import summarize_disks
 from proxbalance.storage_projection import parse_guest_disks
+from proxbalance.backups import (
+    BACKUP_LOG_MAX_LINES,
+    BACKUP_LOOKBACK_DAYS,
+    BACKUP_TASKS_PER_NODE,
+    parse_vzdump_log,
+    summarize_backup_results,
+)
 
 # Disable SSL warnings for self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -343,6 +350,41 @@ class ProxmoxAPICollector:
         except Exception as e:
             self._note_error("backup info", e)
             return []
+
+    def get_backup_runs(self, node_names: List[str]) -> Optional[Dict[str, Dict]]:
+        """Summarize each guest's recent vzdump results from the task logs.
+
+        Reads up to ``BACKUP_TASKS_PER_NODE`` vzdump tasks per node from the
+        last ``BACKUP_LOOKBACK_DAYS`` days (needs Sys.Audit, which a
+        read-only token has; the storage content list does not work with
+        one, see ``proxbalance.backups``). Returns ``{vmid: summary}``, or
+        None when no node's task list could be read.
+        """
+        since = int(time.time()) - BACKUP_LOOKBACK_DAYS * 86400
+        results: List[Dict] = []
+        read_any = False
+        for node in node_names:
+            try:
+                tasks = self.proxmox.nodes(node).tasks.get(
+                    typefilter="vzdump", since=since, limit=BACKUP_TASKS_PER_NODE)
+                read_any = True
+            except Exception as e:
+                self._note_error("backup tasks", e, node=node)
+                continue
+            for task in tasks or []:
+                upid = task.get("upid")
+                if not upid:
+                    continue
+                try:
+                    log = self.proxmox.nodes(node).tasks(upid).log.get(limit=BACKUP_LOG_MAX_LINES)
+                except Exception as e:
+                    self._note_error("backup task log", e, node=node)
+                    break  # one note per node, not one per task
+                lines = [row.get("t", "") for row in sorted(log or [], key=lambda r: r.get("n", 0))]
+                results.extend(parse_vzdump_log(lines, task.get("starttime") or 0, node=node))
+        if not read_any:
+            return None
+        return summarize_backup_results(results)
 
     def get_resource_pools(self) -> List[Dict]:
         """Fetch resource pools with their members (read-only).
@@ -920,6 +962,9 @@ class ProxmoxAPICollector:
             if vmid:
                 not_backed_up_ids.add(str(vmid))
 
+        # Recent backup results per guest (None: task lists unreadable)
+        backup_runs = self.get_backup_runs([n["node"] for n in nodes_raw if n.get("status") == "online"])
+
         # Create pool membership lookup
         pool_membership = {
             str(member.get("vmid")): pool.get("poolid", "")
@@ -1118,6 +1163,9 @@ class ProxmoxAPICollector:
                 "ha_state": ha_info.get("state") if ha_info else None,
                 "ha_group": ha_info.get("group") if ha_info else None,
                 "has_backup": has_backup,
+                # Newest vzdump results; absent when the task logs could not be
+                # read, None when no backup of this guest was found in them.
+                **({"backup": backup_runs.get(str(vmid))} if backup_runs is not None else {}),
                 "pool": pool_name,
                 "agent_running": len(agent_info) > 0,
                 "agent_info": agent_info if agent_info else None,
@@ -1210,6 +1258,10 @@ class ProxmoxAPICollector:
         excluded = sum(1 for g in self.guests.values() if g["tags"]["exclude_groups"])
         ha_managed_count = sum(1 for g in self.guests.values() if g.get("ha_managed", False))
         backed_up_count = sum(1 for g in self.guests.values() if g.get("has_backup", False))
+        backup_failed_count = sum(
+            1 for g in self.guests.values()
+            if (g.get("backup") or {}).get("last_attempt_ok") is False
+        )
 
         summary = {
             "collected_at": datetime.utcnow().isoformat() + 'Z',
@@ -1223,7 +1275,8 @@ class ProxmoxAPICollector:
                 "ignored_guests": ignored,
                 "excluded_guests": excluded,
                 "ha_managed_guests": ha_managed_count,
-                "backed_up_guests": backed_up_count
+                "backed_up_guests": backed_up_count,
+                "backup_failed_guests": backup_failed_count
             },
             "cluster_health": getattr(self, 'cluster_health', {}),
             "ha_status": getattr(self, 'ha_status', {}),

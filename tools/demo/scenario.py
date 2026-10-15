@@ -163,6 +163,65 @@ GUESTS: Dict[int, Dict[str, Any]] = {
 # Guests without a backup (shown on Insights / guest table).
 NOT_BACKED_UP = [124, 175]
 
+# Nightly backup job (vzdump task logs, read by the collector).
+BACKUP_HOUR_LOCAL = 1
+BACKUP_STORAGE = "pbs"
+BACKUP_DAYS = 14
+# vmid -> list of (days ago, error): nights on which that guest's backup failed.
+BACKUP_FAILURES = {
+    182: [(0, "VM 182 qmp command 'backup' failed - got timeout"),
+          (1, "VM 182 qmp command 'backup' failed - got timeout")],
+    190: [(5, "unable to open file '/var/lib/vz/dump/vzdump-qemu-190.tmp' - No space left on device")],
+}
+
+
+def _local_str(t: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t + TZ_OFFSET_HOURS * HOUR))
+
+
+def backup_tasks(state: Dict[str, Any], now: float) -> List[Dict[str, Any]]:
+    """One vzdump task per node per night for the last BACKUP_DAYS days.
+
+    Each task carries its ``lines`` (the log), in the format PVE writes.
+    """
+    local_midnight = ((now + TZ_OFFSET_HOURS * HOUR) // DAY) * DAY - TZ_OFFSET_HOURS * HOUR
+    first = local_midnight + BACKUP_HOUR_LOCAL * HOUR
+    if first > now:
+        first -= DAY
+    tasks: List[Dict[str, Any]] = []
+    for d in range(BACKUP_DAYS):
+        start = first - d * DAY
+        for node in NODES:
+            members = sorted(v for v in GUESTS if node_of(state, v, start) == node and v not in NOT_BACKED_UP)
+            if not members:
+                continue
+            lines = [f"INFO: starting new backup job: vzdump --quiet 1 --all 1 --storage {BACKUP_STORAGE} --mode snapshot",
+                     "INFO: skip external VMs: " + ", ".join(str(v) for v in sorted(GUESTS) if v not in members)]
+            t = start + 3
+            failed = 0
+            for v in members:
+                g = GUESTS[v]
+                kind = "qemu" if g["t"] == "qemu" else "lxc"
+                dur = int(8 + g.get("disk", 10) * 0.35 * (0.8 + 0.4 * _h("bk", v, d)))
+                lines += [f"INFO: Starting Backup of VM {v} ({kind})", f"INFO: Backup started at {_local_str(t)}",
+                          f"INFO: creating Proxmox Backup Server archive '{'vm' if kind == 'qemu' else 'ct'}/{v}/x'"]
+                err = next((e for ago, e in BACKUP_FAILURES.get(v, []) if ago == d), None)
+                if err:
+                    failed += 1
+                    dur = 30
+                    lines.append(f"ERROR: Backup of VM {v} failed - {err}")
+                else:
+                    lines.append(f"INFO: Finished Backup of VM {v} ({time.strftime('%H:%M:%S', time.gmtime(dur))})")
+                t += dur
+                lines.append(f"INFO: Backup finished at {_local_str(t)}")
+            lines.append("INFO: Backup job finished " + ("with errors" if failed else "successfully"))
+            tasks.append({"upid": f"UPID:{node}:00000000:00000000:{int(start):08X}:vzdump::root@pam:",
+                          "node": node, "type": "vzdump", "id": "", "user": "root@pam",
+                          "starttime": int(start), "endtime": int(t), "status": "job errors" if failed else "OK",
+                          "lines": lines})
+    return tasks
+
+
 # HA rules (Proxmox VE 9 format).
 HA_RULES = [
     {"rule": "db-apart", "type": "resource-affinity", "affinity": "negative",

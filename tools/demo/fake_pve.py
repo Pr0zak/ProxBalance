@@ -530,6 +530,11 @@ def migrate(node, kind, vmid):
 @app.route(f"{P}/nodes/<node>/tasks")
 def node_tasks(node):
     vmid = request.args.get("vmid")
+    if request.args.get("typefilter") == "vzdump":
+        since = int(request.args.get("since") or 0)
+        limit = int(request.args.get("limit") or 50)
+        rows = [t for t in sc.backup_tasks(STATE, now()) if t["node"] == node and t["starttime"] >= since]
+        return ok([{k: v for k, v in t.items() if k != "lines"} for t in rows[:limit]])
     rows = [t for t in STATE.get("tasks", []) if t["node"] == node and (not vmid or t["id"] == str(vmid))]
     return ok([{k: v for k, v in t.items() if k != "duration"} for t in rows])
 
@@ -548,6 +553,11 @@ def task_status(node, upid):
 
 @app.route(f"{P}/nodes/<node>/tasks/<path:upid>/log")
 def task_log(node, upid):
+    if ":vzdump:" in upid:
+        bt = next((t for t in sc.backup_tasks(STATE, now()) if t["upid"] == upid), None)
+        if not bt:
+            return err(500, "no such task")
+        return ok([{"n": i + 1, "t": line} for i, line in enumerate(bt["lines"])])
     t = _task(upid)
     if not t:
         return err(500, "no such task")

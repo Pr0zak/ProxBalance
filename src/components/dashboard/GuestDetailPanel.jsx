@@ -11,6 +11,7 @@ import { guestMobility } from './guestMobility.js';
 import { seenCountDetail } from './recommendations/seenCount.js';
 import { storageEntries, storageLine } from './recommendations/cardModel.js';
 import { panelParts } from '../../utils/rightsizing.js';
+import { backupView } from '../../utils/backupStatus.js';
 
 const { useState, useEffect } = React;
 
@@ -535,9 +536,25 @@ export default function GuestDetailPanel({
           {exemptError && <div className="text-[11px] text-red-600 dark:text-red-400 mt-0.5">{exemptError}</div>}
         </FactRow>
 
+        {(() => {
+          const bk = backupView(guest);
+          const cls = {
+            ok: 'text-pb-text dark:text-gray-200',
+            warn: 'text-amber-700 dark:text-amber-400',
+            bad: 'text-red-600 dark:text-red-400',
+            neutral: 'text-pb-text2 dark:text-gray-400',
+          }[bk.tone];
+          return (
+            <FactRow label="Backup">
+              {bk.detail
+                ? <MoreInfo as="span" className={cls} detail={bk.detail} label="Backup details">{bk.text}</MoreInfo>
+                : <span className={cls}>{bk.text}</span>}
+            </FactRow>
+          );
+        })()}
+
         <FactRow label="Other">
           {[
-            guest.has_backup ? 'Backed up' : 'No backup found',
             isVM ? (guest.agent_running ? 'guest agent running' : 'no guest agent') : null,
             guest.ha_managed ? `HA${guest.ha_state ? ` (${guest.ha_state})` : ''}` : 'not HA',
           ].filter(Boolean).join(' · ')}
