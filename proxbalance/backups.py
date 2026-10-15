@@ -34,7 +34,7 @@ _FINISHED_RE = re.compile(r"Finished Backup of VM (\d+) \((\d+):(\d\d):(\d\d)\)"
 
 # How far back the collector reads vzdump tasks, and how many per node.
 BACKUP_LOOKBACK_DAYS = 14
-BACKUP_TASKS_PER_NODE = 10
+BACKUP_TASKS_PER_NODE = 30
 # Task logs are paged (default 50 lines); one job log is ~20 lines per guest.
 BACKUP_LOG_MAX_LINES = 50000
 
