@@ -939,6 +939,20 @@ Returns the available providers, the default notification config and, for the sa
 }
 ```
 
+### GET /api/notifications/alerts
+
+Active alerts (each with its fingerprint, label, value, limit, first/last seen, `clear_count`, suppressed `repeats` and the `silence` covering it), active silences, and the resolve rules in effect (`resolve_collections`, `resolve_margin`).
+
+### POST /api/notifications/silences
+
+Body `{"fingerprint": "<type>:<subject>"}` or `{"alert_type": "<type>"}` plus `"duration"`: `1h`, `8h`, `24h` or `resolved`. `400` for an unknown duration or no target.
+
+### DELETE /api/notifications/silences/&lt;id&gt;
+
+Removes a silence; `404` if none.
+
+See [Notifications - Alerts, repeats and silences](NOTIFICATIONS.md#alerts-repeats-and-silences).
+
 ---
 
 ## System Management

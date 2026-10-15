@@ -119,6 +119,9 @@
       "on_evacuation": true,
       "on_collector_status": false,
       "on_update_available": true,
+      "alert_resolve_collections": 3,
+      "alert_resolve_margin": 5,
+      "event_dedupe_seconds": 120,
       "providers": {
         "pushover": {
           "enabled": false,

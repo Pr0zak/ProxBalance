@@ -106,6 +106,42 @@ atexit.register(close_all)
 # Schema DDL
 # ---------------------------------------------------------------------------
 
+# Alert hysteresis, dedupe and silences. Kept separate so alert_state.py can
+# create just these tables in processes that never call init_db().
+ALERT_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS alert_state (
+    fingerprint   TEXT PRIMARY KEY,   -- "<alert_type>:<subject>"
+    alert_type    TEXT    NOT NULL,
+    subject       TEXT    NOT NULL,
+    status        TEXT    NOT NULL,   -- active | resolved
+    label         TEXT,
+    value         REAL,
+    threshold     REAL,
+    first_seen    TEXT    NOT NULL,
+    last_seen     TEXT    NOT NULL,
+    notified_at   TEXT,               -- when the one notification went out
+    resolved_at   TEXT,
+    clear_count   INTEGER NOT NULL DEFAULT 0,  -- consecutive clear observations
+    repeats       INTEGER NOT NULL DEFAULT 0   -- observations suppressed while active
+);
+CREATE INDEX IF NOT EXISTS idx_alert_state_status ON alert_state(status);
+
+CREATE TABLE IF NOT EXISTS alert_silences (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint    TEXT,               -- one alert, or NULL for a whole type
+    alert_type     TEXT,
+    created_at     TEXT    NOT NULL,
+    expires_at     TEXT,               -- NULL with until_resolved = 1
+    until_resolved INTEGER NOT NULL DEFAULT 0
+);
+
+-- Exact-repeat guard for event notifications (hash of type + text)
+CREATE TABLE IF NOT EXISTS notification_dedupe (
+    digest   TEXT PRIMARY KEY,
+    sent_at  TEXT NOT NULL
+);
+"""
+
 SCHEMA_SQL = """
 -- Node metrics (time-series, replaces node_metrics_history.json)
 CREATE TABLE IF NOT EXISTS node_metrics (
@@ -238,6 +274,8 @@ CREATE TABLE IF NOT EXISTS recommendation_tracking (
     data_json   TEXT    NOT NULL  -- JSON: full tracking entry
 );
 
+-- Notification alert state and silences (owned by proxbalance/alert_state.py)
+""" + ALERT_SCHEMA_SQL + """
 -- Schema version tracking
 CREATE TABLE IF NOT EXISTS schema_version (
     version     INTEGER PRIMARY KEY,

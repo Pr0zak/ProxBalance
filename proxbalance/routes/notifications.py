@@ -184,3 +184,61 @@ def notification_status():
         "channels": {name: {k: v for k, v in entry.items() if k in allowed}
                      for name, entry in channels.items() if isinstance(entry, dict)},
     })
+
+
+@notifications_bp.route("/api/notifications/alerts", methods=["GET"])
+@api_route
+def list_alerts():
+    """Active alerts and active silences.
+
+    Returns {"alerts": [...], "silences": [...], "settings": {...}}. Each
+    alert has fingerprint, alert_type, subject, label, value, threshold,
+    first_seen, last_seen, notified_at, clear_count, repeats and silence
+    (the silence covering it, or null). Settings are the resolve rules in
+    effect (resolve_collections, resolve_margin).
+    """
+    from proxbalance import alert_state
+
+    config = load_config()
+    settings = alert_state.settings_from_config({} if config.get('error') else config)
+    return jsonify({
+        "success": True,
+        "alerts": alert_state.get_active_alerts(),
+        "silences": alert_state.list_silences(),
+        "settings": {k: settings[k] for k in ("resolve_collections", "resolve_margin")},
+    })
+
+
+@notifications_bp.route("/api/notifications/silences", methods=["POST"])
+@api_route
+def create_silence():
+    """Silence one alert or a whole alert type.
+
+    Body: {"fingerprint": "<type>:<subject>"} or {"alert_type": "<type>"},
+    plus "duration": "1h" | "8h" | "24h" | "resolved".
+    """
+    from proxbalance import alert_state
+
+    body = request.get_json(silent=True) or {}
+    fingerprint = body.get("fingerprint")
+    alert_type = body.get("alert_type")
+    duration = body.get("duration", "1h")
+    for value in (fingerprint, alert_type, duration):
+        if value is not None and (not isinstance(value, str) or len(value) > 200):
+            return jsonify({"success": False, "error": "Invalid silence request"}), 400
+    try:
+        silence = alert_state.create_silence(fingerprint=fingerprint, alert_type=alert_type, duration=duration)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    return jsonify({"success": True, "silence": silence})
+
+
+@notifications_bp.route("/api/notifications/silences/<int:silence_id>", methods=["DELETE"])
+@api_route
+def delete_silence(silence_id):
+    """Remove a silence."""
+    from proxbalance import alert_state
+
+    if not alert_state.delete_silence(silence_id):
+        return jsonify({"success": False, "error": "Silence not found"}), 404
+    return jsonify({"success": True})
