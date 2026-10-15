@@ -59,6 +59,30 @@ proxbalance_node_cpu_recent_percent{node="pve3"} 23.4
 
 The full metric list, a Prometheus scrape config and a Grafana dashboard are in [PROMETHEUS.md](PROMETHEUS.md).
 
+### GET /api/diagnostics
+
+Runs the Settings → Diagnostics checks and returns one result per line. Read-only: only GET calls to Proxmox, `systemctl show`/`list-timers` and file reads (the update line reads the release cache; it never contacts GitHub or sends a notification). Checks run in parallel with short timeouts (about 15 s for the whole run); a check that crashes or doesn't finish becomes a `fail` line of its own. Always `200`. Every configured secret value is replaced by `***` in the output.
+
+Checks: Proxmox API host (latency), each node (online, latency), cluster quorum (`/cluster/status`), token privileges (`/access/permissions` compared with the list in `proxbalance/diagnostics.py` `REQUIRED_PRIVILEGES`), storage enabled/active per online node, collector last run and errors, timers armed, database size, cluster cache age, update channel and last update error. SSH is not checked: ProxBalance uses only the API.
+
+```json
+{
+  "success": true,
+  "ran_at": "2026-10-14T10:00:00+00:00",
+  "duration_ms": 812,
+  "summary": {"pass": 11, "warn": 1, "fail": 0, "skip": 0},
+  "results": [
+    {"id": "permissions", "group": "Proxmox", "name": "Token permissions", "status": "warn",
+     "fact": "Token lacks VM.Migrate — automation can't move guests",
+     "details": {"privileges": [{"privilege": "VM.Migrate", "scope": "/vms", "state": "missing"}]},
+     "duration_ms": 41}
+  ],
+  "required_privileges": [{"privilege": "Sys.Audit", "scope": "/", "level": "core", "used_for": "..."}]
+}
+```
+
+Missing `VM.Migrate` is `warn`, or `fail` when automation is enabled and not in dry-run.
+
 ---
 
 ## Cluster Data

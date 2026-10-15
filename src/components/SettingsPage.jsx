@@ -1,4 +1,4 @@
-import { Cpu, HardDrive, Bell, Server, Settings } from './Icons.jsx';
+import { Cpu, HardDrive, Bell, Server, Settings, Activity } from './Icons.jsx';
 import { GLASS_CARD, INPUT_FIELD, statusBadge } from '../utils/designTokens.js';
 import { parseTimestamp, formatRelativeTime } from '../utils/formatters.js';
 
@@ -6,6 +6,8 @@ import AIProviderSection from './settings/AIProviderSection.jsx';
 import DataCollectionSection from './settings/DataCollectionSection.jsx';
 import NotificationsSection from './settings/NotificationsSection.jsx';
 import AdvancedSystemSettings from './settings/AdvancedSystemSettings.jsx';
+import DiagnosticsSection from './settings/DiagnosticsSection.jsx';
+import { summaryText, overallStatus } from '../utils/diagnosticsReport.js';
 import SectionHeader from './SectionHeader.jsx';
 import { UnsavedContext, useUnsavedRegistry, UnsavedBar, countChanges, useBeforeUnload } from './UnsavedChanges.jsx';
 
@@ -24,7 +26,7 @@ const pick = (obj, keys) => Object.fromEntries(keys.map(k => [k, obj?.[k]]));
 const omit = (obj, keys) => Object.fromEntries(Object.entries(obj || {}).filter(([k]) => !keys.includes(k)));
 
 /** One-line live state for each section, shown under its name in the nav. */
-function sectionStatus({ config, data, backendCollected, automationConfig, aiEnabled, aiProvider, systemInfo, proxmoxTokenId, aiModel }) {
+function sectionStatus({ config, data, backendCollected, automationConfig, aiEnabled, aiProvider, systemInfo, proxmoxTokenId, aiModel, diagnostics }) {
   const out = {};
 
   const health = data?.cluster_health;
@@ -72,6 +74,10 @@ function sectionStatus({ config, data, backendCollected, automationConfig, aiEna
       ? { tone: 'amber', text: `${systemInfo.version} · update available` }
       : { tone: 'green', text: `${systemInfo.version}${systemInfo.branch ? ` · ${systemInfo.branch}` : ''}` };
   }
+  if (diagnostics?.results) {
+    const tone = { fail: 'red', warn: 'amber', pass: 'green' }[overallStatus(diagnostics.results)] || 'gray';
+    out.diagnostics = { tone, text: summaryText(diagnostics.summary) };
+  }
   return out;
 }
 
@@ -81,6 +87,7 @@ const SECTIONS = [
   { id: 'notifications', label: 'Notifications', icon: Bell, accent: ['amber', 'orange'], blurb: 'Where alerts go and which events send them' },
   { id: 'ai', label: 'AI', icon: Cpu, accent: ['purple', 'pink'], blurb: 'Optional LLM review of suggestions' },
   { id: 'system', label: 'System', icon: Settings, accent: ['indigo', 'violet'], blurb: 'Export, backup and restore, service restarts' },
+  { id: 'diagnostics', label: 'Diagnostics', icon: Activity, accent: ['teal', 'cyan'], blurb: 'Read-only checks of the API, token, quorum, storage and ProxBalance services' },
 ];
 
 export default function SettingsPage(props) {
@@ -121,6 +128,8 @@ export default function SettingsPage(props) {
 
   const active = SECTIONS.some(s => s.id === routeTab) ? routeTab : 'connection';
   const section = SECTIONS.find(s => s.id === active);
+
+  const [diagnostics, setDiagnostics] = useState(null);
 
   const registry = useUnsavedRegistry();
   const { register, unregister } = registry.context;
@@ -207,7 +216,7 @@ export default function SettingsPage(props) {
   const aiModel = { openai: openaiModel, anthropic: anthropicModel, local: localModel }[aiProvider];
   const status = sectionStatus({
     config, data, backendCollected, automationConfig: draftAutomationConfig,
-    aiEnabled, aiProvider, aiModel, systemInfo, proxmoxTokenId,
+    aiEnabled, aiProvider, aiModel, systemInfo, proxmoxTokenId, diagnostics,
   });
 
   return (
@@ -328,6 +337,10 @@ export default function SettingsPage(props) {
 
               <div hidden={active !== 'system'}>
                 <AdvancedSystemSettings part="system" data={data} config={config} error={error} setError={setError} />
+              </div>
+
+              <div hidden={active !== 'diagnostics'}>
+                <DiagnosticsSection active={active === 'diagnostics'} systemInfo={systemInfo} onResult={setDiagnostics} />
               </div>
             </div>
 

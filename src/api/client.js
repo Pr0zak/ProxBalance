@@ -889,3 +889,18 @@ export async function stopTask(sourceNode, taskId) {
     return { error: true, message: err.message };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Diagnostics (Settings → Diagnostics)
+// ---------------------------------------------------------------------------
+
+export async function fetchDiagnostics() {
+  try {
+    const response = await fetch(`${API_BASE}/diagnostics`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to run diagnostics:', err);
+    return { error: true, message: err.message };
+  }
+}
