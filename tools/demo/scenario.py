@@ -112,7 +112,7 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     140: dict(name="k8s-cp-1", t="qemu", node="orion", cores=2, mem=8, cpu=0.18, amp=0.2, peak=12, memf=0.61, pool="k8s-control", disk=64),
     150: dict(name="prometheus", t="lxc", node="orion", cores=2, mem=8, cpu=0.21, amp=0.1, peak=12, memf=0.66, tags="monitoring;affinity_monitoring", disk=120),
     151: dict(name="grafana", t="lxc", node="orion", cores=1, mem=2, cpu=0.05, amp=0.5, peak=10, memf=0.40, tags="monitoring;affinity_monitoring", disk=8),
-    160: dict(name="vaultwarden", t="lxc", node="orion", cores=1, mem=1, cpu=0.02, amp=0.5, peak=9, memf=0.30, tags="apps", disk=4),
+    160: dict(name="vaultwarden", t="lxc", node="orion", cores=1, mem=1, cpu=0.02, amp=0.5, peak=9, memf=0.30, tags="apps;auto_migrate_ok", disk=4),
     170: dict(name="mail", t="lxc", node="orion", cores=2, mem=4, cpu=0.06, amp=0.4, peak=9, memf=0.55, tags="apps", disk=40),
     180: dict(name="win-dc01", t="qemu", node="orion", cores=2, mem=8, cpu=0.05, amp=0.5, peak=9, memf=0.24, tags="windows", ha=True, disk=80, weekday=True),
     # lyra
@@ -129,11 +129,13 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     # vega
     200: dict(name="nas-01", t="qemu", node="vega", cores=2, mem=16, cpu=0.20, amp=0.6, peak=2, memf=0.88, io=0.20, tags="storage", disk=32,
               extra={"hostpci0": "0000:03:00.0,pcie=1", "scsi1": "/dev/disk/by-id/ata-WDC_WD120EFBX-68B0EN0_D7G0A1B2,size=11176G"}),
-    201: dict(name="backup-proxy", t="lxc", node="vega", cores=2, mem=2, cpu=0.06, amp=0.9, peak=2, memf=0.40, io=0.03, tags="storage", disk=8),
+    201: dict(name="backup-proxy", t="lxc", node="vega", cores=2, mem=2, cpu=0.06, amp=0.9, peak=2, memf=0.40, io=0.03, tags="storage;io_exempt", disk=8,
+              extra={"mp0": "/dev/disk/by-id/usb-WD_Elements_25A3_575831314135,mp=/backup,backup=0"}),
     202: dict(name="syncthing", t="lxc", node="vega", cores=1, mem=1, cpu=0.05, amp=0.4, peak=21, memf=0.38, tags="storage", disk=8,
               extra={"mp0": "/mnt/tank/sync,mp=/data"}),
-    203: dict(name="photoprism", t="lxc", node="vega", cores=2, mem=6, cpu=0.10, amp=0.6, peak=21, memf=0.50, tags="apps", disk=30),
-    204: dict(name="unifi", t="lxc", node="vega", cores=1, mem=2, cpu=0.06, amp=0.2, peak=12, memf=0.62, tags="infra", disk=12),
+    203: dict(name="photoprism", t="lxc", node="vega", cores=2, mem=6, cpu=0.10, amp=0.6, peak=21, memf=0.50, tags="apps", disk=30,
+              extra={"mp0": "/mnt/tank/photos,mp=/photos"}),
+    204: dict(name="unifi", t="lxc", node="vega", cores=1, mem=2, cpu=0.06, amp=0.2, peak=12, memf=0.62, tags="infra;ignore", disk=12),
     # draco (busy: CI and builds)
     120: dict(name="gitlab", t="qemu", node="draco", cores=4, mem=12, cpu=0.30, amp=0.6, peak=14, memf=0.74, tags="dev;affinity_req_gitlab", disk=250, weekday=True),
     121: dict(name="gitlab-runner-1", t="lxc", node="draco", cores=4, mem=4, cpu=0.38, amp=0.4, peak=15, memf=0.55, bursty=True, tags="dev;ci;affinity_req_gitlab", disk=50, weekday=True),
@@ -147,11 +149,12 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     # cygnus (quiet)
     131: dict(name="dns2", t="lxc", node="cygnus", cores=1, mem=1, cpu=0.04, amp=0.3, peak=19, memf=0.34, tags="infra;exclude_dns", disk=4),
     153: dict(name="jellyfin", t="lxc", node="cygnus", cores=4, mem=8, cpu=0.08, amp=0.9, peak=21, memf=0.42, spiky=True, tags="media", disk=40,
-              extra={"dev0": "/dev/dri/renderD128,gid=104"}),
-    173: dict(name="wiki", t="lxc", node="cygnus", cores=1, mem=2, cpu=0.04, amp=0.5, peak=10, memf=0.45, tags="apps", disk=10),
-    174: dict(name="uptime-kuma", t="lxc", node="cygnus", cores=1, mem=1, cpu=0.05, amp=0.1, peak=12, memf=0.50, tags="infra", disk=4),
+              extra={"dev0": "/dev/dri/renderD128,gid=104", "mp0": "/mnt/media,mp=/media,shared=1"}),
+    173: dict(name="wiki", t="lxc", node="cygnus", cores=1, mem=2, cpu=0.04, amp=0.5, peak=10, memf=0.45, tags="apps;auto_migrate_ok", disk=10),
+    174: dict(name="uptime-kuma", t="lxc", node="cygnus", cores=1, mem=1, cpu=0.05, amp=0.1, peak=12, memf=0.50, tags="infra;ignore", disk=4),
     175: dict(name="dev-sandbox", t="qemu", node="cygnus", cores=4, mem=16, cpu=0.0, amp=0, peak=12, memf=0.0, stopped=True, tags="dev", disk=60),
-    176: dict(name="legacy-erp", t="qemu", node="cygnus", cores=2, mem=8, cpu=0.03, amp=0.3, peak=10, memf=0.12, tags="apps", disk=60, weekday=True),
+    176: dict(name="legacy-erp", t="qemu", node="cygnus", cores=2, mem=8, cpu=0.03, amp=0.3, peak=10, memf=0.12, tags="apps", disk=60, weekday=True,
+              extra={"sata1": "/dev/disk/by-id/ata-ST2000DM008-2FR102_ZFL0K3QX,size=1863G", "usb0": "host=096e:0006"}),
     177: dict(name="mqtt-broker", t="lxc", node="cygnus", cores=1, mem=1, cpu=0.03, amp=0.2, peak=18, memf=0.40, tags="infra;ignore", disk=4),
 }
 
