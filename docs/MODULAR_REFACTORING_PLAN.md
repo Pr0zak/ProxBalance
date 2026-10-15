@@ -1,5 +1,7 @@
 # ProxBalance Modular Refactoring Plan
 
+> **Historical planning document.** It records a plan made before the features were built and is not kept up to date. For current behaviour see the [feature docs](README.md).
+
 > **Last updated**: 2026-02-09
 > **Status**: Phase 1B complete, Phase 2 COMPLETE, Phase 3 COMPLETE, Phase 4 COMPLETE
 

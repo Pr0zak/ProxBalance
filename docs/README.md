@@ -1,42 +1,55 @@
 # ProxBalance Documentation
 
-Complete documentation for ProxBalance - cluster monitoring and automated load balancing for Proxmox VE.
+Documentation for ProxBalance, cluster monitoring and load balancing for Proxmox VE.
 
 ---
 
 ## Getting Started
 
-- **[Installation Guide](INSTALL.md)** - Quick install, manual setup, and post-installation steps
+- **[Installation Guide](INSTALL.md)** - Quick install, manual setup and post-installation steps
 - **[Usage Guide](USAGE.md)** - Dashboard, Insights, Automation and Settings pages, migrations, tagging and maintenance
 
 ## Reference
 
-- **[Configuration Reference](CONFIGURATION.md)** - All config.json options with descriptions
+- **[Configuration Reference](CONFIGURATION.md)** - Every `config.json` option
 - **[Releasing and Updating](RELEASING.md)** - Update channels, how updates run and roll back, and how to cut a release
-- **[API Reference](API.md)** - REST API endpoints for automation and scripting
-- **[Scoring Algorithm](SCORING_ALGORITHM.md)** - Penalty-based scoring system internals
+- **[API Reference](API.md)** - REST API endpoints for scripts and integrations
+- **[Scoring Algorithm](SCORING_ALGORITHM.md)** - Penalty-based scoring, including IO pressure and the soft affinity penalty
 - **[Prometheus Metrics](PROMETHEUS.md)** - `/api/metrics` endpoint, scrape config and Grafana dashboard
 
 ## Features
 
-- **[Feature Overview](FEATURES.md)** - Complete feature list with descriptions
-- **[Automated Migrations](AUTOMATION.md)** - Scheduling, safety checks, tagging, and distribution balancing
-- **[AI Features](AI_FEATURES.md)** - AI-powered recommendations with OpenAI, Anthropic, or Ollama
-- **[Notifications](NOTIFICATIONS.md)** - Multi-provider alert system (Pushover, Email, Telegram, Discord, Slack, Webhooks)
+- **[Feature Overview](FEATURES.md)** - Every feature, with screenshots
+- **[Automated Migrations](AUTOMATION.md)** - Automatic and semi-automatic modes, scheduling, safety checks, placement rules and distribution balancing
+- **[AI Features](AI_FEATURES.md)** - Optional AI review with OpenAI, Anthropic or Ollama
+- **[Notifications](NOTIFICATIONS.md)** - Providers (Pushover, Email, Telegram, Discord, Slack, Webhooks), alerts, repeats and silences
 
 ## Maintenance
 
-- **[Troubleshooting](TROUBLESHOOTING.md)** - Diagnostics and common issues
-- **[Updating](UPDATE_FROM_OLD_VERSION.md)** - Update methods and branch management
+- **[Troubleshooting](TROUBLESHOOTING.md)** - Settings → Diagnostics, scripts and common issues
+- **[Updating](UPDATE_FROM_OLD_VERSION.md)** - Update methods and channels
+- **[Release notes](releases/)** - Notes for each release from v2.16.0
 
 ## Development
 
-- **[Contributing](CONTRIBUTING.md)** - Code style, pull requests, and development setup
+- **[Contributing](CONTRIBUTING.md)** - Code style, pull requests and development setup
 - **[Docker Development](DOCKER_DEV.md)** - Local development with Docker
+- **[Testing update compatibility](TESTING_UPDATE_COMPATIBILITY.md)** - Checks for the update path
+
+## Historical planning documents
+
+These describe plans made before the features were built. The feature docs above describe what exists now.
+
+- [Intelligent migration plan](INTELLIGENT_MIGRATION_PLAN.md)
+- [Mobile redesign plan](MOBILE_REDESIGN_PLAN.md)
+- [Modular refactoring plan](MODULAR_REFACTORING_PLAN.md)
+- [Recommendation improvements plan](RECOMMENDATION_IMPROVEMENTS_PLAN.md)
 
 ---
 
 ## Quick Diagnostics
+
+In the web UI, open **Settings → Diagnostics** (`#/settings/diagnostics`). From the Proxmox host:
 
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main/check-status.sh)" _ <container-id>
@@ -54,79 +67,59 @@ bash -c "$(wget -qLO - https://raw.githubusercontent.com/Pr0zak/ProxBalance/main
 
 ```
 ProxBalance/
-├── app.py                       # Flask entry point (modular Blueprint architecture)
+├── app.py                       # Flask entry point (registers the route blueprints)
 ├── collector_api.py             # Proxmox data collection service
-├── ai_provider.py               # AI provider abstraction (OpenAI/Anthropic/Ollama)
 ├── automigrate.py               # Automated migration engine
 ├── generate_recommendations.py  # Background recommendation generator
-├── notifications.py             # Multi-provider notification system
-├── update_manager.py            # Update/version management
+├── notifications.py             # Notification providers
+├── ai_provider.py               # AI provider abstraction (OpenAI/Anthropic/Ollama)
+├── update_manager.py            # Version info and update checks
+├── release_updater.py           # Release updater: backup, verified web bundle, rollback
 │
-├── deploy-frontend.sh           # Build the frontend and copy it to the nginx root (cache-busted)
-│
-├── proxbalance/                 # Core backend package (24 domain modules)
-│   ├── config_manager.py        # Config loading, Proxmox client
-│   ├── constants.py             # Shared path constants, tuning values
-│   ├── db.py                    # SQLite connections, schema, JSON migration
-│   ├── secret_fields.py         # Redacts secrets on GET, keeps them on save
-│   ├── cache.py                 # In-memory cache with 60s TTL
-│   ├── error_handlers.py        # @api_route decorator, response helpers
-│   ├── scoring.py               # Penalty-based scoring algorithm
+├── proxbalance/                 # Backend package (domain modules)
+│   ├── scoring.py               # Penalty-based scoring
 │   ├── recommendations.py       # Recommendation engine
-│   ├── recommendation_analysis.py # Confidence scoring, conflict detection
-│   ├── storage.py               # Storage compatibility checks
-│   ├── distribution.py          # Guest distribution balancing
-│   ├── migrations.py            # Migration execution logic
-│   ├── evacuation.py            # Node evacuation planning
+│   ├── placement_rules.py       # Affinity / anti-affinity rules from tags and pools
+│   ├── ha_rules.py              # Proxmox HA rules and groups
+│   ├── semi_auto.py             # Semi-automatic mode approval queue
+│   ├── alert_state.py           # Alert hysteresis, repeats and silences
+│   ├── audit_log.py             # Change log
+│   ├── diagnostics.py           # Settings → Diagnostics checks
+│   ├── disk_health.py           # SMART disk health
+│   ├── failure_sim.py           # "What if a node fails?"
+│   ├── rolling_update.py        # Rolling update plan
+│   ├── rightsizing.py           # Right-sizing hints
 │   ├── forecasting.py           # Trend projection
-│   ├── patterns.py              # Workload pattern detection
-│   ├── outcomes.py              # Migration outcome tracking
-│   ├── metrics_store.py         # Node/guest metrics time series
-│   ├── guest_profiles.py        # Guest behaviour profiling
-│   ├── trend_analysis.py        # Node/guest trend analysis
-│   ├── migration_db.py          # Migration history, automation state
-│   ├── settings_mapper.py       # Simplified settings ↔ penalty config
-│   ├── execution_planner.py     # Topological execution ordering
-│   ├── reporting.py             # Summaries, capacity advisories
-│   └── routes/                  # Flask Blueprints (all API endpoints, @api_route)
-│       ├── analysis.py          # /api/cluster-analysis, /api/cluster-summary
-│       ├── automation.py        # /api/automigrate/* endpoints
-│       ├── config.py            # /api/config endpoints
-│       ├── evacuation.py        # /api/nodes/evacuate endpoints
-│       ├── guests.py            # /api/guests/*, /api/affinity-groups
-│       ├── migrations.py        # /api/migrate endpoint
-│       ├── notifications.py     # /api/notifications/test endpoint
-│       ├── penalty.py           # /api/penalty-config endpoint
-│       ├── recommendations.py   # /api/recommendations endpoints
-│       └── system.py            # /api/update/*, /api/health, /api/version
+│   ├── evacuation.py            # Node evacuation planning
+│   ├── migrations.py            # Migration execution
+│   ├── db.py                    # SQLite connections and schema
+│   ├── ...                      # Storage, distribution, outcomes, patterns, metrics and others
+│   └── routes/                  # Flask blueprints: analysis, audit, automation, config,
+│                                #   diagnostics, evacuation, guests, metrics, migrations,
+│                                #   notifications, penalty, recommendations, rules,
+│                                #   simulate, system
 │
-├── src/                         # Frontend source (React JSX)
+├── src/                         # Frontend source (React JSX, built with esbuild)
 │   ├── index.jsx                # Root component, hook composition, hash routing
-│   ├── hooks/                   # 11 custom React hooks (state management)
+│   ├── hooks/                   # Custom React hooks (state management)
 │   ├── components/
-│   │   ├── DashboardPage.jsx    # Dashboard wrapper + dashboard/ sub-components
-│   │   ├── InsightsPage.jsx     # Trends, forecasts, workload rhythm, outcomes
-│   │   ├── AutomationPage.jsx   # Automation wrapper + automation/ sub-components
-│   │   ├── SettingsPage.jsx     # Settings wrapper + settings/ sub-components
-│   │   ├── UnsavedChanges.jsx   # Shared unsaved-changes bar
-│   │   ├── Icons.jsx            # SVG icon components
-│   │   └── Skeletons.jsx        # Loading skeleton components
-│   ├── api/
-│   │   └── client.js            # API client with error handling
-│   └── utils/
-│       ├── constants.js         # Shared frontend constants
-│       ├── designTokens.js      # Glassmorphism tokens, headroom colour scale
-│       ├── schedule.js          # Dashboard schedule status (matches automigrate)
-│       ├── formatters.js        # Utility formatting functions
-│       └── useIsMobile.js       # Mobile responsiveness hook
+│   │   ├── DashboardPage.jsx    # Dashboard + dashboard/ sub-components
+│   │   ├── InsightsPage.jsx     # Insights + insights/ sub-components
+│   │   ├── AutomationPage.jsx   # Automation + automation/ sub-components
+│   │   ├── SettingsPage.jsx     # Settings + settings/ sub-components
+│   │   ├── WallMode.jsx         # Wall-monitor view (#/wall)
+│   │   └── QuickSearch.jsx      # Ctrl/Cmd+K search
+│   ├── api/client.js            # API client
+│   └── utils/                   # Design tokens, formatters, schedule and other helpers
 │
 ├── index.html                   # SPA entry point
-├── assets/                      # SVG logos, favicon, and built JS
+├── assets/                      # Logos, favicon and built JS/CSS
 ├── config.example.json          # Configuration template
-├── requirements.txt             # Python dependencies
-├── install.sh                   # Automated LXC installer
-├── tests/                       # pytest suites + tests/js schedule agreement check
-├── systemd/                     # Systemd service and timer files
+├── requirements.txt             # Python dependencies (pinned)
+├── install.sh                   # LXC installer
+├── update.sh                    # Update from the Proxmox host
+├── tests/                       # pytest suites and JavaScript tests
+├── systemd/                     # Service and timer units
 ├── nginx/                       # Nginx reverse proxy config
 └── docs/                        # Documentation and screenshots
 ```

@@ -18,7 +18,7 @@
 
 ### Required
 
-- Proxmox VE 7.0+ (tested on 7.x and 8.x)
+- Proxmox VE 7.0+. IO pressure (PSI) and HA rules need Proxmox VE 9; on 8, HA groups are read instead
 - Root access to the Proxmox host
 - Network connectivity between the container and all cluster nodes
 - API access to Proxmox (the installer creates tokens automatically)

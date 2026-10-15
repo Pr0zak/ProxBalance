@@ -1,5 +1,7 @@
 # Migration Recommendation & Scoring Improvements Plan
 
+> **Historical planning document.** It records a plan made before the features were built and is not kept up to date. For current behaviour see the [feature docs](README.md).
+
 > **Note**: This plan references JSON file storage (`score_history.json`, `migration_history.json`, etc.). All of these have been migrated to SQLite (`proxbalance.db`). The features and logic described here remain accurate; only the storage backend has changed.
 
 This document proposes improvements to ProxBalance's recommendation engine, scoring algorithm, and UI to make the system more transparent, intuitive, and user-friendly for Proxmox administrators.
@@ -86,9 +88,9 @@ Add an expandable "Score Breakdown" to each recommendation card showing exactly 
 **Proposed:** An expandable panel per recommendation showing:
 
 ```
-Score Breakdown for VM 100 → pve2
+Score Breakdown for VM 100 → lyra
 ─────────────────────────────────────────────
-Source Node (pve1)          Target Node (pve2)
+Source Node (orion)          Target Node (lyra)
   Current load:    +45        Current load:    +18
   Sustained load:  +20        Sustained load:  +5
   IOWait:          +10        IOWait:          +0
@@ -151,7 +153,7 @@ Replace the current reason strings with structured, multi-factor reasons.
     {"factor": "target_headroom", "value": 58, "weight": "medium", "label": "Target has 58% CPU headroom"},
     {"factor": "rising_trend", "value": true, "label": "Source CPU trending upward over 24h"}
   ],
-  "summary": "VM 100 should move to pve2 because pve1 has high CPU usage (78%) with an upward trend, while pve2 has significant headroom (42% used)."
+  "summary": "VM 100 should move to lyra because orion has high CPU usage (78%) with an upward trend, while lyra has significant headroom (42% used)."
 }
 ```
 
@@ -170,7 +172,7 @@ confidence = weighted_average(
     score_improvement_factor,   # 40% — How much the score improves
     target_headroom_factor,     # 25% — How much capacity the target has after migration
     historical_stability,       # 20% — Has this guest been stable on its current node historically
-    migration_complexity,       # 15% — Guest size, storage complexity, bind mounts
+    migration_comjellyfinity,       # 15% — Guest size, storage comjellyfinity, bind mounts
 )
 ```
 
@@ -178,7 +180,7 @@ Each factor maps to 0-100:
 - **Score improvement**: 15pt → 30, 25pt → 50, 40pt → 75, 60pt+ → 100
 - **Target headroom**: Maps remaining capacity after migration (more room = higher confidence)
 - **Historical stability**: If the guest's current node was fine yesterday, maybe less urgent
-- **Migration complexity**: Small VMs with simple storage = high confidence; large VMs with many disks = lower
+- **Migration comjellyfinity**: Small VMs with simple storage = high confidence; large VMs with many disks = lower
 
 This gives users a confidence score that actually reflects "how sure are we this migration is a good idea" rather than just "how big is the score delta."
 
@@ -199,7 +201,7 @@ Add a new API endpoint and UI element showing guests that were evaluated but NOT
       "vmid": 300,
       "name": "database-1",
       "reason": "insufficient_improvement",
-      "detail": "Best target (pve3) would improve score by only 7 points (minimum: 15)",
+      "detail": "Best target (vega) would improve score by only 7 points (minimum: 15)",
       "current_score": 62,
       "best_target_score": 55
     },
@@ -253,7 +255,7 @@ Restructure recommendation cards for scannability and clarity.
 ┌─────────────────────────────────────────────────────┐
 │  [VM icon] VM 100 — web-app-1          [Migrate ▶]  │
 │                                                     │
-│  pve1  ────────────────────────▶  pve2              │
+│  orion  ────────────────────────▶  lyra              │
 │  CPU: 78%                         CPU: 42%          │
 │  Mem: 65%                         Mem: 51%          │
 │                                                     │
@@ -261,8 +263,8 @@ Restructure recommendation cards for scannability and clarity.
 │  │  ████████████████████░░░░░  +55 pts (Great)  │    │
 │  └──────────────────────────────────────────────┘    │
 │                                                     │
-│  Reason: High CPU on pve1 (78%, trending up).       │
-│          pve2 has 58% CPU headroom.                 │
+│  Reason: High CPU on orion (78%, trending up).       │
+│          lyra has 58% CPU headroom.                 │
 │                                                     │
 │  Confidence: 82%  ●●●●●●●●○○                       │
 │                                                     │
@@ -396,9 +398,9 @@ Add a "What If" simulator that shows how configuration changes would affect curr
 │  Proposed settings: 8 recommendations                 │
 │                                                       │
 │  New recommendations that would appear:               │
-│  • VM 300 → pve3 (improvement: 18 pts, was 7 pts)     │
-│  • VM 450 → pve2 (improvement: 22 pts, was 12 pts)    │
-│  • CT 600 → pve4 (improvement: 16 pts, was 9 pts)     │
+│  • VM 300 → vega (improvement: 18 pts, was 7 pts)     │
+│  • VM 450 → lyra (improvement: 22 pts, was 12 pts)    │
+│  • CT 600 → draco (improvement: 16 pts, was 9 pts)     │
 │                                                       │
 │  Recommendations that would disappear:                │
 │  (none)                                               │
@@ -457,13 +459,13 @@ After a migration is executed, track the outcome and display it.
 
 Display this as a report:
 ```
-Migration VM 100: pve1 → pve2
+Migration VM 100: orion → lyra
 ────────────────────────────
 Predicted improvement: +55 pts
 Actual improvement:    +48 pts (87% accuracy)
 
-pve1 CPU: 78% → 62% (-16%)  ✓ Improved
-pve2 CPU: 42% → 49% (+7%)   ✓ Within expected range
+orion CPU: 78% → 62% (-16%)  ✓ Improved
+lyra CPU: 42% → 49% (+7%)   ✓ Within expected range
 ```
 
 This builds user trust and provides data to validate the scoring algorithm.
@@ -531,7 +533,7 @@ This gives administrators a quick executive summary without having to parse indi
 
 ## Implementation Priority
 
-### Phase 1 — Quick Wins (Low complexity, high impact)
+### Phase 1 — Quick Wins (Low comjellyfinity, high impact)
 | Item | Description | Effort |
 |------|-------------|--------|
 | A1 | Score breakdown panel | Medium — Backend data exists, needs exposure + UI |
@@ -540,7 +542,7 @@ This gives administrators a quick executive summary without having to parse indi
 | D3 | Threshold suggestion integration | Low — Data exists, needs UI |
 | E3 | Recommendation digest/summary | Medium — Aggregation logic + UI |
 
-### Phase 2 — Core Improvements (Medium complexity)
+### Phase 2 — Core Improvements (Medium comjellyfinity)
 | Item | Description | Effort |
 |------|-------------|--------|
 | B2 | Reworked confidence score | Medium — New formula, testing needed |
@@ -548,7 +550,7 @@ This gives administrators a quick executive summary without having to parse indi
 | C1 | Recommendation card redesign | Medium — Significant UI work |
 | D1 | Penalty config presets + sliders | Medium — Preset mapping + UI redesign |
 
-### Phase 3 — Advanced Features (Higher complexity)
+### Phase 3 — Advanced Features (Higher comjellyfinity)
 | Item | Description | Effort |
 |------|-------------|--------|
 | A2 | Node score comparison view | Medium — New endpoint + chart component |
@@ -590,7 +592,7 @@ This gives administrators a quick executive summary without having to parse indi
 
 **Cons:**
 - Doesn't handle nuance well — hard cutoffs cause flip-flopping
-- Rule interactions become complex with 10+ rules
+- Rule interactions become comjellyfin with 10+ rules
 - Current penalty system already handles gray areas better
 
 **Verdict:** Could be offered as a "Simple Mode" for users who want deterministic behavior, while keeping penalties as the default. Worth considering as a UI abstraction layer over the penalty engine (rules map to penalty configs).
@@ -669,7 +671,7 @@ This section tracks the implementation progress of each proposed improvement aga
 | **A1** | Score Breakdown Panel | `calculate_target_node_score()` in `scoring.py` supports `return_details=True`, returning 12 individual penalty components, total penalties, component scores (health, predicted health, headroom, storage), and detailed metrics. Each recommendation includes a `score_details` object with `source` and `target` breakdowns. | Expandable score breakdown section per recommendation card (`DashboardPage.jsx:4209-4278`). Shows source/target penalty breakdown, predicted post-migration metrics (CPU%, Mem%, headroom). |
 | **A2** | Node Score Comparison View | `POST /api/guest/{vmid}/migration-options` endpoint calculates per-node suitability for any guest, including anti-affinity checks, storage compatibility, penalty categories, and score improvement deltas. Returns sorted target list with disqualification reasons. | `fetchGuestMigrationOptions()` in `client.js:321-334`. State management in `useClusterData` hook with `guestMigrationOptions` state. |
 | **B1** | Structured Reason Strings | `_build_structured_reason()` in `recommendations.py:456-585` builds `primary_reason`, `primary_label`, `contributing_factors` (each with factor, value, severity, label), and `summary` sentence. Reason types: `maintenance_evacuation`, `cpu_imbalance`, `mem_imbalance`, `combined`, `distribution_balancing`. | Recommendation cards render `primary_label` and up to 3 contributing factors (`DashboardPage.jsx:4169-4206`). |
-| **B2** | Reworked Confidence Score | `_calculate_confidence()` in `recommendations.py:381-453`. Four weighted factors: score improvement (40%), target headroom (25%), migration complexity (20%), stability signal (15%). Maps each to 0-100 with meaningful thresholds. | Color-coded confidence display: green >= 70%, yellow >= 40%, orange < 40% (`DashboardPage.jsx:4193-4199`). AI confidence adjustments shown when present. |
+| **B2** | Reworked Confidence Score | `_calculate_confidence()` in `recommendations.py:381-453`. Four weighted factors: score improvement (40%), target headroom (25%), migration comjellyfinity (20%), stability signal (15%). Maps each to 0-100 with meaningful thresholds. | Color-coded confidence display: green >= 70%, yellow >= 40%, orange < 40% (`DashboardPage.jsx:4193-4199`). AI confidence adjustments shown when present. |
 | **B3** | "Why Not?" Explanations | Full `skipped_guests` tracking during generation. Seven skip reasons: `has_ignore_tag`, `ha_managed`, `stopped`, `passthrough_disk`, `unshared_bind_mount`, `insufficient_improvement`, `no_suitable_target`. Each entry includes `vmid`, `name`, `type`, `node`, `reason`, `detail`, and where applicable `best_target`, `score_improvement`, `current_score`, `best_target_score`. | Collapsible "Not Recommended" section (`DashboardPage.jsx:4463-4520`). Shows up to 20 guests with reason-specific icons (`~` insufficient, `H` HA, `!` no target, `S` stopped, `P` passthrough, `I` ignore tag, `B` bind mount). Score improvement vs. minimum threshold displayed. |
 | **E2** | User Feedback | `POST /api/recommendations/feedback` accepts helpful/not_helpful with optional reasons. `GET /api/recommendations/feedback` returns aggregated stats. Stored in `recommendation_feedback.json` with 500-entry cap. | Thumbs up/down buttons per recommendation card (`DashboardPage.jsx:4304-4378`). Status badge after submission ("Thanks!" / "Noted"). `feedbackGiven` state tracks per-recommendation. |
 | **E3** | Recommendation Digest | `_build_summary()` in `recommendations.py:588-656` generates `cluster_health` (0-100), `predicted_health`, `urgency` (high/medium/low/none) with `urgency_label`, `reasons_breakdown`, and `skip_reasons` counts by category. Now includes `batch_impact` with per-node before/after snapshots and variance metrics. | Summary data rendered in recommendation header with health bar, urgency badge, reason breakdown. Batch impact shown in collapsible "Batch Migration Impact" panel with per-node CPU/Mem/Guest before→after. |
@@ -680,7 +682,7 @@ This section tracks the implementation progress of each proposed improvement aga
 | **A3** | Penalty Contribution Visualization | `/api/node-scores` returns `penalty_categories` per node. | Stacked bar on collapsed node cards showing CPU/Memory/IOWait/Trends/Spikes penalty breakdown with color-coded segments and legend. Total penalty points displayed. |
 | **C1** | Recommendation Card Enhancements | Cards include structured reasons, confidence scores, expandable score details, AI insights, feedback buttons, migration commands. | Visual score improvement progress bar (0-80pt scale), confidence as 5-dot indicator with color coding, inline source/target CPU% metrics in FROM/TO badges. |
 | **B4** | Predicted Impact Preview | `batch_impact` summary with per-node before/after data from `_build_summary()`. | "Show Predicted" toggle on Node Status section. When active, overlays predicted CPU/Memory values on collapsed node cards with strikethrough current values, color-coded deltas, and guest count changes. |
-| **H1** | Migration Risk Scoring | `calculate_migration_risk()` in `scoring.py`. Five weighted risk factors: guest size (30%), I/O activity (25%), storage complexity (20%), network sensitivity (15%), cluster health (10%). Returns `risk_score` (0-100), `risk_level` (low/moderate/high/very_high), and `risk_factors` array with per-factor detail. Each recommendation includes `risk_score`, `risk_level`, `risk_factors`. | Risk badge on each recommendation card showing risk level and score. Color-coded (green/yellow/orange/red). Tooltip shows all risk factor details. |
+| **H1** | Migration Risk Scoring | `calculate_migration_risk()` in `scoring.py`. Five weighted risk factors: guest size (30%), I/O activity (25%), storage comjellyfinity (20%), network sensitivity (15%), cluster health (10%). Returns `risk_score` (0-100), `risk_level` (low/moderate/high/very_high), and `risk_factors` array with per-factor detail. Each recommendation includes `risk_score`, `risk_level`, `risk_factors`. | Risk badge on each recommendation card showing risk level and score. Color-coded (green/yellow/orange/red). Tooltip shows all risk factor details. |
 | **H2** | Pre-Migration Validation | `validate_migration()` in `migrations.py` runs 6 checks: staleness (cache age), guest state (running on expected node), resource availability (target headroom), storage re-verification, lock/snapshot check, affinity validation. `POST /api/migrate/validate` endpoint. Returns `passed` bool, `checks` list, `warnings` list. | `validateMigration()` in `client.js`. Backend endpoint ready for frontend integration on migrate button. |
 | **G1** | Migration Conflict Detection | `_detect_migration_conflicts()` post-generation pass in `recommendations.py`. Groups recommendations by target node, simulates combined post-migration load, flags when combined load exceeds thresholds. Suggests resolution (defer weakest or re-route to alternative target). Tags conflicting recommendations with `has_conflict` and `conflict_target`. | Conflict warning banner in Dashboard showing target node, incoming guests, combined predicted load vs. threshold, and resolution suggestion. Per-recommendation "Target Conflict" badge when `has_conflict` is set. |
 | **F3** | Capacity Planning Insights | `_generate_capacity_advisories()` in `recommendations.py`. Generates advisory messages for: cluster-wide saturation (avg CPU >70% or mem >80%), limited CPU/memory headroom (most nodes above threshold), single-node bottlenecks (CPU >90% or mem >95%), and small clusters (1-2 nodes). Returns severity (critical/warning/info), message, metrics, and suggestions. Included in recommendation response as `capacity_advisories`. | Capacity advisory banners in Dashboard before recommendation list. Color-coded by severity (red=critical, yellow=warning, blue=info). Shows advisory message with actionable suggestions list. |
@@ -724,7 +726,7 @@ Generate recommendations before thresholds are crossed based on trend analysis.
   "urgency": "low",
   "primary_reason": "trend_crossing",
   "primary_label": "CPU approaching threshold",
-  "summary": "pve1 CPU has risen from 42% to 57% over the past 5 days. At this rate, it will exceed the 60% threshold in approximately 2 days. Consider migrating VM 100 (web-app-1) to pve3 preemptively.",
+  "summary": "orion CPU has risen from 42% to 57% over the past 5 days. At this rate, it will exceed the 60% threshold in approximately 2 days. Consider migrating VM 100 (web-app-1) to vega preemptively.",
   "forecast": {
     "metric": "cpu",
     "current_value": 57.2,
@@ -787,7 +789,7 @@ Extend recommendations beyond "move this guest" to include capacity planning adv
 
 **Proposed:** Add cluster-level recommendations:
 - "Your cluster is 78% utilized. Consider adding a node before deploying additional workloads."
-- "pve2 has 85% memory used with no viable migration targets. All other nodes are similarly loaded. Consider adding RAM to pve2 or adding a new node."
+- "lyra has 85% memory used with no viable migration targets. All other nodes are similarly loaded. Consider adding RAM to lyra or adding a new node."
 - "3 of your 4 nodes are above 70% CPU. Migration can redistribute but won't reduce total load."
 
 These are advisory only — no migration action — but help administrators plan infrastructure changes.
@@ -825,7 +827,7 @@ These are advisory only — no migration action — but help administrators plan
 
 Detect when two or more recommended migrations conflict with each other.
 
-**Current:** Each migration is evaluated independently. If VM A and VM B are both recommended to move to pve3, the system doesn't account for the combined load impact. The `pending_target_guests` parameter exists in `calculate_target_node_score()` but is only used within a single recommendation cycle's iteration — it doesn't fully simulate the combined effect of all recommendations.
+**Current:** Each migration is evaluated independently. If VM A and VM B are both recommended to move to vega, the system doesn't account for the combined load impact. The `pending_target_guests` parameter exists in `calculate_target_node_score()` but is only used within a single recommendation cycle's iteration — it doesn't fully simulate the combined effect of all recommendations.
 
 **Proposed:** After generating individual recommendations, run a validation pass:
 1. Group recommendations by target node
@@ -837,14 +839,14 @@ Detect when two or more recommended migrations conflict with each other.
 {
   "conflicts": [
     {
-      "target_node": "pve3",
+      "target_node": "vega",
       "incoming_guests": [
         {"vmid": 100, "name": "web-app-1", "predicted_cpu_impact": 12.5},
         {"vmid": 200, "name": "api-server", "predicted_cpu_impact": 18.3}
       ],
       "combined_predicted_cpu": 78.8,
       "threshold": 60.0,
-      "resolution": "Consider moving VM 200 to pve4 instead (score: 72 vs. 68 on pve3)"
+      "resolution": "Consider moving VM 200 to draco instead (score: 72 vs. 68 on vega)"
     }
   ]
 }
@@ -862,7 +864,7 @@ Determine the optimal order for executing multiple migrations.
 **Current:** Batch migrations execute in the order they appear in the recommendation list. There's no analysis of whether order matters.
 
 **Proposed:** Analyze migration dependencies:
-- **Resource sequencing** — If pve1 is overloaded and pve2 needs to send a guest to pve1's current target (pve3), the pve1 migration should execute first to free capacity
+- **Resource sequencing** — If orion is overloaded and lyra needs to send a guest to orion's current target (vega), the orion migration should execute first to free capacity
 - **Affinity chain ordering** — When affinity companions need to move together, determine which should go first to maintain service availability
 - **Risk minimization** — Execute highest-confidence migrations first so that if the process is interrupted, the most impactful changes are already complete
 
@@ -870,9 +872,9 @@ Determine the optimal order for executing multiple migrations.
 {
   "execution_plan": {
     "ordered_migrations": [
-      {"step": 1, "vmid": 100, "source": "pve1", "target": "pve3", "reason": "Frees capacity on pve1 for step 3"},
-      {"step": 2, "vmid": 300, "source": "pve2", "target": "pve4", "reason": "Independent, high confidence"},
-      {"step": 3, "vmid": 200, "source": "pve3", "target": "pve1", "reason": "Depends on step 1 completing"}
+      {"step": 1, "vmid": 100, "source": "orion", "target": "vega", "reason": "Frees capacity on orion for step 3"},
+      {"step": 2, "vmid": 300, "source": "lyra", "target": "draco", "reason": "Independent, high confidence"},
+      {"step": 3, "vmid": 200, "source": "vega", "target": "orion", "reason": "Depends on step 1 completing"}
     ],
     "parallel_groups": [[1, 2], [3]],
     "estimated_total_downtime": "minimal (online migrations)"
@@ -898,15 +900,15 @@ Show the cumulative impact of executing all recommendations as a batch.
   "batch_impact": {
     "before": {
       "cluster_health": 62,
-      "node_scores": {"pve1": 45, "pve2": 78, "pve3": 32, "pve4": 55},
+      "node_scores": {"orion": 45, "lyra": 78, "vega": 32, "draco": 55},
       "score_variance": 18.7,
-      "worst_node": "pve2"
+      "worst_node": "lyra"
     },
     "after": {
       "cluster_health": 81,
-      "node_scores": {"pve1": 38, "pve2": 42, "pve3": 45, "pve4": 48},
+      "node_scores": {"orion": 38, "lyra": 42, "vega": 45, "draco": 48},
       "score_variance": 4.1,
-      "worst_node": "pve4"
+      "worst_node": "draco"
     },
     "improvement": {
       "health_delta": "+19 points",
@@ -940,7 +942,7 @@ Assign a risk level to each migration based on guest characteristics and cluster
 risk_score = weighted_average(
     guest_size_risk,        # 30% — Larger memory = longer migration, more downtime risk
     io_activity_risk,       # 25% — High disk I/O during migration increases failure chance
-    storage_complexity,     # 20% — Multi-disk, mixed storage types, snapshots
+    storage_comjellyfinity,     # 20% — Multi-disk, mixed storage types, snapshots
     network_sensitivity,    # 15% — High network I/O suggests latency-sensitive workload
     cluster_health_risk,    # 10% — If cluster is already stressed, migration adds load
 )
@@ -949,7 +951,7 @@ risk_score = weighted_average(
 Risk levels:
 - **0-25: Low risk** — Small guest, low activity, simple storage. Safe for automated migration.
 - **26-50: Moderate risk** — Medium guest or moderate activity. Suitable for scheduled windows.
-- **51-75: High risk** — Large guest, high I/O, or complex storage. Recommend manual oversight.
+- **51-75: High risk** — Large guest, high I/O, or comjellyfin storage. Recommend manual oversight.
 - **76-100: Very high risk** — Very large guest, extreme I/O, or cluster under stress. Recommend manual migration with monitoring.
 
 ```json
@@ -993,7 +995,7 @@ Run automated checks before migration execution to catch issues early.
       {"check": "staleness", "passed": true, "detail": "Recommendation generated 4 minutes ago"},
       {"check": "storage", "passed": true, "detail": "Target has ceph-rbd storage available"},
       {"check": "resources", "passed": true, "detail": "Target has 45% CPU and 52% memory headroom"},
-      {"check": "guest_state", "passed": true, "detail": "Guest is running on pve1"},
+      {"check": "guest_state", "passed": true, "detail": "Guest is running on orion"},
       {"check": "locks", "passed": true, "detail": "No active locks or running snapshots"},
       {"check": "affinity", "passed": true, "detail": "No affinity conflicts on target"}
     ],
@@ -1021,18 +1023,18 @@ Surface information about migration reversibility.
 - Store the source node in the migration history entry
 - Add a "Rollback" button to recently migrated guests (within a configurable window, e.g., 2 hours)
 - Before rollback, validate that the original node still has capacity
-- Show whether conditions have changed since the migration (e.g., "pve1 load has decreased since this guest left — rollback is safe")
+- Show whether conditions have changed since the migration (e.g., "orion load has decreased since this guest left — rollback is safe")
 
 ```json
 {
   "rollback_info": {
-    "original_node": "pve1",
+    "original_node": "orion",
     "migration_timestamp": "2026-02-08T10:30:00Z",
     "time_since_migration": "45 minutes",
     "rollback_available": true,
     "original_node_current_load": {"cpu": 52.1, "mem": 48.3},
     "rollback_safe": true,
-    "detail": "pve1 has sufficient capacity for this guest"
+    "detail": "orion has sufficient capacity for this guest"
   }
 }
 ```
@@ -1108,9 +1110,9 @@ Track node scores over time to show scoring trends.
     {
       "timestamp": "2026-02-08T10:30:00Z",
       "nodes": {
-        "pve1": {"score": 45.2, "suitability": 54.8, "cpu": 62.1, "mem": 48.3},
-        "pve2": {"score": 78.1, "suitability": 21.9, "cpu": 81.5, "mem": 72.0},
-        "pve3": {"score": 32.4, "suitability": 67.6, "cpu": 38.2, "mem": 45.1}
+        "orion": {"score": 45.2, "suitability": 54.8, "cpu": 62.1, "mem": 48.3},
+        "lyra": {"score": 78.1, "suitability": 21.9, "cpu": 81.5, "mem": 72.0},
+        "vega": {"score": 32.4, "suitability": 67.6, "cpu": 38.2, "mem": 45.1}
       },
       "cluster_health": 62
     }
@@ -1140,13 +1142,13 @@ Track what changed between recommendation cycles.
     "timestamp": "2026-02-08T10:30:00Z",
     "previous_timestamp": "2026-02-08T10:20:00Z",
     "new_recommendations": [
-      {"vmid": 400, "reason": "pve2 CPU rose from 58% to 67%, crossing threshold"}
+      {"vmid": 400, "reason": "lyra CPU rose from 58% to 67%, crossing threshold"}
     ],
     "removed_recommendations": [
-      {"vmid": 100, "reason": "pve1 CPU dropped from 72% to 55% after load decrease"}
+      {"vmid": 100, "reason": "orion CPU dropped from 72% to 55% after load decrease"}
     ],
     "changed_targets": [
-      {"vmid": 200, "old_target": "pve3", "new_target": "pve4", "reason": "pve3 load increased"}
+      {"vmid": 200, "old_target": "vega", "new_target": "draco", "reason": "vega load increased"}
     ],
     "unchanged": 2
   }
@@ -1188,10 +1190,10 @@ Emit webhook events for recommendation-related actions.
     "recommendation": {
       "vmid": 200,
       "name": "database-primary",
-      "source_node": "pve2",
-      "target_node": "pve3",
+      "source_node": "lyra",
+      "target_node": "vega",
       "score_improvement": 62,
-      "reason": "pve2 CPU at 92% with rising trend"
+      "reason": "lyra CPU at 92% with rising trend"
     },
     "cluster_health": 45
   }
@@ -1213,7 +1215,7 @@ Add filtering and pagination to the recommendation API for larger clusters.
 
 ```
 GET /api/recommendations?filter=urgent&limit=10&offset=0
-GET /api/recommendations?min_confidence=80&target_node=pve3
+GET /api/recommendations?min_confidence=80&target_node=vega
 GET /api/recommendations?type=forecast&sort=score_improvement
 GET /api/recommendations/skipped?reason=insufficient_improvement&limit=20
 ```
@@ -1240,8 +1242,8 @@ GET /api/automigrate/history/export?format=csv&from=2026-01-01&to=2026-02-08
 CSV format for recommendations:
 ```csv
 VMID,Name,Type,Source,Target,Score Improvement,Confidence,Risk,Reason
-100,web-app-1,VM,pve1,pve3,55,82,low,High CPU on source (78% trending up)
-200,api-server,VM,pve2,pve4,38,71,moderate,Memory pressure on source (85%)
+100,web-app-1,VM,orion,vega,55,82,low,High CPU on source (78% trending up)
+200,api-server,VM,lyra,draco,38,71,moderate,Memory pressure on source (85%)
 ```
 
 **Files affected:**
@@ -1518,7 +1520,7 @@ A key pattern in the current codebase: several backend APIs exist with no corres
 
 ### Testing Strategy for New Features
 
-ProxBalance currently has limited formal testing. As the recommendation engine grows more complex, the risk of regressions increases. This section proposes testing approaches for each improvement area.
+ProxBalance currently has limited formal testing. As the recommendation engine grows more comjellyfin, the risk of regressions increases. This section proposes testing approaches for each improvement area.
 
 #### Unit Testing Priorities
 

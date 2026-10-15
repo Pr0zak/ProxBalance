@@ -54,6 +54,7 @@ An enabled provider whose required fields are missing (for example Email without
         "on_recommendations_cleared": false,
         "on_capacity_warning": true,
         "on_evacuation": true,
+        "on_queued": true,
         "on_collector_status": false,
         "on_update_available": true,
         "alert_resolve_collections": 3,
@@ -162,10 +163,10 @@ Email subjects are prefixed with `[ProxBalance]`. High and emergency priority me
     "enabled": true,
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
-    "smtp_username": "you@gmail.com",
+    "smtp_username": "you@example.com",
     "smtp_password": "your-app-password",
     "smtp_tls": true,
-    "from_address": "you@gmail.com",
+    "from_address": "you@example.com",
     "to_addresses": ["admin@example.com"]
 }
 ```
@@ -316,13 +317,14 @@ All webhook requests send a JSON body with this structure:
 | `complete` | Automation run | `Migration Run Completed` | high if any failed, else normal |
 | `failure` | Automation run | `Migration Safety Check Failed` | high |
 | `action` | Automation run, per migration | `Migration Completed: VM 100` / `Migration Failed: VM 100` | normal / high |
-| `node_status` | Collector | `Node Offline: pve1` / `Node Back Online: pve1` | emergency / normal |
-| `resource_threshold` | Collector | `Resource Alert: pve1 CPU at 91.2%` | high above 110% of the limit, else normal |
+| `node_status` | Collector | `Node Offline: orion` / `Node Back Online: orion` | emergency / normal |
+| `resource_threshold` | Collector | `Resource Alert: orion CPU at 91.2%` | high above 110% of the limit, else normal |
 | `recommendations` | Recommendation generator | `New Migration Recommendations` | normal |
 | `recommendations_urgent` | Recommendation generator | `Urgent Migration Recommendations` | high |
 | `recommendations_cleared` | Recommendation generator | `Cluster Balanced - No Migrations Needed` | low |
 | `capacity_warning` | Recommendation generator | `Cluster Capacity Warning` | high |
-| `evacuation` | Node evacuation | `Evacuation Started/Completed/Failed: pve1` | high / high if any failed, else normal / emergency |
+| `queued` | Automation run (semi-automatic mode) | `Waiting for approval: CT 101` | normal |
+| `evacuation` | Node evacuation | `Evacuation Started/Completed/Failed: orion` | high / high if any failed, else normal / emergency |
 | `collector_status` | Collector | `Data Collection Completed` / `Data Collection Failed` | low / high |
 | `update_available` | Update check | `Update Available: <version>` | normal |
 
@@ -498,6 +500,10 @@ Get the list of available providers, the default configuration, and whether each
 }
 ```
 
+### GET /api/notifications/status
+
+Last successful and last failed send per channel (time and event name only). See [API](API.md#get-apinotificationsstatus).
+
 ### GET /api/notifications/alerts
 
 Active alerts and active silences.
@@ -505,8 +511,8 @@ Active alerts and active silences.
 ```json
 {
   "success": true,
-  "alerts": [{"fingerprint": "resource_threshold:pve4/cpu", "alert_type": "resource_threshold",
-              "subject": "pve4/cpu", "label": "pve4 CPU 91.2%", "value": 91.2, "threshold": 85,
+  "alerts": [{"fingerprint": "resource_threshold:draco/cpu", "alert_type": "resource_threshold",
+              "subject": "draco/cpu", "label": "draco CPU 91.2%", "value": 91.2, "threshold": 85,
               "first_seen": "...", "last_seen": "...", "notified_at": "...",
               "clear_count": 1, "repeats": 4, "silence": null}],
   "silences": [{"id": 3, "fingerprint": null, "alert_type": "capacity_warning",

@@ -1,5 +1,7 @@
 # Intelligent Migration System
 
+> **Historical planning document.** It records a plan made before the features were built and is not kept up to date. For current behaviour see the [feature docs](README.md).
+
 > **Note**: This plan references JSON file storage (`guest_profiles.json`, `score_history.json`, `migration_outcomes.json`, etc.). All of these have been migrated to SQLite (`proxbalance.db`). The features and logic described here remain accurate; only the storage backend has changed.
 
 ProxBalance's intelligent migration system adds learning capabilities to the automigrate engine. Instead of treating each migration decision as independent, it tracks patterns, outcomes, and trends to make progressively better decisions over time.

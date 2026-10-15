@@ -1,5 +1,7 @@
 # Mobile-Friendly Redesign Plan
 
+> **Historical planning document.** It records a plan made before the features were built and is not kept up to date. For current behaviour see the [feature docs](README.md).
+
 ## Executive Summary
 
 The ProxBalance web interface is currently desktop-optimized with minimal responsive design. Analysis reveals **zero** `sm:` breakpoint usage, only ~13 `md:` occurrences, and **30+** bare multi-column grid layouts without mobile fallbacks. Tables, the header, footer, modals, and the cluster map all assume wide viewports.
@@ -84,7 +86,7 @@ The frontend was fully componentized during the modular refactoring. `src/app.js
 
 ## Phase 1: Footer, Modal Safety, and Quick Wins
 
-**Complexity**: Small
+**Comjellyfinity**: Small
 **Risk**: Zero impact on desktop layout
 **Goal**: Fix elements that are literally broken on small screens
 
@@ -116,7 +118,7 @@ Ensure every modal overlay container has `p-4` padding so modal content never to
 
 ## Phase 2: Header and Navigation
 
-**Complexity**: Medium
+**Comjellyfinity**: Medium
 **Risk**: Low -- adds new elements, minimal changes to existing
 **Goal**: Make navigation discoverable and header usable on mobile
 
@@ -158,7 +160,7 @@ Currently, navigation relies on page-specific buttons (Settings gear icon, Autom
 
 ## Phase 3: Grid Responsiveness
 
-**Complexity**: Medium
+**Comjellyfinity**: Medium
 **Risk**: Very low -- purely additive (prepending `sm:` or `md:` prefixes)
 **Goal**: Make all grid layouts collapse to fewer columns on small screens
 
@@ -208,7 +210,7 @@ This is the highest-volume phase -- mechanical find-and-replace of Tailwind grid
 
 ## Phase 4: Tables and Data-Dense Components
 
-**Complexity**: Large
+**Comjellyfinity**: Large
 **Risk**: Medium -- introduces conditional rendering
 **Goal**: Make tables usable on mobile with card-based layouts
 **Prerequisite**: `useIsMobile()` hook (Phase 4A)
@@ -231,7 +233,7 @@ Columns: Type Icon, VMID, Name, Node, CPU/Memory, Status, Actions
 Card layout per guest:
 +----------------------------------+
 | [VM icon] Guest Name             |
-| ID: 100 | Node: pve1 | running  |
+| ID: 100 | Node: orion | running  |
 | Tags: [tag1] [tag2]             |
 | [Migrate] [Manage Tags]         |
 +----------------------------------+
@@ -252,7 +254,7 @@ Columns: Time, VM, Migration path, Score, Reason, Status, Duration
 ```
 +----------------------------------+
 | [Status] VM Name (ID: 100)      |
-| pve1 -> pve2 | 2m 15s           |
+| orion -> lyra | 2m 15s           |
 | Score: 85 | CPU overload         |
 | Jan 15, 2025 2:30 PM            |
 +----------------------------------+
@@ -276,7 +278,7 @@ All tables already have `overflow-x-auto` wrappers. This provides a functional (
 
 ## Phase 5: Cluster Map and Node Cards
 
-**Complexity**: Medium
+**Comjellyfinity**: Medium
 **Risk**: Low-medium -- modifies visual sizing
 **Goal**: Make the cluster visualization readable on mobile
 
@@ -313,7 +315,7 @@ Row of 5 buttons (CPU/Memory/Allocated/Disk I/O/Network) that overflow on mobile
 
 ## Phase 6: Touch Targets and Polish
 
-**Complexity**: Small
+**Comjellyfinity**: Small
 **Risk**: Very low
 **Goal**: Final refinements for a native-feeling mobile experience
 
@@ -358,7 +360,7 @@ Phases 1, 2, and 3 are fully independent and could be done in any order or in pa
 
 ## Changes by File Summary
 
-| File | Phases | Estimated Edits | Complexity |
+| File | Phases | Estimated Edits | Comjellyfinity |
 |------|--------|----------------|------------|
 | `src/components/DashboardPage.jsx` + `dashboard/` | 1,2,3,4,5 | ~50 class edits + card view | High |
 | `src/index.jsx` | 1,2 | Footer fix + mobile nav bar | Medium |

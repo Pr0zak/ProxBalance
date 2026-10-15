@@ -86,12 +86,37 @@ For end-to-end testing, use the [Docker development setup](DOCKER_DEV.md).
 ## Testing
 
 Help test ProxBalance in different environments:
-- Proxmox VE 7.x and 8.x
+- Proxmox VE 8.x and 9.x
 - Clusters of various sizes (2-10+ nodes)
 - Different network configurations
 - Migration scenarios with shared and local storage
 
 Share results in [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/discussions).
+
+---
+
+## Demo Cluster and Screenshots
+
+`tools/demo/` runs ProxBalance against a made-up cluster instead of a real one. A small fake Proxmox API (`fake_pve.py`) serves five nodes (orion, lyra, vega, draco, cygnus) and 41 guests on `127.0.0.1:8006`. `seed.py` writes 90 days of history from the same load model, so charts, outcomes, the change log and automation runs agree with the live values. The scenario includes a busy node, a node whose memory grows, a NAS with high IO wait, a failed disk, broken and holding placement rules, HA rules and a move waiting for approval. All names are invented, so screenshots need no blurring.
+
+Use it on a test install, never on the one that manages your cluster:
+
+```bash
+bash tools/demo/pb-demo.sh on      # moves config.json and the data aside, starts the demo
+bash tools/demo/pb-demo.sh status
+bash tools/demo/pb-demo.sh reset   # fresh history
+bash tools/demo/pb-demo.sh off     # restores config.json and the data
+```
+
+`on` writes a demo `config.json` with a placeholder token and every notification provider disabled. Automation runs in semi-automatic mode with dry run off. Approved moves run against the fake API only. The script refuses to run on a host not named `proxbalance-staging` unless `PB_DEMO_ANY_HOST=1` is set.
+
+To refresh the images in `docs/images/` from a running demo:
+
+```bash
+npm install puppeteer   # once; node_modules is gitignored
+PB_URL=http://<demo-host>/ node tools/screenshots.js
+PB_URL=http://<demo-host>/ SHOTS=dashboard,wall node tools/screenshots.js   # a subset
+```
 
 ---
 

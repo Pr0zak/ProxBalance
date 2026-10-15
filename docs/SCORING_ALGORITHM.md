@@ -120,6 +120,18 @@ Strong discouragement when the target already hosts a guest with the same `exclu
 if affinity_conflict: penalty += 1000
 ```
 
+Recommendations, automation, evacuations and Enforce now also treat anti-affinity as a hard rule and skip such a target outright; the penalty covers the node scores shown in the UI.
+
+### Soft affinity split
+
+Guests sharing an `affinity_<group>` tag (or an affinity pool in `rules.pool_rules`) prefer the same node. When the recommendation engine scores a target that would leave the guest with fewer group members than it has now (more members on the source than on the target, counting moves already planned in this run), it adds `affinity_soft_penalty` points to that target's score:
+
+```
+if splits_soft_group(guest, target): score += affinity_soft_penalty   # default 15, range 0-100
+```
+
+The default equals the Balanced `min_score_improvement` (15), so a split needs about twice the usual gain. The move is allowed; the recommendation lists the groups it splits in `affinity_split`, and its card says "Splits soft group ...". `0` turns the penalty off, and so does `respect_affinity_rules: false`. Required groups (`affinity_req_<group>`) are not penalised: they move together through companion migrations (below).
+
 ### Source node
 
 Prevents recommending migration to the node the guest is already on.
@@ -140,7 +152,7 @@ For each node, the engine sums the CPU of its running anchored guests (each gues
 movable_cpu = (node_cpu - anchored_cpu) / (100 - anchored_cpu) * 100
 ```
 
-Example: SilverNAS holds 50% of pve5. pve5 at 60% has 10 of its 50 free points in use, so movable CPU is 20% and pve5 is not a source. At 92%, movable CPU is 84%, above a 70% threshold, so ProxBalance moves guests off it.
+Example: nas-01 holds 50% of cygnus. cygnus at 60% has 10 of its 50 free points in use, so movable CPU is 20% and cygnus is not a source. At 92%, movable CPU is 84%, above a 70% threshold, so ProxBalance moves guests off it.
 
 Anchored load still counts in full when a node is scored as a migration **target**, because an incoming guest will compete with it. The node-scores API returns `anchored_cpu` and `anchored_guests` for each node.
 
@@ -170,11 +182,11 @@ Maintenance evacuations and IOWait relief keep the full difference. A guest whos
 3. **Rank by penalty**: Sort targets lowest-first
 4. **Convert to suitability ratings**: Normalize to 0-100%
 5. **Generate recommendations**: Create migration suggestions for guests where the best target meets the minimum threshold
-6. **Generate companion migrations**: For guests with `affinity_*` tags, automatically add recommendations for all group members to follow to the same target node
+6. **Generate companion migrations**: For guests in a required affinity group (`affinity_req_*`, or a pool rule with `required: true`), add recommendations for the other group members to follow to the same target node
 
 ### Affinity companion generation
 
-After standard recommendations are generated, the engine checks each recommended guest for `affinity_*` tags. If a guest belongs to an affinity group, all other group members not already on the target node are added as companion migration recommendations. Companions that have `ignore` tags, are stopped, or have pinned disks are skipped.
+After standard recommendations are generated, the engine checks each recommended guest for required affinity groups. If a guest belongs to one, all other group members not already on the target node are added as companion migration recommendations. Companions that have `ignore` tags, are stopped, or have pinned disks are skipped.
 
 ### Execution priority
 
@@ -270,10 +282,10 @@ Result: node3 = 100%. The affinity violation makes node2 unsuitable.
 
 ### Pro-affinity companion migration
 
-VM 300 and VM 301 are both tagged `affinity_webstack`. VM 300 is on node1 (overloaded), VM 301 is on node2. The engine recommends migrating VM 300 to node3:
+VM 300 and VM 301 are both in the required group `affinity_webstack` (VM 300 is tagged `affinity_req_webstack`). VM 300 is on node1 (overloaded), VM 301 is on node2. The engine recommends migrating VM 300 to node3:
 
 1. VM 300 is scored and recommended to move from node1 → node3 (group leader)
-2. VM 301 shares `affinity_webstack` and is on node2 (not node3), so it is added as a companion
+2. VM 301 is in the same group and is on node2 (not node3), so it is added as a companion
 3. Both VMs end up on node3, keeping the affinity group together
 
 ### Maintenance evacuation
