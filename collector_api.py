@@ -572,6 +572,27 @@ class ProxmoxAPICollector:
         return [d[key] * scale for d in rrd_data if key in d and d[key] is not None]
 
     @staticmethod
+    def _psi_avg(rrd_data, key, last=None):
+        """Average of a PSI field (``pressureiosome`` ...) over RRD rows, or None.
+
+        PSI fields are already percentages (0-100). Proxmox VE 8 has no such fields:
+        then this returns None, never 0, so callers leave the metric out entirely.
+        """
+        rows = rrd_data[-last:] if last else rrd_data
+        values = [d[key] for d in rows if d.get(key) is not None]
+        return sum(values) / len(values) if values else None
+
+    @classmethod
+    def _psi_metrics(cls, rrd_data, fields, last=None):
+        """``{metric_name: avg}`` for each ``(metric_name, rrd_key)`` present in the rows."""
+        out = {}
+        for name, key in fields:
+            value = cls._psi_avg(rrd_data, key, last)
+            if value is not None:
+                out[name] = round(value, 2)
+        return out
+
+    @staticmethod
     def _detect_trend(values, threshold=10):
         """Detect trend from a list of values: 'rising', 'falling', or 'stable'."""
         if not values:
@@ -637,6 +658,14 @@ class ProxmoxAPICollector:
                 metrics["recent_cpu"] = sum(recent_cpu_values) / len(recent_cpu_values)
             if recent_iowait_values:
                 metrics["recent_iowait"] = sum(recent_iowait_values) / len(recent_iowait_values)
+            # Pressure stall information (PVE 9+): share of time tasks waited on a
+            # resource. Keys are only set when the RRD rows carry them.
+            metrics.update(self._psi_metrics(rrd_hour, (
+                ("recent_io_pressure", "pressureiosome"),
+                ("recent_io_pressure_full", "pressureiofull"),
+                ("recent_cpu_pressure", "pressurecpusome"),
+                ("recent_mem_pressure", "pressurememorysome"),
+            ), last=15))
 
         # Calculate 24-hour metrics (detailed)
         rrd_day = timeframes['day']
@@ -664,6 +693,12 @@ class ProxmoxAPICollector:
             if load_values_day:
                 metrics["avg_load"] = sum(load_values_day) / len(load_values_day)
 
+            io_pressure_day = self._extract_rrd_values(rrd_day, "pressureiosome", scale=1)
+            if io_pressure_day:
+                metrics["current_io_pressure"] = round(io_pressure_day[-1], 2)
+                metrics["avg_io_pressure"] = round(sum(io_pressure_day) / len(io_pressure_day), 2)
+                metrics["max_io_pressure"] = round(max(io_pressure_day), 2)
+
         # Calculate 7-day metrics (longer-term patterns)
         rrd_week = timeframes['week']
         if rrd_week:
@@ -685,6 +720,11 @@ class ProxmoxAPICollector:
             if iowait_values_week:
                 metrics["avg_iowait_week"] = sum(iowait_values_week) / len(iowait_values_week)
 
+            metrics.update(self._psi_metrics(rrd_week, (
+                ("avg_io_pressure_week", "pressureiosome"),
+                ("avg_io_pressure_full_week", "pressureiofull"),
+            )))
+
         # Process RRD data for all timeframes (for charting at different time ranges)
         trend_data = {}
         total_points = 0
@@ -694,12 +734,16 @@ class ProxmoxAPICollector:
             if timeframe_rrd:
                 for point in timeframe_rrd:
                     if "time" in point and "cpu" in point and "memused" in point and "memtotal" in point:
-                        trend_data[timeframe_name].append({
+                        trend_point = {
                             "time": point["time"],
                             "cpu": round(point["cpu"] * 100, 2) if point["cpu"] is not None else 0,
                             "mem": round((point["memused"] / point["memtotal"] * 100), 2) if point["memused"] and point["memtotal"] else 0,
                             "iowait": round(point["iowait"] * 100, 2) if "iowait" in point and point["iowait"] is not None else 0
-                        })
+                        }
+                        # IO pressure (PSI, already a percentage); left out when absent.
+                        if point.get("pressureiosome") is not None:
+                            trend_point["io_pressure"] = round(point["pressureiosome"], 2)
+                        trend_data[timeframe_name].append(trend_point)
                 total_points += len(trend_data[timeframe_name])
 
         print(f"Processed {total_points} trend data points across {len(timeframes)} timeframes for {node_name}")
@@ -884,6 +928,7 @@ class ProxmoxAPICollector:
             net_in_bps = 0
             net_out_bps = 0
             cpu_avg_hour = None
+            guest_psi = {}
 
             if not (self.skip_stopped_rrd and guest_status != "running"):
                 # Get RRD data for I/O metrics using configured timeframe
@@ -898,6 +943,14 @@ class ProxmoxAPICollector:
                             net_in_bps = point.get("netin", 0) or 0
                             net_out_bps = point.get("netout", 0) or 0
                             break
+
+                    # Pressure stall information over the last ~15 minutes (PVE 9+).
+                    guest_psi = self._psi_metrics(rrd_data, (
+                        ("io_pressure", "pressureiosome"),
+                        ("io_pressure_full", "pressureiofull"),
+                        ("cpu_pressure", "pressurecpusome"),
+                        ("mem_pressure", "pressurememorysome"),
+                    ), last=15)
 
                     # Phase 3a: Summarize guest RRD for behavioral profiling
                     guest_rrd_summary = self._summarize_guest_rrd(rrd_data)
@@ -948,6 +1001,8 @@ class ProxmoxAPICollector:
                 "disk_write_bps": disk_write_bps,
                 "net_in_bps": net_in_bps,
                 "net_out_bps": net_out_bps,
+                # PSI keys (io_pressure, ...) only when the RRD rows carry them.
+                **guest_psi,
                 "tags": tags_data,
                 # io_exempt: discount this guest's node from iowait scoring. True when the
                 # guest is tagged io_exempt, OR has raw-device passthrough disks (dedicated
@@ -1217,6 +1272,7 @@ def collect_data():
                     "cpu": metrics.get("current_cpu", node_data.get("cpu_percent", 0)),
                     "memory": metrics.get("current_mem", node_data.get("mem_percent", 0)),
                     "iowait": metrics.get("current_iowait", 0),
+                    "io_pressure": metrics.get("current_io_pressure"),
                     "load_avg": metrics.get("avg_load", 0),
                     "guest_count": len(node_data.get("guests", [])),
                     "storage_usage_pct": round(avg_storage, 2),
@@ -1232,6 +1288,7 @@ def collect_data():
                     "disk_write_bps": guest_data.get("disk_write_bps", 0),
                     "net_in_bps": guest_data.get("net_in_bps", 0),
                     "net_out_bps": guest_data.get("net_out_bps", 0),
+                    "io_pressure": guest_data.get("io_pressure"),
                     "node": guest_data.get("node", ""),
                 })
 

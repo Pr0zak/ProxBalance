@@ -31,6 +31,12 @@ NODE_METRIC_FIELDS = ("cpu", "memory", "iowait", "load_avg", "guest_count", "sto
 # Metric fields tracked per guest sample
 GUEST_METRIC_FIELDS = ("cpu", "memory", "disk_read_bps", "disk_write_bps", "net_in_bps", "net_out_bps")
 
+# Fields Proxmox may not report (IO pressure needs PVE 9). Stored as NULL when absent
+# and never turned into 0: an aggregate leaves them out, a read returns None.
+OPTIONAL_FIELDS = ("io_pressure",)
+NODE_STORED_FIELDS = NODE_METRIC_FIELDS + OPTIONAL_FIELDS
+GUEST_STORED_FIELDS = GUEST_METRIC_FIELDS + OPTIONAL_FIELDS
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,10 +87,20 @@ def _aggregate_samples(samples: List[Dict], fields: tuple) -> Dict:
                 "avg": round(statistics.mean(values), 2),
                 "p95": round(_percentile(values, 95), 2),
             }
-        else:
+        elif field not in OPTIONAL_FIELDS:
             result[field] = {"min": 0, "max": 0, "avg": 0, "p95": 0}
 
     return result
+
+
+def _optional_value(value: Any) -> Any:
+    """A rounded number, or None when the reading is missing (never 0)."""
+    if value is None:
+        return None
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -109,15 +125,16 @@ def append_node_sample(node_name: str, metrics: Dict) -> None:
     storage_usage_pct = metrics.get("storage_usage_pct", 0) or 0
 
     conn.execute(
-        "INSERT INTO node_metrics (node_name, ts, cpu, memory, iowait, load_avg, guest_count, storage_usage_pct) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO node_metrics (node_name, ts, cpu, memory, iowait, load_avg, guest_count, storage_usage_pct, "
+        "io_pressure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (node_name, ts,
          round(cpu, 2) if isinstance(cpu, float) else cpu,
          round(memory, 2) if isinstance(memory, float) else memory,
          round(iowait, 2) if isinstance(iowait, float) else iowait,
          round(load_avg, 2) if isinstance(load_avg, float) else load_avg,
          guest_count,
-         round(storage_usage_pct, 2) if isinstance(storage_usage_pct, float) else storage_usage_pct),
+         round(storage_usage_pct, 2) if isinstance(storage_usage_pct, float) else storage_usage_pct,
+         _optional_value(metrics.get("io_pressure"))),
     )
     conn.commit()
 
@@ -142,15 +159,16 @@ def append_guest_sample(vmid: str, metrics: Dict) -> None:
     net_out = metrics.get("net_out_bps", 0) or 0
 
     conn.execute(
-        "INSERT INTO guest_metrics (vmid, ts, node, cpu, memory, disk_read_bps, disk_write_bps, net_in_bps, net_out_bps) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO guest_metrics (vmid, ts, node, cpu, memory, disk_read_bps, disk_write_bps, net_in_bps, "
+        "net_out_bps, io_pressure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (vmid_str, ts, node,
          round(cpu, 2) if isinstance(cpu, float) else cpu,
          round(memory, 2) if isinstance(memory, float) else memory,
          round(disk_read, 2) if isinstance(disk_read, float) else disk_read,
          round(disk_write, 2) if isinstance(disk_write, float) else disk_write,
          round(net_in, 2) if isinstance(net_in, float) else net_in,
-         round(net_out, 2) if isinstance(net_out, float) else net_out),
+         round(net_out, 2) if isinstance(net_out, float) else net_out,
+         _optional_value(metrics.get("io_pressure"))),
     )
     conn.commit()
 
@@ -165,8 +183,8 @@ def compress_old_samples() -> Dict[str, int]:
     Returns a summary dict with counts of compressed samples.
     """
     summary = {
-        "nodes_compressed": _compress_table("node_metrics", "node_name", NODE_METRIC_FIELDS),
-        "guests_compressed": _compress_table("guest_metrics", "vmid", GUEST_METRIC_FIELDS),
+        "nodes_compressed": _compress_table("node_metrics", "node_name", NODE_STORED_FIELDS),
+        "guests_compressed": _compress_table("guest_metrics", "vmid", GUEST_STORED_FIELDS),
     }
     return summary
 
@@ -325,6 +343,8 @@ def _merge_aggregates_from_rows(agg_rows: List[Dict], fields: tuple) -> Dict:
                 maxes.append(fdata.get("max", 0))
                 avgs.append(fdata.get("avg", 0))
                 p95s.append(fdata.get("p95", 0))
+        if field in OPTIONAL_FIELDS and not avgs:
+            continue
         merged_agg_stats[field] = {
             "min": round(min(mins), 2) if mins else 0,
             "max": round(max(maxes), 2) if maxes else 0,
@@ -368,12 +388,15 @@ def _row_to_sample(row: dict, fields: tuple) -> Dict:
         except (json.JSONDecodeError, TypeError):
             agg_stats = {}
         for field in fields:
-            result[field] = agg_stats.get(field, {"min": 0, "max": 0, "avg": 0, "p95": 0})
+            if field in OPTIONAL_FIELDS:
+                result[field] = agg_stats.get(field)
+            else:
+                result[field] = agg_stats.get(field, {"min": 0, "max": 0, "avg": 0, "p95": 0})
         return result
     else:
         result = {"ts": row["ts"]}
         for field in fields:
-            result[field] = row.get(field, 0)
+            result[field] = row.get(field) if field in OPTIONAL_FIELDS else row.get(field, 0)
         return result
 
 
@@ -392,13 +415,13 @@ def get_node_history(node_name: str, hours: int = 168) -> List[Dict]:
     cutoff = _now_ts() - (hours * 3600)
 
     rows = conn.execute(
-        "SELECT ts, cpu, memory, iowait, load_avg, guest_count, storage_usage_pct, "
+        "SELECT ts, cpu, memory, iowait, load_avg, guest_count, storage_usage_pct, io_pressure, "
         "       aggregated, tier, ts_start, ts_end, sample_count, agg_stats "
         "FROM node_metrics WHERE node_name = ? AND ts >= ? ORDER BY ts",
         (node_name, cutoff),
     ).fetchall()
 
-    return [_row_to_sample(dict(r), NODE_METRIC_FIELDS) for r in rows]
+    return [_row_to_sample(dict(r), NODE_STORED_FIELDS) for r in rows]
 
 
 def get_guest_history(vmid: str, hours: int = 168) -> List[Dict]:
@@ -414,7 +437,7 @@ def get_guest_history(vmid: str, hours: int = 168) -> List[Dict]:
     cutoff = _now_ts() - (hours * 3600)
 
     rows = conn.execute(
-        "SELECT ts, node, cpu, memory, disk_read_bps, disk_write_bps, net_in_bps, net_out_bps, "
+        "SELECT ts, node, cpu, memory, disk_read_bps, disk_write_bps, net_in_bps, net_out_bps, io_pressure, "
         "       aggregated, tier, ts_start, ts_end, sample_count, agg_stats "
         "FROM guest_metrics WHERE vmid = ? AND ts >= ? ORDER BY ts",
         (str(vmid), cutoff),
@@ -423,7 +446,7 @@ def get_guest_history(vmid: str, hours: int = 168) -> List[Dict]:
     results = []
     for r in rows:
         rd = dict(r)
-        sample = _row_to_sample(rd, GUEST_METRIC_FIELDS)
+        sample = _row_to_sample(rd, GUEST_STORED_FIELDS)
         if not rd.get("aggregated") and rd.get("node"):
             sample["node"] = rd["node"]
         results.append(sample)
