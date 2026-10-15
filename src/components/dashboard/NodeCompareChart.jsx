@@ -29,17 +29,23 @@ const METRIC_KEY = 'nodeCompareMetric';
  *
  * `nodes` is [{ name, color, trendData }], memoized by the parent.
  * `chartReady` follows NodeChart: Chart.js and the annotation plugin are loaded.
+ *
+ * Wall-monitor view (`wall`): no metric toolbar, the chart fills the parent's
+ * height, `fixedMetric` pins the metric without touching the saved choice and
+ * `pixelRatio` sharpens the canvas when the wall is drawn scaled up.
  */
 export default function NodeCompareChart({
   nodes, thresholds, clusterSpread, chartPeriod, chartReady, migrationHistory,
   showMarkers = true, showThresholds = true, showEnvelope = false,
   toolbarExtra = null, toolbarPanel = null,
+  wall = false, fixedMetric = null, pixelRatio = null,
 }) {
-  const [metric, setMetricState] = useState(() => {
+  const [savedMetric, setMetricState] = useState(() => {
     try { const v = localStorage.getItem(METRIC_KEY); if (COMPARE_METRICS.some(m => m.key === v)) return v; } catch {}
     return 'cpu';
   });
   const setMetric = (k) => { setMetricState(k); try { localStorage.setItem(METRIC_KEY, k); } catch {} };
+  const metric = COMPARE_METRICS.some(m => m.key === fixedMetric) ? fixedMetric : savedMetric;
   const [hidden, setHidden] = useState([]);
   const [highlight, setHighlight] = useState(null);
   const [hoverNode, setHoverNode] = useState(null);
@@ -63,8 +69,8 @@ export default function NodeCompareChart({
   const spread = useMemo(() => spreadNow(metric, aligned?.lines, clusterSpread), [metric, aligned, clusterSpread]);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+    <div className={wall ? 'h-full flex flex-col min-h-0' : undefined}>
+      {!wall && <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div role="group" aria-label="Metric" className="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 p-0.5">
           {COMPARE_METRICS.map(m => (
             <button
@@ -81,17 +87,18 @@ export default function NodeCompareChart({
           ))}
         </div>
         {toolbarExtra}
-      </div>
-      {toolbarPanel}
+      </div>}
+      {!wall && toolbarPanel}
 
       {aligned ? (
         <CompareCanvas
           aligned={aligned} metric={metric} colorOf={colorOf} threshold={showThresholds ? threshold : null}
           hidden={hidden} highlight={highlight} hoverNode={hoverNode} onPickNode={(n) => setHighlight(h => (h === n ? null : n))}
           chartReady={chartReady} migrationHistory={migrationHistory} showMarkers={showMarkers} showEnvelope={showEnvelope}
+          fill={wall} pixelRatio={pixelRatio}
         />
       ) : (
-        <div className="h-[240px] flex items-center justify-center text-sm text-pb-text2 dark:text-gray-400">No chart data yet</div>
+        <div className={`${wall ? 'flex-1 min-h-0' : 'h-[240px]'} flex items-center justify-center text-sm text-pb-text2 dark:text-gray-400`}>No chart data yet</div>
       )}
 
       {aligned && (
@@ -140,7 +147,7 @@ export default function NodeCompareChart({
   );
 }
 
-function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight, hoverNode, onPickNode, chartReady, migrationHistory, showMarkers, showEnvelope }) {
+function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight, hoverNode, onPickNode, chartReady, migrationHistory, showMarkers, showEnvelope, fill = false, pixelRatio = null }) {
   const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
@@ -212,6 +219,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
         data: { labels: times.map(t => timeLabel(t, aligned.multiDay)), datasets },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false,
+          ...(pixelRatio ? { devicePixelRatio: pixelRatio } : {}),
           interaction: { mode: 'index', intersect: false },
           onClick: (evt, _els, chart) => {
             const near = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false, axis: 'xy' }, false)
@@ -239,7 +247,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
       console.error('Error creating node comparison chart:', error);
     }
     return () => { if (chartRef.current) { try { chartRef.current.destroy(); } catch (e) {} chartRef.current = null; } };
-  }, [chartReady, sized, aligned, metric, threshold, isDark, isMobile, migrationHistory, showMarkers, showEnvelope, hiddenKey, highlight, colorOf]);
+  }, [chartReady, sized, aligned, metric, threshold, isDark, isMobile, migrationHistory, showMarkers, showEnvelope, hiddenKey, highlight, colorOf, pixelRatio]);
 
   // Hovering a legend item restyles the lines in place (no rebuild).
   useEffect(() => {
@@ -254,7 +262,7 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
   }, [hoverNode]);
 
   return (
-    <div ref={wrapRef} className="relative w-full h-[240px] sm:h-[300px] cursor-pointer">
+    <div ref={wrapRef} className={`relative w-full ${fill ? 'flex-1 min-h-0' : 'h-[240px] sm:h-[300px]'} cursor-pointer`}>
       <canvas ref={canvasRef} role="img" aria-label={`${COMPARE_METRICS.find(m => m.key === metric)?.label} for every node over time`}></canvas>
     </div>
   );

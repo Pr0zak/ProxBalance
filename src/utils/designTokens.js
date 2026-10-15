@@ -26,6 +26,10 @@ export const PAGE_BG =
 export const GLASS_CARD =
   'bg-white dark:bg-pb-surface-dark rounded-xl border border-slate-200 dark:border-pb-border-dark p-4 sm:p-5 mb-4 shadow-sm dark:shadow-none';
 
+/** Wall-monitor panel: a section card that sits in a grid cell (no margin, fills it) */
+export const WALL_PANEL =
+  'bg-white dark:bg-pb-surface-dark rounded-xl border border-slate-200 dark:border-pb-border-dark p-4 shadow-sm dark:shadow-none min-w-0 min-h-0';
+
 /** Subtle / nested section card */
 export const GLASS_CARD_SUBTLE =
   'bg-slate-50 dark:bg-pb-surface2-dark rounded-xl border border-slate-200/70 dark:border-pb-border-dark p-4 sm:p-5 mb-4';

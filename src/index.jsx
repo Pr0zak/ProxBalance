@@ -5,6 +5,7 @@ import SystemModals from './components/dashboard/SystemModals.jsx';
 import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
+import WallMode from './components/WallMode.jsx';
 import QuickSearch from './components/QuickSearch.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr, parseTimestamp } from './utils/formatters.js';
@@ -305,6 +306,7 @@ const ProxmoxBalanceManager = () => {
       onShowUpdate={() => updates.setShowUpdateModal(true)}
       automationStatus={automation.automationStatus}
       onOpenSearch={() => setSearchOpen(true)}
+      onOpenWall={() => ui.setCurrentPage('wall')}
     />
   );
 
@@ -355,6 +357,23 @@ const ProxmoxBalanceManager = () => {
       })()}
     </>
   );
+
+  // Wall-monitor view (#/wall): no navigation chrome, panels, modals or search.
+  if (ui.currentPage === 'wall') {
+    return (<AppStatusContext.Provider value={appStatus}><Toaster /><WallMode
+      data={cluster.data} error={cluster.error} loading={cluster.loading}
+      config={configHook.config}
+      nodeScores={cluster.nodeScores}
+      recommendations={recs.recommendations} recommendationData={recs.recommendationData}
+      automationStatus={automation.automationStatus} automationConfig={automation.automationConfig}
+      runHistory={automation.runHistory} migrationHistory={automation.migrationHistory}
+      maintenanceNodes={evacuation.maintenanceNodes}
+      guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
+      completedMigrations={migrations.completedMigrations}
+      chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
+      onExit={() => ui.setCurrentPage('dashboard')}
+    /></AppStatusContext.Provider>);
+  }
 
   // Settings Page
   if (ui.currentPage === 'settings') {
