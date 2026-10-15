@@ -2,7 +2,8 @@ import {
   GLASS_CARD, TABLE_HEADER, TABLE_ROW, PROGRESS_BAR_BG,
   metricColor, metricTextColor, scoreColor, TEXT_HEADING, ICON, nodeRoleEdge,
 } from '../../utils/designTokens.js';
-import { ChevronDown, Tag, X } from '../Icons.jsx';
+import { AlertTriangle, ChevronDown, Tag, X } from '../Icons.jsx';
+import { failedDiskCount } from '../../utils/diskHealth.js';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { HEADROOM_HINT, DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IOWAIT_THRESHOLD } from '../../utils/constants.js';
 import { penaltyList, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
@@ -782,6 +783,14 @@ export default function NodeSummaryTable({
                             {/* Maintenance already reads in the Condition column on md+; the
                                 marker stays there only when it carries a count of guests leaving. */}
                             <NodeRoleMarker role={role} className={role?.kind === 'maintenance' && !role.count ? 'md:hidden' : ''} />
+                            {failedDiskCount(node.raw.disks) > 0 && (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400"
+                                title={`${failedDiskCount(node.raw.disks)} disk${failedDiskCount(node.raw.disks) === 1 ? '' : 's'} failed SMART. Open the node for details.`}
+                              >
+                                <AlertTriangle size={12} /> SMART
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="p-3 hidden md:table-cell">

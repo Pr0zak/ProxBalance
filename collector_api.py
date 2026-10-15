@@ -8,6 +8,7 @@ import json
 import re
 import sys
 import os
+import threading
 from datetime import datetime
 from typing import Dict, List, Optional
 import urllib3
@@ -20,7 +21,8 @@ from proxbalance.pve_client import (
     build_proxmox_client,
     retry_read,
 )
-from proxbalance.pve_errors import classify_pve_error, describe_pve_error
+from proxbalance.pve_errors import AUTH, classify_pve_error, describe_pve_error
+from proxbalance.disk_health import summarize_disks
 from proxbalance.storage_projection import parse_guest_disks
 
 # Disable SSL warnings for self-signed certificates
@@ -84,6 +86,10 @@ class ProxmoxAPICollector:
         self.proxmox = None
         self.proxmox_slow = None
         self.collection_errors: List[Dict] = []
+        # Disk health is optional: a denied or failing disks/list is logged
+        # once per collection, not once per node, and never shown as an error.
+        self._disk_health_logged = False
+        self._disk_health_lock = threading.Lock()
 
         # Collection optimization settings
         opt_config = config.get('collection_optimization', {})
@@ -305,6 +311,28 @@ class ProxmoxAPICollector:
         except Exception as e:
             self._note_error("storage status", e, node=node)
             return []
+
+    def get_disk_health(self, node: str) -> Optional[Dict]:
+        """Fetch SMART health per disk (GET /nodes/{node}/disks/list).
+
+        Needs Sys.Audit on /nodes/{node}. Returns None when the list cannot
+        be read, so the UI shows nothing; the first failure of a collection
+        is logged, the rest are silent.
+        """
+        try:
+            # Slow client: Proxmox runs smartctl per disk (~1.5 s for six).
+            raw = self.proxmox_slow.nodes(node).disks.list.get()
+        except Exception as e:
+            with self._disk_health_lock:
+                first = not self._disk_health_logged
+                self._disk_health_logged = True
+            if first:
+                kind = classify_pve_error(e)
+                hint = " (the API token needs Sys.Audit on /nodes)" if kind == AUTH else ""
+                print(f"Info: disk health unavailable for {node} [{kind}]{hint}: {e}; "
+                      f"further disk-health failures this run are not logged", file=sys.stderr)
+            return None
+        return summarize_disks(raw)
 
     def get_backup_info(self) -> List[Dict]:
         """Fetch backup information"""
@@ -730,6 +758,9 @@ class ProxmoxAPICollector:
                     "usage_pct": round(usage_pct, 2)
                 })
 
+        # SMART verdict per disk; skipped for an offline node (it cannot answer).
+        disks = self.get_disk_health(node_name) if node.get("status") == "online" else None
+
         return {
             "name": node_name,
             "status": node.get("status", "unknown"),
@@ -741,6 +772,7 @@ class ProxmoxAPICollector:
             "metrics": metrics,
             "trend_data": trend_data,
             "storage": storage_info,
+            "disks": disks,
             "guests": []
         }
     
