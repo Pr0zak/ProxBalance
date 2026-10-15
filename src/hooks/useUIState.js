@@ -44,12 +44,14 @@ export function useUIState() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Returns false when a page guard (unsaved edits) declined the move.
   const setCurrentPage = useCallback((page) => {
-    if (page === route.page && !route.sub) return;
-    if (!allowLeave(page)) return;
+    if (page === route.page && !route.sub) return true;
+    if (!allowLeave(page)) return false;
     setRoute({ page, sub: null });
     writeHash(page, null);
     window.scrollTo(0, 0);
+    return true;
   }, [route.page, route.sub]);
 
   // Navigate to a sub-view; optional page switch in the same step.

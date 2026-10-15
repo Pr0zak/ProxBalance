@@ -120,17 +120,24 @@ export default function DashboardPage({
   // Keep the open panel in the address (#/dashboard/<tab>/node/<name> or
   // .../guest/<vmid>) so it survives a reload and can be linked. replaceState
   // doesn't fire hashchange, so the page router never sees these segments.
+  // The tab segment is optional: #/dashboard/guest/<vmid> has no tab.
+  const dashboardHash = () => {
+    const [page = 'dashboard', ...rest] = window.location.hash.replace(/^#\/?/, '').split('/');
+    if (rest[0] === 'node' || rest[0] === 'guest') rest.unshift(undefined);
+    const [sub, kind, id] = rest;
+    return { page, sub, kind, id };
+  };
   const deepLinkRead = useRef(false);
   useEffect(() => {
     if (deepLinkRead.current || !data) return;
     deepLinkRead.current = true;
-    const [, , kind, id] = window.location.hash.replace(/^#\/?/, '').split('/');
+    const { kind, id } = dashboardHash();
     if (kind === 'node' && id && data.nodes?.[decodeURIComponent(id)]) openNode(data.nodes[decodeURIComponent(id)]);
     else if (kind === 'guest' && id && data.guests?.[id]) openGuestDetails(data.guests[id]);
   }, [data]);
   useEffect(() => {
     if (!deepLinkRead.current) return;
-    const [page = 'dashboard', sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+    const { page, sub } = dashboardHash();
     if (page !== 'dashboard') return;
     const base = `#/dashboard${sub ? `/${sub}` : ''}`;
     const next = selectedNode ? `${base}/node/${encodeURIComponent(selectedNode.name)}`
