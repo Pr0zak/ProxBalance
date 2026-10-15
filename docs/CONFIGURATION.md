@@ -243,6 +243,7 @@ Blackout windows always take priority over migration windows. If the `migration_
 | `respect_affinity_rules` | bool | `true` | Honor affinity rules: the soft split penalty, and companion migrations for required groups |
 | `affinity_soft_penalty` | number | `15` | Score points added to a target that splits a soft affinity group (0-100). See [Affinity rules](AUTOMATION.md#affinity-rules-affinity_-tags-soft-or-required) |
 | `pool_rules` | object | `{}` | Proxmox pools as placement groups: `{"<pool>": "affinity" \| "anti-affinity"}` or `{"<pool>": {"type": "affinity", "required": true}}`. See [Pool rules](AUTOMATION.md#pool-rules) |
+| `allow_container_restarts` | bool | `true` | A running container can't live-migrate, so moving it stops and restarts it. Set `false` to have automation skip running containers (manual moves still work). Missing means allowed |
 | `require_auto_migrate_ok_tag` | bool | `false` | Whitelist mode: only migrate guests tagged `auto_migrate_ok` (the older `auto-migrate-ok` spelling also works) |
 | `grace_period_seconds` | int | `30` | Pause between two migrations in the same run ("settle time" in the UI) |
 | `cooldown_reset_at` | string | - | Set by the UI when cooldown settings change; cooldowns are counted from this time. Not meant to be edited |
@@ -289,7 +290,8 @@ Older configs may carry individual switches (`cycle_detection_enabled`, `cost_be
 | `max_node_memory_percent` | int | `90` | Maximum target node memory usage |
 | `max_node_cpu_percent` | int | `85` | Maximum target node CPU usage |
 | `verify_before_migrate` | bool | `true` | Re-check the guest's current location before a live migration |
-| `abort_on_failure` | bool | `true` | Disable automation after a failure |
+| `abort_on_failure` | bool | `true` | Stop the rest of this run's moves after one fails. When `false`, the run goes on with other guests; a guest whose move failed is not retried in the same run |
+| `pause_on_failure` | bool | `false` | After a real (not dry-run) move fails, stop the run and turn automation off (`enabled: false`) until you turn it back on. Logged in the change log as "Automation turned off: the move of … failed" |
 
 `max_node_cpu_percent` and `max_node_memory_percent` are also the limits used for recommendation conflict detection and batch-impact warnings, and for `resource_threshold` notifications.
 

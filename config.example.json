@@ -90,6 +90,7 @@
       "affinity_soft_penalty": 15,
       "pool_rules": {},
       "require_auto_migrate_ok_tag": false,
+      "allow_container_restarts": true,
       "intelligent_migrations": {
         "enabled": true,
         "intelligence_level": "standard",
@@ -108,7 +109,8 @@
       "verify_before_migrate": true,
       "max_node_memory_percent": 90,
       "max_node_cpu_percent": 85,
-      "abort_on_failure": true
+      "abort_on_failure": true,
+      "pause_on_failure": false
     },
     "notifications": {
       "enabled": false,

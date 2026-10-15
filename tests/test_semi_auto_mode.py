@@ -80,8 +80,9 @@ def harness(tmp_path, monkeypatch):
     db.init_db()
     monkeypatch.setattr(automigrate, "LOCK_FILE", tmp_path / "automigrate.lock")
 
-    def run(recs, config_overrides=None, cache=None):
+    def run(recs, config_overrides=None, cache=None, fail=()):
         cluster = Cluster(recs)
+        cluster.paused = []
         config = copy.deepcopy(BASE_CONFIG)
         for k, v in (config_overrides or {}).items():
             config["automated_migrations"][k] = v
@@ -91,6 +92,8 @@ def harness(tmp_path, monkeypatch):
             if dry_run:
                 return {"success": True, "dry_run": True}
             cluster.executed.append((vmid, source, target))
+            if vmid in fail:
+                return {"success": False, "error": "migration aborted"}
             # Once moved, the guest no longer has a recommendation.
             cluster.recs = [r for r in cluster.recs if r["vmid"] != vmid]
             return {"success": True, "status": "completed", "duration": 1}
@@ -106,6 +109,8 @@ def harness(tmp_path, monkeypatch):
         monkeypatch.setattr(automigrate, "verify_guest_on_node", lambda *a: (True, "ok"))
         monkeypatch.setattr(automigrate, "check_ha_rules_for_move", lambda *a, **k: (True, "No HA rule conflicts"))
         monkeypatch.setattr(automigrate, "capture_pre_migration_snapshot", lambda *a: None)
+        monkeypatch.setattr(automigrate, "pause_automation_after_failure",
+                            lambda vmid, name, error: cluster.paused.append((vmid, error)) or True)
         monkeypatch.setattr(automigrate, "send_notification",
                             lambda c, event, data: cluster.notifications.append((event, data)))
         db.close_all()

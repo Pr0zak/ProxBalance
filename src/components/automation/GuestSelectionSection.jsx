@@ -117,7 +117,7 @@ export default function GuestSelectionSection({
                 label="Allow container restarts"
                 description="Restarts CTs: brief downtime"
                 detail="A container that can't live-migrate is stopped, moved and started again."
-                checked={automationConfig.rules?.allow_container_restarts === true}
+                checked={automationConfig.rules?.allow_container_restarts !== false}
                 onChange={(e) => {
                   if (e.target.checked) {
                     setConfirmAllowContainerRestarts(true);

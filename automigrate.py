@@ -153,6 +153,38 @@ def load_config() -> Dict[str, Any]:
         return json.load(f)
 
 
+def pause_automation_after_failure(vmid: Any, name: Optional[str], error: Optional[str],
+                                   config_file: Optional[Path] = None) -> bool:
+    """Turn automation off after a failed migration (``safety_checks.pause_on_failure``).
+
+    Re-reads config.json so settings saved since this run started are kept,
+    sets ``automated_migrations.enabled`` to false, writes it atomically and
+    records one audit event saying why. The user turns it back on.
+
+    Returns:
+        True when the config was written.
+    """
+    path = Path(config_file) if config_file else CONFIG_FILE
+    try:
+        with open(path, 'r') as f:
+            raw = json.load(f)
+        raw.setdefault('automated_migrations', {})['enabled'] = False
+        tmp = path.with_name(path.name + '.tmp')
+        with open(tmp, 'w') as f:
+            json.dump(raw, f, indent=2)
+        os.replace(tmp, path)
+    except Exception as e:
+        logger.error(f"Could not turn automation off after the failed move of {vmid}: {e}")
+        return False
+    label = f"{vmid} ({name})" if name else str(vmid)
+    audit_log.record('automation.disable', f"Automation turned off: the move of {label} failed",
+                     source='automation', subject='automation',
+                     details={'enabled': False, 'reason': 'pause_on_failure', 'vmid': vmid,
+                              **({'error': str(error)[:300]} if error else {})})
+    logger.warning(f"Automation turned off because the move of {label} failed (pause_on_failure)")
+    return True
+
+
 def read_cache() -> Dict[str, Any]:
     """Read data from cache.json."""
     if not CACHE_FILE.exists():
@@ -362,6 +394,11 @@ def can_auto_migrate(guest: Dict[str, Any], rules: Dict[str, Any]) -> Tuple[bool
             mount_count = len([mp for mp in mount_info.get('mount_points', [])
                               if mp.get('is_bind_mount', False) and not mp.get('is_shared', False)])
             return False, f"Container has {mount_count} unshared bind mount(s) - migration requires manual intervention"
+        # A running container can't live-migrate: Proxmox stops it, moves it
+        # and starts it again. Off only when the user switched it off;
+        # missing means allowed, as before the setting was honoured.
+        if guest.get('status') == 'running' and rules.get('allow_container_restarts', True) is False:
+            return False, "Container would restart (container restarts are off)"
 
     return True, "OK"
 
@@ -1701,6 +1738,11 @@ def main():
         success_count = 0
         migrations_attempted = 0
         batch_migrated_guests = {}  # Phase 2f: Track in-flight migrations for this batch
+        # Guests this run already tried. Recommendations are regenerated after
+        # every move, and a guest whose move failed is usually still
+        # recommended, so without this a failure was retried until
+        # max_migrations_per_run when abort_on_failure is off.
+        tried_this_run = set()
 
         # Migrate one at a time, regenerating recommendations after each
         for _ in range(max_new_migrations):
@@ -1714,6 +1756,7 @@ def main():
             recommendations = rec_data.get('recommendations', [])
             if semi_auto and current_rec_vmids is None:
                 current_rec_vmids = [r.get('vmid') for r in recommendations if r.get('vmid') is not None]
+            recommendations = [r for r in recommendations if r.get('vmid') not in tried_this_run]
             if not recommendations:
                 logger.info("No more recommendations available")
                 im_cfg = rules.get('intelligent_migrations', {})
@@ -2309,6 +2352,7 @@ def main():
                 except Exception as e:
                     logger.warning(f"Could not capture pre-migration snapshot for {vmid}: {e}")
 
+            tried_this_run.add(vmid)
             result = execute_migration(vmid, target, source, guest_type, config, dry_run=dry_run)
 
             if not dry_run and result.get('success') and pre_snapshot:
@@ -2565,6 +2609,10 @@ def main():
                     logger.info(f"Grace period: waiting {grace_period_seconds}s for cluster to settle")
                     time_module.sleep(grace_period_seconds)
             else:
+                if not dry_run and auto_config.get('safety_checks', {}).get('pause_on_failure', False):
+                    pause_automation_after_failure(vmid, rec.get('name'), result.get('error'))
+                    last_run_summary['paused_after_failure'] = True
+                    break
                 if auto_config.get('safety_checks', {}).get('abort_on_failure', True):
                     logger.error("Migration failed, aborting remaining migrations")
                     break
