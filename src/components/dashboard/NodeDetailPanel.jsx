@@ -10,6 +10,7 @@ import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
 import { guestMobility } from './guestMobility.js';
+import { diskHealthView } from '../../utils/diskHealth.js';
 import { ScoreBreakdown } from './ScoreBreakdown.jsx';
 import { fetchNodeFailure } from '../../api/client.js';
 import { shortVerdict, verdictTone, readStorageMode, ROUTE_PREFIX } from '../insights/failureModel.js';
@@ -41,6 +42,13 @@ const MOBILITY_TEXT = {
   red: 'text-red-600 dark:text-red-400',
   blue: 'text-indigo-600 dark:text-indigo-300',
   gray: 'text-pb-text2 dark:text-gray-400',
+};
+
+// Text colour for the disk health (SMART) lines.
+const DISK_TONE = {
+  ok: 'text-pb-text2 dark:text-gray-400',
+  warn: 'text-amber-700 dark:text-amber-300',
+  bad: 'text-red-600 dark:text-red-400',
 };
 
 // Text colour for the "If this node fails" line, by simulation status.
@@ -279,6 +287,7 @@ export default function NodeDetailPanel({
   };
 
   const online = node.status === 'online';
+  const disksView = diskHealthView(node.disks);
   const stepBtn = 'shrink-0 w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-pb-border dark:border-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-800';
 
   const header = (
@@ -441,6 +450,14 @@ export default function NodeDetailPanel({
             <span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={HATCH} />
             {anchoredShown.toFixed(0)}% of CPU is {nameList(anchoredGuests.filter(a => (a.cpu_share || 0) >= 0.5).map(a => a.name))}, which won't be moved.
           </p>
+        )}
+        {disksView && (
+          <div className="text-xs" title="SMART verdict per disk from Proxmox (Disks list). Life left is the SSD wearout Proxmox reports; — when the disk does not report it.">
+            <p className={DISK_TONE[disksView.tone]}>{disksView.summary}</p>
+            {disksView.lines.map(l => (
+              <p key={l.key} className={`${DISK_TONE[l.tone]} break-words`}>{l.text}</p>
+            ))}
+          </div>
         )}
       </div>
 
