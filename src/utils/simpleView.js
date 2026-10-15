@@ -1,0 +1,285 @@
+// Simple view: the widget catalog, presets, the saved layout and the plain
+// summaries each widget shows. Pure (no React), so tests/js/simple-view.mjs
+// can check it.
+
+import { parseTimestamp } from './formatters.js';
+import { shortWhy } from './automationStory.js';
+import { BACKUP_STALE_DAYS } from './backupStatus.js';
+
+// ---------------------------------------------------------------------------
+// Catalog and presets
+// ---------------------------------------------------------------------------
+
+/** Every widget, in the order the picker lists unpicked ones. */
+export const WIDGETS = [
+  { id: 'status', name: 'Cluster status', desc: 'One line: all good, or how many things need a look.' },
+  { id: 'attention', name: 'Needs you', desc: 'Only things with something to do.' },
+  { id: 'nodes', name: 'Node load', desc: 'CPU and memory per node, coloured at your limits.' },
+  { id: 'moves', name: 'Recent moves', desc: 'What moved in the last 24 hours and why.' },
+  { id: 'backups', name: 'Backups', desc: 'How the last backup of each guest went.' },
+  { id: 'forecast', name: 'Coming up', desc: 'Nodes heading for a limit, as a date.' },
+  { id: 'automation', name: 'Automation', desc: 'On or off, the last check, the next one.' },
+  { id: 'approvals', name: 'Waiting for approval', desc: 'Moves that need your yes (semi-automatic mode).' },
+  { id: 'timeline', name: 'What happened', desc: 'The last 24 hours in order, newest first.' },
+  { id: 'capacity', name: 'Room left', desc: 'How many more 4 GB guests fit under your memory limit.' },
+  { id: 'maintenance', name: 'Maintenance', desc: 'Nodes in maintenance and the guests still on them.' },
+];
+
+const WIDGET_IDS = new Set(WIDGETS.map(w => w.id));
+export const widgetById = (id) => WIDGETS.find(w => w.id === id) || null;
+
+const L = (...items) => items.map(([id, wide]) => ({ id, wide: !!wide }));
+
+/** Calm is the default: what a first-time viewer sees. */
+export const PRESETS = [
+  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['attention', 1], ['moves'], ['backups'], ['forecast'], ['automation'], ['nodes', 1]) },
+  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention', 1], ['approvals'], ['automation'], ['nodes'], ['moves'], ['forecast'], ['backups'], ['timeline', 1]) },
+  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['nodes', 1], ['moves'], ['timeline']) },
+];
+export const DEFAULT_PRESET = 'calm';
+export const presetLayout = (id) => (PRESETS.find(p => p.id === id) || PRESETS[0]).layout.map(x => ({ ...x }));
+
+/** The preset a layout matches exactly, or null once it has been changed. */
+export function matchingPreset(layout) {
+  const key = (l) => l.map(x => `${x.id}:${x.wide ? 1 : 0}`).join(',');
+  const k = key(layout || []);
+  return PRESETS.find(p => key(p.layout) === k)?.id || null;
+}
+
+/** Drop unknown and repeated ids; anything unusable falls back to the default. */
+export function normalizeLayout(raw) {
+  if (!Array.isArray(raw)) return presetLayout(DEFAULT_PRESET);
+  const seen = new Set();
+  const out = [];
+  for (const it of raw) {
+    const id = typeof it === 'string' ? it : it?.id;
+    if (!WIDGET_IDS.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, wide: !!it?.wide });
+  }
+  return out;
+}
+
+export function toggleWidget(layout, id) {
+  return layout.some(x => x.id === id) ? layout.filter(x => x.id !== id) : [...layout, { id, wide: false }];
+}
+
+export function moveWidget(layout, id, dir) {
+  const i = layout.findIndex(x => x.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= layout.length) return layout;
+  const next = [...layout];
+  [next[i], next[j]] = [next[j], next[i]];
+  return next;
+}
+
+export const toggleWide = (layout, id) => layout.map(x => (x.id === id ? { ...x, wide: !x.wide } : x));
+
+// Per-browser storage (a wall screen and a phone can differ).
+export const LAYOUT_KEY = 'pb.simpleLayout';
+export const MODE_KEY = 'pb.viewMode';
+
+export function readLayout(storage = globalThis.localStorage) {
+  try {
+    const raw = storage?.getItem(LAYOUT_KEY);
+    return raw ? normalizeLayout(JSON.parse(raw)) : presetLayout(DEFAULT_PRESET);
+  } catch { return presetLayout(DEFAULT_PRESET); }
+}
+
+export function writeLayout(layout, storage = globalThis.localStorage) {
+  try { storage?.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch { /* per-browser nicety only */ }
+}
+
+/** 'simple' or 'full' (the default: nothing changes until someone switches). */
+export function readViewMode(storage = globalThis.localStorage) {
+  try { return storage?.getItem(MODE_KEY) === 'simple' ? 'simple' : 'full'; } catch { return 'full'; }
+}
+
+export function writeViewMode(mode, storage = globalThis.localStorage) {
+  try { storage?.setItem(MODE_KEY, mode === 'simple' ? 'simple' : 'full'); } catch { /* per-browser nicety only */ }
+}
+
+// ---------------------------------------------------------------------------
+// Summaries
+// ---------------------------------------------------------------------------
+
+/** ok under the limit, warn at or over it, bad at 90 % or more. */
+export function loadTone(value, limit) {
+  if (typeof value !== 'number') return 'none';
+  if (value >= 90) return 'bad';
+  if (typeof limit === 'number' && value >= limit) return 'warn';
+  return 'ok';
+}
+
+const inMaint = (maintenanceNodes, name) => {
+  if (!maintenanceNodes) return false;
+  if (maintenanceNodes instanceof Set) return maintenanceNodes.has(name);
+  if (Array.isArray(maintenanceNodes)) return maintenanceNodes.includes(name);
+  return !!maintenanceNodes[name];
+};
+
+/** Node rows for the load bars, by name. */
+export function nodeRows(nodes, { cpuLimit, memLimit, maintenanceNodes } = {}) {
+  return Object.values(nodes || {})
+    .map(n => {
+      const online = n.status === 'online';
+      const cpu = online && typeof n.cpu_percent === 'number' ? n.cpu_percent : null;
+      const mem = online && typeof n.mem_percent === 'number' ? n.mem_percent : null;
+      return {
+        name: n.name, online, maintenance: inMaint(maintenanceNodes, n.name),
+        cpu, mem, cpuTone: loadTone(cpu, cpuLimit), memTone: loadTone(mem, memLimit),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The one-line verdict: { tone: ok|warn|bad, text, sub }. */
+export function clusterLine({ nodes, guests, attentionCount = 0, badCount = 0, automationOn = null }) {
+  const all = Object.values(nodes || {});
+  const up = all.filter(n => n.status === 'online').length;
+  const down = all.length - up;
+  const gl = Object.values(guests || {}).filter(g => !g.template);
+  const running = gl.filter(g => g.status === 'running').length;
+  const parts = [];
+  if (down > 0) parts.push(`${down} of ${all.length} nodes down`);
+  else parts.push(all.length === 1 ? 'The node is up' : `All ${all.length} nodes up`);
+  if (attentionCount > 0) parts.push(`${attentionCount} ${attentionCount === 1 ? 'thing needs' : 'things need'} a look`);
+  else if (down === 0) parts.push('nothing needs you');
+  const tone = down > 0 || badCount > 0 ? 'bad' : attentionCount > 0 ? 'warn' : 'ok';
+  const sub = [
+    gl.length ? `${gl.length} guests, ${running} running` : null,
+    automationOn == null ? null : `automation ${automationOn ? 'on' : 'off'}`,
+  ].filter(Boolean).join(' · ');
+  return { tone, text: parts.join(' · '), sub };
+}
+
+/**
+ * Backups across guests (from the collector's per-guest `backup`):
+ * { known, good, failed: [guest], stale: [guest], none: [guest] }.
+ * `known` is false when the collector didn't read backup results.
+ */
+export function backupTally(guests, nowSec = Date.now() / 1000) {
+  const gl = Object.values(guests || {}).filter(g => !g.template);
+  const known = gl.some(g => g.backup !== undefined);
+  const out = { known, good: 0, failed: [], stale: [], none: [] };
+  if (!known) return out;
+  for (const g of gl) {
+    const b = g.backup;
+    if (b === undefined) continue;
+    if (b === null) out.none.push(g);
+    else if (b.last_attempt_ok === false) out.failed.push(g);
+    else if (nowSec - b.last_ok > BACKUP_STALE_DAYS * 86400) out.stale.push(g);
+    else out.good += 1;
+  }
+  return out;
+}
+
+const tsMs = (ts) => parseTimestamp(ts)?.getTime() ?? null;
+
+/** Moves (manual and automatic) in the last `hours`, newest first. */
+export function recentMoves(migrations, nowMs = Date.now(), hours = 24) {
+  return (migrations || [])
+    .map(m => ({ m, t: tsMs(m.timestamp) }))
+    .filter(({ m, t }) => t != null && nowMs - t <= hours * 3600e3 && !m.dry_run
+      && ['completed', 'failed'].includes(m.status))
+    .sort((a, b) => b.t - a.t)
+    .map(({ m, t }) => ({
+      time: t, vmid: m.vmid, name: m.name || m.guest_name || `guest ${m.vmid}`,
+      from: m.source_node, to: m.target_node, ok: m.status === 'completed',
+      why: m.status === 'completed' ? shortWhy(m) : (m.error_message || 'failed'),
+      by: m.initiated_by === 'automated' ? 'automation' : 'manual',
+    }));
+}
+
+/**
+ * How many more guests of `sizeGb` fit on online, non-maintenance nodes
+ * before each passes `memLimit` percent memory.
+ */
+export function roomLeft(nodes, { memLimit, maintenanceNodes, sizeGb = 4 } = {}) {
+  if (typeof memLimit !== 'number') return null;
+  let count = 0;
+  const per = [];
+  for (const n of Object.values(nodes || {})) {
+    if (n.status !== 'online' || inMaint(maintenanceNodes, n.name)) continue;
+    if (typeof n.total_mem_gb !== 'number' || typeof n.mem_percent !== 'number') continue;
+    const free = n.total_mem_gb * (memLimit - n.mem_percent) / 100;
+    const fit = Math.max(0, Math.floor(free / sizeGb));
+    count += fit;
+    per.push({ name: n.name, fit });
+  }
+  per.sort((a, b) => b.fit - a.fit);
+  return { count, sizeGb, memLimit, per };
+}
+
+/**
+ * The last day in order, newest first: moves, failed backups and the last
+ * backup round. [{ time, tone: ok|info|warn|bad, text, detail, href }]
+ */
+export function timelineEvents({ migrations, guests, nowMs = Date.now(), hours = 24 }) {
+  const ev = recentMoves(migrations, nowMs, hours).map(m => ({
+    time: m.time,
+    tone: m.ok ? 'info' : 'bad',
+    text: m.ok ? `Moved ${m.name} from ${m.from} to ${m.to}` : `Move of ${m.name} failed`,
+    detail: `${m.by === 'automation' ? 'Automation' : 'By hand'} · ${m.why}`,
+    href: '#/automation/history',
+  }));
+  const since = (nowMs - hours * 3600e3) / 1000;
+  const gl = Object.values(guests || {}).filter(g => g.backup);
+  for (const g of gl) {
+    const b = g.backup;
+    if (b.last_attempt_ok === false && b.last_attempt >= since) {
+      ev.push({
+        time: b.last_attempt * 1000, tone: 'bad', text: `Backup of ${g.name} failed`,
+        detail: b.last_error || '', href: `#/dashboard/guests/guest/${g.vmid}`,
+      });
+    }
+  }
+  const okTimes = gl.map(g => g.backup.last_ok).filter(t => typeof t === 'number' && t >= since);
+  if (okTimes.length) {
+    ev.push({
+      time: Math.max(...okTimes) * 1000, tone: 'ok',
+      text: `Backups: ${okTimes.length} good`, detail: 'Last backup round', href: '#/dashboard/guests',
+    });
+  }
+  return ev.sort((a, b) => b.time - a.time);
+}
+
+/** "14:32" today, "Tue 01:00" earlier. */
+export function eventTime(ms, nowMs = Date.now()) {
+  const d = new Date(ms);
+  const now = new Date(nowMs);
+  const hm = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  return d.toDateString() === now.toDateString() ? hm : `${d.toLocaleDateString([], { weekday: 'short' })} ${hm}`;
+}
+
+/**
+ * Everything that needs the operator, most serious first:
+ * [{ id, tone: warn|bad, text, href }]. Built from the dashboard's attention
+ * rules plus approvals waiting, failed backups and limits coming up.
+ */
+export function needsYou({ attention = [], approvals = [], backups = null, crossings = [] }) {
+  const rows = attention.map(a => ({ id: a.id, tone: a.tone === 'error' ? 'bad' : 'warn', text: a.label, href: a.href }));
+  if (approvals.length) {
+    rows.push({
+      id: 'approvals', tone: 'warn', href: '#/automation',
+      text: approvals.length === 1 ? `Approve or skip the move of ${approvals[0].name || `guest ${approvals[0].vmid}`}` : `${approvals.length} moves waiting for approval`,
+    });
+  }
+  if (backups?.failed?.length) {
+    const f = backups.failed;
+    rows.push({
+      id: 'backup-failed', tone: 'bad', href: f.length === 1 ? `#/dashboard/guests/guest/${f[0].vmid}` : '#/dashboard/guests',
+      text: f.length === 1 ? `Backup of ${f[0].name} failed` : `${f.length} backups failed`,
+    });
+  }
+  const soon = crossings.filter(c => typeof c.days === 'number' && c.days <= 14);
+  if (soon.length) {
+    const c = soon[0];
+    rows.push({
+      id: 'forecast', tone: 'warn', href: '#/insights',
+      text: `${c.node} ${c.metric === 'cpu' ? 'CPU' : c.metric === 'iowait' ? 'IO wait' : c.metric} ${c.kind === 'over' ? 'full' : 'over its limit'} in about ${Math.max(1, Math.round(c.days))} days${soon.length > 1 ? ` (+${soon.length - 1} more)` : ''}`,
+    });
+  }
+  const rank = { bad: 0, warn: 1 };
+  return rows.sort((a, b) => rank[a.tone] - rank[b.tone]);
+}

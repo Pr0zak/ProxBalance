@@ -74,6 +74,10 @@ Opened by clicking a node anywhere in the UI:
 
 Press **Ctrl+K** (Cmd+K on a Mac) or **/** (outside a text field), or use the search button in the top bar, to jump to any guest, node or page. Choosing a guest or node opens its side panel. It works from the keyboard alone and on phones.
 
+### Simple view
+
+A **Simple / Full** switch in the top bar. Simple shows plain-language widgets (cluster status, what needs you, node load, recent moves, backups, forecasts, automation, approvals, a 24-hour timeline, room left, maintenance) that each viewer picks and orders, with Calm, Operator and Wall presets. See "Simple View" in [USAGE.md](USAGE.md).
+
 ### Wall-monitor mode
 
 ![Wall mode](images/wall.png)

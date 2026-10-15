@@ -5,6 +5,7 @@ import SystemModals from './components/dashboard/SystemModals.jsx';
 import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
+import SimpleView from './components/SimpleView.jsx';
 import WallMode from './components/WallMode.jsx';
 import QuickSearch from './components/QuickSearch.jsx';
 import useIsMobile from './utils/useIsMobile.js';
@@ -290,11 +291,20 @@ const ProxmoxBalanceManager = () => {
     </AppStatusContext.Provider>
   );
 
+  // The Dashboard tab opens the view this browser chose last (Simple or Full).
+  const navigate = (page) => ui.setCurrentPage(page === 'dashboard' && ui.viewMode === 'simple' ? 'simple' : page);
+  const navActive = ui.currentPage === 'simple' ? 'dashboard' : ui.currentPage;
+  const chooseView = (mode) => {
+    ui.setViewMode(mode);
+    ui.setCurrentPage(mode === 'simple' ? 'simple' : 'dashboard');
+  };
+
   // Shared TopNav across all pages
   const topNav = (
     <TopNav
       currentPage={ui.currentPage}
-      setCurrentPage={ui.setCurrentPage}
+      setCurrentPage={navigate}
+      viewMode={ui.viewMode} onViewMode={chooseView}
       darkMode={darkMode}
       toggleDarkMode={toggleDarkMode}
       connected={!!cluster.data && !cluster.error}
@@ -417,7 +427,7 @@ const ProxmoxBalanceManager = () => {
       formatLocalTime={formatLocalTime}
       getTimezoneAbbr={getTimezoneAbbr}
     />
-    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
     </div>);
   }
 
@@ -431,7 +441,7 @@ const ProxmoxBalanceManager = () => {
         routeTab={ui.subPage}
         chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
       />
-      {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+      {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
     </div>);
   }
 
@@ -501,7 +511,7 @@ const ProxmoxBalanceManager = () => {
       testingAutomation={automation.testingAutomation}
       testResult={automation.testResult}
     />
-    {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
     </div>);
   }
 
@@ -558,6 +568,21 @@ const ProxmoxBalanceManager = () => {
         </div>
       </div>
     );
+  }
+
+  // Simple view (#/simple)
+  if (ui.currentPage === 'simple') {
+    return withShell(<div className={PAGE_BG}>{topNav}{runPlanOverlay}{systemModals}
+      <SimpleView
+        data={cluster.data} config={configHook.config}
+        nodeScores={cluster.nodeScores} maintenanceNodes={evacuation.maintenanceNodes}
+        cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
+        automationStatus={automation.automationStatus} fetchAutomationStatus={automation.fetchAutomationStatus}
+        canMigrate={auth.canMigrate}
+        API_BASE={API_BASE}
+      />
+      {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+    </div>);
   }
 
   // Dashboard Page
@@ -638,7 +663,7 @@ const ProxmoxBalanceManager = () => {
     setGuestMigrationOptions={migrations.setGuestMigrationOptions}
     API_BASE={API_BASE}
   />
-  {isMobile && <MobileTabBar activePage={ui.currentPage} onNavigate={ui.setCurrentPage} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
+  {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
   </div>);
 };
 

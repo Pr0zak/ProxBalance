@@ -1,8 +1,9 @@
 import { isWallHash } from '../utils/wallMode.js';
+import { readViewMode, writeViewMode } from '../utils/simpleView.js';
 
 const { useState, useEffect, useCallback } = React;
 
-const PAGES = ['dashboard', 'insights', 'automation', 'settings'];
+const PAGES = ['dashboard', 'simple', 'insights', 'automation', 'settings'];
 
 // Hash routes: #/<page>[/<sub>], e.g. #/automation/filters, #/dashboard/map.
 // Reload keeps your place, Back/Forward work, and any view can be linked.
@@ -10,8 +11,10 @@ function parseHash() {
   // #/wall: the full-screen wall-monitor view (no sub-pages).
   if (isWallHash(window.location.hash)) return { page: 'wall', sub: null };
   const [page, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+  // No page in the address: open the view this browser last chose.
+  const home = readViewMode() === 'simple' ? 'simple' : 'dashboard';
   return {
-    page: PAGES.includes(page) ? page : 'dashboard',
+    page: PAGES.includes(page) ? page : home,
     sub: PAGES.includes(page) && sub ? decodeURIComponent(sub) : null,
   };
 }
@@ -65,6 +68,12 @@ export function useUIState() {
     writeHash(page, sub);
     if (page !== route.page) window.scrollTo(0, 0);
   }, [route.page]);
+  // Simple or Full, per browser. The Dashboard tab opens whichever was chosen last.
+  const [viewMode, setViewModeState] = useState(readViewMode);
+  const setViewMode = useCallback((mode) => {
+    writeViewMode(mode);
+    setViewModeState(mode);
+  }, []);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [scrollToApiConfig, setScrollToApiConfig] = useState(false);
@@ -153,6 +162,7 @@ export function useUIState() {
 
   return {
     currentPage, setCurrentPage,
+    viewMode, setViewMode,
     subPage, setSubPage,
     setNavGuard,
     showSettings, setShowSettings,

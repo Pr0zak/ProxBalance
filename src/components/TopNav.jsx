@@ -21,6 +21,7 @@ export default function TopNav({
   automationStatus,
   onOpenSearch,
   onOpenWall,
+  viewMode, onViewMode,
 }) {
   const outsideWindow = connected
     && automationStatus?.enabled
@@ -60,7 +61,7 @@ export default function TopNav({
               <button
                 key={tab.id}
                 onClick={() => setCurrentPage(tab.id)}
-                className={`${NAV_TAB} ${currentPage === tab.id ? NAV_TAB_ACTIVE : NAV_TAB_INACTIVE}`}
+                className={`${NAV_TAB} ${(currentPage === 'simple' ? 'dashboard' : currentPage) === tab.id ? NAV_TAB_ACTIVE : NAV_TAB_INACTIVE}`}
               >
                 {tab.label}
               </button>
@@ -69,6 +70,26 @@ export default function TopNav({
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Simple / Full: which dashboard this browser opens */}
+            {onViewMode && (
+              <div role="group" aria-label="Dashboard view" className="flex items-center p-0.5 rounded-lg border border-pb-border dark:border-slate-700 bg-pb-surface2 dark:bg-slate-800/60 text-xs">
+                {[['simple', 'Simple'], ['full', 'Full']].map(([id, label]) => {
+                  const on = (currentPage === 'simple' ? 'simple' : currentPage === 'dashboard' ? 'full' : viewMode) === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => onViewMode(id)}
+                      title={id === 'simple' ? 'Only what matters: status, what happened, what needs you' : 'Everything: scores, charts, map and tables'}
+                      className={`px-2 sm:px-2.5 py-1 rounded-md transition-colors ${on ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {/* Update available */}
             {systemInfo?.updates_available && (
               <button
@@ -105,7 +126,7 @@ export default function TopNav({
             {/* Data age — amber past 2x the collection interval, red past 3x */}
             {dataAge && (
               <span
-                className={`${dataAge.tone === 'ok' ? 'hidden xl:inline' : 'hidden md:inline font-medium'} text-xs whitespace-nowrap ${DATA_AGE_TONE[dataAge.tone]}`}
+                className={`${dataAge.tone === 'ok' ? 'hidden 2xl:inline' : 'hidden lg:inline font-medium'} text-xs whitespace-nowrap ${DATA_AGE_TONE[dataAge.tone]}`}
                 title={dataAge.title}
               >
                 {dataAge.label}

@@ -53,6 +53,26 @@ If a request fails, the affected area says so ("status unavailable", "Couldn't l
 
 ---
 
+## Simple View
+
+The **Simple / Full** switch in the top bar picks which dashboard this browser opens. Full is the dashboard described below. Simple (`#/simple`) hides scores, penalties, charts and tables and shows widgets in plain sentences:
+
+| Widget | Shows |
+|---|---|
+| Cluster status | One line, e.g. "All 5 nodes up · 3 things need a look", with the guest count and whether automation is on |
+| Needs you | Only items with something to do: failed backups, low headroom, maintenance, moves waiting for approval, a node reaching a limit within 14 days, stale data, a failed automation run |
+| Node load | CPU and memory bars per node, amber at your limits and red at 90% |
+| Recent moves | Moves in the last 24 hours with a few words on why |
+| Backups | How many guests were backed up in the last 3 days, and which failed, are older or have no backup |
+| Coming up | Nodes heading for a limit, as "in about N days" (the Insights forecast) |
+| Automation | On, off, dry run or semi-automatic, the last check and the next one |
+| Waiting for approval | Semi-automatic moves with Approve and Skip |
+| What happened | The last 24 hours in order: moves, failed backups and the nightly backup round |
+| Room left | How many more 4 GB guests fit before nodes pass your memory limit |
+| Maintenance | Nodes in maintenance and how many running guests are still on them |
+
+Each widget links to the full page it summarizes. **Customize** picks widgets, their order and (on wide screens) full width, or applies a preset: **Calm** (the default), **Operator** or **Wall**. The layout and the Simple/Full choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Full.
+
 ## Dashboard
 
 ![Top of the dashboard](images/dashboard.png)
