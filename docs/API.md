@@ -1191,10 +1191,27 @@ Returns a trend summary for every node (direction, current average and rate per 
 | `lookback_days` | int | 7 |
 | `cpu_threshold` | number | 60 |
 | `mem_threshold` | number | 70 |
+| `iowait_threshold` | number | 30 |
+| `series` | `1` or `true` | off |
+| `horizon_days` | int (1-365) | 30 |
+
+With `series=1` each node metric also carries a `forecast` object:
+
+| Field | Meaning |
+|-------|---------|
+| `history` | `[[days, value], ...]`, up to 120 averaged points, days relative to the last sample (0 or less) |
+| `projection` | `[[0, current], [end_day, value]]`: the fitted slope continued from the current value, clipped to 0-100 % and to the horizon |
+| `status` | `crossing`, `over_limit` (already at or past the limit), `beyond_horizon` (rising, reaches the limit after the horizon), `not_rising` or `no_limit` |
+| `days_to_limit` | Days until the limit; set only when `status` is `crossing` |
+| `days_to_full` | Days until the line reaches 100 %, or null when that is past the horizon or the trend is not rising |
+| `limit` | The threshold used |
+| `horizon_days` | The horizon used: `horizon_days` from the request, cut to twice `window_days` |
+| `max_horizon_days` | The `horizon_days` asked for |
+| `window_days` | Time between the first and last sample the fit used |
 
 ### GET /api/trends/node/{node}
 
-Returns the trend analysis for one node. Same parameters as `/api/trends/nodes`.
+Returns the trend analysis for one node. Parameters: `lookback_days`, `cpu_threshold`, `mem_threshold` (defaults as above).
 
 ### GET /api/trends/guest/{vmid}
 
