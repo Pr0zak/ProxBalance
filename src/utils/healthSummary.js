@@ -10,6 +10,7 @@ import { headroomLevel } from './designTokens.js';
 const PHRASE_BY_KEY = {
   iowait_current: 'disk wait high now',
   iowait_sustained: 'disk wait high this week',
+  io_pressure_sustained: 'tasks waited on disk all week',
   current_cpu: 'CPU busy now',
   sustained_cpu: 'CPU busy all week',
   cpu_spikes: 'CPU peaks this week',

@@ -20,6 +20,7 @@ const PENALTY_LABELS = {
   mem_overcommit: 'RAM alloc',
   iowait_current: 'IOWait',
   iowait_sustained: 'IOWait 7d',
+  io_pressure_sustained: 'IO pressure 7d',
 };
 
 // Longer wording for tooltips.
@@ -37,6 +38,7 @@ const PENALTY_DESCRIPTIONS = {
   mem_overcommit: 'RAM allocated to guests beyond physical RAM',
   iowait_current: 'IOWait right now',
   iowait_sustained: 'IOWait, 7-day average',
+  io_pressure_sustained: 'IO pressure (time tasks waited on disk), 7-day average',
 };
 
 export function penaltyLabel(key) {
@@ -101,3 +103,28 @@ export function tightestNode(nodeScores, { nodes = null, maintenanceNodes = null
 }
 
 export { asSet as toNodeSet };
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+
+/**
+ * Node IO pressure (Linux PSI "some") as one plain fact, from a node's
+ * `metrics`. Uses the ~15-minute average, else the latest sample. Returns
+ * null when Proxmox reports no PSI (PVE 8), so callers show nothing.
+ *
+ * @returns {null | { pct, text, title }}
+ */
+export function ioPressureFact(metrics) {
+  const m = metrics || {};
+  const pct = isNum(m.recent_io_pressure) ? m.recent_io_pressure
+    : isNum(m.current_io_pressure) ? m.current_io_pressure : null;
+  if (pct === null) return null;
+  const text = `IO pressure ${pct.toFixed(0)}% (time tasks waited on disk)`;
+  const extra = [
+    isNum(m.avg_io_pressure) && `24h avg ${m.avg_io_pressure.toFixed(0)}%`,
+    isNum(m.avg_io_pressure_week) && `7-day avg ${m.avg_io_pressure_week.toFixed(0)}%`,
+  ].filter(Boolean).join(', ');
+  const title = 'Share of the last 15 minutes in which at least one task was stalled waiting on disk'
+    + (extra ? `. ${extra}` : '')
+    + '. Counts against the node only when the 7-day average is over 30%.';
+  return { pct, text, title };
+}

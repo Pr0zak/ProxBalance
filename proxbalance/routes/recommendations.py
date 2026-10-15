@@ -689,7 +689,7 @@ def node_scores():
         penalty_categories = {
             "cpu": penalty_breakdown.get("current_cpu", 0) + penalty_breakdown.get("sustained_cpu", 0) + penalty_breakdown.get("predicted_cpu", 0),
             "memory": penalty_breakdown.get("current_mem", 0) + penalty_breakdown.get("sustained_mem", 0) + penalty_breakdown.get("predicted_mem", 0) + penalty_breakdown.get("mem_overcommit", 0),
-            "iowait": penalty_breakdown.get("iowait_current", 0) + penalty_breakdown.get("iowait_sustained", 0),
+            "iowait": penalty_breakdown.get("iowait_current", 0) + penalty_breakdown.get("iowait_sustained", 0) + penalty_breakdown.get("io_pressure_sustained", 0),
             "trends": penalty_breakdown.get("cpu_trend", 0) + penalty_breakdown.get("mem_trend", 0),
             "spikes": penalty_breakdown.get("cpu_spikes", 0) + penalty_breakdown.get("mem_spikes", 0),
         }
@@ -886,7 +886,7 @@ def guest_migration_options(vmid):
             "penalty_categories": {
                 "cpu": penalties.get("current_cpu", 0) + penalties.get("sustained_cpu", 0) + penalties.get("predicted_cpu", 0),
                 "memory": penalties.get("current_mem", 0) + penalties.get("sustained_mem", 0) + penalties.get("predicted_mem", 0) + penalties.get("mem_overcommit", 0),
-                "iowait": penalties.get("iowait_current", 0) + penalties.get("iowait_sustained", 0),
+                "iowait": penalties.get("iowait_current", 0) + penalties.get("iowait_sustained", 0) + penalties.get("io_pressure_sustained", 0),
                 "trends": penalties.get("cpu_trend", 0) + penalties.get("mem_trend", 0),
                 "spikes": penalties.get("cpu_spikes", 0) + penalties.get("mem_spikes", 0),
             },

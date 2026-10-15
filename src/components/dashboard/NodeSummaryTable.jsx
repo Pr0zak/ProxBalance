@@ -6,7 +6,7 @@ import { AlertTriangle, ChevronDown, Tag, X } from '../Icons.jsx';
 import { failedDiskCount } from '../../utils/diskHealth.js';
 import { recBadgeTooltip } from './recsHelpers.js';
 import { HEADROOM_HINT, DEFAULT_CPU_THRESHOLD, DEFAULT_MEM_THRESHOLD, DEFAULT_IOWAIT_THRESHOLD } from '../../utils/constants.js';
-import { penaltyList, penaltyTooltip, toNodeSet } from '../../utils/nodeCondition.js';
+import { penaltyList, penaltyTooltip, toNodeSet, ioPressureFact } from '../../utils/nodeCondition.js';
 import { nodeRoles } from '../../utils/nodeRoles.js';
 import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 
@@ -174,7 +174,7 @@ function fullestLocalPool(storageArr) {
  *  we don't use the standard MetricBar coloring. On io-exempt nodes (a guest
  *  with passthrough disks or an io-exempt tag) IOWait doesn't count toward the
  *  score, so it stays neutral with an "exempt" badge. */
-function IOWaitCell({ pct, avg, exempt, exemptGuests }) {
+function IOWaitCell({ pct, avg, exempt, exemptGuests, ioPressure }) {
   const v = pct || 0;
   const cls = exempt ? 'text-pb-text2 dark:text-gray-400'
             : v > 30 ? 'text-red-600 dark:text-red-400'
@@ -184,7 +184,7 @@ function IOWaitCell({ pct, avg, exempt, exemptGuests }) {
   const who = (exemptGuests || []).map(g => g.name).join(', ') || 'a passthrough guest';
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`text-xs font-mono tabular-nums ${cls}`} title={`24h avg ${(avg || 0).toFixed(1)}%`}>
+      <span className={`text-xs font-mono tabular-nums ${cls}`} title={`24h avg ${(avg || 0).toFixed(1)}%${ioPressure ? `\n${ioPressure.text}` : ''}`}>
         {v.toFixed(1)}%
       </span>
       {exempt && (
@@ -806,7 +806,7 @@ export default function NodeSummaryTable({
                         <td className="px-2 py-3 md:p-3">
                           <MetricBar pct={node.memPct} detail={node.memDetail} />
                         </td>
-                        <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} exempt={node.iowaitExempt} exemptGuests={node.raw.iowait_exempt_guests} /></td>
+                        <td className="p-3 hidden md:table-cell"><IOWaitCell pct={node.iowaitPct} avg={node.iowaitAvg} exempt={node.iowaitExempt} exemptGuests={node.raw.iowait_exempt_guests} ioPressure={ioPressureFact(node.raw.metrics)} /></td>
                         <td className="p-3 hidden md:table-cell">
                           {node.disk ? (
                             <MetricBar pct={node.disk.pct} detail={node.disk.name} title={node.disk.title} />

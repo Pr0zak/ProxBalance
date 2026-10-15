@@ -535,6 +535,24 @@ export default function PenaltyScoringSection({
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-pb-text2 dark:text-gray-400">
+                      IO pressure is the share of time tasks waited on disk (Proxmox VE 9 and later). Only its 7-day average counts.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {[['io_pressure_sustained_high', 'IO pressure 7d > 30%'], ['io_pressure_sustained_critical', 'IO pressure 7d > 50%']].map(([key, label]) => (
+                        <div key={key}>
+                          <label className="block text-xs text-pb-text dark:text-gray-300 mb-1">
+                            {label} (default: {penaltyDefaults[key]})
+                          </label>
+                          <NumberField
+                            min="0"
+                            value={penaltyConfig[key]}
+                            onCommit={(val) => setPenaltyConfig({...penaltyConfig, [key]: val})}
+                            className={INPUT_FIELD}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Minimum Score Improvement */}

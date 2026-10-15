@@ -5,6 +5,7 @@ import {
   INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER,
   PROGRESS_BAR_BG, metricColor, metricTextColor, headroomTextColor, TAP_TARGET, NODE_ROLE } from '../../utils/designTokens.js';
 import { nodeRoles } from '../../utils/nodeRoles.js';
+import { ioPressureFact } from '../../utils/nodeCondition.js';
 import { NodeRoleMarker } from './NodeRoleMarker.jsx';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
@@ -434,6 +435,9 @@ export default function NodeDetailPanel({
         <LoadRow label="CPU" sub={`${node.cpu_cores || 0} cores`} now={cpuNow} avg24={m.avg_cpu} avg7={m.avg_cpu_week} peak={peakOf(cpuNow, m.max_cpu, m.max_cpu_week)} anchored={anchoredShown} />
         <LoadRow label="Memory" sub={memTotal ? `${memUsed.toFixed(1)} / ${memTotal.toFixed(0)} GB` : null} now={node.mem_percent} avg24={m.avg_mem} avg7={m.avg_mem_week} peak={peakOf(node.mem_percent, m.max_mem, m.max_mem_week)} />
         <LoadRow label="IOWait" sub="I/O latency" now={m.current_iowait} avg24={m.avg_iowait} avg7={m.avg_iowait_week} peak={peakOf(m.current_iowait, m.max_iowait)} />
+        {ioPressureFact(m) && (
+          <p className="text-xs text-pb-text2 dark:text-gray-400" title={ioPressureFact(m).title}>{ioPressureFact(m).text}</p>
+        )}
         {shortVerdict(failure) && (
           <p className="text-xs text-pb-text2 dark:text-gray-400">
             If this node fails:{' '}

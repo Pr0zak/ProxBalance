@@ -66,6 +66,28 @@ if iowait > 5%: penalty += iowait * 20
 
 Example: 15% IOWait = 300 points.
 
+### IO pressure (PSI)
+
+A companion to IOWait. Linux pressure stall information ("some") is the share of time at least one task was stalled waiting on disk. IOWait only counts CPU time that was otherwise idle, so a busy node can stall on disk with little IOWait; IO pressure still shows it.
+
+Proxmox VE 9 reports it in the RRD data (`pressureiosome`, `pressureiofull`, plus `pressurecpusome`, `pressurememorysome`/`full`) for nodes and guests, already as a percentage. The collector keeps:
+
+- node `metrics`: `recent_io_pressure` (~15-minute average), `current_io_pressure`, `avg_io_pressure`, `max_io_pressure` (24 h), `avg_io_pressure_week` (7 d), `recent_io_pressure_full`, `avg_io_pressure_full_week`, `recent_cpu_pressure`, `recent_mem_pressure`
+- node `trend_data` points: `io_pressure`
+- guests: `io_pressure`, `io_pressure_full`, `cpu_pressure`, `mem_pressure` (~15-minute averages)
+- `node_metrics` / `guest_metrics` tables: an `io_pressure` column
+
+Only the 7-day average is scored, so it matters only when pressure is high for days, never for a burst:
+
+| 7-day avg IO pressure | Penalty key | Default points |
+|---|---|---|
+| > 50% | `io_pressure_sustained_critical` | 25 |
+| > 30% | `io_pressure_sustained_high` | 10 |
+
+The points land in `penalties.io_pressure_sustained` and count towards the IOWait category. Like the sustained IOWait penalties they apply only when `weight_7d > 0`, scale with the sensitivity setting, and are dropped on an IOWait-exempt node (a guest with its own disks causes both).
+
+When Proxmox reports no PSI (Proxmox VE 8), none of these fields exist: missing is never stored as 0, the `io_pressure_sustained` key is absent and the score is exactly what it was without this feature.
+
 ### Guest count
 
 Discourages concentrating too many guests on one node.

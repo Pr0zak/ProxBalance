@@ -107,6 +107,7 @@ def map_simplified_to_penalty_config(settings: Dict[str, Any]) -> Dict[str, Any]
     _iowait_penalty_keys = [
         "iowait_high_penalty", "iowait_very_high_penalty", "iowait_extreme_penalty",
         "iowait_sustained_elevated", "iowait_sustained_high", "iowait_sustained_critical",
+        "io_pressure_sustained_high", "io_pressure_sustained_critical",
     ]
     _mem_penalty_keys = [
         "mem_high_penalty", "mem_very_high_penalty", "mem_extreme_penalty",

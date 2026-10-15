@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS node_metrics (
     load_avg    REAL,
     guest_count INTEGER,
     storage_usage_pct REAL,
+    io_pressure REAL,  -- PSI "some" %, NULL where Proxmox has no PSI (PVE 8)
     -- Aggregation fields (NULL for raw samples)
     aggregated  INTEGER DEFAULT 0,
     tier        TEXT,
@@ -176,6 +177,7 @@ CREATE TABLE IF NOT EXISTS guest_metrics (
     disk_write_bps REAL,
     net_in_bps  REAL,
     net_out_bps REAL,
+    io_pressure REAL,  -- PSI "some" %, NULL where Proxmox has no PSI (PVE 8)
     -- Aggregation fields
     aggregated  INTEGER DEFAULT 0,
     tier        TEXT,
@@ -297,6 +299,7 @@ def init_db() -> None:
     """
     conn = get_connection()
     conn.executescript(SCHEMA_SQL)
+    _add_missing_columns(conn)
 
     # Check if JSON migration has already run
     cur = conn.execute("SELECT version FROM schema_version WHERE version = 1")
@@ -310,6 +313,23 @@ def init_db() -> None:
         print("ProxBalance: SQLite database initialized with JSON migration", file=sys.stderr)
     else:
         print("ProxBalance: SQLite database already initialized", file=sys.stderr)
+
+
+# Columns added after a table first shipped: (table, column, type). ``CREATE TABLE
+# IF NOT EXISTS`` leaves an existing table alone, so these are added in place.
+ADDED_COLUMNS = (
+    ("node_metrics", "io_pressure", "REAL"),
+    ("guest_metrics", "io_pressure", "REAL"),
+)
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    """Add any column in ``ADDED_COLUMNS`` an older database lacks (existing rows get NULL)."""
+    for table, column, col_type in ADDED_COLUMNS:
+        existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+    conn.commit()
 
 
 # ---------------------------------------------------------------------------

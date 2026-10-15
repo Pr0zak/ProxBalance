@@ -66,6 +66,13 @@ DEFAULT_PENALTY_CONFIG = {
     "iowait_sustained_high": 30,      # Penalty when 7d avg IOWait > 15%
     "iowait_sustained_critical": 60,  # Penalty when 7d avg IOWait > 20%
 
+    # IO pressure (Linux PSI "some": share of time at least one task waited on disk).
+    # An IOWait companion: IOWait only counts idle CPU time, so a busy node can hide
+    # disk stalls. Only the 7-day average counts, so short bursts never matter.
+    # Proxmox VE 8 has no PSI in its RRD data: then nothing here applies.
+    "io_pressure_sustained_high": 10,      # Penalty when 7d avg IO pressure > 30%
+    "io_pressure_sustained_critical": 25,  # Penalty when 7d avg IO pressure > 50%
+
     # Trend penalties
     "cpu_trend_rising_penalty": 15,   # Penalty for rising CPU trend
     "mem_trend_rising_penalty": 0,    # Memory trends reflect migration history, not workload changes — disabled
@@ -170,6 +177,12 @@ def weighted_cpu(metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any
     return (recent_cpu(metrics) * cfg["weight_current"]
             + metrics.get("avg_cpu", 0) * cfg["weight_24h"]
             + metrics.get("avg_cpu_week", 0) * cfg["weight_7d"])
+
+
+def sustained_io_pressure(metrics: Dict[str, Any]) -> Optional[float]:
+    """Node IO pressure (PSI "some", %) averaged over 7 days, or None without PSI data."""
+    value = metrics.get("avg_io_pressure_week")
+    return float(value) if isinstance(value, (int, float)) else None
 
 
 def weighted_iowait(metrics: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None) -> float:
@@ -534,12 +547,25 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             (10, "iowait_sustained_elevated"),
         ], "IOWait 7-day avg")
 
+    # Sustained IO pressure (PSI). The key only exists when the node reports PSI, so a
+    # node without it (PVE 8) scores exactly as before.
+    io_pressure_week = sustained_io_pressure(metrics)
+    if io_pressure_week is not None and weight_7d > 0:
+        penalty_breakdown["io_pressure_sustained"] = 0
+        apply_tier("io_pressure_sustained", io_pressure_week, [
+            (50, "io_pressure_sustained_critical"),
+            (30, "io_pressure_sustained_high"),
+        ], "IO pressure 7-day avg")
+
     # IOWait exemption: a node whose iowait is structurally from a passthrough/dedicated-
     # storage guest (collector-flagged) shouldn't be treated as a poor migration target on
-    # iowait grounds — drop those penalties so it stays eligible.
+    # iowait grounds — drop those penalties so it stays eligible. IO pressure has the
+    # same cause, so it is dropped too.
     if penalty_config.get("iowait_exempt_enabled", True) and target_node.get("iowait_exempt"):
         penalty_breakdown["iowait_current"] = 0
         penalty_breakdown["iowait_sustained"] = 0
+        if "io_pressure_sustained" in penalty_breakdown:
+            penalty_breakdown["io_pressure_sustained"] = 0
 
     # Trend penalty - use quantified trend data from metrics store when available,
     # fall back to simple rising/falling/stable labels from cluster_cache
@@ -798,6 +824,7 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
             "mem_trend": mem_trend,
             "max_cpu_week": round(max_cpu_week, 1),
             "max_mem_week": round(max_mem_week, 1),
+            **({"io_pressure_7d": round(io_pressure_week, 1)} if io_pressure_week is not None else {}),
         },
         "total_score": round(total_score, 1),
         "penalty_items": build_penalty_items(penalty_breakdown, penalty_inputs),
@@ -810,7 +837,9 @@ def calculate_target_node_score(target_node: Dict[str, Any], guest: Dict[str, An
                 "headroom": headroom_score,
                 "storage": storage_score,
             },
-            notes=(["IOWait not scored: it comes from a guest on its own disks"]
+            notes=([("IOWait and IO pressure not scored: they come from a guest on its own disks"
+                     if "io_pressure_sustained" in penalty_breakdown
+                     else "IOWait not scored: it comes from a guest on its own disks")]
                    if penalty_config.get("iowait_exempt_enabled", True) and target_node.get("iowait_exempt")
                    else []),
         ),
@@ -844,7 +873,7 @@ PENALTY_ITEM_CATEGORY = {
     "current_cpu": "cpu", "sustained_cpu": "cpu", "predicted_cpu": "cpu",
     "current_mem": "memory", "sustained_mem": "memory", "predicted_mem": "memory",
     "mem_overcommit": "memory",
-    "iowait_current": "iowait", "iowait_sustained": "iowait",
+    "iowait_current": "iowait", "iowait_sustained": "iowait", "io_pressure_sustained": "iowait",
     "cpu_trend": "trends", "mem_trend": "trends",
     "cpu_spikes": "spikes", "mem_spikes": "spikes",
 }
