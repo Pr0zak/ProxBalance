@@ -181,7 +181,7 @@ def seed_moves(conn, state, series, now):
     hist, outcomes, audit, runs = [], [], [], []
     for days, vmid, src, dst, why in sc.PAST_MOVES:
         g = sc.GUESTS[vmid]
-        ts = now - days * sc.DAY
+        ts = sc.move_time(now, days, why)
         start = ts - 60
         dur = round(20 + g["mem"] * 4.5)
         pre_s, pre_t = at(series, src, start - STEP), at(series, dst, start - STEP)
@@ -210,10 +210,11 @@ def seed_moves(conn, state, series, now):
                 "priority_rank": 1, "total_candidates": 3}]))
 
         def snap(t, el=None):
-            s, d = at(series, src, t), at(series, dst, t)
-            out = {"timestamp": iso_z(t),
-                   "source_node": {"cpu": round(s[1], 2), "mem": round(s[2], 2), "iowait": round(s[3], 2), "guest_count": s[6]},
-                   "target_node": {"cpu": round(d[1], 2), "mem": round(d[2], 2), "iowait": round(d[3], 2), "guest_count": d[6]}}
+            # 2-hour averages ending at t, so one CI burst doesn't decide the verdict.
+            def side(node):
+                return {"cpu": round(avg(series, node, t, 2, 1), 2), "mem": round(avg(series, node, t, 2, 2), 2),
+                        "iowait": round(avg(series, node, t, 2, 3), 2), "guest_count": at(series, node, t)[6]}
+            out = {"timestamp": iso_z(t), "source_node": side(src), "target_node": side(dst)}
             if el is not None:
                 out.update({"elapsed_seconds": el, "late": False})
             return out
