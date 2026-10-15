@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
+from proxbalance import audit_log
 from proxbalance.config_manager import load_config, get_proxmox_client, BASE_PATH
 from proxbalance.pve_client import PVE_WRITE_TIMEOUT
 from proxbalance.error_handlers import api_route
@@ -47,6 +48,20 @@ def _check_ha_move(proxmox, vmid, target_node):
         return {"blocks": [], "warnings": [], "co_migrate": [], "source": "none"}
 
 
+def _audit_manual_move(vmid, guest_type, source_node, target_node, result):
+    """Audit one user-started move (started or refused). Never raises."""
+    label = f"{guest_type or ''} {vmid}".strip()
+    if result.get("success"):
+        action, summary = "migration.start", f"Started move of {label} {source_node} → {target_node}"
+    else:
+        action = "migration.failed"
+        summary = f"Move of {label} {source_node} → {target_node} failed: {result.get('error') or 'unknown error'}"
+    audit_log.record(action, summary, source="user", subject=vmid, details={
+        "vmid": vmid, "source_node": source_node, "target_node": target_node,
+        "task_id": result.get("task_id"), "error": result.get("error"),
+    })
+
+
 @migrations_bp.route("/api/migrate", methods=["POST"])
 def execute_migration():
     """Execute a migration using Proxmox API"""
@@ -62,17 +77,22 @@ def execute_migration():
     target_node = data.get("target_node")
     source_node = data.get("source_node")
     guest_type = data.get("type", "VM")
+    # automigrate posts here too and audits the move itself once it finishes.
+    by_automation = data.get("initiated_by") == "automation" or data.get("record_outcome", True) is False
 
     # Refuse moves that a Proxmox HA rule forbids (re-read live; the cached
     # snapshot may be old). Covers manual moves and automigrate, which posts here.
     ha_verdict = _check_ha_move(proxmox, vmid, target_node)
     if ha_verdict["blocks"]:
-        return jsonify({
+        blocked = {
             "success": False,
             "error": f"Blocked by Proxmox HA rules: {'; '.join(ha_verdict['blocks'])}",
             "ha_blocks": ha_verdict["blocks"],
             "ha_warnings": ha_verdict["warnings"],
-        }), 409
+        }
+        if not by_automation:
+            _audit_manual_move(vmid, guest_type, source_node, target_node, blocked)
+        return jsonify(blocked), 409
 
     # Capture pre-migration snapshot before executing
     pre_snapshot = _capture_pre_snapshot(vmid, source_node, target_node)
@@ -80,6 +100,8 @@ def execute_migration():
     result, status = _execute_migration(
         proxmox, vmid, target_node, source_node, guest_type,
     )
+    if not by_automation:
+        _audit_manual_move(vmid, guest_type, source_node, target_node, result)
 
     # Record the outcome for manual migrations. "success" here means the task
     # started; the post-migration snapshots (5 min / 1 h / 24 h) are captured
@@ -104,8 +126,11 @@ def execute_batch_migration():
         return jsonify({"success": False, "error": str(e)}), 500
 
     data = request.json
-    result, status = _execute_batch_migration(proxmox, data.get("migrations", []))
+    migrations = data.get("migrations", [])
+    result, status = _execute_batch_migration(proxmox, migrations)
+    audit_log.record_batch(migrations, result, "migration.batch", "Batch move")
     return jsonify(result), status
+
 
 
 @migrations_bp.route("/api/migrations/<path:task_id>/cancel", methods=["POST"])
@@ -252,6 +277,7 @@ def execute_rollback():
             migration_record["error"] = result["error"]
 
         history.setdefault("migrations", []).append(migration_record)
+        audit_log.record_migration({**migration_record, "type": guest_type}, source="user")
         history["state"] = {
             "last_run": datetime.now(timezone.utc).isoformat() + "Z",
             "in_progress": False,

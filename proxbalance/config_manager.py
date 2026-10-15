@@ -63,6 +63,27 @@ def load_config(config_file: Optional[str] = None) -> Dict:
     return config
 
 
+def _read_raw_config(config_file: str) -> Optional[Dict]:
+    """The config file as stored (no defaults merged), or None when unreadable."""
+    try:
+        with open(config_file, 'r') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _audit_config_change(before: Optional[Dict], after: Dict) -> None:
+    """Record which settings a save changed (names only). Never raises."""
+    if before is None:  # first write: nothing to compare against
+        return
+    try:
+        from proxbalance import audit_log
+        audit_log.record_config_change(before, after)
+    except Exception as e:
+        print(f"Warning: could not audit config change: {e}", file=sys.stderr)
+
+
 def save_config(config: Dict, config_file: Optional[str] = None) -> bool:
     """Save configuration to config.json
 
@@ -80,10 +101,12 @@ def save_config(config: Dict, config_file: Optional[str] = None) -> bool:
         config_file = CONFIG_FILE
 
     try:
+        before = _read_raw_config(config_file)
         temp_file = config_file + '.tmp'
         with open(temp_file, 'w') as f:
             json.dump(config, f, indent=2)
         os.rename(temp_file, config_file)
+        _audit_config_change(before, config)
         return True
     except Exception as e:
         print(f"Error saving config: {e}", file=sys.stderr)
@@ -148,11 +171,13 @@ def save_penalty_config(penalty_config: Dict, config_file: Optional[str] = None)
         # Update the penalty_scoring section
         config['penalty_scoring'] = penalty_config
 
+        before = _read_raw_config(config_file)
         # Write back to file atomically
         temp_file = config_file + '.tmp'
         with open(temp_file, 'w') as f:
             json.dump(config, f, indent=2)
         os.rename(temp_file, config_file)
+        _audit_config_change(before, config)
 
         return True
     except Exception as e:

@@ -502,6 +502,10 @@ def evacuate_node():
         "error": None
     }
     _write_session(session_id, session_data)
+    from proxbalance import audit_log
+    audit_log.record("evacuation.start", f"Evacuation of {source_node} started ({len(guest_vmids)} guests)",
+                     source="user", subject=source_node,
+                     details={"session_id": session_id, "guests": len(guest_vmids), "target_node": target_node})
 
     # Start evacuation in background thread
     def run_evacuation():

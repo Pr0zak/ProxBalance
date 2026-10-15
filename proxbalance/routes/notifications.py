@@ -230,6 +230,12 @@ def create_silence():
         silence = alert_state.create_silence(fingerprint=fingerprint, alert_type=alert_type, duration=duration)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
+    from proxbalance import audit_log
+    target = fingerprint or alert_type
+    audit_log.record("silence.add", f"Silenced {target} ({'until resolved' if duration == 'resolved' else duration})",
+                     source="user", subject=target,
+                     details={"silence_id": silence.get("id") if isinstance(silence, dict) else None,
+                              "fingerprint": fingerprint, "alert_type": alert_type, "duration": duration})
     return jsonify({"success": True, "silence": silence})
 
 
@@ -239,6 +245,11 @@ def delete_silence(silence_id):
     """Remove a silence."""
     from proxbalance import alert_state
 
+    existing = next((x for x in alert_state.list_silences() if x.get("id") == silence_id), None)
     if not alert_state.delete_silence(silence_id):
         return jsonify({"success": False, "error": "Silence not found"}), 404
+    from proxbalance import audit_log
+    target = (existing or {}).get("fingerprint") or (existing or {}).get("alert_type") or f"#{silence_id}"
+    audit_log.record("silence.remove", f"Silence on {target} removed", source="user", subject=target,
+                     details={"silence_id": silence_id})
     return jsonify({"success": True})

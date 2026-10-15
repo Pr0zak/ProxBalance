@@ -329,6 +329,14 @@ def update_system():
     config = load_config()
     result = update_manager.perform_update(config=config if not config.get('error') else None)
     status_code = 200 if result.get('success', False) else 500
+    if result.get('started') or not result.get('success', False):
+        from proxbalance import audit_log
+        if result.get('started'):
+            audit_log.record('update.start', f"Update to {result.get('target')} started", source='user',
+                             subject=result.get('target'), details={'target': result.get('target')})
+        else:
+            audit_log.record('update.failed', f"Update not started: {result.get('error') or 'unknown error'}",
+                             source='user', subject='update')
     return jsonify(result), status_code
 
 
@@ -366,6 +374,9 @@ def restart_service():
     data = request.get_json()
     service = data.get('service', 'proxmox-balance')
     result = update_manager.restart_service(service)
+    if result.get('success'):
+        from proxbalance import audit_log
+        audit_log.record('service.restart', f"Restarted {service}", source='user', subject=service)
     status_code = 200 if result.get('success', False) else (400 if 'Invalid service' in result.get('error', '') else 500)
     return jsonify(result), status_code
 
@@ -1078,4 +1089,7 @@ def run_service_now():
     )
     if result.returncode != 0:
         return jsonify({"success": False, "error": (result.stderr or 'systemctl failed').strip()[:300]}), 500
+    from proxbalance import audit_log
+    action = 'automation.run_now' if service == 'proxmox-balance-automigrate' else 'service.run'
+    audit_log.record(action, f"Run now: {service}", source='user', subject=service)
     return jsonify({"success": True, "message": f"{service} started"})

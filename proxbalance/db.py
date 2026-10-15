@@ -142,6 +142,23 @@ CREATE TABLE IF NOT EXISTS notification_dedupe (
 );
 """
 
+# Audit log of who/what changed things. Owned by proxbalance/audit_log.py,
+# which also creates it in processes that never call init_db().
+AUDIT_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS audit_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT    NOT NULL,   -- UTC, YYYY-MM-DDTHH:MM:SSZ
+    source       TEXT    NOT NULL,   -- user | automation | system
+    action       TEXT    NOT NULL,   -- <group>.<verb>, e.g. migration.start
+    subject      TEXT,               -- guest id, node or setting
+    summary      TEXT    NOT NULL,   -- one plain line
+    details_json TEXT,               -- JSON, never secret values
+    actor        TEXT,               -- client address for user events
+    ref          TEXT    UNIQUE      -- dedupe key (e.g. migration:<id>)
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_ts ON audit_log(ts);
+"""
+
 SCHEMA_SQL = """
 -- Node metrics (time-series, replaces node_metrics_history.json)
 CREATE TABLE IF NOT EXISTS node_metrics (
@@ -278,6 +295,9 @@ CREATE TABLE IF NOT EXISTS recommendation_tracking (
 
 -- Notification alert state and silences (owned by proxbalance/alert_state.py)
 """ + ALERT_SCHEMA_SQL + """
+
+-- Audit log (owned by proxbalance/audit_log.py)
+""" + AUDIT_SCHEMA_SQL + """
 
 -- Semi-automatic mode: moves waiting for approval, one row per guest
 CREATE TABLE IF NOT EXISTS approval_queue (

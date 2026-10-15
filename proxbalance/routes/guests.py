@@ -390,6 +390,12 @@ def get_guest_tags(vmid):
     })
 
 
+def _audit_tag(action, summary, vmid, tag):
+    """Audit a tag edit. Never raises."""
+    from proxbalance import audit_log
+    audit_log.record(action, summary, source="user", subject=vmid, details={"vmid": vmid, "tag": tag})
+
+
 @guests_bp.route("/api/guests/<int:vmid>/tags", methods=["POST"])
 @api_route
 def add_guest_tag(vmid):
@@ -457,6 +463,8 @@ def add_guest_tag(vmid):
     else:  # CT
         proxmox.nodes(node).lxc(vmid).config.put(tags=new_tags_str)
 
+    _audit_tag("tag.add", f"Tag '{new_tag}' added to {guest_type.upper()} {vmid}", vmid, new_tag)
+
     # Trigger collection to update cache
     trigger_collection()
 
@@ -520,6 +528,8 @@ def remove_guest_tag(vmid, tag):
         proxmox.nodes(node).qemu(vmid).config.put(tags=new_tags_str)
     else:  # CT
         proxmox.nodes(node).lxc(vmid).config.put(tags=new_tags_str)
+
+    _audit_tag("tag.remove", f"Tag '{tag}' removed from {guest_type.upper()} {vmid}", vmid, tag)
 
     # Trigger collection to update cache
     trigger_collection()

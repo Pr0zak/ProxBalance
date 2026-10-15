@@ -1115,6 +1115,33 @@ curl -OJ "http://<host>/api/logs/download?service=proxmox-collector"
 
 Automation logs are available from [GET /api/automigrate/logs](#get-apiautomigratelogs).
 
+### GET /api/audit-log
+
+The change log: who or what changed things, newest first (Automation → History & Logs → Change log). Kept 180 days.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `since` | ISO time | — | Only events at or after this time |
+| `source` | string | — | `user`, `automation` or `system` (comma list allowed) |
+| `action` | string | — | A group (`migration`, `evacuation`, `rules`, `approval`, `automation`, `maintenance`, `config`, `tag`, `silence`, `update`, `service`) or a full action such as `migration.failed` (comma list allowed) |
+| `limit` | int | 100 | Page size, 1–500 |
+| `before` | string | — | The `next` cursor from the previous page |
+
+```json
+{
+  "success": true,
+  "events": [
+    {"id": 42, "ts": "2026-10-14T15:05:00Z", "source": "user", "action": "maintenance.on",
+     "subject": "pve4", "summary": "pve4 entered maintenance", "actor": "10.0.0.50",
+     "details": {"endpoint": "POST /api/automigrate/config"}}
+  ],
+  "next": "2026-10-14T15:05:00Z|42",
+  "retention_days": 180
+}
+```
+
+Config changes list the names of the settings that changed (`details.keys`), never their values. `actor` is the client address (first `X-Forwarded-For` entry) for user events. Dry-run moves are not recorded.
+
 ---
 
 ## Advanced Recommendation, Trend and Outcome Endpoints

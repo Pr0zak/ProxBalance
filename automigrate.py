@@ -35,7 +35,7 @@ LOCK_FILE = BASE_DIR / "automigrate.lock"
 
 # SQLite modules
 from proxbalance.db import init_db, close_all as db_close_all
-from proxbalance import migration_db
+from proxbalance import audit_log, migration_db
 from proxbalance.forecasting import get_score_history
 from proxbalance.outcomes import capture_pre_migration_snapshot, record_migration_outcome
 from proxbalance.scoring import recent_cpu
@@ -766,6 +766,8 @@ def execute_migration(
                 'type': guest_type,
                 # automigrate records the outcome itself once the task completes
                 'record_outcome': False,
+                # ...and its own audit event (the API skips the user one)
+                'initiated_by': 'automation',
             },
             timeout=300
         )
@@ -1062,6 +1064,7 @@ def record_migration(migration_record: Dict[str, Any]):
         record['guest_type'] = record.get('type')
 
     migration_db.record_migration(record)
+    audit_log.record_migration(record, source='automation')
 
     # Update automation state
     migration_db.set_automation_state('last_run', datetime.now(timezone.utc).isoformat())
@@ -2608,6 +2611,8 @@ def main():
       except Exception as e:
         logger.exception(f"Unexpected error in automigrate: {e}")
         last_run_summary['status'] = 'error'
+        audit_log.record('automation.error', f"Automation run failed: {e}", source='automation',
+                         subject='automation', details={'run_id': last_run_summary.get('run_id')})
         return 1
 
       finally:
