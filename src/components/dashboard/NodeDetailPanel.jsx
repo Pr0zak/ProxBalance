@@ -7,6 +7,7 @@ import {
 import { nodeRoles } from '../../utils/nodeRoles.js';
 import { ioPressureFact } from '../../utils/nodeCondition.js';
 import { NodeRoleMarker } from './NodeRoleMarker.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 import MiniTrendChart from './MiniTrendChart.jsx';
 import Section from './CollapsibleSection.jsx';
 import DetailPanel, { PeriodChips } from './DetailPanel.jsx';
@@ -24,7 +25,7 @@ const fmtUptime = (sec) => {
   if (!sec) return null;
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
-  return d > 0 ? `${d}d ${h}h` : `${h}h`;
+  return d > 0 ? `${d}d` : `${h}h`;
 };
 
 const PENALTY_SEGMENTS = [
@@ -105,6 +106,28 @@ function trendFor(trend, period) {
 
 const nameList = (names) => names.length <= 1 ? (names[0] || '')
   : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+function NodeFact({ label, children }) {
+  return (
+    <>
+      <dt className="text-pb-text2 dark:text-gray-400 whitespace-nowrap">{label}</dt>
+      <dd className="min-w-0 text-pb-text dark:text-gray-200">{children}</dd>
+    </>
+  );
+}
+
+/** "all 9 restart · busiest lyra 80%"; the full sentence is the link title. */
+function compactVerdict(res) {
+  if (!res || res.status === 'offline') return null;
+  const placed = (res.placements || []).length;
+  const stuck = (res.cant_restart || []).length;
+  const nofit = (res.doesnt_fit || []).length;
+  if (!placed && !stuck && !nofit) return 'nothing needs a new home';
+  if (nofit) return `${nofit} won't fit${stuck ? `, ${stuck} can't restart` : ''}`;
+  if (stuck) return placed ? `${placed} restart, ${stuck} can't` : `${stuck} can't restart`;
+  const busiest = res.busiest ? ` · busiest ${res.busiest.node} ${Math.round(res.busiest.mem_after)}% mem` : '';
+  return `${placed === 1 ? 'its guest restarts' : `all ${placed} restart`}${busiest}`;
+}
 
 export default function NodeDetailPanel({
   selectedNode, setSelectedNode,
@@ -302,20 +325,16 @@ export default function NodeDetailPanel({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2">
           <h3 className="text-lg font-bold text-pb-text dark:text-white truncate max-w-full">{node.name}</h3>
-          {/* The count is in the sentence below for giving / receiving, so it is said once */}
-          <NodeRoleMarker role={role} label showCount={role?.kind === 'maintenance'} size={13} className="text-xs" />
+          {/* Count only; who moves where is listed under Suggested moves */}
+          <NodeRoleMarker role={role} label size={13} className="text-xs" />
         </div>
         <p className="text-xs text-pb-text2 dark:text-gray-400">
           <span className={`font-medium ${online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             ● <span className="capitalize">{node.status || 'unknown'}</span>
           </span>
           {fmtUptime(node.uptime) && <> · <span className="whitespace-nowrap">up {fmtUptime(node.uptime)}</span></>}
-          {' · '}<span className="whitespace-nowrap">{runningCount} of {nodeGuests.length} running</span>
+          {' · '}<span className="whitespace-nowrap" title={`${runningCount} of ${nodeGuests.length} guests running`}>{runningCount}/{nodeGuests.length} running</span>
         </p>
-        {/* Maintenance explains itself in the box below; giving / receiving say who moves where here */}
-        {role && role.kind !== 'maintenance' && (
-          <p className={`mt-0.5 text-xs ${NODE_ROLE[role.kind].text}`}>{role.sentence}</p>
-        )}
       </div>
       {score && (
         <div className="shrink-0 text-right leading-tight px-1" title="Headroom: 0–100, how much room this node has to take on guests (higher = more room)">
@@ -421,15 +440,21 @@ export default function NodeDetailPanel({
       {inMaintenance && (
         <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-2.5">
           <AlertTriangle size={18} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-yellow-800 dark:text-yellow-200">
-            <span className="font-semibold">In maintenance.</span>{' '}
-            No guests are placed here.{' '}
-            {guestCount === 0
+          <MoreInfo
+            className="text-xs text-yellow-800 dark:text-yellow-200"
+            detail={`No guests are placed here. ${guestCount === 0
               ? 'The node is empty.'
               : autoLive
-                ? `Live automation is moving its ${plural(guestCount, 'guest')} off${stoppedCount > 0 ? ` (including ${stoppedCount} stopped)` : ''}${maxPerRun ? `, up to ${maxPerRun} per run` : ''}.`
-                : `Automation is ${auto.enabled ? 'in dry-run' : 'off'}, so its guests stay until you use Plan evacuation.`}
-          </p>
+                ? `Live automation moves its ${plural(guestCount, 'guest')} off${stoppedCount > 0 ? ` (including ${stoppedCount} stopped)` : ''}${maxPerRun ? `, up to ${maxPerRun} per run` : ''}.`
+                : `Automation is ${auto.enabled ? 'in dry-run' : 'off'}, so its guests stay until you use Plan evacuation.`}`}
+          >
+            <span className="font-semibold">In maintenance</span>
+            {' · '}{guestCount === 0
+              ? 'empty'
+              : autoLive
+                ? `moving ${plural(guestCount, 'guest')} off`
+                : `${plural(guestCount, 'guest')} stay until you evacuate`}
+          </MoreInfo>
         </div>
       )}
 
@@ -438,34 +463,42 @@ export default function NodeDetailPanel({
         <LoadRow label="CPU" sub={`${node.cpu_cores || 0} cores`} now={cpuNow} avg24={m.avg_cpu} avg7={m.avg_cpu_week} peak={peakOf(cpuNow, m.max_cpu, m.max_cpu_week)} anchored={anchoredShown} />
         <LoadRow label="Memory" sub={memTotal ? `${memUsed.toFixed(1)} / ${memTotal.toFixed(0)} GB` : null} now={node.mem_percent} avg24={m.avg_mem} avg7={m.avg_mem_week} peak={peakOf(node.mem_percent, m.max_mem, m.max_mem_week)} />
         <LoadRow label="IOWait" sub="I/O latency" now={m.current_iowait} avg24={m.avg_iowait} avg7={m.avg_iowait_week} peak={peakOf(m.current_iowait, m.max_iowait)} />
-        {ioPressureFact(m) && (
-          <p className="text-xs text-pb-text2 dark:text-gray-400" title={ioPressureFact(m).title}>{ioPressureFact(m).text}</p>
-        )}
-        {shortVerdict(failure) && (
-          <p className="text-xs text-pb-text2 dark:text-gray-400">
-            If this node fails:{' '}
-            <a
-              href={`#/insights/${ROUTE_PREFIX}${encodeURIComponent(node.name)}`}
-              onClick={() => setSelectedNode(null)}
-              className={`font-medium underline decoration-dotted underline-offset-2 hover:decoration-solid ${FAILURE_TONE[verdictTone(failure)]}`}
-              title="Open the node-failure simulation on the Insights page"
-            >{shortVerdict(failure)}</a>
-          </p>
-        )}
-        {anchoredShown >= 1 && (
-          <p className="text-xs text-pb-text2 dark:text-gray-400">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={HATCH} />
-            {anchoredShown.toFixed(0)}% of CPU is {nameList(anchoredGuests.filter(a => (a.cpu_share || 0) >= 0.5).map(a => a.name))}, which won't be moved.
-          </p>
-        )}
-        {disksView && (
-          <div className="text-xs" title="SMART verdict per disk from Proxmox (Disks list). Life left is the SSD wearout Proxmox reports; — when the disk does not report it.">
-            <p className={DISK_TONE[disksView.tone]}>{disksView.summary}</p>
-            {disksView.lines.map(l => (
-              <p key={l.key} className={`${DISK_TONE[l.tone]} break-words`}>{l.text}</p>
-            ))}
-          </div>
-        )}
+        {/* One label/value row per fact; the why is one tap away */}
+        <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 text-xs">
+          {ioPressureFact(m) && (
+            <NodeFact label="IO pressure">
+              <MoreInfo as="span" detail={`Time tasks waited on disk. ${ioPressureFact(m).title}`}>{ioPressureFact(m).pct.toFixed(0)}%</MoreInfo>
+            </NodeFact>
+          )}
+          {shortVerdict(failure) && (
+            <NodeFact label="If it fails">
+              <a
+                href={`#/insights/${ROUTE_PREFIX}${encodeURIComponent(node.name)}`}
+                onClick={() => setSelectedNode(null)}
+                className={`font-medium underline decoration-dotted underline-offset-2 hover:decoration-solid ${FAILURE_TONE[verdictTone(failure)]}`}
+                title={`${shortVerdict(failure)}. Open the node-failure simulation on the Insights page`}
+              >{compactVerdict(failure) || shortVerdict(failure)}</a>
+            </NodeFact>
+          )}
+          {anchoredShown >= 1 && (
+            <NodeFact label="Stays here">
+              <MoreInfo as="span" detail={`${anchoredShown.toFixed(0)}% of ${node.name}'s CPU is guests that won't be moved (hatched on the CPU bar): ${nameList(anchoredGuests.map(a => a.name))}.`}>
+                <span className="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style={HATCH} />
+                {anchoredShown.toFixed(0)}% CPU · {nameList(anchoredGuests.filter(a => (a.cpu_share || 0) >= 0.5).map(a => a.name).slice(0, 2))}
+              </MoreInfo>
+            </NodeFact>
+          )}
+          {disksView && (
+            <NodeFact label="Disks">
+              <MoreInfo as="span" className={DISK_TONE[disksView.tone]} detail="SMART verdict per disk from Proxmox. Life left is the SSD wearout Proxmox reports; — when the disk does not report it.">
+                {disksView.summary.replace(/^Disks:\s*/, '')}
+              </MoreInfo>
+              {disksView.lines.map(l => (
+                <span key={l.key} className={`block ${DISK_TONE[l.tone]} break-words`}>{l.text}</span>
+              ))}
+            </NodeFact>
+          )}
+        </dl>
       </div>
 
       {/* History, always visible */}

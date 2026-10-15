@@ -6,6 +6,7 @@ import {
 import MiniTrendChart from './MiniTrendChart.jsx';
 import DetailPanel, { PeriodChips, FactRow, PANEL_PERIODS } from './DetailPanel.jsx';
 import { behaviorTitle } from './workloadBehavior.js';
+import MoreInfo from '../MoreInfo.jsx';
 import { guestMobility } from './guestMobility.js';
 import { seenCountDetail } from './recommendations/seenCount.js';
 import { storageEntries, storageLine } from './recommendations/cardModel.js';
@@ -266,11 +267,19 @@ export default function GuestDetailPanel({
     setTogglingExempt(false);
   };
 
-  // The verdict: can this guest move, and where to. Answers first, details below.
+  // The verdict: can this guest move, and where to. One short line under the
+  // title; the full explanation is one tap away (MoreInfo), so phones see it too.
   let verdict;
   const anchoredLine = anchored && isRunning && (anchored.cpu_share || 0) >= 0.5
     ? `Counted as unmovable load: ${anchored.cpu_share.toFixed(0)}% of ${hostNode}'s CPU, so ${hostNode} isn't drained because of it.`
     : null;
+  const join = (...parts) => parts.filter(Boolean).join('\n');
+  // "Won't move now: orion is under the trigger (memory 30%, …)" → the part before the numbers.
+  const shortHint = (h) => (h ? h.replace(/\s*\(.*\)\s*$/, '') : null);
+  const hintNumbers = (h) => {
+    const m = h && /\((.*)\)\s*$/.exec(h);
+    return m ? `${m[1].charAt(0).toUpperCase()}${m[1].slice(1)}.` : null;
+  };
   if (mob.key === 'pinned') {
     // PCI/USB passthrough reasons name device keys ("PCI passthrough (hostpci0)"),
     // so they keep their case; the disk-only reason reads "2 hardware passthrough disks".
@@ -280,43 +289,49 @@ export default function GuestDetailPanel({
       : `${n ? `${n} ` : ''}${(disks.pinned_reason || 'Local hardware').toLowerCase()} tie it to this host.`;
     verdict = {
       tone: 'red', icon: Lock, title: `Stays on ${hostNode}`,
-      body: [`${tie}${guest.tags?.has_ignore ? ' It also has the ignore tag.' : ''}`, anchoredLine],
+      short: disks.pinned_devices?.length ? disks.pinned_reason : `${n ? `${n} ` : ''}passthrough disk${n === 1 ? '' : 's'}`,
+      detail: join(tie, guest.tags?.has_ignore && 'It also has the ignore tag.', anchoredLine),
     };
   } else if (mob.key === 'suggested') {
     verdict = {
       tone: 'amber', icon: MoveRight, title: `Suggested: move to ${rec.target_node}`,
-      // Plain text rather than a tooltip so phones see it too.
-      body: [rec.reason || null, ...seenCountDetail(rec)],
+      short: rec.structured_reason?.primary_label || `Frees room on ${rec.source_node}`,
+      detail: join(rec.reason, ...seenCountDetail(rec)),
       action: canMigrate && setConfirmMigration ? { label: 'Review move', run: () => { setSelectedGuestDetails(null); setConfirmMigration(rec); } } : null,
     };
   } else if (mob.key === 'manual') {
     verdict = {
       tone: 'amber', icon: AlertTriangle, title: 'Moves by hand only',
-      body: ['A folder from this host is mounted into it, so ProxBalance won\'t move it. Move it with a restart after checking the folder exists on the new node.'],
+      short: 'A host folder is mounted into it',
+      detail: 'ProxBalance won\'t move it. Move it with a restart after checking the folder exists on the new node.',
     };
   } else if (mob.key === 'ha') {
-    verdict = { tone: 'blue', icon: Info, title: 'Proxmox HA places it', body: ['ProxBalance leaves HA-managed guests to the Proxmox balancer.'] };
+    verdict = { tone: 'blue', icon: Info, title: 'Proxmox HA places it', short: 'ProxBalance leaves it to the Proxmox balancer' };
   } else if (mob.key === 'ignored') {
-    verdict = { tone: 'gray', icon: Info, title: 'Not moved automatically', body: ['It has the ignore tag. You can still move it yourself.', anchoredLine] };
+    verdict = { tone: 'gray', icon: Info, title: 'Not moved automatically', short: "Tagged 'ignore'; you can still move it", detail: anchoredLine };
   } else if (mob.key === 'stopped') {
-    verdict = { tone: 'gray', icon: Info, title: 'Powered off', body: ['Only moved when its node is emptied for maintenance. You can still move it yourself.'] };
+    verdict = { tone: 'gray', icon: Info, title: 'Powered off', short: 'Moved only when its node is emptied', detail: 'Only moved when its node is emptied for maintenance. You can still move it yourself.' };
   } else if (optsLoading) {
-    verdict = { tone: 'blue', icon: RefreshCw, spin: true, title: 'Can move', body: ['Scoring the other nodes for it…'] };
+    verdict = { tone: 'blue', icon: RefreshCw, spin: true, title: 'Can move', short: 'Scoring the other nodes…' };
   } else if (best && !bestHelps) {
     verdict = {
       tone: 'gray', icon: CheckCircle, title: 'Best where it is',
-      body: [`No other node would have more headroom with it: ${best.node} would have ${Math.round(best.suitability_rating)}, ${hostNode} has ${Math.round(hostRating)} now.`],
+      short: `Headroom ${Math.round(hostRating)} here, ${Math.round(best.suitability_rating)} on ${best.node}`,
+      detail: `No other node would have more headroom with it: ${best.node} would have ${Math.round(best.suitability_rating)}, ${hostNode} has ${Math.round(hostRating)} now.`,
     };
   } else if (best) {
     verdict = {
       tone: 'blue', icon: CheckCircle, title: `Can move · best is ${best.node}`,
-      body: [
+      short: shortHint(mob.hint) || 'Not suggested right now',
+      // The short line is the hint without its numbers; the detail adds only
+      // what it left out, so nothing is said twice.
+      detail: join(
+        hintNumbers(mob.hint),
         `${best.node} would have ${Math.round(best.suitability_rating)} headroom with it${hostRating != null ? `; ${hostNode} has ${Math.round(hostRating)} now` : ''}.`,
-        mob.hint ? `${mob.hint}.` : 'Not suggested right now.',
-      ],
+      ),
     };
   } else {
-    verdict = { tone: 'gray', icon: Info, title: 'Can move, but not now', body: [optsFailed ? "Couldn't score the other nodes." : 'No other node can take it right now.'] };
+    verdict = { tone: 'gray', icon: Info, title: 'Can move, but not now', short: optsFailed ? "Couldn't score the other nodes" : 'No other node can take it right now' };
   }
   const tone = TONE[verdict.tone];
   const VerdictIcon = verdict.icon;
@@ -335,7 +350,7 @@ export default function GuestDetailPanel({
         <h3 className="text-lg font-bold text-pb-text dark:text-white truncate leading-tight">{guest.name || `Guest ${guest.vmid}`}</h3>
         <p className="text-xs text-pb-text2 dark:text-gray-400 truncate">
           <span className={isRunning ? 'text-green-600 dark:text-green-400' : ''}>● <span className="capitalize">{guest.status}</span></span>
-          {' · '}{isVM ? 'VM' : 'CT'} {guest.vmid} · {guest.cpu_cores || 0} cores · {(guest.mem_max_gb || 0).toFixed(guest.mem_max_gb >= 10 ? 0 : 1)} GB
+          {' · '}{isVM ? 'VM' : 'CT'} {guest.vmid} · {guest.cpu_cores || 0} core{guest.cpu_cores === 1 ? '' : 's'} · {(guest.mem_max_gb || 0).toFixed(guest.mem_max_gb >= 10 ? 0 : 1)} GB
         </p>
       </div>
     </div>
@@ -349,9 +364,9 @@ export default function GuestDetailPanel({
           <VerdictIcon size={18} className={`shrink-0 mt-0.5 ${tone.icon} ${verdict.spin ? 'animate-spin' : ''}`} />
           <div className="min-w-0 flex-1">
             <div className={`text-[15px] font-bold ${tone.title}`}>{verdict.title}</div>
-            {verdict.body.filter(Boolean).map((t, i) => (
-              <p key={i} className={`text-[13px] mt-0.5 ${tone.body}`}>{t}</p>
-            ))}
+            {verdict.detail
+              ? <MoreInfo className={`text-[13px] mt-0.5 ${tone.body}`} detail={verdict.detail} label="Why">{verdict.short}</MoreInfo>
+              : <p className={`text-[13px] mt-0.5 ${tone.body}`}>{verdict.short}</p>}
             {(verdict.action || showMoveButtons || optsFailed || (canMove && candidates.length > 0)) && (
               <div className="flex flex-wrap gap-2 mt-2.5">
                 {verdict.action && <button onClick={verdict.action.run} className={`${BTN_PRIMARY} !px-3 !py-1.5 !text-xs`}><MoveRight size={14} /> {verdict.action.label}</button>}
@@ -373,7 +388,7 @@ export default function GuestDetailPanel({
 
       {/* Usage now */}
       <div className="grid grid-cols-2 gap-2">
-        <StatTile label="CPU · last hour" sub={`of its ${guest.cpu_cores || 0} cores · now ${(guest.cpu_current || 0).toFixed(0)}%`}>
+        <StatTile label="CPU · last hour" sub={`of its ${guest.cpu_cores || 0} core${guest.cpu_cores === 1 ? '' : 's'} · now ${(guest.cpu_current || 0).toFixed(0)}%`}>
           <div className={`text-xl font-bold tabular-nums ${metricTextColor(cpuHour)}`}>{cpuHour.toFixed(1)}%</div>
         </StatTile>
         <StatTile label="Memory" sub={`${(guest.mem_used_gb || 0).toFixed(1)} of ${(guest.mem_max_gb || 0).toFixed(1)} GB`}>
@@ -454,9 +469,11 @@ export default function GuestDetailPanel({
                 : <span className="text-pb-text2 dark:text-gray-400">storage</span>}
             </span>
             {mp.is_bind_mount && !mp.is_shared && (
-              <div className="text-[11px] text-orange-700 dark:text-orange-300 mt-0.5">
-                Move by hand: <span className="font-mono">pct migrate {guest.vmid} &lt;target&gt; --restart</span>, after creating {mp.source} on the target.
-              </div>
+              <MoreInfo
+                className="text-[11px] text-orange-700 dark:text-orange-300 mt-0.5"
+                label="How to move it"
+                detail={<>Create <span className="font-mono">{mp.source}</span> on the target, then run <span className="font-mono">pct migrate {guest.vmid} &lt;target&gt; --restart</span>.</>}
+              >Move by hand</MoreInfo>
             )}
           </FactRow>
         ))}
@@ -498,10 +515,10 @@ export default function GuestDetailPanel({
 
         <FactRow label="IOWait scoring">
           {isPassthroughExempt ? (
-            <span>Not counted against {hostNode} <span className="text-pb-text2 dark:text-gray-400">(passthrough disks)</span></span>
+            <MoreInfo as="span" detail={`Its disk wait is on passthrough disks, so it isn't counted against ${hostNode}.`}>Not counted</MoreInfo>
           ) : (
             <span className="flex items-center justify-end gap-2">
-              <span>{hasExemptTag ? `Not counted against ${hostNode}` : 'Counted'}</span>
+              <span title={hasExemptTag ? `Tagged io_exempt: not counted against ${hostNode}` : undefined}>{hasExemptTag ? 'Not counted' : 'Counted'}</span>
               <button
                 onClick={toggleIoExempt}
                 disabled={togglingExempt}
