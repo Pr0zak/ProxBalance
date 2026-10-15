@@ -305,7 +305,7 @@ export default function SettingsPage(props) {
                     onChange={(e) => setTempUiInterval(parseInt(e.target.value, 10) || 1)}
                     className={INPUT_FIELD}
                   />
-                  <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">How often this page re-runs the full cluster analysis in the browser</p>
+                  <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">How often this page re-runs the cluster analysis</p>
                 </div>
               </div>
 

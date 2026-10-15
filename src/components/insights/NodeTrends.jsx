@@ -1,6 +1,7 @@
 import { TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
 import { FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE } from '../../utils/designTokens.js';
 import { METRICS, RANGES, RANGE_LABEL, HORIZON_LIMIT_HOURS, formatHorizon, Loading, Failed } from './shared.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 
 const DIRECTION_ICON = {
   rising: <TrendingUp size={14} className="text-orange-500" />,
@@ -241,8 +242,13 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
       <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-pb-text3 dark:text-gray-500">
         <span>Sparklines: last {RANGE_LABEL[days]}{bucket ? `, ${bucket} averages` : ''}</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 border-t border-dashed border-red-500/70" /> recommendation threshold</span>
-        <span>Faded rate = no clear trend (noise outweighs the slope)</span>
-        {showSwing && <span>CPU swing = typical hour-to-hour change: steady &lt; 5 pts, variable 5–12, spiky &gt; 12</span>}
+        <MoreInfo
+          as="span"
+          label="About this chart"
+          detail={`Faded rate = no clear trend (noise outweighs the slope).${showSwing ? '\nCPU swing = typical hour-to-hour change: steady < 5 pts, variable 5–12, spiky > 12.' : ''}`}
+        >
+          Faded rate = no clear trend
+        </MoreInfo>
       </p>
     </div>
   );

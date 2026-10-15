@@ -16,7 +16,7 @@ export function stepChip(step) {
   }
 }
 
-/** Short summary for a step header, without the node name. */
+/** Short summary for a step header, without the node name or what its chip already says. */
 export function stepSummary(step) {
   if (!step) return '';
   if (step.status === 'offline') return 'offline, skipped';
@@ -27,7 +27,7 @@ export function stepSummary(step) {
   const stop = (step.must_stop || []).length;
   if (stop) parts.push(`${stop} must shut down`);
   const nofit = (step.doesnt_fit || []).length;
-  if (nofit) parts.push(`${nofit} don't fit`);
+  if (nofit && step.status !== 'short') parts.push(`${nofit} don't fit`);   // a 'short' chip says it
   return parts.join(' · ');
 }
 

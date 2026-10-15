@@ -2,7 +2,8 @@ import { ChevronDown, ArrowRight } from '../Icons.jsx';
 import { statusBadge, PROGRESS_BAR_BG, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE } from '../../utils/designTokens.js';
 import { fetchNodeFailure } from '../../api/client.js';
 import { useLoad, Loading, Failed } from './shared.jsx';
-import { n1Chip, defaultNode, memBar, verdictTone, fmtGb } from './failureModel.js';
+import MoreInfo from '../MoreInfo.jsx';
+import { n1Chip, defaultNode, memBar, verdictTone, fmtGb, shortVerdict } from './failureModel.js';
 
 const { useState, useEffect } = React;
 
@@ -112,7 +113,10 @@ function NodeResult({ res }) {
   return (
     <div className="space-y-3">
       <div>
-        <p className={`text-sm font-medium ${TONE_TEXT[tone]}`}>{res.verdict}</p>
+        {/* The short form: the names and the busiest survivor are in the lists and bars below. */}
+        <p className={`text-sm font-medium ${TONE_TEXT[tone]}`}>
+          {shortVerdict(res) ? `If ${res.node} fails: ${shortVerdict(res)}` : res.verdict}
+        </p>
         {res.storage_mode !== 'strict' && res.local_disk_note && (
           <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">{res.local_disk_note}.</p>
         )}
@@ -197,9 +201,15 @@ export default function FailureSim({ storage, routedNode, summaryState }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-pb-text2 dark:text-gray-400 -mt-2">
-        {summary.verdict}. Guests restart largest first on the survivor with the most free memory, up to {summary.mem_ceiling}% memory, respecting anti-affinity tags and Proxmox HA rules.
-      </p>
+      <MoreInfo
+        className="text-sm text-pb-text2 dark:text-gray-400 -mt-2"
+        label="How the failure is simulated"
+        detail={`${summary.verdict}.\nGuests restart largest first on the survivor with the most free memory, up to ${summary.mem_ceiling}% memory, respecting anti-affinity tags and Proxmox HA rules.`}
+      >
+        {summary.n1_ok || !(summary.can_lose || []).length
+          ? (summary.n1_ok ? summary.verdict : 'No node can fail without leaving guests behind')
+          : `Can lose ${summary.can_lose.join(' or ')}; the others leave guests behind`}
+      </MoreInfo>
       <NodePicker rows={rows} selected={selected} onSelect={setSelected} />
       {nodeState.error && !res ? <Failed error={nodeState.error} />
         : res ? <NodeResult res={res} />

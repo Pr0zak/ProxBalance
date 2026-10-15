@@ -214,27 +214,27 @@ export default function RhythmHeatmap({ clusterNodes, schedule, metric = 'cpu', 
       <ul className="text-sm text-pb-text dark:text-gray-300 space-y-1">
         {quiet && (
           <li>
-            Quietest {QUIET_HOURS} hours for the cluster: <strong>{pad(quiet.start)}–{pad(quiet.start + QUIET_HOURS)}</strong> (avg {m.label} {Math.round(quiet.avg)}%)
-            {quietOpen === 'open' && <span className="text-emerald-700 dark:text-emerald-400"> — inside your migration window</span>}
-            {quietOpen === 'partial' && <span className="text-amber-700 dark:text-amber-400"> — only partly inside your migration window</span>}
-            {quietOpen === 'blocked' && <span className="text-amber-700 dark:text-amber-400"> — your schedule blocks migrations then</span>}
+            Quietest {QUIET_HOURS} h: <strong>{pad(quiet.start)}–{pad(quiet.start + QUIET_HOURS)}</strong> ({m.label} {Math.round(quiet.avg)}%)
+            {quietOpen === 'open' && <span className="text-emerald-700 dark:text-emerald-400"> — in your window</span>}
+            {quietOpen === 'partial' && <span className="text-amber-700 dark:text-amber-400"> — partly in your window</span>}
+            {quietOpen === 'blocked' && <span className="text-amber-700 dark:text-amber-400"> — your schedule blocks it</span>}
           </li>
         )}
         {busiestOpen != null && mask && (
           <li>
-            Busiest hour your schedule allows: <strong>{pad(busiestOpen)}</strong> (cluster avg {Math.round(cluster.avg[busiestOpen])}%
+            Busiest allowed hour: <strong>{pad(busiestOpen)}</strong> (cluster {Math.round(cluster.avg[busiestOpen])}%
             {busiestNode && <>, {busiestNode.node} {Math.round(busiestNode.prof.avg[busiestOpen])}%</>})
             {busiestNode && threshold && busiestNode.prof.avg[busiestOpen] >= threshold && (
-              <span className="text-amber-700 dark:text-amber-400"> — {busiestNode.node} is over the {threshold}% threshold then</span>
+              <span className="text-amber-700 dark:text-amber-400"> — over {threshold}%</span>
             )}
           </li>
         )}
-        {!mask && <li className="text-pb-text2 dark:text-gray-400">No migration or blackout windows set — automated migrations may run at any hour.</li>}
+        {!mask && <li className="text-pb-text2 dark:text-gray-400">No time windows: migrations may run at any hour.</li>}
         {threshold && (
           <li className="text-pb-text2 dark:text-gray-400">
             {hotHours.length
-              ? <>Hourly average over the {threshold}% threshold at {hotHours.length} hour{hotHours.length === 1 ? '' : 's'} of the day (outlined).</>
-              : <>No node's hourly average reaches the {threshold}% threshold.</>}
+              ? <>{hotHours.length} hour{hotHours.length === 1 ? '' : 's'} average over the {threshold}% threshold (outlined).</>
+              : <>No hourly average reaches the {threshold}% threshold.</>}
           </li>
         )}
       </ul>
@@ -307,8 +307,8 @@ export default function RhythmHeatmap({ clusterNodes, schedule, metric = 'cpu', 
           {notes.map(p => (
             <div key={p.node}>
               <strong className="text-pb-text dark:text-gray-300">{p.node}</strong>
-              {p.weekly_pattern && <> · weekly cycle, busier {(p.weekly_pattern.peak_days || []).join(', ')} (CPU {Math.round(p.weekly_pattern.weekday_avg)}% weekdays vs {Math.round(p.weekly_pattern.weekend_avg)}% weekends)</>}
-              {p.daily_pattern && <> · daily cycle, CPU {Math.round(p.daily_pattern.business_hours_avg)}% business hours vs {Math.round(p.daily_pattern.off_hours_avg)}% off-hours</>}
+              {p.weekly_pattern && <> · busier {(p.weekly_pattern.peak_days || []).join(', ')} ({Math.round(p.weekly_pattern.weekday_avg)}% vs {Math.round(p.weekly_pattern.weekend_avg)}% weekends)</>}
+              {p.daily_pattern && <> · business hours {Math.round(p.daily_pattern.business_hours_avg)}% vs {Math.round(p.daily_pattern.off_hours_avg)}%</>}
               {p.burst_detection?.detected && <> · recurring bursts at {p.burst_detection.burst_hours.map(pad).join(', ')} {noteTz}</>}
             </div>
           ))}

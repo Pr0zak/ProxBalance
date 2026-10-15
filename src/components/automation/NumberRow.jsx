@@ -6,11 +6,12 @@ import { SettingRow } from '../Toggle.jsx';
  * A numeric setting as a SettingRow: label and help on the left, a narrow
  * number box (with an optional unit) on the right.
  */
-export default function NumberRow({ label, description, value, onCommit, unit, min, max, step, isFloat, children }) {
+export default function NumberRow({ label, description, detail, value, onCommit, unit, min, max, step, isFloat, children }) {
   return (
     <SettingRow
       label={label}
       description={description}
+      detail={detail}
       control={(
         <div className="flex items-center gap-1.5 shrink-0">
           <NumberField

@@ -1,4 +1,5 @@
 import { INNER_CARD } from '../utils/designTokens.js';
+import MoreInfo from './MoreInfo.jsx';
 
 export default function Toggle({ checked, onChange, color = 'green', className = 'ml-4' }) {
   const colorClass = color === 'yellow' ? 'peer-checked:bg-yellow-600' : 'peer-checked:bg-green-600';
@@ -20,14 +21,18 @@ export default function Toggle({ checked, onChange, color = 'green', className =
  * One setting: label and help text on the left, its control on the right.
  * Built on INNER_CARD so settings read like the rest of the glass UI. Pass
  * `control` for a non-toggle control (number input, select, button).
+ * Keep `description` to one short line saying what the option does; put the
+ * how/why/edge cases in `detail`, which sits one tap away (MoreInfo).
  */
-export function SettingRow({ label, description, control, children }) {
+export function SettingRow({ label, description, detail, control, children }) {
   return (
     <div className={INNER_CARD}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="font-medium text-pb-text dark:text-white">{label}</div>
-          {description && <div className="text-sm text-pb-text2 dark:text-gray-400">{description}</div>}
+          {description && (detail
+            ? <MoreInfo detail={detail} className="text-sm text-pb-text2 dark:text-gray-400">{description}</MoreInfo>
+            : <div className="text-sm text-pb-text2 dark:text-gray-400">{description}</div>)}
         </div>
         {control}
       </div>
@@ -36,11 +41,12 @@ export function SettingRow({ label, description, control, children }) {
   );
 }
 
-export function ToggleRow({ label, description, checked, onChange, color, children }) {
+export function ToggleRow({ label, description, detail, checked, onChange, color, children }) {
   return (
     <SettingRow
       label={label}
       description={description}
+      detail={detail}
       control={<Toggle checked={checked} onChange={onChange} color={color} />}
     >
       {children}

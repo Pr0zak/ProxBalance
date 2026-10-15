@@ -1,6 +1,7 @@
 import { Info, CheckCircle, AlertTriangle } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 import { parseTimestamp, decisionSkipLabel } from '../../utils/formatters.js';
 import { fmtClock, zonedParts } from '../../utils/scheduleWindows.js';
 
@@ -75,7 +76,7 @@ function lastRunPath(lastRun, config) {
     return { step: 'checks', outcome: `Every candidate was filtered: ${topReasons(decisions, 'filtered').join('; ')}.`, tone: 'stop' };
   }
   if (observing.length > 0) {
-    return { step: 'observe', outcome: `Still watching ${observing.length} candidate${observing.length === 1 ? '' : 's'} (${observing.slice(0, 3).map(d => d.name || d.vmid).join(', ')}).`, tone: 'wait' };
+    return { step: 'observe', outcome: `Watching ${observing.length} (${observing.slice(0, 2).map(d => d.name || d.vmid).join(', ')}${observing.length > 2 ? ', …' : ''}).`, tone: 'wait' };
   }
   const skipped = topReasons(decisions, 'skipped');
   return { step: 'run', outcome: skipped.length ? `Nothing moved: ${skipped.join('; ')}.` : 'Nothing moved.', tone: 'stop' };
@@ -121,6 +122,7 @@ function buildSteps({ automationConfig: c, penaltyConfig: pc, thresholds: t }) {
     },
     {
       id: 'pick', title: 'Is any node overloaded, with a guest worth moving?',
+      detail: `Source: CPU ${pct(t?.cpu)}+, memory ${memFloor}%+ or IOWait over ${pct(t?.iowait)}. A move must gain ${msi} points.`,
       lines: [
         `A node is a source when its CPU stays at ${pct(t?.cpu)} or more (15-minute average, weighted with the last day and week), its memory is at ${memFloor}% or more, or its IOWait is over ${pct(t?.iowait)}. Nodes in maintenance always count.`,
         'CPU from guests that never move (ignore tag, passthrough disks) is taken out first; a node over only because of them is not a source.',
@@ -139,14 +141,19 @@ function buildSteps({ automationConfig: c, penaltyConfig: pc, thresholds: t }) {
     },
     {
       id: 'checks', title: 'Passes the per-guest checks?',
-      detail: `Not moved in the last ${rules.cooldown_minutes ?? 30} min (longer for frequent movers), not a ping-pong, confidence ${rules.min_confidence_score ?? 75}% or more, no clash with other moves, tags and affinity rules${levelFilters}`,
+      detail: `Cooldown ${rules.cooldown_minutes ?? 30} min, confidence ${rules.min_confidence_score ?? 75}%+, tags and affinity`,
+      lines: [`Not moved in the last ${rules.cooldown_minutes ?? 30} min (longer for frequent movers), not a ping-pong, confidence ${rules.min_confidence_score ?? 75}% or more, no clash with other moves, tags and affinity rules${levelFilters}.`],
       no: 'Filtered',
     },
     {
       id: 'run', title: c.dry_run !== false ? 'Dry run: log the move' : 'Migrate',
-      detail: `Best move first, then re-check; up to ${rules.max_migrations_per_run ?? 3} per run, ${rules.grace_period_seconds ?? 30} s apart.`
-        + `${(rules.max_target_inflow_per_cycle ?? 0) > 0 ? ` At most ${rules.max_target_inflow_per_cycle} into any one node per run.` : ''}`
-        + `${safety.abort_on_failure !== false ? ' A failure stops the rest.' : ''}${safety.pause_on_failure ? ' A failure turns automation off.' : ''}`,
+      detail: `Up to ${rules.max_migrations_per_run ?? 3} per run, ${rules.grace_period_seconds ?? 30} s apart`,
+      lines: [
+        'Best move first, then re-check.',
+        ...((rules.max_target_inflow_per_cycle ?? 0) > 0 ? [`At most ${rules.max_target_inflow_per_cycle} into any one node per run.`] : []),
+        ...(safety.abort_on_failure !== false ? ['A failure stops the rest.'] : []),
+        ...(safety.pause_on_failure ? ['A failure turns automation off.'] : []),
+      ],
       no: null,
     },
   ];
@@ -177,15 +184,15 @@ export default function DecisionTreeFlowchart({ automationConfig, automationStat
       {path ? (
         <div className={`${INNER_CARD} mb-3 flex items-start gap-2 text-sm`}>
           <tone.Icon size={16} className={`shrink-0 mt-0.5 ${tone.text}`} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="font-semibold text-pb-text dark:text-white">Last run{whenText ? ` ${whenText}` : ''}: </span>
             <span className="text-pb-text dark:text-gray-200">
-              {stopIdx >= 0 && path.step !== 'done' ? `stopped at step ${stopIdx + 1}. ` : ''}{path.outcome}
+              {stopIdx >= 0 && path.step !== 'done' ? `step ${stopIdx + 1} · ` : ''}{path.outcome}
             </span>
-            {setActiveTab && (
-              <button onClick={() => setActiveTab('history')} className="ml-2 text-xs text-pb-accent dark:text-pb-accent-dark hover:underline">History</button>
-            )}
           </div>
+          {setActiveTab && (
+            <button onClick={() => setActiveTab('history')} className="shrink-0 text-xs text-pb-accent dark:text-pb-accent-dark hover:underline">History</button>
+          )}
         </div>
       ) : (
         <p className="text-sm text-pb-text2 dark:text-gray-400 mb-3">No run recorded yet. Steps run top to bottom; the first "no" ends the run.</p>
@@ -214,15 +221,9 @@ export default function DecisionTreeFlowchart({ automationConfig, automationStat
                   <span className="text-sm font-semibold text-pb-text dark:text-white">{s.title}</span>
                   {s.no && <span className="text-xs text-pb-text2 dark:text-gray-400">No → {s.no}</span>}
                 </div>
-                {s.detail && <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">{s.detail}</p>}
-                {s.lines && (
-                  <ul className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5 space-y-0.5 list-disc pl-4">
-                    {s.lines.map(l => <li key={l}>{l}</li>)}
-                  </ul>
-                )}
-                {isStop && (
-                  <p className={`text-xs font-medium mt-1 ${tone.text}`}>Last run: {path.outcome}</p>
-                )}
+                {s.detail && (s.lines?.length
+                  ? <MoreInfo className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5" label={`More about step ${i + 1}`} detail={s.lines.join('\n')}>{s.detail}</MoreInfo>
+                  : <p className="text-xs text-pb-text2 dark:text-gray-400 mt-0.5">{s.detail}</p>)}
               </div>
             </li>
           );

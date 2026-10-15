@@ -176,7 +176,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
   return (
                     <div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-3">
-                        <p className="text-sm text-pb-text2 dark:text-gray-400">Get notified about migrations, maintenance events, and cluster alerts</p>
+                        <p className="text-sm font-medium text-pb-text dark:text-gray-200">Send notifications</p>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox"
                             checked={automationConfig.notifications?.enabled || false}
@@ -685,7 +685,7 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                           )}
                         </div>
                         <p className="text-xs text-pb-text2 dark:text-gray-400 -mt-2">
-                          {testDisabledReason || 'Tests use the saved settings. Each channel shows whether its test went through.'}
+                          {testDisabledReason || 'Tests use the saved settings; each channel shows its result.'}
                         </p>
                       </div>
                       )}

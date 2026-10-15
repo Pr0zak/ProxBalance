@@ -4,6 +4,7 @@ import { fetchMigrationOutcomes, fetchGuestLocations } from '../../api/client.js
 import { parseTimestamp } from '../../utils/formatters.js';
 import { isReliableOutcome } from '../dashboard/recommendations/insights/MigrationOutcomes.jsx';
 import { useLoad, Loading, Failed } from './shared.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -87,7 +88,7 @@ function DayGroup({ day, open, onToggle }) {
           <span className="font-semibold">{dayLabel(date)}</span>
           <span className="text-pb-text2 dark:text-gray-400">
             {' · '}{moves.length} move{moves.length !== 1 ? 's' : ''} {where}
-            {verdict.measured.length > 0 && <> · source CPU <span className="tabular-nums">{pct(verdict.before)} → {pct(verdict.after)}</span> avg</>}
+            {verdict.measured.length > 0 && <> · CPU <span className="tabular-nums">{pct(verdict.before)} → {pct(verdict.after)}</span></>}
             {verdict.measured.length > 0 && verdict.measured.length < moves.length && <span className="text-pb-text3 dark:text-gray-500"> ({verdict.measured.length} measured)</span>}
           </span>
         </span>
@@ -205,7 +206,7 @@ export default function OutcomesByDay() {
   if (loading && !data) return <Loading />;
   if (error && !data) return <Failed error={error} />;
   if (!days.length) {
-    return <p className="text-sm text-pb-text2 dark:text-gray-400">No measured outcomes yet. Each live migration is snapshotted before the move and compared at 5 minutes, 1 hour and 24 hours after.</p>;
+    return <p className="text-sm text-pb-text2 dark:text-gray-400">No measured outcomes yet. Each live move is compared 5 min, 1 h and 24 h after.</p>;
   }
   // Most recent day open by default.
   const isOpen = (k) => (openDays ? openDays.includes(k) : k === days[0].key);
@@ -217,11 +218,15 @@ export default function OutcomesByDay() {
   return (
     <div className="space-y-2">
       {days.map(d => <DayGroup key={d.key} day={d} open={isOpen(d.key)} onToggle={() => toggle(d.key)} />)}
-      <p className="text-[11px] text-pb-text3 dark:text-gray-500">
-        After = source-node CPU 24 h after the move, else 1 h, else 5 min. Day verdict: effective if the average dropped 5+ points and most moves helped; not effective if it didn't drop.
-        {hidden > 0 && ` ${hidden} older record${hidden !== 1 ? 's' : ''} hidden: their after-move metrics were captured long after the move.`}
-        {data?.total > outcomes.length && ` Showing the latest ${outcomes.length} of ${data.total} moves.`}
-      </p>
+      <MoreInfo
+        className="text-[11px] text-pb-text3 dark:text-gray-500"
+        label="How outcomes are measured"
+        detail={'CPU = average source-node CPU before → after. After is 24 h after the move, else 1 h, else 5 min. Day verdict: effective if the average dropped 5+ points and most moves helped; not effective if it didn\'t drop.'
+          + (hidden > 0 ? ` ${hidden} older record${hidden !== 1 ? 's' : ''} hidden: their after-move metrics were captured long after the move.` : '')}
+      >
+        CPU = source node, before → after the move.
+        {data?.total > outcomes.length && ` Latest ${outcomes.length} of ${data.total} moves.`}
+      </MoreInfo>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { ChevronDown, ArrowRight, X, Loader } from '../Icons.jsx';
 import {
   INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, TAP_TARGET, MODAL_OVERLAY, MODAL_CONTAINER, statusBadge,
 } from '../../utils/designTokens.js';
+import MoreInfo from '../MoreInfo.jsx';
 import { fetchPlacementRules, fetchEnforcePlan, runEnforcePlan } from '../../api/client.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -175,11 +176,14 @@ export default function PlacementRules() {
       ) : (
         <ul>{rules.map(r => <RuleRow key={r.id} rule={r} />)}</ul>
       )}
-      <p className="mt-2 text-[11px] text-pb-text2 dark:text-gray-500">
-        Hard: the target is skipped, or the group moves together. Soft: a split adds {data.soft_penalty} to the target score.
-        Tag affinity_req_&lt;name&gt; to make an affinity group hard.
-        {data.pools_available === false && ' Pools could not be read (token needs Pool.Audit).'}
-      </p>
+      <MoreInfo
+        className="mt-2 text-[11px] text-pb-text2 dark:text-gray-500"
+        label="About hard and soft rules"
+        detail={`Hard: the target is skipped, or the group moves together. Soft: a split adds ${data.soft_penalty} to the target score. Tag affinity_req_<name> to make an affinity group hard.`}
+      >
+        Hard rules block a move; soft ones add {data.soft_penalty} to its score.
+        {data.pools_available === false && ' Pools unreadable (token needs Pool.Audit).'}
+      </MoreInfo>
       {showEnforce && <EnforceModal onClose={() => setShowEnforce(false)} onDone={load} />}
     </div>
   );

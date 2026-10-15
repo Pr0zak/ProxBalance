@@ -136,7 +136,7 @@ export default function DiagnosticsSection({ active, systemInfo, onResult }) {
 
       {run && (
         <p className="text-xs text-pb-text3 dark:text-gray-500 mt-3">
-          Read-only: these checks change nothing. Tap a line for raw values. Copied text has secrets removed.
+          Read-only checks. Tap a line for raw values; copies have secrets removed.
         </p>
       )}
     </div>

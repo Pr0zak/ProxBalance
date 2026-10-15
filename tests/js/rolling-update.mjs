@@ -22,7 +22,10 @@ test('step summary', () => {
   assert.equal(M.stepSummary({ status: 'ok', moves: [], must_stop: [], doesnt_fit: [], copy_gb: 0 }), 'nothing to move');
   assert.equal(
     M.stepSummary({ status: 'short', moves: [{}, {}], must_stop: [{}], doesnt_fit: [{}], copy_gb: 247.6 }),
-    "2 moves · ~248 GB to copy · 1 must shut down · 1 don't fit");
+    '2 moves · ~248 GB to copy · 1 must shut down');
+  assert.equal(
+    M.stepSummary({ status: 'no_quorum', moves: [{}], must_stop: [], doesnt_fit: [{}], copy_gb: 0 }),
+    "1 move · 1 don't fit");
   assert.equal(M.stepSummary({ status: 'ok', moves: [{}], copy_gb: 0 }), '1 move');
   assert.equal(M.stepSummary({ status: 'offline' }), 'offline, skipped');
 });

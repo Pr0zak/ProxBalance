@@ -23,21 +23,21 @@ export default function ScheduleSection({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <NumberRow
               label="Check every"
-              description="How often automation looks for moves"
+              description="How often to look for moves"
               unit="min" min="1" max="60"
               value={automationConfig.check_interval_minutes || 5}
               onCommit={(val) => saveAutomationConfig({ check_interval_minutes: val })}
             />
             <NumberRow
               label="Per-guest cooldown"
-              description="Wait before the same guest can move again"
+              description="Before a guest can move again"
               unit="min" min="0" max="1440"
               value={automationConfig.rules?.cooldown_minutes || 30}
               onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, cooldown_minutes: val } })}
             />
             <NumberRow
               label="Settle time"
-              description="Pause between migrations in one run (0 = none)"
+              description="Pause between moves (0 = none)"
               unit="sec" min="0" max="300"
               value={automationConfig.rules?.grace_period_seconds !== undefined ? automationConfig.rules.grace_period_seconds : 30}
               onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, grace_period_seconds: val } })}

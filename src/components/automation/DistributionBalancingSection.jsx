@@ -1,4 +1,3 @@
-import { ChevronDown } from '../Icons.jsx';
 import { GLASS_CARD, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
@@ -25,8 +24,9 @@ export default function DistributionBalancingSection({
           <div className="space-y-4">
             {/* Enable Distribution Balancing */}
             <ToggleRow
-              label="Enable Distribution Balancing"
-              description="Automatically balance small workloads across nodes to prevent guest count imbalance"
+              label="Enable distribution balancing"
+              description="Evens out guest counts"
+              detail="A node can hold far more guests than the others while its CPU and memory look fine. When the gap in running guests reaches the threshold, small guests (within the core and memory limits) move from the fullest node to the emptiest. Tags, affinity rules and storage are respected."
               checked={config.distribution_balancing?.enabled || false}
               onChange={(e) => {
                 const enabled = e.target.checked;
@@ -37,28 +37,6 @@ export default function DistributionBalancingSection({
                 saveAutomationConfig({ distribution_balancing: { ...newConfig.distribution_balancing } });
               }}
             />
-
-            {/* Help section */}
-            <details className="group">
-              <summary className="cursor-pointer text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 flex items-center gap-1 list-none">
-                <ChevronDown size={16} className="transition-transform group-open:rotate-180" />
-                How does this work?
-              </summary>
-              <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                  Complements performance-based recommendations by focusing on <strong>evening out the number of VMs/CTs across nodes</strong>.
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-                  A node with many small VMs (DNS, monitoring, utilities) may show low resource usage but still suffer from management overhead and uneven workload distribution.
-                </p>
-                <ol className="text-xs text-blue-700 dark:text-blue-300 list-decimal list-inside space-y-1">
-                  <li>Counts running guests on each node</li>
-                  <li>If difference exceeds the threshold, finds small eligible guests on the overloaded node</li>
-                  <li>Recommends migrating them to underloaded nodes</li>
-                  <li>Respects tags, affinity rules, and storage compatibility</li>
-                </ol>
-              </div>
-            </details>
 
             {config.distribution_balancing?.enabled && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -81,7 +59,7 @@ export default function DistributionBalancingSection({
                   className={INPUT_FIELD}
                 />
                 <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                  Minimum difference in guest counts to trigger balancing
+                  Gap in guest counts that starts a move
                 </p>
               </div>
 
@@ -104,7 +82,7 @@ export default function DistributionBalancingSection({
                   className={INPUT_FIELD}
                 />
                 <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                  Only migrate guests with this many CPU cores or less (0 = no limit)
+                  Only guests with this many cores or fewer (0 = any)
                 </p>
               </div>
 
@@ -127,7 +105,7 @@ export default function DistributionBalancingSection({
                   className={INPUT_FIELD}
                 />
                 <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                  Only migrate guests with this much memory or less (0 = no limit)
+                  Only guests with this much memory or less (0 = any)
                 </p>
               </div>
             </div>

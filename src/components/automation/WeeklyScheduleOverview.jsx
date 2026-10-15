@@ -57,9 +57,9 @@ export default function WeeklyScheduleOverview({ schedule, savedConfig, automati
         <div className="flex-1 min-w-0 text-sm lg:flex lg:items-baseline lg:justify-between lg:gap-4">
           <div>
             <span className="font-semibold">
-              {outlook.allowed ? 'Migrations allowed now' : 'Migrations blocked now'}:
+              {outlook.allowed ? 'Allowed now' : 'Blocked now'}:
             </span>
-            <span className="opacity-80"> {reasonPhrase(outlook)} ({outlook.day.slice(0, 3)} {fmtClock(outlook.minute)} {outlook.zone}).</span>
+            <span className="opacity-80"> {reasonPhrase(outlook)}.</span>
             {flip && <span className="ml-1 font-medium tabular-nums">{flip}.</span>}
           </div>
           {check && (
@@ -74,7 +74,7 @@ export default function WeeklyScheduleOverview({ schedule, savedConfig, automati
         <div className="text-sm font-semibold text-pb-text dark:text-gray-300">Weekly schedule</div>
         <div className="text-xs text-pb-text2 dark:text-gray-500">
           {unsaved && <span className="text-amber-600 dark:text-amber-400 mr-2">Showing unsaved edits</span>}
-          Times in {grid.zone}
+          Times in {grid.zone} · now {grid.day.slice(0, 3)} {fmtClock(grid.minute)}
         </div>
       </div>
 

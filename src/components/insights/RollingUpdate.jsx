@@ -128,7 +128,7 @@ export default function RollingUpdate({ state }) {
         {(q?.flags || []).map(f => <p key={f} className="text-xs text-amber-700 dark:text-amber-300">{f}</p>)}
         <p className="text-xs text-pb-text2 dark:text-gray-400">
           {plan.order.join(' → ')}{selfLast ? ` (${plan.self.node} runs ProxBalance, so it goes last)` : ''}.
-          {' '}Each node is assumed back and empty for the later steps.
+          {' '}Updated nodes count as back, and empty, for later steps.
         </p>
       </div>
       <ol className="space-y-2 max-w-3xl">
