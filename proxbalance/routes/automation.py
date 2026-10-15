@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 import json, os, sys, subprocess, re, time
 from datetime import datetime, timedelta
 from pathlib import Path
+from proxbalance import audit_log
 from proxbalance.config_manager import load_config, save_config, CONFIG_FILE, BASE_PATH
 from proxbalance.error_handlers import api_route
 from proxbalance.secret_fields import redact_automation_config, restore_placeholders
@@ -746,6 +747,7 @@ def run_automigrate():
         process, log_file = _spawn_automigrate()
         if process is None:
             return jsonify({"success": False, "error": log_file}), 404
+        audit_log.record("automation.run_now", "Run now", source="user", subject="automation")
 
         # Wait for script to start and log initial output (recommendations can take 10-15 seconds)
         time.sleep(12)
@@ -829,8 +831,10 @@ def approve_queued_move(vmid):
     if dry_run:
         return jsonify({"success": False, "error": "Dry run is on, so nothing would move. Turn dry run off to approve."}), 409
     from proxbalance import migration_db
-    if not migration_db.get_queue_entry(vmid) or not migration_db.set_queue_status(vmid, migration_db.QUEUE_APPROVED):
+    entry = migration_db.get_queue_entry(vmid)
+    if not entry or not migration_db.set_queue_status(vmid, migration_db.QUEUE_APPROVED):
         return jsonify({"success": False, "error": f"No move for {vmid} is waiting for approval"}), 404
+    _audit_queue("approval.approve", "Approved", vmid, entry)
 
     inflight = _inflight_migration_error()
     if inflight:
@@ -848,9 +852,21 @@ def approve_queued_move(vmid):
 def dismiss_queued_move(vmid):
     """Dismiss a queued move. It is not asked again until it expires or its target changes."""
     from proxbalance import migration_db
+    entry = migration_db.get_queue_entry(vmid)
     if not migration_db.set_queue_status(vmid, migration_db.QUEUE_DISMISSED):
         return jsonify({"success": False, "error": f"No move for {vmid} is waiting for approval"}), 404
+    _audit_queue("approval.dismiss", "Dismissed", vmid, entry)
     return jsonify({"success": True})
+
+
+def _audit_queue(action, verb, vmid, entry):
+    """Audit an approve/dismiss of a queued move. Never raises."""
+    entry = entry if isinstance(entry, dict) else {}
+    name = f" ({entry['name']})" if entry.get("name") else ""
+    audit_log.record(action, f"{verb} move of {vmid}{name} {entry.get('source_node') or '?'} → "
+                             f"{entry.get('target_node') or '?'}",
+                     source="user", subject=vmid,
+                     details={k: entry.get(k) for k in ("source_node", "target_node", "reason", "confidence")})
 
 
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
@@ -1037,6 +1053,8 @@ def automigrate_toggle_timer():
                 capture_output=True, text=True, timeout=5
             )
             timer_active = verify_result.stdout.strip() == 'active'
+            audit_log.record("automation.timer", f"Automation timer {'started' if active else 'stopped'}",
+                             source="user", subject="automation", details={"active": bool(active)})
 
             return jsonify({
                 "success": True,

@@ -331,6 +331,47 @@ class StatusWriter:
     def finish(self, state: str, error: Optional[str] = None) -> None:
         self.data.update(state=state, error=error, finished_at=_now(), pid=None)
         self._save()
+        audit_update(os.path.dirname(self.path), self.data)
+
+
+_AUDIT_ACTIONS = {'succeeded': ('update.done', 'Updated to {target}'),
+                  'failed': ('update.failed', 'Update to {target} failed'),
+                  'rolled_back': ('update.rolled_back', 'Update to {target} rolled back to {from}')}
+
+
+def audit_update(repo_dir: str, status: Dict[str, Any]) -> bool:
+    """Add the finished update to the audit log (source ``system``). Never raises.
+
+    Written with plain sqlite3 rather than proxbalance.audit_log: the runner
+    may have just checked out a version without that module. Skipped when
+    the database or its audit_log table is not there.
+    """
+    try:
+        action, template = _AUDIT_ACTIONS[status.get('state')]
+        db_path = os.environ.get('PROXBALANCE_DB_PATH', os.path.join(repo_dir, 'proxbalance.db'))
+        if not os.path.exists(db_path):
+            return False
+        summary = template.format(target=status.get('target') or '?', **{'from': status.get('from') or '?'})
+        if status.get('error') and action != 'update.done':
+            summary += f": {status['error']}"
+        details = {k: status.get(k) for k in ('target', 'from', 'started_at', 'finished_at', 'error')
+                   if status.get(k)}
+        conn = sqlite3.connect(db_path, timeout=5)
+        try:
+            if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='audit_log'").fetchone():
+                return False
+            conn.execute(
+                "INSERT INTO audit_log (ts, source, action, subject, summary, details_json) "
+                "VALUES (?, 'system', ?, ?, ?, ?)",
+                (datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), action,
+                 status.get('target'), summary[:300], json.dumps(details)))
+            conn.commit()
+        finally:
+            conn.close()
+        return True
+    except Exception as e:
+        print(f'Warning: could not add the update to the audit log: {e}', file=sys.stderr)
+        return False
 
 
 # ----------------------------------------------------------------------

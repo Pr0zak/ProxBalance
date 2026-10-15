@@ -156,4 +156,6 @@ def run_enforce_plan():
               "type": m["type"]} for m in moves]
     print(f"Enforcing placement rules: {len(batch)} move(s)", file=sys.stderr)
     result, status = execute_batch_migration(proxmox, batch)
+    from proxbalance import audit_log
+    audit_log.record_batch(batch, result, "rules.enforce", "Enforce placement rules")
     return jsonify({**result, "dry_run": False, "moves": moves, "dropped": dropped}), status

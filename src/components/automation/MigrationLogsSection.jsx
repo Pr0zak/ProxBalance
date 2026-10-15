@@ -5,6 +5,7 @@ import {
   GLASS_CARD, INNER_CARD, BTN_SECONDARY, INPUT_FIELD, SELECT_FIELD, TABLE_HEADER, TABLE_ROW,
   statusBadge, headroomTextColor, TAP_TARGET } from '../../utils/designTokens.js';
 import SectionHeader from '../SectionHeader.jsx';
+import ChangeLog from './ChangeLog.jsx';
 import TabBar from '../TabBar.jsx';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { API_BASE } from '../../utils/constants.js';
@@ -14,6 +15,7 @@ const { useState, useEffect, useMemo } = React;
 const LOG_TABS = [
   { id: 'history', label: 'Migration History' },
   { id: 'logs', label: 'Script Logs' },
+  { id: 'changes', label: 'Change log' },
 ];
 
 const STATUS_COLOR = { completed: 'green', failed: 'red', timeout: 'orange', running: 'blue', pending: 'blue' };
@@ -384,6 +386,8 @@ export default function MigrationLogsSection({
           )}
         </div>
       )}
+
+      {migrationLogsTab === 'changes' && <ChangeLog active={active} />}
 
       {/* Script Logs */}
       {migrationLogsTab === 'logs' && (

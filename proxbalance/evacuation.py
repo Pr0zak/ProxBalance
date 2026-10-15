@@ -935,6 +935,11 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
             _write_session(session_id, session)
 
         print(f"[{session_id}] Evacuation completed: {successful} successful, {failed} failed", file=sys.stderr)
+        from proxbalance import audit_log
+        audit_log.record("evacuation.done",
+                         f"Evacuation of {source_node} finished: {successful} moved, {failed} failed",
+                         source="user", subject=source_node,
+                         details={"session_id": session_id, "successful": successful, "failed": failed})
 
         # Send evacuation completed notification
         try:
@@ -954,6 +959,9 @@ def _execute_evacuation(session_id: str, source_node: str, guest_vmids: List[int
     except Exception as e:
         print(f"[{session_id}] Evacuation error: {str(e)}", file=sys.stderr)
         traceback.print_exc()
+        from proxbalance import audit_log
+        audit_log.record("evacuation.failed", f"Evacuation of {source_node} failed: {e}",
+                         source="user", subject=source_node, details={"session_id": session_id})
 
         # Mark session as failed
         session = _read_session(session_id)
