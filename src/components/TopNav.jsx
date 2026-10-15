@@ -1,4 +1,4 @@
-import { ProxBalanceLogo, RefreshCw, GitHub, Sun, Moon } from './Icons.jsx';
+import { ProxBalanceLogo, RefreshCw, GitHub, Sun, Moon, Search } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, CONNECTION_BADGE_IDLE, BTN_ICON
@@ -19,6 +19,7 @@ export default function TopNav({
   onRefresh, refreshing,
   systemInfo, onShowUpdate,
   automationStatus,
+  onOpenSearch,
 }) {
   const outsideWindow = connected
     && automationStatus?.enabled
@@ -108,6 +109,13 @@ export default function TopNav({
               >
                 {dataAge.label}
               </span>
+            )}
+
+            {/* Quick search (also Ctrl+K / Cmd+K and "/") */}
+            {onOpenSearch && (
+              <button onClick={onOpenSearch} className={BTN_ICON} title="Search (Ctrl+K)" aria-label="Search" aria-keyshortcuts="Control+K Meta+K /">
+                <Search size={16} />
+              </button>
             )}
 
             {/* Refresh */}

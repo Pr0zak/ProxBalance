@@ -5,6 +5,7 @@ import SystemModals from './components/dashboard/SystemModals.jsx';
 import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
+import QuickSearch from './components/QuickSearch.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr, parseTimestamp } from './utils/formatters.js';
 import { useUIState } from './hooks/useUIState.js';
@@ -263,8 +264,29 @@ const ProxmoxBalanceManager = () => {
     recommendationsError: recs.recommendationsError,
     retryRecommendations: recs.fetchCachedRecommendations,
   };
+  // Quick search (command palette): guest → guest panel, node → node panel
+  // (both live on the Dashboard), page → navigate.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const openFromSearch = (item) => {
+    if (item.kind === 'page') { ui.setCurrentPage(item.page); return; }
+    const d = cluster.data;
+    const target = item.kind === 'guest' ? d?.guests?.[item.vmid] : d?.nodes?.[item.name];
+    if (!target) return;
+    if (ui.currentPage !== 'dashboard' && ui.setCurrentPage('dashboard') === false) return;
+    if (item.kind === 'guest') {
+      migrations.setSelectedNode(null);
+      migrations.setSelectedGuestDetails({ ...target, currentNode: target.node });
+    } else {
+      migrations.setSelectedGuestDetails(null);
+      migrations.setSelectedNode(target);
+    }
+  };
   const withShell = (page) => (
-    <AppStatusContext.Provider value={appStatus}>{page}<Toaster /></AppStatusContext.Provider>
+    <AppStatusContext.Provider value={appStatus}>
+      {page}
+      <QuickSearch open={searchOpen} setOpen={setSearchOpen} data={cluster.data} onSelect={openFromSearch} />
+      <Toaster />
+    </AppStatusContext.Provider>
   );
 
   // Shared TopNav across all pages
@@ -282,6 +304,7 @@ const ProxmoxBalanceManager = () => {
       systemInfo={updates.systemInfo}
       onShowUpdate={() => updates.setShowUpdateModal(true)}
       automationStatus={automation.automationStatus}
+      onOpenSearch={() => setSearchOpen(true)}
     />
   );
 
