@@ -124,7 +124,7 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     191: dict(name="elastic-2", t="qemu", node="lyra", cores=4, mem=20, cpu=0.24, amp=0.3, peak=11, memf=0.80, grow=0.30, tags="logging", disk=400),
     192: dict(name="elastic-3", t="qemu", node="lyra", cores=4, mem=20, cpu=0.22, amp=0.3, peak=11, memf=0.79, grow=0.30, tags="logging", disk=400),
     152: dict(name="loki", t="lxc", node="lyra", cores=2, mem=6, cpu=0.12, amp=0.2, peak=12, memf=0.62, tags="monitoring;affinity_monitoring", disk=200),
-    161: dict(name="nextcloud", t="lxc", node="lyra", cores=2, mem=6, cpu=0.10, amp=0.7, peak=20, memf=0.58, tags="apps", disk=60),
+    161: dict(name="nextcloud", t="lxc", node="lyra", cores=2, mem=6, cpu=0.25, amp=0.7, peak=20, memf=0.58, tags="apps", disk=60),
     171: dict(name="minio", t="lxc", node="lyra", cores=2, mem=4, cpu=0.08, amp=0.4, peak=2, memf=0.52, tags="storage", disk=20),
     # vega
     200: dict(name="nas-01", t="qemu", node="vega", cores=2, mem=16, cpu=0.20, amp=0.6, peak=2, memf=0.88, io=0.20, tags="storage", disk=32,
@@ -136,9 +136,9 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     204: dict(name="unifi", t="lxc", node="vega", cores=1, mem=2, cpu=0.06, amp=0.2, peak=12, memf=0.62, tags="infra", disk=12),
     # draco (busy: CI and builds)
     120: dict(name="gitlab", t="qemu", node="draco", cores=4, mem=12, cpu=0.30, amp=0.6, peak=14, memf=0.74, tags="dev;affinity_req_gitlab", disk=250, weekday=True),
-    121: dict(name="gitlab-runner-1", t="lxc", node="draco", cores=4, mem=4, cpu=0.44, amp=0.4, peak=15, memf=0.55, bursty=True, tags="dev;ci;affinity_req_gitlab", disk=50, weekday=True),
-    122: dict(name="build-agent-1", t="qemu", node="draco", cores=4, mem=8, cpu=0.42, amp=0.4, peak=15, memf=0.63, bursty=True, tags="dev;ci", disk=80, weekday=True),
-    123: dict(name="build-agent-2", t="qemu", node="draco", cores=4, mem=8, cpu=0.40, amp=0.4, peak=16, memf=0.60, bursty=True, tags="dev;ci", disk=80, weekday=True),
+    121: dict(name="gitlab-runner-1", t="lxc", node="draco", cores=4, mem=4, cpu=0.38, amp=0.4, peak=15, memf=0.55, bursty=True, tags="dev;ci;affinity_req_gitlab", disk=50, weekday=True),
+    122: dict(name="build-agent-1", t="qemu", node="draco", cores=4, mem=8, cpu=0.36, amp=0.4, peak=15, memf=0.63, bursty=True, tags="dev;ci", disk=80, weekday=True),
+    123: dict(name="build-agent-2", t="qemu", node="draco", cores=4, mem=8, cpu=0.34, amp=0.4, peak=16, memf=0.60, bursty=True, tags="dev;ci", disk=80, weekday=True),
     124: dict(name="ci-cache", t="lxc", node="draco", cores=1, mem=2, cpu=0.06, amp=0.5, peak=15, memf=0.45, tags="dev;ci", disk=100),
     144: dict(name="k8s-cp-3", t="qemu", node="draco", cores=2, mem=8, cpu=0.17, amp=0.2, peak=12, memf=0.60, pool="k8s", disk=64),
     145: dict(name="k8s-worker-3", t="qemu", node="draco", cores=4, mem=16, cpu=0.30, amp=0.5, peak=15, memf=0.71, pool="k8s", disk=100, weekday=True),
@@ -169,15 +169,14 @@ HA_RULES = [
 # Past moves: (days ago, vmid, from, to, why). Applied to the move history at
 # install time, so node charts show the relief when each move happened.
 PAST_MOVES = [
-    (13.2, 142, "draco", "lyra", "cpu"),
-    (12.8, 143, "draco", "lyra", "cpu"),
-    (11.4, 161, "draco", "lyra", "cpu"),
-    (10.1, 174, "lyra", "cygnus", "mem"),
-    (9.6, 153, "draco", "cygnus", "cpu"),
-    (8.3, 204, "lyra", "vega", "mem"),
-    (6.9, 176, "orion", "cygnus", "cpu"),
-    (5.2, 151, "lyra", "orion", "mem"),
-    (3.9, 203, "draco", "vega", "cpu"),
+    (16, 142, "orion", "lyra", "cpu"),
+    (15, 143, "draco", "lyra", "cpu"),
+    (14, 161, "draco", "lyra", "cpu"),
+    (12, 145, "lyra", "draco", "cpu"),
+    (10, 153, "draco", "cygnus", "cpu"),
+    (9, 176, "orion", "cygnus", "cpu"),
+    (8, 203, "draco", "vega", "cpu"),
+    (4.2, 190, "orion", "lyra", "mem"),
     (2.6, 131, "orion", "cygnus", "rule"),
     (1.4, 102, "lyra", "orion", "manual"),
 ]
@@ -311,6 +310,20 @@ def node_members(state: Dict[str, Any], node: str) -> List[int]:
 # State
 # ---------------------------------------------------------------------------
 
+def move_time(now: float, days: float, why: str) -> float:
+    """When a past move happened: ``days`` ago, but CPU moves land on a
+    Monday-Thursday afternoon (so the day after is a working day too, and
+    the outcome compares like with like)."""
+    t = now - days * DAY
+    if why != "cpu":
+        return t
+    local = t + TZ_OFFSET_HOURS * HOUR
+    t = t - (local % DAY) + 11 * HOUR  # 11:00 local that day
+    while _weekday(t) > 3:
+        t -= DAY
+    return t
+
+
 def initial_state(now: Optional[float] = None) -> Dict[str, Any]:
     """Placement with the past moves applied, as absolute timestamps."""
     now = now or time.time()
@@ -326,7 +339,7 @@ def initial_state(now: Optional[float] = None) -> Dict[str, Any]:
         hist = guests[str(vmid)]["history"]
         if hist == [[0, GUESTS[vmid]["node"]]]:
             hist[0] = [0, src]
-        hist.append([round(now - days * DAY), dst])
+        hist.append([round(move_time(now, days, _why)), dst])
     return {"created": now, "guests": guests, "tasks": []}
 
 

@@ -223,7 +223,7 @@ def seed_moves(conn, state, series, now):
             continue
         d5 = round(pre["source_node"]["cpu"] - p5["source_node"]["cpu"], 2)
         d24 = round(pre["source_node"]["cpu"] - p24["source_node"]["cpu"], 2)
-        verdict = "beneficial" if d24 >= 5 else ("harmful" if d24 <= -5 else "neutral")
+        verdict = "beneficial" if d24 >= 4 else ("harmful" if d24 <= -4 else "neutral")
         outcomes.append((f"{vmid}_{iso_z(start)}", str(vmid), src, dst, "VM" if kind == "qemu" else "CT", "completed",
                          json.dumps(pre), json.dumps(p5), json.dumps(p1), json.dumps(p24),
                          extra["reasoning"]["score_improvement"],
