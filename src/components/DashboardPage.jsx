@@ -353,6 +353,9 @@ export default function DashboardPage({
             guestsMigrating={guestsMigrating}
             migrationProgress={migrationProgress}
             completedMigrations={completedMigrations}
+            nodeScores={nodeScores}
+            recommendations={recommendations}
+            approvalQueue={automationStatus?.mode === 'semi' ? automationStatus.approval_queue : null}
             canMigrate={canMigrate}
             setConfirmMigration={setConfirmMigration}
           />

@@ -338,6 +338,16 @@ export const NODE_ROLE = {
   maintenance: { edge: '#eab308', text: 'text-yellow-700 dark:text-yellow-300', label: 'Maintenance', hint: 'nothing is placed on it' },
 };
 
+/**
+ * Planned-move edges on the Cluster Map. Suggestions use the Giving colour
+ * (guests leave that node); moves waiting for approval use the blue of the
+ * "needs approval" chip and a dotted dash.
+ */
+export const PLANNED_MOVE = {
+  suggested: { stroke: NODE_ROLE.giving.edge, dash: '6 4', text: NODE_ROLE.giving.text, label: 'Suggested move' },
+  approval: { stroke: '#3b82f6', dash: '2 3', text: 'text-blue-700 dark:text-blue-300', label: 'Awaiting approval' },
+};
+
 /** Inline style for the thin coloured left edge of a node row or card. */
 export const nodeRoleEdge = (role, width = 3) =>
   (role && NODE_ROLE[role.kind] ? { boxShadow: `inset ${width}px 0 0 0 ${NODE_ROLE[role.kind].edge}` } : undefined);

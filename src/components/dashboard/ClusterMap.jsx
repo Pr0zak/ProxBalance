@@ -4,7 +4,8 @@ import {
 } from '../Icons.jsx';
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
-  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET, NODE_ROLE } from '../../utils/designTokens.js';
+  INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET, NODE_ROLE, PLANNED_MOVE } from '../../utils/designTokens.js';
+import { groupPlannedMoves, layoutPlannedMoves, edgeTitle, edgeWidth } from '../../utils/plannedMoves.js';
 import { nodeRoles } from '../../utils/nodeRoles.js';
 import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 import { HEADROOM_HINT } from '../../utils/constants.js';
@@ -134,6 +135,7 @@ export default function ClusterMap({
   completedMigrations,
   nodeScores,
   recommendations,
+  approvalQueue = null,
   canMigrate = false,
   setConfirmMigration = null,
   embedded = false,
@@ -146,7 +148,7 @@ export default function ClusterMap({
   const setColor = (m) => { setColorMode(m); try { localStorage.setItem('clusterMapColorMode', m); } catch {} };
 
   const [showPlan, setShowPlanState] = useState(() => {
-    try { return localStorage.getItem('clusterMapShowPlan') === '1'; } catch { return false; }
+    try { return localStorage.getItem('clusterMapShowPlan') !== '0'; } catch { return true; }
   });
   const setShowPlan = (v) => { setShowPlanState(v); try { localStorage.setItem('clusterMapShowPlan', v ? '1' : '0'); } catch {} };
 
@@ -223,44 +225,54 @@ export default function ClusterMap({
 
   const mapAreaRef = useRef(null);
   const nodeRefs = useRef({});
-  const guestRefs = useRef({});
   const [arrows, setArrows] = useState([]);
+  const [openEdge, setOpenEdge] = useState(null); // edge key with its guest list open
 
-  const recList = Array.isArray(recommendations)
-    ? recommendations.filter(r => r && r.source_node && r.target_node && r.vmid != null)
-    : [];
-  const recByVmid = {};
-  recList.forEach(r => { recByVmid[String(r.vmid)] = r; });
+  // Pending moves, one edge per source → target node. Guests migrating or
+  // just migrated drop out, so an edge disappears once its moves run.
+  const inFlight = {};
+  Object.keys(guestsMigrating || {}).forEach(id => { if (guestsMigrating[id] === true) inFlight[id] = true; });
+  Object.keys(completedMigrations || {}).forEach(id => { inFlight[id] = true; });
+  const plannedEdges = groupPlannedMoves({ recommendations, approvalQueue, guests: data.guests, inFlight });
+  const plannedCount = plannedEdges.reduce((n, e) => n + e.count, 0);
+  const plannedVmids = new Set();
+  plannedEdges.forEach(e => e.guests.forEach(g => plannedVmids.add(String(g.vmid))));
+  const edgesKey = plannedEdges.map(e => `${e.key}:${e.kind}:${e.guests.map(g => g.vmid).join(',')}`).join('|');
 
-  // Measure recommended guest → target-node positions and draw connector arrows.
+  // Measure the node cards and route the planned-move edges around them.
   useLayoutEffect(() => {
-    if (!showPlan || !mapAreaRef.current || recList.length === 0) { setArrows([]); return; }
+    if (!showPlan || !mapAreaRef.current || plannedEdges.length === 0) { setArrows([]); return undefined; }
     const measure = () => {
       const c = mapAreaRef.current;
       if (!c) return;
       const cRect = c.getBoundingClientRect();
-      const next = [];
-      recList.forEach(r => {
-        const g = guestRefs.current[String(r.vmid)];
-        const n = nodeRefs.current[r.target_node];
-        if (!g || !n || !g.isConnected || !n.isConnected) return;
-        const gr = g.getBoundingClientRect();
-        const nr = n.getBoundingClientRect();
-        next.push({
-          key: `${r.vmid}-${r.target_node}`,
-          x1: gr.left + gr.width / 2 - cRect.left,
-          y1: gr.top + gr.height / 2 - cRect.top,
-          x2: nr.left + nr.width / 2 - cRect.left,
-          y2: nr.bottom - cRect.top,
-        });
+      const rects = {};
+      Object.entries(nodeRefs.current).forEach(([name, el]) => {
+        if (!el || !el.isConnected) return;
+        const r = el.getBoundingClientRect();
+        rects[name] = { left: r.left - cRect.left, top: r.top - cRect.top, right: r.right - cRect.left, bottom: r.bottom - cRect.top };
       });
-      setArrows(next);
+      setArrows(layoutPlannedMoves(plannedEdges, rects, cRect.width));
     };
     measure();
     const t = setTimeout(measure, 80);
     window.addEventListener('resize', measure);
-    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
-  }, [showPlan, recommendations, clusterMapViewMode, showPoweredOffGuests, openStopped, colorMode, collapsedSections, data]);
+    let ro = null;
+    try { ro = new ResizeObserver(measure); ro.observe(mapAreaRef.current); } catch { ro = null; }
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); if (ro) ro.disconnect(); };
+  }, [showPlan, edgesKey, clusterMapViewMode, showPoweredOffGuests, openStopped, colorMode, collapsedSections, data]);
+
+  // Close the open guest list when its edge goes away or on Escape.
+  useEffect(() => {
+    if (openEdge && !plannedEdges.some(e => e.key === openEdge)) setOpenEdge(null);
+  }, [edgesKey]);
+  useEffect(() => {
+    if (!openEdge) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setOpenEdge(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openEdge]);
+  const openArrow = openEdge && showPlan ? arrows.find(a => a.key === openEdge) : null;
 
   // When embedded, the parent owns the section card and header.
   const Wrapper = embedded ? React.Fragment : 'div';
@@ -383,15 +395,15 @@ export default function ClusterMap({
                 ))}
               </div>
             </div>
-            {recList.length > 0 && (
+            {plannedEdges.length > 0 && (
               <button
                 onClick={() => setShowPlan(!showPlan)}
                 className={`${TAP_TARGET} px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${
                   showPlan ? 'bg-amber-500 text-white' : 'bg-pb-surface2 dark:bg-slate-700 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'
                 }`}
-                title="Overlay recommended migrations as arrows on the map"
+                title={`${showPlan ? 'Hide' : 'Show'} planned moves on the map`}
               >
-                <MoveRight size={14} />{showPlan ? `Plan (${recList.length})` : `Show plan (${recList.length})`}
+                <MoveRight size={14} />{showPlan ? `Plan (${plannedCount})` : `Show plan (${plannedCount})`}
               </button>
             )}
           </div>
@@ -495,17 +507,60 @@ export default function ClusterMap({
       {!isCollapsed && (
         <div ref={mapAreaRef} className="relative" style={{minHeight: '400px'}}>
           {showPlan && arrows.length > 0 && (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" style={{ overflow: 'visible' }}>
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" style={{ overflow: 'visible' }} aria-label="Planned moves">
               <defs>
-                <marker id="recArrowHead" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill="#f59e0b" />
-                </marker>
+                {Object.entries(PLANNED_MOVE).map(([kind, t]) => (
+                  <marker key={kind} id={`plannedHead-${kind}`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L8,4 L0,8 Z" fill={t.stroke} />
+                  </marker>
+                ))}
               </defs>
-              {arrows.map(a => (
-                <line key={a.key} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2}
-                  stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,4" strokeOpacity="0.85" markerEnd="url(#recArrowHead)" />
-              ))}
+              {arrows.map(a => {
+                const t = PLANNED_MOVE[a.kind];
+                return (
+                  <path key={a.key} d={a.d} fill="none" stroke={t.stroke} strokeWidth={edgeWidth(a.count)}
+                    strokeDasharray={t.dash} strokeLinejoin="round" markerEnd={`url(#plannedHead-${a.kind})`} />
+                );
+              })}
+              {arrows.map(a => {
+                const t = PLANNED_MOVE[a.kind];
+                const w = a.count > 9 ? 22 : 16;
+                return (
+                  <g
+                    key={`${a.key}-n`}
+                    transform={`translate(${a.mid.x},${a.mid.y})`}
+                    className={`${t.text} cursor-pointer`}
+                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setOpenEdge(openEdge === a.key ? null : a.key)}
+                    role="button"
+                    aria-label={edgeTitle(a)}
+                  >
+                    <title>{edgeTitle(a)}</title>
+                    <rect x={-14} y={-14} width={28} height={28} fill="transparent" />
+                    <rect x={-w / 2} y={-8} width={w} height={16} rx={8} className="fill-white dark:fill-slate-900" stroke={t.stroke} strokeWidth="1.5" />
+                    <text y="0.5" textAnchor="middle" dominantBaseline="middle" fill="currentColor" fontSize="10" fontWeight="700">{a.count}</text>
+                  </g>
+                );
+              })}
             </svg>
+          )}
+          {openArrow && (
+            <div
+              className="absolute z-40 -translate-x-1/2 mt-3 px-2.5 py-1.5 rounded-lg bg-pb-surface dark:bg-slate-800 border border-pb-border dark:border-slate-700 shadow-lg text-xs text-pb-text dark:text-gray-100 max-w-[220px]"
+              style={{ left: Math.min(Math.max(110, openArrow.mid.x), (mapAreaRef.current?.clientWidth || Infinity) - 110), top: openArrow.mid.y }}
+              onClick={() => setOpenEdge(null)}
+            >
+              <div className="font-semibold tabular-nums whitespace-nowrap">
+                {openArrow.from} → {openArrow.to}
+                {openArrow.kind === 'approval' && <span className={`ml-1 font-normal ${PLANNED_MOVE.approval.text}`}>awaiting approval</span>}
+              </div>
+              {openArrow.guests.map(g => (
+                <div key={g.vmid} className="truncate text-pb-text2 dark:text-gray-400">
+                  {g.name}
+                  {g.approval && openArrow.kind !== 'approval' && <span className={`ml-1 ${PLANNED_MOVE.approval.text}`}>awaiting approval</span>}
+                </div>
+              ))}
+            </div>
           )}
           <div
             className="grid gap-x-4 gap-y-10 items-start py-6"
@@ -717,7 +772,7 @@ export default function ClusterMap({
 
                       const guestType = (guest.type || '').toUpperCase();
                       const isVM = isVmType(guest);
-                      const hasRec = showPlan && !!recByVmid[String(guest.vmid)];
+                      const hasRec = showPlan && plannedVmids.has(String(guest.vmid));
                       const getGuestColor = () => {
                         if (guestType === 'CT' || guestType === 'LXC') return 'bg-green-600';
                         if (isVM) return 'bg-purple-600';
@@ -737,7 +792,6 @@ export default function ClusterMap({
                       return (
                         <div key={guest.vmid} className={`relative group flex flex-col items-center ${dimmed ? 'opacity-20' : ''}`}>
                           <div
-                            ref={el => { if (el) guestRefs.current[String(guest.vmid)] = el; }}
                             draggable={canDrag}
                             onDragStart={(e) => {
                               e.dataTransfer.effectAllowed = 'move';
@@ -926,6 +980,14 @@ export default function ClusterMap({
                 CPU used by guests ProxBalance won't move
               </span>
               <GuestFlagLegend />
+              {showPlan && arrows.length > 0 && [...new Set(arrows.map(a => a.kind))].sort().reverse().map(kind => (
+                <span key={kind} className="flex items-center gap-1.5">
+                  <svg width="22" height="6" aria-hidden="true">
+                    <line x1="1" y1="3" x2="21" y2="3" stroke={PLANNED_MOVE[kind].stroke} strokeWidth="2" strokeDasharray={PLANNED_MOVE[kind].dash} />
+                  </svg>
+                  {kind === 'suggested' ? 'Suggested move, number = guests' : PLANNED_MOVE[kind].label}
+                </span>
+              ))}
             </div>
             <NodeRoleLegend roles={roles} className="justify-center" />
           </div>

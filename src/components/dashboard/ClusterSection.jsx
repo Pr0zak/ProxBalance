@@ -167,6 +167,7 @@ export default function ClusterSection(props) {
           completedMigrations={props.completedMigrations}
           nodeScores={props.nodeScores}
           recommendations={props.recommendations}
+          approvalQueue={props.automationStatus?.mode === 'semi' ? props.automationStatus.approval_queue : null}
           canMigrate={props.canMigrate}
           setConfirmMigration={props.setConfirmMigration}
         />
