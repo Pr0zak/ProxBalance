@@ -1,6 +1,6 @@
 # Automated Migrations
 
-ProxBalance can automatically migrate VMs and containers based on cluster conditions, schedules, and safety rules.
+ProxBalance can migrate VMs and containers on a schedule, based on its suggestions, your placement rules and safety checks. It runs in one of two modes: automatic, or semi-automatic, where most moves wait for your approval.
 
 ---
 
@@ -8,12 +8,14 @@ ProxBalance can automatically migrate VMs and containers based on cluster condit
 
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Semi-automatic mode](#semi-automatic-mode)
 - [Scheduling](#scheduling)
 - [Safety Checks](#safety-checks)
 - [Tag Behavior](#tag-behavior)
 - [Maintenance Mode](#maintenance-mode)
 - [Distribution Balancing](#distribution-balancing)
 - [Monitoring](#monitoring)
+- [Change log](#change-log)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -21,7 +23,7 @@ ProxBalance can automatically migrate VMs and containers based on cluster condit
 ## Quick Start
 
 1. Open the **Automation** page (`#/automation`)
-2. In **Quick Setup**, switch automation on (dry run is on by default)
+2. In **Quick Setup**, switch automation on (dry run is on by default) and pick a mode: Automatic or Semi-automatic
 3. Review the Schedule, Filters and Behavior tabs and save any edits
 4. Watch the decisions in **History & Logs**, or trigger a forced dry run from the API: `curl -X POST http://<host>/api/automigrate/test`
 5. Turn dry run off when ready
@@ -41,12 +43,12 @@ The **Automation** page has a Quick Setup strip above five tabs, each deep-linka
 | Tab | Contents |
 |-----|----------|
 | Schedule | When to migrate: status line, weekly grid, check interval, migration and blackout windows, timezone |
-| Filters | What to migrate: recommendation thresholds, tag rules (ignore, `auto_migrate_ok` whitelist, affinity, anti-affinity), distribution balancing |
-| Behavior | How to migrate: safety checks, failure handling, Smart Migrations, scoring and sensitivity |
-| History & Logs | Recent migrations and the automation log |
+| Filters | What to migrate: triggers (recommendation thresholds), limits, Guest Rules (tag rules and the [placement rules list](#placement-rules-list-and-enforce-now)), distribution balancing |
+| Behavior | How to migrate: safety checks, failure handling, Smart Migrations, scoring and sensitivity, the Proxmox CRS setting |
+| History & Logs | Migration History, Script Logs (the automation log) and the [Change log](#change-log) |
 | Reference | How decisions are made |
 
-Quick Setup shows one status line (state, the reason, the last run and its result, and the next check) over three tiles: the automation switch, dry run, and sensitivity. The automation and dry-run switches take effect immediately, each with its own confirmation. Every other edit is staged and saved together from the "N unsaved changes · Discard · Save changes" bar; leaving the page with pending edits asks first.
+Quick Setup shows one status line (state, the reason, the last run and its result, and the next check) over three tiles: the automation switch, dry run, and sensitivity, with the mode choice under the switches and, in semi-automatic mode, the **Waiting for approval** list. The automation and dry-run switches take effect immediately, each with its own confirmation. Every other edit is staged and saved together from the "N unsaved changes · Discard · Save changes" bar; leaving the page with pending edits asks first.
 
 ### Key settings
 
@@ -177,7 +179,7 @@ Safety checks run before every migration. If any check fails, the migration is s
 
 ### Target inflow cap
 
-`rules.max_target_inflow_per_cycle` (Automation page, What to Migrate > Limits, "Max into one node per run") caps how many migrations a single run may send to the same target node. Without it, a run with `max_migrations_per_run: 3` can move three guests onto the emptiest node before the scores are re-read, which often overshoots and starts the next run moving guests back out.
+`rules.max_target_inflow_per_cycle` (Automation → Filters → Limits, "Max into one node per run") caps how many migrations a single run may send to the same target node. Without it, a run with `max_migrations_per_run: 3` can move three guests onto the emptiest node before the scores are re-read, which often overshoots and starts the next run moving guests back out.
 
 - `0` (default) turns the cap off. Valid values are 0-5; the API rejects anything else with HTTP 400, and an out-of-range value edited into `config.json` by hand is clamped.
 - Each successful migration to a node counts, and so does every affinity companion that follows it there. Companions are never held back by the cap, because the group has to stay together.
@@ -191,8 +193,8 @@ Manual plans on the dashboard (Suggestions > Run plan) are not blocked by the ca
 
 A migration copies every disk on node-local storage (local-lvm, a ZFS pool, a directory) onto the storage with the same id on the target node. Before each move the engine projects that storage's usage after the copy, adding the disks of guests this run has already moved there. Shared storage (NFS, CIFS, PBS, Ceph, shared LVM/iSCSI: anything Proxmox marks `shared`) is not copied and never counts. Disk sizes are the provisioned sizes from the guest config, which is the worst case for thin storage.
 
-- If a disk won't fit (projected usage above 100%, or more data than the storage's free space), the move is skipped with the reason "Target storage full: local-lvm on pve6: 96% → 104% (40 GB won't fit)" and `skip_code: "target_storage_full"` on its decision. This applies to maintenance evacuations and affinity companions too, because Proxmox would fail the migration anyway.
-- If any storage would end above 90%, the move still runs, and its decision carries `storage_warning` (for example "Target storage nearly full: local-lvm on pve6: 85% → 95%"), which is also written to the automation log.
+- If a disk won't fit (projected usage above 100%, or more data than the storage's free space), the move is skipped with the reason "Target storage full: local-lvm on orion: 96% → 104% (40 GB won't fit)" and `skip_code: "target_storage_full"` on its decision. This applies to maintenance evacuations and affinity companions too, because Proxmox would fail the migration anyway.
+- If any storage would end above 90%, the move still runs, and its decision carries `storage_warning` (for example "Target storage nearly full: local-lvm on orion: 85% → 95%"), which is also written to the automation log.
 - The recommendation engine already avoids targets whose storage can't hold the guest, so a skip here usually means storage filled up since the recommendations were generated, or an earlier move in the same run took the room.
 - No disk data (a cache from a collector before this feature) or no usage numbers for the storage means no check: missing data never blocks a move.
 
@@ -229,8 +231,8 @@ Guests tagged with the same `exclude_<group>` tag are prevented from being place
 
 ```bash
 # Tag two database VMs to stay on separate nodes
-pvesh set /nodes/pve1/qemu/101/config --tags "exclude_database"
-pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
+pvesh set /nodes/orion/qemu/101/config --tags "exclude_database"
+pvesh set /nodes/lyra/qemu/102/config --tags "exclude_database"
 ```
 
 When the automation considers migrating a guest, it checks whether the target node already hosts another guest with the same `exclude_*` tag. If so, the migration is blocked. Anti-affinity is always a hard rule.
@@ -243,8 +245,8 @@ To make a group **required** (hard), tag at least one member `affinity_req_<grou
 
 ```bash
 # Tag VMs that must stay together
-pvesh set /nodes/pve1/qemu/200/config --tags "affinity_req_webstack"
-pvesh set /nodes/pve1/qemu/201/config --tags "affinity_req_webstack"
+pvesh set /nodes/orion/qemu/200/config --tags "affinity_req_webstack"
+pvesh set /nodes/orion/qemu/201/config --tags "affinity_req_webstack"
 ```
 
 Companion migration behavior (required groups only):
@@ -272,7 +274,7 @@ A pool's members are the guests in it. Anti-affinity pools are always hard; affi
 
 ### Placement rules list and "Enforce now"
 
-Automation → What to Migrate → Guest Rules lists every rule from tags and pools, marked Hard or Soft, with where its members run (expand a rule for its members). When a hard rule is broken (two anti-affinity members on one node, or a required group split across nodes), **Enforce now** shows the moves that would fix it and any guests it can't move, and asks before running them:
+**Automation → Filters → Guest Rules** lists every rule from tags and pools, marked Hard or Soft, with where its members run (expand a rule for its members). When a hard rule is broken (two anti-affinity members on one node, or a required group split across nodes), **Enforce now** shows the moves that would fix it and any guests it can't move, and asks before running them:
 
 - Anti-affinity: on each shared node, the member that is hardest to move (unmovable, then the most memory) stays; the others go to the best-scoring node with no member.
 - Required affinity: members join the node holding an unmovable member, or else the node with the most members.
@@ -329,10 +331,15 @@ Addresses uneven guest counts across nodes, independent of resource usage.
 - **Dashboard banner**: automation state, when the schedule next lets it act (or which blackout is active), the last move, a "Watching N guests" list of guests under observation, and **Run Now**
 - **Active Migrations KPI**: migrations in flight, with progress and a Cancel button
 - **Automation page, Quick Setup**: state, reason, last run result and the next check (with "will skip" when the schedule blocks it)
-- **History & Logs tab**: paginated recent migrations with status and decisions, and a log viewer (last 500 lines of the automation journal) with Download
+- **History & Logs tab**: paginated recent migrations with status and decisions, a log viewer (last 500 lines of the automation journal) with Download, and the change log
+- **Waiting for approval** (semi-automatic mode): in Quick Setup, and as "N moves waiting for approval" on the dashboard
 - **Insights page**: measured migration outcomes (source-node CPU and memory before, and 5 minutes and 24 hours after, each move)
 
 Migration outcomes are recorded for automated migrations (after the Proxmox task completes), affinity companion migrations and manual migrations. Post-migration snapshots taken long after their window (for example after downtime) are flagged `late` and left out of the comparisons.
+
+### Recent checks
+
+The dashboard's automation status has a strip of squares, one per automation check over the last 24 hours, labelled by day (Yesterday, Today). The colour says what the check did: grey nothing to do, violet waiting (observation), amber would move (dry run), filled moved, red failed, hatched skipped, and a hollow square for a move queued for approval. Tap a square for that check's decisions.
 
 ### Command line
 
@@ -359,6 +366,23 @@ curl "http://<host>/api/automigrate/history?type=runs&limit=20"
 # Individual migrations
 curl "http://<host>/api/automigrate/history?type=migrations&limit=100"
 ```
+
+---
+
+## Change log
+
+**Automation → History & Logs → Change log** is the audit log. It records, newest first:
+
+| Group | Recorded |
+|-------|----------|
+| Migrations | Manual moves, batches, rollbacks, evacuations, Enforce now, and automation's own moves and failures |
+| Approvals | Queued moves approved or dismissed |
+| Settings | Automation on/off, dry run, mode, maintenance on/off, and every other saved setting (names of the changed keys only, never their values) |
+| Tags and alerts | Tags added or removed, alert silences |
+| Services | Run Now, service restarts |
+| Updates | Started, finished, failed or rolled back |
+
+Each entry has a time, a source (`user`, `automation` or `system`), one summary sentence and details. For requests from a browser, the client address is recorded as the actor. Filter by source or type in the UI, or use `GET /api/audit-log` (see [API](API.md#get-apiaudit-log)). Entries are kept for 180 days. On first use, past automatic migrations are imported from the migration history.
 
 ---
 
@@ -409,7 +433,10 @@ Check the run decisions (History & Logs) or the journal for skip reasons:
 - "Target inflow cap: <node> already received N migrations this run" -- the node reached `max_target_inflow_per_cycle` this run; the guest is reconsidered next run
 - "Cluster not quorate" -- safety check
 - "Maximum concurrent migrations already running" -- concurrency limit
+- "Target storage full: ..." -- the target's local storage can't hold the guest's disks
+- "Blocked by Proxmox HA rules: ..." -- a Proxmox HA rule forbids the target
 - Mode `dry_run` -- simulation mode, nothing is executed
+- In semi-automatic mode, a move that is not an evacuation or a move off an overloaded node is queued (`queued`) instead of run; approve it in Quick Setup
 
 ### Schedule says blocked although windows are defined
 

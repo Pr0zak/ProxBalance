@@ -4,6 +4,27 @@
 
 ## Quick Diagnostics
 
+### Settings → Diagnostics
+
+![Diagnostics](images/diagnostics.png)
+
+Start here when something looks wrong. Open **Settings → Diagnostics** (`#/settings/diagnostics`). The checks run when the section opens and are read-only. Each check is one line marked pass, warn or fail:
+
+| Check | What it looks at |
+|-------|------------------|
+| Proxmox API | Reachability and latency of the configured host |
+| Nodes | Each node online, with its latency |
+| Quorum | Cluster quorum from `/cluster/status` |
+| Token permissions | The token's privileges compared with what ProxBalance uses, naming what stops working without each one. A missing `VM.Migrate` is a warning, or a failure when live automation is on |
+| Storage | Each storage enabled and active per online node |
+| Collector | Last run and its errors |
+| Timers | Collector, recommendation and automation timers armed |
+| Database | Size of `proxbalance.db` |
+| Cache | Age of the collected data |
+| Updates | Update channel and the last update error |
+
+Click a line for details. **Copy as text** copies a report with every secret replaced by `***`; paste it into a bug report. **Run again** repeats the checks. The same data is at `GET /api/diagnostics`. SSH is not checked, because ProxBalance uses only the Proxmox API.
+
 ### Status checker
 
 ```bash
@@ -34,7 +55,8 @@ pct exec <ctid> -- journalctl -u proxmox-balance -n 50
 The Settings page (`#/settings/<section>`) provides management without SSH:
 - **Connection**: Proxmox host and API token, dashboard auto-refresh
 - **Collection**: collection interval and optimization, with the age of the last run
-- **Notifications**: per-channel status and tests
+- **Notifications**: per-channel status and tests, active alerts and silences
+- **Diagnostics**: the read-only checks above
 - **System**: each service with **View log** (the last 1000 journal lines, with a warnings-and-errors filter and Download) and **Restart**, data export, and configuration backup/import
 
 Restarting the API service from the page drops its own request; the page reports this as expected.
@@ -291,7 +313,15 @@ pct exec <ctid> -- journalctl -u proxmox-balance -n 100 | grep -i migrate
 
 Check the browser developer console (F12 > Network) for API error responses on `/api/migrate`.
 
-Ensure the API token has PVEVMAdmin permissions (PVEAuditor is read-only).
+Ensure the API token has PVEVMAdmin permissions (PVEAuditor is read-only). **Settings → Diagnostics → Token permissions** shows which privileges are missing.
+
+### Automation queues moves instead of running them
+
+In semi-automatic mode (`automated_migrations.mode: "semi"`) only maintenance evacuations and moves off a node over its CPU or memory safety limit run on their own. Other moves wait under **Automation → Quick Setup → Waiting for approval**. Approve them there, or switch the mode to Automatic. With dry run on, nothing is queued.
+
+### Automation moved a guest away from its affinity group
+
+Since v2.19, `affinity_*` groups are soft: a split costs score points but is allowed. To keep a group together, tag one member `affinity_req_<name>`. **Automation → Filters → Guest Rules** shows each rule as Hard or Soft.
 
 ### VM/CT is locked
 
@@ -388,6 +418,22 @@ Both guests must have the exact same `exclude_*` tag. Verify:
 ```bash
 pvesh get /nodes/<node>/qemu/<vmid>/config | grep tags
 ```
+
+### Pool rules are ignored
+
+Pool rules need the collector to read `/pools`, which needs `Pool.Audit` on the pools. When it can't, the Guest Rules list says so and pool rules are skipped.
+
+---
+
+## Node Data Issues
+
+### No IO pressure on the node panel
+
+IO pressure comes from Proxmox VE 9's RRD data. On Proxmox VE 8 there is none, and the line is not shown. On 9 it appears after the next collection.
+
+### Disk health missing or "unknown"
+
+Disk health comes from the Proxmox disk list (`/nodes/<node>/disks/list`) on each collection and needs `Sys.Audit`, which the standard token has. Disks that Proxmox reports without a SMART verdict show as unknown. Check the disk on the node with `smartctl -a /dev/<disk>`.
 
 ---
 
