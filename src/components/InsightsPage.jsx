@@ -1,4 +1,4 @@
-import { Activity, TrendingUp, Clock, CheckCircle, Cpu, Power } from './Icons.jsx';
+import { Activity, TrendingUp, Clock, CheckCircle, Cpu, Power, Wrench } from './Icons.jsx';
 import { GLASS_CARD } from '../utils/designTokens.js';
 import SectionHeader from './SectionHeader.jsx';
 import OutcomesByDay from './insights/OutcomesByDay.jsx';
@@ -7,9 +7,10 @@ import Forecasts, { ForecastsClear, forecastsEmpty } from './insights/Forecasts.
 import RhythmHeatmap, { MetricPicker } from './insights/RhythmHeatmap.jsx';
 import Rightsizing, { RightsizingSummary } from './insights/Rightsizing.jsx';
 import FailureSim, { StorageModePicker } from './insights/FailureSim.jsx';
+import RollingUpdate from './insights/RollingUpdate.jsx';
 import { readStorageMode, writeStorageMode, ROUTE_PREFIX } from './insights/failureModel.js';
 import { RANGES, useLoad } from './insights/shared.jsx';
-import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts, fetchRightsizing, fetchNodeFailure } from '../api/client.js';
+import { fetchNodeTrends, fetchWorkloadPatterns, fetchForecasts, fetchRightsizing, fetchNodeFailure, fetchRollingUpdatePlan } from '../api/client.js';
 
 const { useState, useEffect, useRef } = React;
 
@@ -72,6 +73,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
   useEffect(() => {
     if (routedNode && failRef.current) failRef.current.scrollIntoView({ block: 'start' });
   }, [routedNode]);
+  const [rollingState] = useLoad(() => fetchRollingUpdatePlan());
   const showStoragePicker = failStorage === 'strict' || (failSummary.data?.local_storage_guests || 0) > 0;
 
   return (
@@ -104,6 +106,10 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
           <div ref={failRef} className={`${GLASS_CARD} xl:col-span-2 scroll-mt-20`}>
             <SectionHeader title="What if a node fails?" icon={Power} accent={['red', 'rose']} right={showStoragePicker ? <StorageModePicker value={failStorage} onChange={changeFailStorage} /> : null} />
             <FailureSim storage={failStorage} routedNode={routedNode} summaryState={failSummary} />
+          </div>
+          <div className={`${GLASS_CARD} xl:col-span-2`}>
+            <SectionHeader title="Rolling update plan" icon={Wrench} accent={['amber', 'orange']} />
+            <RollingUpdate state={rollingState} />
           </div>
           <div className={`${GLASS_CARD} xl:col-span-2`}>
             <SectionHeader title="Right-sizing" icon={Cpu} accent={['teal', 'cyan']} />

@@ -903,6 +903,15 @@ class ProxmoxAPICollector:
                 if bool(item.get("online", 0)):
                     cluster_health["online_nodes"] += 1
 
+        # Corosync votes and QDevice, for the rolling update planner (GET only;
+        # None when the token can't read /cluster/config).
+        try:
+            from proxbalance.rolling_update import fetch_quorum_inputs
+            cluster_health["quorum"] = fetch_quorum_inputs(self.proxmox)
+        except Exception as e:
+            self._note_error("cluster votes", e)
+            cluster_health["quorum"] = None
+
         # Store performance metrics
         self.perf_metrics = {
             "node_count": len(nodes_raw),
