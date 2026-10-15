@@ -85,13 +85,29 @@ export function RunStrip({ runs, ctx: parentCtx = {} }) {
   const toggle = (it) => setSelectedKey(k => (k === keyOf(it) ? null : keyOf(it)));
   const gap = n > 120 ? 'gap-px' : 'gap-0.5';
   const parts = selected ? lastCheckParts(selected.run, ctx) : null;
+  // Where each local day starts in the row, so the desktop strip can name the
+  // days and leave a gap at midnight like the per-day rows on phones.
+  const dayStarts = [];
+  let offset = 0;
+  for (const d of days) {
+    dayStarts.push({ key: d.key, label: d.label, index: offset });
+    offset += d.items.length;
+  }
+  const newDayAt = new Set(dayStarts.slice(1).map(d => d.index));
   return (
     <div>
       {/* Desktop: one row, shared time axis */}
       <div className="hidden sm:block" style={{ maxWidth: `${n * 18}px` }}>
+        {dayStarts.length > 1 && (
+          <div className="relative h-4 mb-0.5 text-[10px] text-pb-text2 dark:text-gray-500">
+            {dayStarts.map(d => (
+              <span key={d.key} className="absolute whitespace-nowrap" style={{ left: `${(d.index / n) * 100}%` }}>{d.label}</span>
+            ))}
+          </div>
+        )}
         <div className={`flex ${gap} h-6`}>
-          {items.map(it => (
-            <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className="flex-1 min-w-0 h-full" />
+          {items.map((it, i) => (
+            <Square key={keyOf(it)} item={it} selected={selected === it} onSelect={() => toggle(it)} className={`flex-1 min-w-0 h-full ${newDayAt.has(i) ? 'ml-1.5' : ''}`} />
           ))}
         </div>
         <div className="relative h-4 mt-1 text-[10px] tabular-nums text-pb-text2 dark:text-gray-500">
