@@ -45,6 +45,12 @@ from proxbalance.inflow_cap import (
     SKIP_CODE as TARGET_INFLOW_SKIP_CODE,
 )
 from proxbalance.ha_rules import check_ha_placement, check_move_live
+from proxbalance.placement_rules import (
+    KIND_AFFINITY,
+    KIND_ANTI_AFFINITY,
+    build_rules as build_placement_rules,
+    rules_for_guest,
+)
 from proxbalance.storage_projection import (
     LEVEL_CRITICAL, LEVEL_WONT_FIT, entries_at_least, format_storage_line,
     project_target_storage, SKIP_CODE as TARGET_STORAGE_SKIP_CODE,
@@ -379,36 +385,31 @@ def check_exclude_group_affinity(
     if not rules.get('respect_exclude_affinity', True):
         return True, "Exclude affinity checks disabled"
 
-    # Extract exclude groups - handle both dict and string formats
-    exclude_groups = _extract_exclude_groups(guest.get('tags', ''))
-
-    if not exclude_groups:
+    guests = cache_data.get('guests', {})
+    placement = build_placement_rules(guests, rules, cache_data.get('pools_available'))
+    groups = rules_for_guest(guest.get('vmid'), placement, kind=KIND_ANTI_AFFINITY)
+    if not groups:
         return True, "No exclude groups"
 
-    # Count VMs per node per exclude group
-    for exclude_group in exclude_groups:
+    # Count members per node per anti-affinity rule (exclude_* tags and
+    # anti-affinity pools).
+    guest_vmid = str(guest.get('vmid'))
+    for rule in groups:
         target_count = 0
         other_nodes_counts = {}
-
-        for vmid, other_guest in cache_data.get('guests', {}).items():
-            if other_guest.get('vmid') == guest.get('vmid'):
+        for member in rule['members']:
+            if member == guest_vmid:
                 continue
-
-            # Extract other guest's exclude groups - handle both dict and string formats
-            other_exclude_groups = _extract_exclude_groups(other_guest.get('tags', ''))
-            if exclude_group not in other_exclude_groups:
-                continue
-
-            node = other_guest.get('node')
+            node = (guests.get(member) or {}).get('node')
             if node == target_node:
                 target_count += 1
-            else:
+            elif node:
                 other_nodes_counts[node] = other_nodes_counts.get(node, 0) + 1
 
         # Don't migrate if it would create or worsen clustering
         min_other_count = min(other_nodes_counts.values()) if other_nodes_counts else 0
         if target_count + 1 > min_other_count + 1:
-            return False, f"Would cluster {exclude_group} VMs on {target_node}"
+            return False, f"Would cluster {rule['name']} VMs on {target_node}"
 
     return True, "No exclude group clustering"
 
@@ -437,22 +438,24 @@ def get_affinity_companions(
     if not rules.get('respect_affinity_rules', True):
         return []
 
-    affinity_groups = _extract_affinity_groups(guest.get('tags', ''))
-    if not affinity_groups:
+    guests = cache_data.get('guests', {})
+    placement = build_placement_rules(guests, rules, cache_data.get('pools_available'))
+    # Only required groups move together; soft groups were priced into the
+    # recommendation score instead.
+    groups = rules_for_guest(guest.get('vmid', ''), placement, kind=KIND_AFFINITY, required=True)
+    if not groups:
         return []
 
     companions = []
     seen_vmids = set()
     guest_vmid = str(guest.get('vmid', ''))
 
-    for affinity_group in affinity_groups:
-        for vmid, other_guest in cache_data.get('guests', {}).items():
-            vmid_str = str(vmid)
+    for rule in groups:
+        for vmid_str in rule['members']:
             if vmid_str == guest_vmid or vmid_str in seen_vmids:
                 continue
-
-            other_affinity = _extract_affinity_groups(other_guest.get('tags', ''))
-            if affinity_group not in other_affinity:
+            other_guest = guests.get(vmid_str)
+            if not other_guest:
                 continue
 
             other_node = other_guest.get('node')
@@ -470,11 +473,11 @@ def get_affinity_companions(
 
             seen_vmids.add(vmid_str)
             companions.append({
-                'vmid': other_guest.get('vmid', vmid),
-                'name': other_guest.get('name', f'VM-{vmid}'),
+                'vmid': other_guest.get('vmid', vmid_str),
+                'name': other_guest.get('name', f'VM-{vmid_str}'),
                 'type': other_guest.get('type', 'Unknown'),
                 'node': other_node,
-                'affinity_group': affinity_group,
+                'affinity_group': rule['name'],
                 'guest_data': other_guest
             })
 

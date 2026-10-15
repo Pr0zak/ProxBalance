@@ -68,6 +68,14 @@ from proxbalance.recommendation_analysis import (
     detect_migration_conflicts as _detect_migration_conflicts,
 )
 from proxbalance.patterns import get_node_seasonal_baseline
+from proxbalance.placement_rules import (
+    KIND_AFFINITY,
+    anti_affinity_conflict,
+    build_rules as _build_placement_rules,
+    rules_for_guest,
+    soft_affinity_penalty,
+    soft_penalty_from_config,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level storage cache — avoid rebuilding on every recommendation run
@@ -373,6 +381,16 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
     # Load penalty configuration
     penalty_cfg = load_penalty_config()
 
+    # Placement rules (tags + pool rules). Anti-affinity is always hard;
+    # affinity is soft (score penalty) unless required (companion moves).
+    try:
+        _auto_rules = load_config().get('automated_migrations', {}).get('rules', {}) or {}
+    except Exception:
+        _auto_rules = {}
+    respect_affinity = _auto_rules.get('respect_affinity_rules', True)
+    soft_affinity_cost = soft_penalty_from_config(_auto_rules)
+    placement_rules = _build_placement_rules(guests, _auto_rules)
+
     # Minimum score improvement required to recommend migration (in points)
     MIN_SCORE_IMPROVEMENT = penalty_cfg.get("min_score_improvement", 15)
 
@@ -630,6 +648,12 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 if isinstance(pg, dict) and pg.get("vmid") is not None
             } if ha_rules else {}
             online_node_names = [n for n, d in nodes.items() if d.get("status") == "online"]
+            best_target_affinity_split: List[str] = []
+            affinity_pending_moves = {
+                str(pg.get("vmid")): pt
+                for pt, pgs in pending_target_guests.items() for pg in pgs
+                if isinstance(pg, dict) and pg.get("vmid") is not None
+            } if respect_affinity and rules_for_guest(vmid_key, placement_rules, kind=KIND_AFFINITY, required=False) else {}
 
             for tgt_name, tgt_node in nodes.items():
                 try:
@@ -637,33 +661,14 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     if tgt_name == src_node_name or tgt_node.get("status") != "online" or tgt_name in maintenance_nodes:
                         continue
 
-                    # Check for anti-affinity conflicts
-                    conflict = False
-                    if guest.get("tags", {}).get("exclude_groups", []):
-                        for other_vmid in tgt_node.get("guests", []):
-                            other_key = str(other_vmid) if str(other_vmid) in guests else other_vmid
-                            if other_key not in guests:
-                                continue
-                            other = guests[other_key]
-                            for excl_group in guest["tags"]["exclude_groups"]:
-                                if excl_group in other.get("tags", {}).get("all_tags", []):
-                                    conflict = True
-                                    break
-                            if conflict:
-                                break
-
-                        # Check conflicts with pending migrations
-                        if not conflict and tgt_name in pending_target_guests:
-                            for pending_guest in pending_target_guests[tgt_name]:
-                                for excl_group in guest["tags"]["exclude_groups"]:
-                                    if excl_group in pending_guest.get("tags", {}).get("all_tags", []):
-                                        conflict = True
-                                        break
-                                if conflict:
-                                    break
-
+                    # Anti-affinity (exclude_* tags, anti-affinity pools) is hard.
+                    conflict = anti_affinity_conflict(
+                        vmid_key, tgt_name, placement_rules, guests,
+                        pending_target_guests=pending_target_guests,
+                        node_guests=tgt_node.get("guests", []),
+                    )
                     if conflict:
-                        skip_reasons_per_target.append(f"{tgt_name}: anti-affinity conflict")
+                        skip_reasons_per_target.append(f"{tgt_name}: {conflict}")
                         continue
 
                     # Proxmox VE 9 HA rules (resource/node affinity, legacy groups)
@@ -719,11 +724,21 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     if ha_verdict and ha_verdict["lower_preference"]:
                         score += HA_PREFERENCE_PENALTY
 
+                    # Soft affinity: splitting a group costs score, not a block.
+                    split_groups: List[str] = []
+                    if respect_affinity and soft_affinity_cost > 0:
+                        split_cost, split_groups = soft_affinity_penalty(
+                            vmid_key, src_node_name, tgt_name, placement_rules, guests,
+                            pending_moves=affinity_pending_moves, penalty=soft_affinity_cost,
+                        )
+                        score += split_cost
+
                     if score < best_target_score:
                         best_target_score = score
                         best_target = tgt_name
                         best_target_details = tgt_details
                         best_target_ha_warnings = list(ha_verdict["warnings"]) if ha_verdict else []
+                        best_target_affinity_split = split_groups
 
                 except Exception as e:
                     print(f"Error evaluating target {tgt_name} for guest {vmid_key}: {str(e)}", file=sys.stderr)
@@ -773,6 +788,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     "source_details": src_details,
                     "target_details": best_target_details,
                     "ha_warnings": best_target_ha_warnings,
+                    "affinity_split": best_target_affinity_split,
                 })
 
                 # Track pending migration IMMEDIATELY so next guest evaluation considers it
@@ -939,6 +955,9 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 recommendation["bind_mount_warning"] = bind_mount_warning
             if candidate.get("ha_warnings"):
                 recommendation["ha_warnings"] = candidate["ha_warnings"]
+            if candidate.get("affinity_split"):
+                # Soft affinity groups this move splits (already priced into the score).
+                recommendation["affinity_split"] = candidate["affinity_split"]
 
             # Phase 4b: Calculate cost-benefit ratio
             recommendation["cost_benefit"] = _calculate_cost_benefit(recommendation, guest)
@@ -1027,16 +1046,13 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
         print(f"Error in distribution balancing: {str(e)}", file=sys.stderr)
         traceback.print_exc()
 
-    # Affinity Rules: Generate companion migrations for affinity_* groups
-    # When a VM with an affinity_* tag is recommended to move, all other VMs
-    # sharing the same affinity_* tag should move to the same target node.
+    # Required affinity groups: generate companion migrations so the group
+    # moves together. Soft groups were priced into the target score above and
+    # get no companions.
     try:
-        config = load_config()
-        auto_config = config.get('automated_migrations', {})
-        rules = auto_config.get('rules', {})
-        respect_affinity = rules.get('respect_affinity_rules', True)
-
         if respect_affinity:
+            required_groups = {r["name"]: r for r in placement_rules
+                               if r["kind"] == KIND_AFFINITY and r["required"]}
             # Build a map of affinity_group -> list of recommended vmids with their target
             affinity_moves = {}  # {affinity_group: [(vmid, target_node, rec), ...]}
             for rec in recommendations:
@@ -1044,11 +1060,8 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 guest = guests.get(rec_vmid)
                 if not guest:
                     continue
-                affinity_groups = guest.get('tags', {}).get('affinity_groups', [])
-                for ag in affinity_groups:
-                    if ag not in affinity_moves:
-                        affinity_moves[ag] = []
-                    affinity_moves[ag].append((rec_vmid, rec.get('target_node'), rec))
+                for rule in rules_for_guest(rec_vmid, placement_rules, kind=KIND_AFFINITY, required=True):
+                    affinity_moves.setdefault(rule["name"], []).append((rec_vmid, rec.get('target_node'), rec))
 
             if affinity_moves:
                 print(f"Checking affinity groups: {list(affinity_moves.keys())}", file=sys.stderr)
@@ -1063,11 +1076,11 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                 group_target = best_move[1]
 
                 # Find all guests with this affinity group
+                group_members = set(required_groups[ag]["members"])
                 for vmid_key, guest in guests.items():
                     if vmid_key in already_recommended:
                         continue
-                    guest_affinity = guest.get('tags', {}).get('affinity_groups', [])
-                    if ag not in guest_affinity:
+                    if str(guest.get('vmid', vmid_key)) not in group_members:
                         continue
                     # Guest is in this affinity group but not yet recommended
                     src_node = guest.get('node')
@@ -1095,21 +1108,12 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                             continue
 
                     # Check anti-affinity conflicts on target
-                    conflict = False
-                    if guest.get('tags', {}).get('exclude_groups', []):
-                        for other_vmid in nodes.get(group_target, {}).get('guests', []):
-                            other_key = str(other_vmid) if str(other_vmid) in guests else other_vmid
-                            if other_key not in guests or other_key == vmid_key:
-                                continue
-                            other = guests[other_key]
-                            for excl_group in guest['tags']['exclude_groups']:
-                                if excl_group in other.get('tags', {}).get('all_tags', []):
-                                    conflict = True
-                                    break
-                            if conflict:
-                                break
+                    conflict = anti_affinity_conflict(
+                        vmid_key, group_target, placement_rules, guests,
+                        node_guests=nodes.get(group_target, {}).get('guests', []),
+                    )
                     if conflict:
-                        print(f"Affinity companion {vmid_key}: anti-affinity conflict on {group_target}", file=sys.stderr)
+                        print(f"Affinity companion {vmid_key}: {conflict} on {group_target}", file=sys.stderr)
                         continue
 
                     if ha_rules:
@@ -1184,8 +1188,7 @@ def generate_recommendations(nodes: Dict[str, Any], guests: Dict[str, Any], cpu_
                     guest = guests.get(rec_vmid)
                     if not guest:
                         continue
-                    affinity_groups = guest.get('tags', {}).get('affinity_groups', [])
-                    for ag in affinity_groups:
+                    for ag in (r["name"] for r in rules_for_guest(rec_vmid, placement_rules, kind=KIND_AFFINITY, required=True)):
                         companions_for_group = [r for r in companion_recs if r.get('affinity_group') == ag]
                         if companions_for_group:
                             rec['affinity_group'] = ag

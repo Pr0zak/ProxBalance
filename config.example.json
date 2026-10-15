@@ -84,6 +84,8 @@
       "respect_exclude_tags": true,
       "respect_exclude_affinity": true,
       "respect_affinity_rules": true,
+      "affinity_soft_penalty": 15,
+      "pool_rules": {},
       "require_auto_migrate_ok_tag": false,
       "intelligent_migrations": {
         "enabled": true,

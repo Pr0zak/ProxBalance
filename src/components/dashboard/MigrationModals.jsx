@@ -354,7 +354,7 @@ export default function MigrationModals({
                 placeholder="e.g., exclude_database, affinity_web"
               />
               <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
-                <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity | <span className="font-mono">affinity_[name]</span> = keep together
+                <span className="font-mono">ignore</span> = never migrate | <span className="font-mono">exclude_[name]</span> = anti-affinity | <span className="font-mono">affinity_[name]</span> = prefer together | <span className="font-mono">affinity_req_[name]</span> = keep together
               </p>
             </div>
 

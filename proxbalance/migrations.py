@@ -445,26 +445,18 @@ def validate_migration(proxmox: Any, vmid: int, source_node: str, target_node: s
         if cache_data:
             guests = cache_data.get("guests", {})
             nodes = cache_data.get("nodes", {})
-            guest_data = guests.get(str(vmid), {})
-            exclude_groups = guest_data.get("tags", {}).get("exclude_groups", [])
-
-            if exclude_groups:
-                target_guests = nodes.get(target_node, {}).get("guests", [])
-                conflict_found = False
-                conflict_detail = ""
-                for other_vmid in target_guests:
-                    other = guests.get(str(other_vmid), {})
-                    other_tags = other.get("tags", {}).get("all_tags", [])
-                    for grp in exclude_groups:
-                        if grp in other_tags:
-                            conflict_found = True
-                            conflict_detail = f"Anti-affinity conflict: {grp} with VM {other_vmid} on {target_node}"
-                            break
-                    if conflict_found:
-                        break
-
-                if conflict_found:
-                    checks.append({"check": "affinity", "passed": False, "detail": conflict_detail})
+            from proxbalance.config_manager import load_config as _load_config
+            from proxbalance.placement_rules import (
+                KIND_ANTI_AFFINITY, anti_affinity_conflict, build_rules, rules_for_guest,
+            )
+            placement = build_rules(guests, _load_config().get("automated_migrations", {}).get("rules", {}),
+                                    cache_data.get("pools_available"))
+            if rules_for_guest(vmid, placement, kind=KIND_ANTI_AFFINITY):
+                hit = anti_affinity_conflict(vmid, target_node, placement, guests,
+                                             node_guests=nodes.get(target_node, {}).get("guests", []))
+                if hit:
+                    checks.append({"check": "affinity", "passed": False,
+                                   "detail": f"Anti-affinity conflict: {hit} on {target_node}"})
                 else:
                     checks.append({"check": "affinity", "passed": True, "detail": "No affinity conflicts"})
             else:

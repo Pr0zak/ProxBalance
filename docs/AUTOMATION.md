@@ -184,7 +184,8 @@ The engine tracks recent migration history to detect "ping-pong" scenarios where
 | `ignore` | Guest is never auto-migrated (when `respect_ignore_tags` is `true`) |
 | `no-auto-migrate` | Guest is never auto-migrated (alternative to `ignore`) |
 | `exclude_*` | Anti-affinity: guests sharing the same `exclude_` tag are kept on separate nodes (when `respect_exclude_tags` is `true`) |
-| `affinity_*` | Pro-affinity: guests sharing the same `affinity_` tag are kept together on the same node (when `respect_affinity_rules` is `true`) |
+| `affinity_*` | Soft affinity: a move that splits guests sharing the same `affinity_` tag costs `affinity_soft_penalty` score points but is allowed (when `respect_affinity_rules` is `true`) |
+| `affinity_req_*` | Required (hard) affinity: the group `affinity_<name>` moves together through companion migrations |
 | `auto_migrate_ok` | Whitelist mode: only tagged guests are migrated (when `require_auto_migrate_ok_tag` is `true`). The older `auto-migrate-ok` spelling also works |
 
 ### Ignore and no-auto-migrate
@@ -203,27 +204,52 @@ pvesh set /nodes/pve1/qemu/101/config --tags "exclude_database"
 pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
 ```
 
-When the automation considers migrating a guest, it checks whether the target node already hosts another guest with the same `exclude_*` tag. If so, the migration is blocked.
+When the automation considers migrating a guest, it checks whether the target node already hosts another guest with the same `exclude_*` tag. If so, the migration is blocked. Anti-affinity is always a hard rule.
 
-### Affinity rules (affinity_* tags)
+### Affinity rules (affinity_* tags): soft or required
 
-Guests tagged with the same `affinity_<group>` tag are kept together on the same node. When one member of an affinity group is recommended for migration, all other members are automatically recommended to follow to the same target node ("companion migrations").
+Guests tagged with the same `affinity_<group>` tag prefer the same node. The rule is **soft**: when the recommendation engine scores a target that would leave the guest with fewer group members than it has now (more members on the source than on the target), it adds `affinity_soft_penalty` (default 15, the same as the default `min_score_improvement`) to that target's score. A split therefore needs about twice the usual gain, but it is allowed, and no companion migrations are generated. The recommendation lists the groups it splits in `affinity_split`, and its card says "Splits soft group ...".
+
+To make a group **required** (hard), tag at least one member `affinity_req_<group>`. `affinity_req_web` and `affinity_web` are the same group `affinity_web`; one `affinity_req_` tag makes the whole group required. Both are valid Proxmox tags. Required groups keep the companion behaviour:
 
 ```bash
-# Tag VMs that should stay together
-pvesh set /nodes/pve1/qemu/200/config --tags "affinity_webstack"
-pvesh set /nodes/pve1/qemu/201/config --tags "affinity_webstack"
-pvesh set /nodes/pve1/qemu/202/config --tags "affinity_webstack"
+# Tag VMs that must stay together
+pvesh set /nodes/pve1/qemu/200/config --tags "affinity_req_webstack"
+pvesh set /nodes/pve1/qemu/201/config --tags "affinity_req_webstack"
 ```
 
-Companion migration behavior:
+Companion migration behavior (required groups only):
 - The first guest recommended for migration is the **group leader**
 - All other group members not already on the target node become **affinity companions**
 - Companions that have the `ignore` tag, are stopped, or have pinned disks are skipped
-- The dashboard displays split detection warnings when affinity group members are on different nodes
 - Recommendation cards show "AFFINITY GROUP LEADER" and "AFFINITY COMPANION" badges
 
-Controlled by `respect_affinity_rules` (default: `true`).
+Controlled by `respect_affinity_rules` (default: `true`). Turning it off disables both the soft penalty and companion migrations.
+
+> **Upgrading:** before v2.19 every `affinity_*` group was required. Existing `affinity_*` tags are now soft. Retag a group `affinity_req_<name>` to keep companion migrations for it.
+
+### Pool rules
+
+Proxmox resource pools can act as affinity or anti-affinity groups. The collector reads `/pools` (read-only; the token needs `Pool.Audit` on the pools). Configure under `automated_migrations.rules`:
+
+```json
+"pool_rules": {
+  "db-replicas": "anti-affinity",
+  "webstack": { "type": "affinity", "required": true }
+}
+```
+
+A pool's members are the guests in it. Anti-affinity pools are always hard; affinity pools are soft unless `required` is `true`. If the collector cannot read the pools, pool rules are ignored (logged once) and the rules list says so.
+
+### Placement rules list and "Enforce now"
+
+Automation → What to Migrate → Guest Rules lists every rule from tags and pools, marked Hard or Soft, with where its members run (expand a rule for its members). When a hard rule is broken (two anti-affinity members on one node, or a required group split across nodes), **Enforce now** shows the moves that would fix it and any guests it can't move, and asks before running them:
+
+- Anti-affinity: on each shared node, the member that is hardest to move (unmovable, then the most memory) stays; the others go to the best-scoring node with no member.
+- Required affinity: members join the node holding an unmovable member, or else the node with the most members.
+- Targets respect memory capacity, other anti-affinity rules, Proxmox HA rules and maintenance mode. Soft rules are never enforced.
+
+Confirmed moves start through the batch migrate path. When automation is in dry-run mode nothing moves and the dialog says so. See [API](API.md#placement-rules).
 
 ### Whitelist mode
 

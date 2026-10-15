@@ -649,6 +649,51 @@ curl http://<host>/api/affinity-groups
 
 Groups with members on different nodes have `is_split: true` and `status: "split"`.
 
+### Placement rules
+
+#### GET /api/placement-rules
+
+Every affinity and anti-affinity rule from tags (`exclude_*`, `affinity_*`, `affinity_req_*`) and from `rules.pool_rules`.
+
+```json
+{
+  "success": true,
+  "rules": [
+    {"id": "tag:exclude_dns", "name": "exclude_dns", "kind": "anti-affinity", "required": true,
+     "source": "tag", "hard": true, "ok": false, "nodes": ["pve3", "pve5"],
+     "members": [{"vmid": 233, "name": "dns1", "node": "pve3", "status": "running"}]}
+  ],
+  "violations": 1,
+  "soft_penalty": 15,
+  "pools_available": true,
+  "respect_affinity_rules": true
+}
+```
+
+`hard` is true for anti-affinity and for required affinity. `ok` is whether the rule holds now; `violations` counts broken hard rules. `pools_available` is false when the collector could not read `/pools` (pool rules are then ignored).
+
+#### GET /api/placement-rules/enforce-plan
+
+The moves that would make every hard rule hold. Plans only.
+
+```json
+{
+  "success": true,
+  "violations": [{"rule_id": "tag:exclude_dns", "name": "exclude_dns", "kind": "anti-affinity", "detail": "2 on pve3"}],
+  "moves": [{"vmid": 234, "name": "dns2", "type": "CT", "source_node": "pve3", "target_node": "pve5",
+             "rule": "exclude_dns", "reason": "Leave pve3, which also runs another exclude_dns member", "mem_gb": 1.0}],
+  "unresolved": [],
+  "execution_plan": {"total_steps": 1, "ordered_recommendations": [...]},
+  "dry_run": false
+}
+```
+
+`unresolved` lists guests the plan can't move (ignore tag, passthrough disks, no node that fits) with a reason. Soft rules never appear.
+
+#### POST /api/placement-rules/enforce
+
+Runs the confirmed moves: `{"vmids": [234]}`. The plan is recomputed; only confirmed vmids still in it run (others come back in `dropped`; 409 when none remain). When `automated_migrations.dry_run` is true nothing moves and the response has `dry_run: true`. Otherwise the moves go through `POST /api/migrate/batch` logic (HA rules re-checked live) and the batch result is returned with `moves`.
+
 ### GET /api/tasks/{node}/{taskid}
 
 Returns the status of a Proxmox task.

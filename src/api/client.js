@@ -925,3 +925,43 @@ export function createAlertSilence({ fingerprint, alert_type, duration }) {
 export function deleteAlertSilence(id) {
   return alertsRequest(`/notifications/silences/${encodeURIComponent(id)}`, { method: 'DELETE' }, 'remove silence');
 }
+
+// ---------------------------------------------------------------------------
+// Placement rules (affinity / anti-affinity)
+// ---------------------------------------------------------------------------
+
+export async function fetchPlacementRules() {
+  try {
+    const response = await fetch(`${API_BASE}/placement-rules`);
+    return await response.json();
+  } catch (err) {
+    console.error('Failed to fetch placement rules:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function fetchEnforcePlan() {
+  try {
+    const response = await fetch(`${API_BASE}/placement-rules/enforce-plan`);
+    return await response.json();
+  } catch (err) {
+    console.error('Failed to fetch enforce plan:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function runEnforcePlan(vmids) {
+  try {
+    const response = await fetch(`${API_BASE}/placement-rules/enforce`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vmids })
+    });
+    const result = await response.json();
+    if (!response.ok) return { ...result, error: true, message: result.error || `HTTP ${response.status}` };
+    return result;
+  } catch (err) {
+    console.error('Failed to enforce placement rules:', err);
+    return { error: true, message: err.message };
+  }
+}
