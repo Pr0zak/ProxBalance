@@ -40,6 +40,8 @@ function diskLine(d) {
     key: d.devpath || `${d.model}-${d.size_bytes}`,
     tone: diskTone(d),
     text: `${parts.join(' · ')}: ${smart}, life left ${fmtWearout(d.wearout)}`,
+    // What makes it notable, for narrow screens: "sda: SMART failed", "nvme0n1: 9% life left".
+    short: `${dev}: ${d.health === 'PASSED' ? `${fmtWearout(d.wearout)} life left` : smart}`,
   };
 }
 

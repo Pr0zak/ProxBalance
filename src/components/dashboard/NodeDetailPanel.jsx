@@ -494,7 +494,7 @@ export default function NodeDetailPanel({
                 {disksView.summary.replace(/^Disks:\s*/, '')}
               </MoreInfo>
               {disksView.lines.map(l => (
-                <span key={l.key} className={`block ${DISK_TONE[l.tone]} break-words`}>{l.text}</span>
+                <MoreInfo key={l.key} className={`${DISK_TONE[l.tone]} break-words`} detail={l.text} label="Disk details">{l.short}</MoreInfo>
               ))}
             </NodeFact>
           )}

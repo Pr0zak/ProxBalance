@@ -35,6 +35,7 @@ test('failed disk gets its own line, absent wearout is a dash', () => {
   assert.equal(v.tone, 'bad');
   assert.equal(v.lines.length, 1);
   assert.equal(v.lines[0].text, 'sdb · ST5000LM000-2AN170 · 5.0 TB: SMART failed, life left —');
+  assert.equal(v.lines[0].short, 'sdb: SMART failed');
   assert.equal(failedDiskCount(wrap([nvme, { ...hdd, health: 'FAILED' }])), 1);
 });
 
@@ -49,6 +50,7 @@ test('unknown and worn disks are amber; 21% left is not listed', () => {
     'nvme0n1 · SPCC M.2 PCIe SSD · 2.0 TB: SMART passed, life left 20%',
     'sdb · ST5000LM000-2AN170 · 5.0 TB: SMART unknown, life left —',
   ]);
+  assert.deepEqual(v.lines.map(l => l.short), ['nvme0n1: 20% life left', 'sdb: SMART unknown']);
 });
 
 test('formatters keep absent as a dash, not 0', () => {
