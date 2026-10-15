@@ -1099,9 +1099,14 @@ def _load_previous_node_statuses():
 
 
 def _check_node_status_changes(config, old_statuses, new_data):
-    """Detect node status changes and send notifications."""
+    """Detect node status changes and send notifications.
+
+    An offline node is a condition alert (fingerprint ``node_status:<node>``):
+    one notification per outage, silences apply. Coming back online resolves
+    it at once and sends "Node Back Online" unless silenced.
+    """
     try:
-        from notifications import send_notification
+        from notifications import notify_condition, send_notification
         new_nodes = new_data.get("nodes", {})
         for name, node in new_nodes.items():
             new_status = node.get("status", "unknown")
@@ -1111,30 +1116,37 @@ def _check_node_status_changes(config, old_statuses, new_data):
                 continue
             if old_status != new_status:
                 if new_status != "online":
-                    send_notification(config, "node_status", {
+                    notify_condition(config, "node_status", name, True, {
                         "node": name,
                         "status": "offline",
                         "previous_status": old_status,
-                    })
+                    }, label=f"{name} offline")
                 elif old_status != "online":
-                    send_notification(config, "node_status", {
-                        "node": name,
-                        "status": "online",
-                        "previous_status": old_status,
-                    })
+                    online = {"node": name, "status": "online", "previous_status": old_status}
+                    t = notify_condition(config, "node_status", name, False, {}, resolve_after=1,
+                                         resolved_event="node_status", resolved_data=online)
+                    if t.get("action") is None:
+                        # Outage started before alert state existed: send as before.
+                        send_notification(config, "node_status", online)
     except Exception as e:
         print(f"Warning: Failed to check node status changes: {e}", file=sys.stderr)
 
 
 def _check_resource_thresholds(config, new_data):
-    """Check if any node exceeds configured resource thresholds and notify."""
+    """Observe node CPU/memory against the safety limits and notify once.
+
+    Each node + resource is a threshold alert (``resource_threshold:<node>/cpu``)
+    with hysteresis: see notifications.notify_threshold().
+    """
     try:
-        from notifications import send_notification
+        from notifications import notify_threshold
         safety = config.get("automated_migrations", {}).get("safety_checks", {})
         cpu_threshold = safety.get("max_node_cpu_percent", 85)
         mem_threshold = safety.get("max_node_memory_percent", 90)
 
         for name, node in new_data.get("nodes", {}).items():
+            if node.get("status", "online") != "online":
+                continue  # no reading; the node_status alert covers it
             cpu_pct = node.get("cpu_percent", 0)
             mem_pct = node.get("mem_percent", 0)
             # Use metrics values if top-level not available
@@ -1143,20 +1155,14 @@ def _check_resource_thresholds(config, new_data):
             if not mem_pct and "metrics" in node:
                 mem_pct = node["metrics"].get("current_mem", 0)
 
-            if cpu_pct > cpu_threshold:
-                send_notification(config, "resource_threshold", {
+            for resource, key, value, limit in (("CPU", "cpu", cpu_pct, cpu_threshold),
+                                                ("Memory", "memory", mem_pct, mem_threshold)):
+                notify_threshold(config, "resource_threshold", f"{name}/{key}", value or 0, limit, {
                     "node": name,
-                    "resource": "CPU",
-                    "value": cpu_pct,
-                    "threshold": cpu_threshold,
-                })
-            if mem_pct > mem_threshold:
-                send_notification(config, "resource_threshold", {
-                    "node": name,
-                    "resource": "Memory",
-                    "value": mem_pct,
-                    "threshold": mem_threshold,
-                })
+                    "resource": resource,
+                    "value": value or 0,
+                    "threshold": limit,
+                }, label=f"{name} {resource} {float(value or 0):.1f}%")
     except Exception as e:
         print(f"Warning: Failed to check resource thresholds: {e}", file=sys.stderr)
 
@@ -1248,6 +1254,13 @@ def collect_data():
         # Resource threshold breaches
         _check_resource_thresholds(config, data)
 
+        # A successful collection counts towards resolving a failing-collector alert.
+        try:
+            from notifications import notify_condition
+            notify_condition(config, "collector_status", "collector", False, {})
+        except Exception:
+            pass
+
         # Collector success notification (off by default — on_collector_status is False)
         try:
             from notifications import send_notification
@@ -1272,11 +1285,11 @@ def collect_data():
         # Send collector failure notification
         try:
             _cfg = load_config() if 'config' not in dir() else config
-            from notifications import send_notification
-            send_notification(_cfg, "collector_status", {
+            from notifications import notify_condition
+            notify_condition(_cfg, "collector_status", "collector", True, {
                 "status": "failure",
                 "error": str(e),
-            })
+            }, label="Data collection failing")
         except Exception:
             pass
 
@@ -1294,11 +1307,11 @@ def collect_data():
         # Send collector failure notification
         try:
             _cfg = load_config() if 'config' not in dir() else config
-            from notifications import send_notification
-            send_notification(_cfg, "collector_status", {
+            from notifications import notify_condition
+            notify_condition(_cfg, "collector_status", "collector", True, {
                 "status": "failure",
                 "error": str(e),
-            })
+            }, label="Data collection failing")
         except Exception:
             pass
 

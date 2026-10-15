@@ -889,3 +889,39 @@ export async function stopTask(sourceNode, taskId) {
     return { error: true, message: err.message };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Notification alerts & silences
+// ---------------------------------------------------------------------------
+
+async function alertsRequest(path, options, what) {
+  try {
+    const response = await fetch(`${API_BASE}${path}`, options);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      return { error: true, message: result.error || `HTTP ${response.status}` };
+    }
+    return result;
+  } catch (err) {
+    console.error(`Failed to ${what}:`, err);
+    return { error: true, message: err.message };
+  }
+}
+
+/** Active alerts, active silences and the resolve rules in effect. */
+export function fetchNotificationAlerts() {
+  return alertsRequest('/notifications/alerts', undefined, 'load notification alerts');
+}
+
+/** Silence one alert ({ fingerprint }) or a whole type ({ alert_type }); duration 1h|8h|24h|resolved. */
+export function createAlertSilence({ fingerprint, alert_type, duration }) {
+  return alertsRequest('/notifications/silences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fingerprint, alert_type, duration })
+  }, 'create silence');
+}
+
+export function deleteAlertSilence(id) {
+  return alertsRequest(`/notifications/silences/${encodeURIComponent(id)}`, { method: 'DELETE' }, 'remove silence');
+}

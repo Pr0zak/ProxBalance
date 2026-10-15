@@ -520,20 +520,42 @@ class NotificationManager:
                         "node_status", "resource_threshold", "recommendations",
                         "evacuation", "collector_status", "update_available")
             data: Event-specific data dict
+
+        Returns:
+            True if at least one channel accepted the message.
         """
         if not self.should_notify(event_type, data):
-            return
+            return False
 
         title, message, priority = self._format_event(event_type, data)
 
+        # Silences for the whole event type, and an exact-repeat guard (same
+        # type and text within event_dedupe_seconds). Fail open: a broken
+        # state store must not stop notifications.
+        try:
+            from proxbalance import alert_state
+            if alert_state.is_silenced(None, event_type):
+                logger.info(f"Suppressed {event_type} notification: type is silenced")
+                return False
+            window = alert_state.settings_from_config(
+                {"automated_migrations": {"notifications": self.notifications_config}})["event_dedupe_seconds"]
+            if alert_state.is_recent_duplicate(event_type, title, message, window):
+                logger.info(f"Suppressed {event_type} notification: same message sent in the last {window}s")
+                return False
+        except Exception as e:
+            logger.debug(f"Alert state unavailable, sending anyway: {e}")
+
+        sent = False
         for name, provider in self.named_providers.items():
             try:
                 provider.send(title, message, priority)
                 logger.info(f"Sent {event_type} notification via {provider.__class__.__name__}")
                 record_send(name, event_type, True)
+                sent = True
             except Exception as e:
                 logger.error(f"Failed to send {event_type} notification via {provider.__class__.__name__}: {e}")
                 record_send(name, event_type, False)
+        return sent
 
     def test(self, only: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -878,9 +900,82 @@ def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, A
             manager = NotificationManager(config)
             _cached_manager["instance"] = manager
             _cached_manager["config_hash"] = cfg_hash
-        manager.notify(event_type, data)
+        return bool(manager.notify(event_type, data))
     except Exception as e:
         logger.error(f"Failed to send notification: {e}")
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Threshold and condition alerts (hysteresis + fingerprint dedupe + silences)
+# ---------------------------------------------------------------------------
+
+def _dispatch_alert(config: Dict[str, Any], event_type: str, transition: Dict[str, Any],
+                    data: Dict[str, Any], resolved_event: Optional[str],
+                    resolved_data: Any) -> Dict[str, Any]:
+    from proxbalance import alert_state
+    action = transition.get("action")
+    transition["sent"] = False
+    if transition.get("silenced"):
+        if action in (alert_state.FIRE, alert_state.RESOLVE):
+            logger.info(f"Suppressed {event_type} alert {transition['fingerprint']}: silenced")
+        return transition
+    if action == alert_state.FIRE:
+        transition["sent"] = send_notification(config, event_type, data)
+        if transition["sent"]:
+            try:
+                alert_state.mark_notified(transition["fingerprint"])
+            except Exception:
+                pass
+    elif action == alert_state.RESOLVE and resolved_event:
+        payload = resolved_data(transition) if callable(resolved_data) else (resolved_data or {})
+        transition["sent"] = send_notification(config, resolved_event, payload)
+    return transition
+
+
+def notify_threshold(config: Dict[str, Any], event_type: str, subject: str, value: float,
+                     warn: float, data: Dict[str, Any], *, higher_is_worse: bool = True,
+                     label: Optional[str] = None, resolved_event: Optional[str] = None,
+                     resolved_data: Any = None) -> Dict[str, Any]:
+    """Observe a value against its warning level and notify once per episode.
+
+    The notification is sent when the alert becomes active. It stays active
+    (no repeats) until ``alert_resolve_collections`` consecutive checks are at
+    least ``alert_resolve_margin`` points on the good side of ``warn``. Then
+    ``resolved_event`` (if given) is sent with ``resolved_data`` (a dict, or a
+    callable taking the transition).
+
+    Returns:
+        The alert_state transition dict plus ``sent``.
+    """
+    try:
+        from proxbalance import alert_state
+        t = alert_state.observe_threshold(
+            event_type, subject, value, warn, higher_is_worse=higher_is_worse,
+            settings=alert_state.settings_from_config(config), label=label)
+    except Exception as e:
+        # No state store: behave as before (notify while over the level).
+        logger.warning(f"Alert state unavailable for {event_type}:{subject}: {e}")
+        bad = value > warn if higher_is_worse else value < warn
+        return {"action": "fire" if bad else None, "sent": send_notification(config, event_type, data) if bad else False}
+    return _dispatch_alert(config, event_type, t, data, resolved_event, resolved_data)
+
+
+def notify_condition(config: Dict[str, Any], event_type: str, subject: str, active: bool,
+                     data: Dict[str, Any], *, resolve_after: Optional[int] = None,
+                     label: Optional[str] = None, value: Optional[float] = None,
+                     resolved_event: Optional[str] = None, resolved_data: Any = None) -> Dict[str, Any]:
+    """Like notify_threshold() for a yes/no condition (node offline,
+    collection failing, safety check failing, recommendations pending)."""
+    try:
+        from proxbalance import alert_state
+        t = alert_state.observe_condition(
+            event_type, subject, active, settings=alert_state.settings_from_config(config),
+            resolve_after=resolve_after, label=label, value=value)
+    except Exception as e:
+        logger.warning(f"Alert state unavailable for {event_type}:{subject}: {e}")
+        return {"action": "fire" if active else None, "sent": send_notification(config, event_type, data) if active else False}
+    return _dispatch_alert(config, event_type, t, data, resolved_event, resolved_data)
 
 
 def get_default_notifications_config() -> Dict[str, Any]:
@@ -902,6 +997,12 @@ def get_default_notifications_config() -> Dict[str, Any]:
         "on_evacuation": True,
         "on_collector_status": False,
         "on_update_available": True,
+        # Hysteresis for threshold alerts: an active alert resolves after this
+        # many consecutive checks at least this many points under its level.
+        "alert_resolve_collections": 3,
+        "alert_resolve_margin": 5,
+        # Identical event messages within this many seconds are sent once.
+        "event_dedupe_seconds": 120,
         "providers": {
             "pushover": {
                 "enabled": False,

@@ -16,6 +16,7 @@ ProxBalance can send notifications for automated migration events through multip
   - [Slack](#slack)
   - [Webhook](#webhook)
 - [Event Types](#event-types)
+  - [Alerts, repeats and silences](#alerts-repeats-and-silences)
 - [Priority System](#priority-system)
 - [Credentials and the Web UI](#credentials-and-the-web-ui)
 - [Testing](#testing)
@@ -55,6 +56,9 @@ An enabled provider whose required fields are missing (for example Email without
         "on_evacuation": true,
         "on_collector_status": false,
         "on_update_available": true,
+        "alert_resolve_collections": 3,
+        "alert_resolve_margin": 5,
+        "event_dedupe_seconds": 120,
         "providers": { ... }
     }
 }
@@ -78,6 +82,9 @@ An enabled provider whose required fields are missing (for example Email without
 | `on_evacuation` | boolean | `true` | A node evacuation starts, completes or fails |
 | `on_collector_status` | boolean | `false` | Data collection completed or failed |
 | `on_update_available` | boolean | `true` | A ProxBalance update is available |
+| `alert_resolve_collections` | integer | `3` | An active alert resolves after this many checks in a row on the good side (see [Alerts, repeats and silences](#alerts-repeats-and-silences)) |
+| `alert_resolve_margin` | number | `5` | For threshold alerts, a check counts towards resolving only when the value is at least this many points past the warning level |
+| `event_dedupe_seconds` | integer | `120` | An event notification with exactly the same type and text as one sent within this many seconds is dropped. `0` turns this off |
 
 A missing key behaves like its default. Set `enabled` to `true` and configure at least one provider to receive notifications.
 
@@ -318,7 +325,27 @@ All webhook requests send a JSON body with this structure:
 | `collector_status` | Collector | `Data Collection Completed` / `Data Collection Failed` | low / high |
 | `update_available` | Update check | `Update Available: <version>` | normal |
 
-`resource_threshold` uses `safety_checks.max_node_cpu_percent` and `max_node_memory_percent` as its limits. `capacity_warning` is sent when there are recommendations and cluster health is below 50/100. `recommendations_cleared` is sent when the previous cycle had recommendations and the current one has none.
+`resource_threshold` uses `safety_checks.max_node_cpu_percent` and `max_node_memory_percent` as its limits. `capacity_warning` is sent when cluster health falls below 50/100. `recommendations_cleared` is sent when the `recommendations` alert resolves. Both follow the alert rules below.
+
+### Alerts, repeats and silences
+
+Some events describe a condition that lasts. These are **alerts**: each has a fingerprint `<event type>:<subject>` and is either active or not.
+
+| Alert | Fingerprint | Active while | Resolves after |
+|-------|-------------|--------------|----------------|
+| `resource_threshold` | `resource_threshold:<node>/cpu`, `.../memory` | value > the safety limit | 3 checks in a row at ≤ limit − 5 |
+| `capacity_warning` | `capacity_warning:cluster` | cluster health < 50 | 3 runs in a row at ≥ 55 |
+| `recommendations` | `recommendations:cluster` | there are suggestions | 3 runs in a row with none; then `recommendations_cleared` is sent |
+| `recommendations_urgent` | `recommendations_urgent:cluster` | suggestions with high urgency | 3 runs in a row without |
+| `failure` | `failure:safety_checks` | automation safety checks fail | 3 runs in a row that pass |
+| `collector_status` (failure) | `collector_status:collector` | data collection fails | 3 successful collections in a row |
+| `node_status` (offline) | `node_status:<node>` | node is not online | the node is back online (sends "Node Back Online") |
+
+An alert notifies once, when it becomes active. Repeats while it is active are not sent, so a value going back and forth across the limit gives one notification. A value under the limit but within `alert_resolve_margin` of it resets the resolve count. "3" and "5" are `alert_resolve_collections` and `alert_resolve_margin`. A "check" is one collector run for node alerts, one recommendation run for the cluster and suggestion alerts, and one automation run for `failure`. Alert state is tracked even when notifications are off, so turning an event type on does not re-send an alert that is already active.
+
+The other events (`start`, `complete`, `action`, `evacuation`, `update_available`, collector success) are sent each time, except an exact repeat (same type and text) within `event_dedupe_seconds`.
+
+**Silences.** Settings → Notifications → Active alerts lists the active alerts. Each row has a Silence menu: this alert or every alert of its type, for 1, 8 or 24 hours, or until it resolves. A silence stops the notification (and the resolve message), not the tracking. A type silence also stops event notifications of that type. Active silences are listed under the alerts with a Remove button. State is kept in the `alert_state`, `alert_silences` and `notification_dedupe` tables in `proxbalance.db`.
 
 The automation events are described in more detail below.
 
@@ -469,6 +496,31 @@ Get the list of available providers, the default configuration, and whether each
     }
 }
 ```
+
+### GET /api/notifications/alerts
+
+Active alerts and active silences.
+
+```json
+{
+  "success": true,
+  "alerts": [{"fingerprint": "resource_threshold:pve4/cpu", "alert_type": "resource_threshold",
+              "subject": "pve4/cpu", "label": "pve4 CPU 91.2%", "value": 91.2, "threshold": 85,
+              "first_seen": "...", "last_seen": "...", "notified_at": "...",
+              "clear_count": 1, "repeats": 4, "silence": null}],
+  "silences": [{"id": 3, "fingerprint": null, "alert_type": "capacity_warning",
+                "created_at": "...", "expires_at": "...", "until_resolved": 0}],
+  "settings": {"resolve_collections": 3, "resolve_margin": 5.0}
+}
+```
+
+### POST /api/notifications/silences
+
+Body: `{"fingerprint": "<type>:<subject>"}` or `{"alert_type": "<type>"}`, plus `"duration"`: `1h`, `8h`, `24h` or `resolved`. Returns `{"success": true, "silence": {...}}`; 400 for an unknown duration or no target.
+
+### DELETE /api/notifications/silences/&lt;id&gt;
+
+Removes a silence. 404 if it does not exist (or has already expired).
 
 ---
 

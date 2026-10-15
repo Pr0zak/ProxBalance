@@ -5,6 +5,7 @@ import NumberField from '../NumberField.jsx';
 import { API_BASE } from '../../utils/constants.js';
 import { INPUT_FIELD, SELECT_FIELD, ICON, BTN_PRIMARY, BTN_SECONDARY, INNER_CARD, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 import TextField from '../TextField.jsx';
+import ActiveAlerts from './ActiveAlerts.jsx';
 const { useState, useEffect } = React;
 
 const timeOf = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -187,6 +188,8 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
 
                       {automationConfig.notifications?.enabled && (
                       <div className="space-y-4 mt-4">
+                        <ActiveAlerts />
+
                         {/* Migration Events */}
                         <div className={INNER_CARD}>
                           <div className="font-medium text-pb-text dark:text-gray-300 mb-2">Migration Events</div>

@@ -202,79 +202,52 @@ def generate_recommendations():
             ai_enhanced = result.get('ai_enhanced', False)
             logger.info(f"✓ Successfully generated {count} recommendations in {generation_time:.1f}s" + (" (AI Enhanced)" if ai_enhanced else ""))
 
-            # Check if recommendations were cleared (previous had recommendations, now none)
-            previous_count = 0
-            try:
-                recommendations_cache_file = BASE_DIR / "recommendations_cache.json"
-                if recommendations_cache_file.exists():
-                    with open(recommendations_cache_file, 'r') as f:
-                        prev_cache = json.load(f)
-                        previous_count = prev_cache.get('count', 0)
-            except Exception:
-                pass
-
             summary = result.get('summary', {})
             recs = result.get('recommendations', [])
             top = recs[0] if recs else {}
+            top_rec = {
+                "vmid": top.get("vmid"),
+                "name": top.get("name"),
+                "type": top.get("type", "VM"),
+                "target_node": top.get("target_node"),
+            } if top else None
 
-            # Send notification if there are actionable recommendations
-            if count > 0:
-                try:
-                    from notifications import send_notification
-                    send_notification(config, "recommendations", {
-                        "count": count,
-                        "ai_enhanced": ai_enhanced,
-                        "top_recommendation": {
-                            "vmid": top.get("vmid"),
-                            "name": top.get("name"),
-                            "type": top.get("type", "VM"),
-                            "target_node": top.get("target_node"),
-                        } if top else None,
-                    })
-                except Exception as e:
-                    logger.warning(f"Could not send recommendations notification: {e}")
+            # Each of these is an alert with hysteresis (notifications.notify_*):
+            # it notifies once when it starts, and resolves only after
+            # alert_resolve_collections runs in a row without it.
+            try:
+                from notifications import notify_condition, notify_threshold
 
-                # Send urgent notification if high urgency detected
-                if summary.get('urgency') == 'high':
-                    try:
-                        from notifications import send_notification
-                        send_notification(config, "recommendations_urgent", {
-                            "count": count,
-                            "urgency": "high",
-                            "reason": summary.get("urgency_label", ""),
-                            "top_recommendation": {
-                                "vmid": top.get("vmid"),
-                                "name": top.get("name"),
-                                "type": top.get("type", "VM"),
-                                "target_node": top.get("target_node"),
-                            } if top else None,
-                        })
-                    except Exception as e:
-                        logger.warning(f"Could not send urgent notification: {e}")
-
-                # Send capacity warning if cluster health is concerning
-                if summary.get('cluster_health', 100) < 50:
-                    try:
-                        from notifications import send_notification
-                        send_notification(config, "capacity_warning", {
-                            "cluster_cpu_avg": summary.get("avg_cpu", 0),
-                            "cluster_mem_avg": summary.get("avg_mem", 0),
-                            "cluster_health": summary.get("cluster_health", 0),
-                            "message": f"Cluster health is {summary.get('cluster_health', 0)}/100. Consider adding capacity.",
-                        })
-                    except Exception as e:
-                        logger.warning(f"Could not send capacity warning: {e}")
-
-            # Send cleared notification if recommendations went from >0 to 0
-            if count == 0 and previous_count > 0:
-                try:
-                    from notifications import send_notification
-                    send_notification(config, "recommendations_cleared", {
-                        "previous_count": previous_count,
+                # "recommendations" resolving sends "recommendations_cleared".
+                notify_condition(config, "recommendations", "cluster", count > 0, {
+                    "count": count,
+                    "ai_enhanced": ai_enhanced,
+                    "top_recommendation": top_rec,
+                }, value=count, label=f"{count} migration suggestion{'s' if count != 1 else ''}",
+                    resolved_event="recommendations_cleared",
+                    resolved_data=lambda t: {
+                        "previous_count": int(t.get("previous_value") or 0),
                         "cluster_health": summary.get("cluster_health"),
                     })
-                except Exception as e:
-                    logger.warning(f"Could not send cleared notification: {e}")
+
+                urgent = count > 0 and summary.get('urgency') == 'high'
+                notify_condition(config, "recommendations_urgent", "cluster", urgent, {
+                    "count": count,
+                    "urgency": "high",
+                    "reason": summary.get("urgency_label", ""),
+                    "top_recommendation": top_rec,
+                }, value=count, label=f"{count} urgent suggestion{'s' if count != 1 else ''}")
+
+                health = summary.get('cluster_health')
+                if isinstance(health, (int, float)):
+                    notify_threshold(config, "capacity_warning", "cluster", health, 50, {
+                        "cluster_cpu_avg": summary.get("avg_cpu", 0),
+                        "cluster_mem_avg": summary.get("avg_mem", 0),
+                        "cluster_health": health,
+                        "message": f"Cluster health is {health}/100. Consider adding capacity.",
+                    }, higher_is_worse=False, label=f"Cluster health {health:.0f}/100")
+            except Exception as e:
+                logger.warning(f"Could not send recommendation notifications: {e}")
 
             # Dynamically adjust timer interval based on cluster size
             optimal_interval = calculate_optimal_interval(num_guests, num_nodes, generation_time)

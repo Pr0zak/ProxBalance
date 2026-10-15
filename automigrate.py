@@ -1406,6 +1406,24 @@ def _resolve_intelligence_level(intelligent_config: Dict[str, Any]) -> Dict[str,
     }
 
 
+def observe_safety_alert(config: Dict[str, Any], failed: bool, reason: str) -> None:
+    """Report this run's safety-check result as a condition alert.
+
+    The 'failure' notification goes out once when checks start failing and
+    not again until they have passed alert_resolve_collections runs in a row
+    (fingerprint ``failure:safety_checks``). Notification only; the run's
+    decision is unchanged.
+    """
+    if os.environ.get('PROXBALANCE_FORCE_DRY_RUN') == '1':
+        return  # a /api/automigrate/test run must not notify or change alert state
+    try:
+        from notifications import notify_condition
+        notify_condition(config, 'failure', 'safety_checks', failed, {'reason': reason},
+                         label=f"Safety check failing: {reason}"[:200] if failed else None)
+    except Exception as e:
+        logger.error(f"Failed to record safety-check alert: {e}")
+
+
 def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, Any]):
     """
     Send notification via configured providers.
@@ -1502,11 +1520,12 @@ def main():
                 last_run_summary['status'] = 'skipped'
                 return 0
             logger.warning(f"Safety check failed: {safety_msg}")
-            send_notification(config, 'failure', {'reason': safety_msg})
+            observe_safety_alert(config, True, safety_msg)
             last_run_summary['status'] = 'failed'
             return 1
 
         logger.info(f"Safety checks passed: {safety_msg}")
+        observe_safety_alert(config, False, safety_msg)
 
         # 6. Setup migration parameters
         rules = auto_config.get('rules', {})
