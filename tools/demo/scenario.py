@@ -115,6 +115,8 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     160: dict(name="vaultwarden", t="lxc", node="orion", cores=1, mem=1, cpu=0.02, amp=0.5, peak=9, memf=0.30, tags="apps;auto_migrate_ok", disk=4),
     170: dict(name="mail", t="lxc", node="orion", cores=2, mem=4, cpu=0.06, amp=0.4, peak=9, memf=0.55, tags="apps", disk=40),
     180: dict(name="win-dc01", t="qemu", node="orion", cores=2, mem=8, cpu=0.05, amp=0.5, peak=9, memf=0.24, tags="windows", ha=True, disk=80, weekday=True),
+    182: dict(name="ml-gpu", t="qemu", node="orion", cores=4, mem=16, cpu=0.18, amp=0.7, peak=15, memf=0.70, tags="ml", disk=120, weekday=True,
+              extra={"hostpci0": "0000:01:00.0,pcie=1,x-vga=1"}),
     # lyra
     111: dict(name="postgres-replica", t="qemu", node="lyra", cores=4, mem=16, cpu=0.14, amp=0.4, peak=13, memf=0.78, tags="db", ha=True, disk=200, weekday=True),
     141: dict(name="k8s-cp-2", t="qemu", node="lyra", cores=2, mem=8, cpu=0.17, amp=0.2, peak=12, memf=0.60, pool="k8s-control", disk=64),
