@@ -4,6 +4,8 @@ import {
 import {
   GLASS_CARD, INNER_CARD, ICON, iconBadge, statusBadge, BTN_SECONDARY, TAP_TARGET } from '../../utils/designTokens.js';
 import Toggle from '../Toggle.jsx';
+import ApprovalQueue from './ApprovalQueue.jsx';
+import { automationModes } from '../../utils/automationStory.js';
 import { parseTimestamp } from '../../utils/formatters.js';
 import {
   scheduleOutlook, nextCheckInfo, reasonPhrase, flipPhrase, fmtDuration, fmtClock, zonedParts, useNow,
@@ -63,7 +65,7 @@ function nextCheckText(automationStatus, automationConfig, now) {
 }
 
 export default function QuickSetupSection({
-  automationConfig, saveAutomationConfig, automationStatus,
+  automationConfig, saveAutomationConfig, automationStatus, fetchAutomationStatus,
 }) {
   const [confirmEnableAutomation, setConfirmEnableAutomation] = useState(false);
   const [confirmDisableDryRun, setConfirmDisableDryRun] = useState(false);
@@ -74,6 +76,9 @@ export default function QuickSetupSection({
     .filter(Boolean).join(' · ');
   const enabled = automationConfig.enabled || false;
   const dryRun = automationConfig.dry_run !== false;
+  const mode = automationConfig.mode === 'semi' ? 'semi' : 'automatic';
+  const safety = automationConfig.safety_checks || {};
+  const modes = automationModes({ cpu: safety.max_node_cpu_percent ?? 85, mem: safety.max_node_memory_percent ?? 90 });
 
   return (
     <div className={GLASS_CARD}>
@@ -138,6 +143,41 @@ export default function QuickSetupSection({
           />
         </div>
       </div>
+
+      {/* Mode: what runs without asking. Acts immediately, like the switches. */}
+      <div role="radiogroup" aria-label="Automation mode" className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-2 sm:mt-3">
+        {modes.map(m => {
+          const selected = mode === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => { if (!selected) saveAutomationConfig({ mode: m.id }); }}
+              className={`${INNER_CARD} !py-2 sm:!py-3 min-h-[44px] text-left flex items-start gap-2 transition-colors ${selected
+                ? '!border-pb-accent dark:!border-pb-accent-dark ring-1 ring-pb-accent/40 dark:ring-pb-accent-dark/40'
+                : 'hover:border-slate-300 dark:hover:border-slate-600'}`}
+            >
+              <span className={`mt-1 w-3 h-3 rounded-full border-2 shrink-0 ${selected
+                ? 'border-pb-accent dark:border-pb-accent-dark bg-pb-accent dark:bg-pb-accent-dark'
+                : 'border-slate-400 dark:border-slate-500'}`} />
+              <span className="min-w-0">
+                <span className="block font-semibold text-sm text-pb-text dark:text-white leading-tight">{m.label}</span>
+                <span className="block text-xs text-pb-text2 dark:text-gray-400">{m.line}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {mode === 'semi' && (
+        <ApprovalQueue
+          queue={automationStatus?.approval_queue}
+          dryRun={dryRun}
+          onChanged={fetchAutomationStatus}
+        />
+      )}
 
       {/* Confirmations for the two switches that act immediately */}
       {confirmEnableAutomation && (

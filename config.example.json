@@ -52,6 +52,9 @@
   "automated_migrations": {
     "enabled": false,
     "dry_run": true,
+    "mode": "automatic",
+    "approval_ttl_hours": 24,
+    "_comment_mode": "automatic: run every move that passes the rules. semi: run evacuations and moves off a node over max_node_cpu_percent / max_node_memory_percent; queue the rest for approval (entries expire after approval_ttl_hours). dry_run wins over both.",
     "check_interval_minutes": 5,
     "schedule": {
       "migration_windows": [
@@ -117,6 +120,7 @@
       "on_resource_threshold": false,
       "on_recommendations": false,
       "on_evacuation": true,
+      "on_queued": true,
       "on_collector_status": false,
       "on_update_available": true,
       "providers": {

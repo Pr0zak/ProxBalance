@@ -178,6 +178,7 @@ export default function AutomationPage(props) {
           automationConfig={automationConfig}
           automationStatus={automationStatus}
           saveAutomationConfig={saveAutomationConfig}
+          fetchAutomationStatus={fetchAutomationStatus}
         />
 
         {/* Sub-tabs (wrap on phones so every tab stays visible) */}

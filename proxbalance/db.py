@@ -238,6 +238,23 @@ CREATE TABLE IF NOT EXISTS recommendation_tracking (
     data_json   TEXT    NOT NULL  -- JSON: full tracking entry
 );
 
+-- Semi-automatic mode: moves waiting for approval, one row per guest
+CREATE TABLE IF NOT EXISTS approval_queue (
+    vmid        INTEGER PRIMARY KEY,
+    name        TEXT,
+    guest_type  TEXT,
+    source_node TEXT,
+    target_node TEXT    NOT NULL,
+    reason      TEXT,
+    confidence  REAL,
+    status      TEXT    NOT NULL DEFAULT 'pending',  -- pending | approved | dismissed
+    queued_at   TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL,
+    expires_at  TEXT    NOT NULL,
+    approved_at TEXT,
+    extra_json  TEXT    -- JSON: score_improvement, distribution_balancing, ...
+);
+
 -- Schema version tracking
 CREATE TABLE IF NOT EXISTS schema_version (
     version     INTEGER PRIMARY KEY,

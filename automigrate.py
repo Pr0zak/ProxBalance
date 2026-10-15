@@ -45,6 +45,9 @@ from proxbalance.inflow_cap import (
     SKIP_CODE as TARGET_INFLOW_SKIP_CODE,
 )
 from proxbalance.ha_rules import check_ha_placement, check_move_live
+from proxbalance.semi_auto import (
+    MODE_SEMI, get_mode, get_approval_ttl_hours, split_for_approval,
+)
 from proxbalance.storage_projection import (
     LEVEL_CRITICAL, LEVEL_WONT_FIT, entries_at_least, format_storage_line,
     project_target_storage, SKIP_CODE as TARGET_STORAGE_SKIP_CODE,
@@ -1429,6 +1432,92 @@ def send_notification(config: Dict[str, Any], event_type: str, data: Dict[str, A
         logger.error(f"Failed to send notification: {e}")
 
 
+def _hold_for_approval(
+    filtered: List[Dict[str, Any]],
+    maintenance_nodes: List[str],
+    config: Dict[str, Any],
+    cache_data: Dict[str, Any],
+    approved_moves: Dict[int, str],
+    queued_this_run: set,
+    slots_left: int,
+    approval_ttl: int,
+    dry_run: bool,
+    create_decision: Any,
+    last_run_summary: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Semi-automatic mode: queue the moves that need approval.
+
+    *filtered* has already passed every automation rule. Evacuations, moves
+    off a node over its critical limits and approved moves are returned to run
+    as usual; the others are queued for approval, at most as many as this run
+    still had slots for (the moves it would have executed). The rest are
+    recorded as lower priority, as automatic mode does. Each guest gets one
+    decision per run. A dry run records 'queued' decisions but never writes
+    the queue.
+
+    Returns:
+        The recommendations that may run now, in their original order.
+    """
+    runnable, held = split_for_approval(filtered, maintenance_nodes, config, cache_data, approved_moves)
+    for idx, r in enumerate(held, start=1):
+        vmid = r['vmid']
+        if vmid in queued_this_run:
+            continue
+        queued_this_run.add(vmid)
+        guest = cache_data.get('guests', {}).get(str(vmid), {})
+        source = r.get('source_node', r.get('current_node'))
+        queued_count = sum(1 for d in last_run_summary['decisions'] if d.get('action') == 'queued')
+        if queued_count >= slots_left:
+            decision = create_decision(vmid, guest, source, r['target_node'], 'skipped',
+                                       f"Lower priority - Ranked #{idx} of {len(held)}", r)
+            decision['priority_rank'] = idx
+            decision['total_candidates'] = len(held)
+            last_run_summary['decisions'].append(decision)
+            continue
+
+        queue_status = 'new'
+        if not dry_run:
+            try:
+                queue_status = migration_db.queue_for_approval({
+                    'vmid': vmid,
+                    'name': guest.get('name', r.get('name', f'VM-{vmid}')),
+                    'type': guest.get('type', r.get('type')),
+                    'source_node': source,
+                    'target_node': r['target_node'],
+                    'reason': r.get('reason'),
+                    'confidence': r.get('confidence_score'),
+                    'score_improvement': r.get('score_improvement'),
+                    'distribution_balancing': r.get('distribution_balancing', False),
+                }, approval_ttl)
+            except Exception as e:
+                logger.error(f"Could not queue VM {vmid} for approval: {e}")
+                queue_status = 'error'
+
+        if queue_status == 'dismissed':
+            last_run_summary['decisions'].append(create_decision(
+                vmid, guest, source, r['target_node'], 'filtered', "Dismissed from the approval queue", r))
+            continue
+
+        decision = create_decision(vmid, guest, source, r['target_node'], 'queued', r.get('reason', ''), r)
+        decision['distribution_balancing'] = r.get('distribution_balancing', False)
+        if queue_status == 'error':
+            decision['error'] = 'Could not write the approval queue'
+        last_run_summary['decisions'].append(decision)
+        logger.info(f"Queued {vmid} ({decision['name']}) {source} -> {r['target_node']} for approval")
+
+        if queue_status == 'new' and not dry_run:
+            # Once per guest and target: a re-queued move doesn't notify again.
+            send_notification(config, 'queued', {
+                'vmid': vmid,
+                'name': decision['name'],
+                'type': decision.get('type'),
+                'source_node': source,
+                'target_node': r['target_node'],
+                'reason': r.get('reason', ''),
+            })
+    return runnable
+
+
 def main():
     """Main automation logic."""
     activity_log = []  # Initialize activity log at function level
@@ -1563,6 +1652,19 @@ def main():
             dry_run = True
         last_run_summary['mode'] = 'dry_run' if dry_run else 'live'
 
+        # Semi-automatic mode (D5): evacuations, moves off a node over its
+        # critical limits and approved moves run; the rest wait for approval.
+        # Automatic mode skips every semi_auto branch below.
+        semi_auto = get_mode(auto_config) == MODE_SEMI
+        if semi_auto:
+            last_run_summary['automation_mode'] = MODE_SEMI
+            approval_ttl = get_approval_ttl_hours(auto_config)
+            # Dry run never writes the queue or acts on approvals.
+            approved_moves = {} if dry_run else migration_db.get_approved_moves()
+            queued_this_run = set()   # vmids queued (or noted) in this run
+            current_rec_vmids = None  # guests recommended at the start of the run
+            logger.info(f"Semi-automatic mode: {len(approved_moves)} approved move(s) waiting")
+
         logger.info(f"Will attempt up to {max_new_migrations} migrations (dry_run={dry_run}, max_concurrent={max_concurrent}, available_slots={available_slots})")
 
         send_notification(config, 'start', {
@@ -1585,6 +1687,8 @@ def main():
                 break
 
             recommendations = rec_data.get('recommendations', [])
+            if semi_auto and current_rec_vmids is None:
+                current_rec_vmids = [r.get('vmid') for r in recommendations if r.get('vmid') is not None]
             if not recommendations:
                 logger.info("No more recommendations available")
                 im_cfg = rules.get('intelligent_migrations', {})
@@ -1983,6 +2087,22 @@ def main():
 
                 break
 
+            if semi_auto:
+                filtered = _hold_for_approval(
+                    filtered, maintenance_nodes, config, cache_data, approved_moves,
+                    queued_this_run, max_new_migrations - migrations_attempted,
+                    approval_ttl, dry_run, create_decision, last_run_summary,
+                )
+                if not filtered:
+                    logger.info("Semi-automatic: every remaining move waits for approval")
+                    try:
+                        history = load_history()
+                        history.setdefault('state', {})['last_run'] = last_run_summary
+                        save_history(history)
+                    except Exception as e:
+                        logger.error(f"Failed to save decisions: {e}")
+                    break
+
             # Pick the best recommendation
             rec = filtered[0]
             vmid = rec['vmid']
@@ -2123,6 +2243,9 @@ def main():
             if rec.get('storage_warning'):
                 pending_decision['storage_warning'] = rec['storage_warning']
                 logger.warning(f"VM {vmid} -> {target}: {rec['storage_warning']}")
+            if semi_auto:
+                pending_decision['auto_run'] = rec.get('_auto_run')
+                pending_decision['auto_run_detail'] = rec.get('_auto_run_detail')
             last_run_summary['decisions'].append(pending_decision)
 
             # 2. Add all remaining recommendations as "skipped" (lower priority)
@@ -2219,6 +2342,14 @@ def main():
                 migration_record['error'] = result['error']
 
             record_migration(migration_record)
+
+            if semi_auto and not dry_run:
+                # The move ran (or failed): its approval is used up.
+                try:
+                    migration_db.remove_from_queue(vmid)
+                except Exception as e:
+                    logger.warning(f"Could not remove VM {vmid} from the approval queue: {e}")
+                approved_moves.pop(vmid, None)
 
             # UPDATE the pending decision with execution results
             # Find the pending decision we added before migration started
@@ -2412,6 +2543,16 @@ def main():
                 if auto_config.get('safety_checks', {}).get('abort_on_failure', True):
                     logger.error("Migration failed, aborting remaining migrations")
                     break
+
+        if semi_auto and not dry_run:
+            # Expire entries past their time, and those whose guest no longer
+            # has a recommendation (when this run could read them).
+            try:
+                removed = migration_db.expire_approval_queue(current_rec_vmids)
+                if removed:
+                    logger.info(f"Approval queue: removed {removed} expired or no longer recommended move(s)")
+            except Exception as e:
+                logger.warning(f"Could not expire the approval queue: {e}")
 
         logger.info(f"Completed: {success_count}/{migrations_attempted} successful")
 

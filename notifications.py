@@ -765,6 +765,19 @@ class NotificationManager:
             message = "\n".join(lines) if lines else "Cluster capacity is constrained"
             priority = "high"
 
+        elif event_type == "queued":
+            vmid = data.get("vmid", "?")
+            guest_type = data.get("type") or "VM"
+            title = f"Waiting for approval: {guest_type} {vmid}"
+            lines = [
+                f"Guest: {data.get('name', f'VM-{vmid}')} ({guest_type} {vmid})",
+                f"From: {data.get('source_node', '?')} → To: {data.get('target_node', '?')}",
+            ]
+            if data.get("reason"):
+                lines.append(f"Reason: {data['reason']}")
+            message = "\n".join(lines)
+            priority = "normal"
+
         elif event_type == "evacuation":
             node = data.get("node", "?")
             evac_status = data.get("status", "started")
@@ -900,6 +913,7 @@ def get_default_notifications_config() -> Dict[str, Any]:
         "on_recommendations_cleared": False,
         "on_capacity_warning": True,
         "on_evacuation": True,
+        "on_queued": True,
         "on_collector_status": False,
         "on_update_available": True,
         "providers": {

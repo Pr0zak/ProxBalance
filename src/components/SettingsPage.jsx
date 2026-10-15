@@ -16,7 +16,7 @@ const AI_LABELS = { openai: 'OpenAI', anthropic: 'Anthropic', local: 'Ollama' };
 // Notification events and whether each is on when the key is absent.
 const NOTIF_EVENTS = {
   on_start: true, on_complete: true, on_action: true, on_failure: true, on_node_status: true,
-  on_evacuation: true, on_update_available: true,
+  on_evacuation: true, on_queued: true, on_update_available: true,
   on_resource_threshold: false, on_recommendations: false, on_collector_status: false,
 };
 const CONNECTION_KEYS = ['proxmox_api_token_id', 'proxmox_api_token_secret'];

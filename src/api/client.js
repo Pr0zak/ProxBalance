@@ -795,6 +795,38 @@ export async function runAutomationNow() {
   }
 }
 
+// Approval queue (semi-automatic mode). Approve/dismiss are sent once, never
+// retried: approving starts a run that may migrate the guest.
+async function postQueueAction(vmid, action) {
+  try {
+    const response = await fetch(`${API_BASE}/automigrate/queue/${encodeURIComponent(vmid)}/${action}`, {
+      method: 'POST'
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      return { error: true, message: result.error || `HTTP ${response.status}` };
+    }
+    return result;
+  } catch (err) {
+    console.error(`Failed to ${action} queued move:`, err);
+    return { error: true, message: err.message };
+  }
+}
+
+export async function fetchApprovalQueue() {
+  try {
+    const response = await fetch(`${API_BASE}/automigrate/queue`);
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('Failed to fetch approval queue:', err);
+    return { error: true, message: err.message };
+  }
+}
+
+export const approveQueuedMove = (vmid) => postQueueAction(vmid, 'approve');
+export const dismissQueuedMove = (vmid) => postQueueAction(vmid, 'dismiss');
+
 // ---------------------------------------------------------------------------
 // Rollback
 // ---------------------------------------------------------------------------

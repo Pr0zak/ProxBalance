@@ -76,6 +76,7 @@ An enabled provider whose required fields are missing (for example Email without
 | `on_recommendations_cleared` | boolean | `false` | Recommendations dropped to zero |
 | `on_capacity_warning` | boolean | `true` | Cluster health fell below 50 |
 | `on_evacuation` | boolean | `true` | A node evacuation starts, completes or fails |
+| `on_queued` | boolean | `true` | Semi-automatic mode: a move starts waiting for approval (once per guest and target) |
 | `on_collector_status` | boolean | `false` | Data collection completed or failed |
 | `on_update_available` | boolean | `true` | A ProxBalance update is available |
 

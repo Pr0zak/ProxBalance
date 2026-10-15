@@ -85,6 +85,18 @@ export function runStatusLabel(run) {
   const decisions = Array.isArray(run.decisions) ? run.decisions : [];
   const observing = decisions.filter(d => d.action === 'observing').length;
   const filtered  = decisions.filter(d => (d.action === 'filtered' || d.action === 'skipped') && d.skip_code !== 'target_inflow_cap').length;
+  const queued    = decisions.filter(d => d.action === 'queued').length;
+
+  if (queued > 0) {
+    const n = `${queued} move${queued === 1 ? '' : 's'}`;
+    return {
+      label: 'Needs Approval',
+      tone: 'info',
+      banner: run.mode === 'dry_run'
+        ? `${n} would wait for approval (dry run: nothing queued).`
+        : `${n} waiting for approval on the Automation page.`,
+    };
+  }
 
   if (observing > 0 && filtered === 0 && !capped) {
     return {
