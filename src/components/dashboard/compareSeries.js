@@ -24,14 +24,14 @@ export function nodeColors(names) {
 }
 
 /**
- * Averaging window per period, in seconds. Four raw per-minute lines overlap
- * into noise, so each node's line is averaged per clock-aligned bucket. From 7d
- * up the buckets equal the aggregates the per-node charts already draw
- * (RRD step x sample window), so those read the same as before.
+ * Averaging window per period, in seconds. Each period keeps roughly 180-360
+ * points per node so short spikes still show: 1h and 7d use the raw RRD step
+ * (1 min, 30 min) and 90d the raw 6 h year step; the others average just enough
+ * samples to keep four lines apart.
  */
 export const COMPARE_BUCKETS = {
-  '1h': 300, '6h': 300, '1d': 900, '7d': 3600,
-  '30d': 4 * 3600, '90d': 12 * 3600, '180d': 86400, '1yr': 2 * 86400,
+  '1h': 60, '6h': 120, '1d': 300, '7d': 1800,
+  '30d': 2 * 3600, '90d': 6 * 3600, '180d': 12 * 3600, '1yr': 86400,
 };
 
 /** "15-min averages", "1-hour averages", "2-day averages". */
@@ -85,8 +85,7 @@ const rawRows = (trendData, cfg) => {
  * with times in unix seconds, values the bucket averages and min/max the raw
  * range inside each bucket.
  */
-export function bucketSeries(nodes, cfg, metricKey) {
-  const bucket = COMPARE_BUCKETS[cfg.id] || 900;
+export function bucketSeries(nodes, cfg, metricKey, bucket = COMPARE_BUCKETS[cfg.id] || 300) {
   const periodSeconds = cfg.ms / 1000;
   const withRows = (nodes || []).map(n => ({ name: n.name, rows: rawRows(n.trendData, cfg) })).filter(n => n.rows.length);
   if (!withRows.length) return null;

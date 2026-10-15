@@ -12,9 +12,9 @@ const METRIC_KEY = 'nodeCompareMetric';
 /**
  * Every node on one chart, one metric at a time (CPU / Memory / IO wait), so an
  * uneven cluster shows up as lines that sit apart.
- *  - Same RRD rows and period as the per-node charts, averaged per period
- *    (5-min at 1h/6h, 15-min at 1d, 1-hour at 7d, the per-node aggregates
- *    from 30d up) so four lines stay readable; see compareSeries.bucketSeries.
+ *  - Same RRD rows and period as the per-node charts, raw or lightly averaged
+ *    (1-min at 1h, 2-min at 6h, 5-min at 1d, 30-min at 7d, coarser from 30d
+ *    up) so spikes still show; see compareSeries.bucketSeries.
  *    A node whose newest sample lags by a bucket is filled at the end; a bucket
  *    with no samples (node offline) stays a gap.
  *  - Legend under the chart: each item shows or hides its node; hovering it
@@ -178,11 +178,11 @@ function CompareCanvas({ aligned, metric, colorOf, threshold, hidden, highlight,
       datasets.push({
         label: l.name, data: l.values, backgroundColor: colorOf[l.name],
         ...lineStyle(l.name, highlight),
-        tension: 0.2, pointRadius: 0, pointHoverRadius: 3, fill: false, spanGaps: false, hidden: isHidden,
+        tension: 0, pointRadius: 0, pointHoverRadius: 3, fill: false, spanGaps: false, hidden: isHidden,
       });
       if (highlight === l.name && showEnvelope && !isHidden) {
-        datasets.push({ label: '__band_max', data: l.max, borderColor: 'transparent', backgroundColor: withAlpha(colorOf[l.name], 0.2), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0.2, order: 2 });
-        datasets.push({ label: '__band_min', data: l.min, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.2, order: 2 });
+        datasets.push({ label: '__band_max', data: l.max, borderColor: 'transparent', backgroundColor: withAlpha(colorOf[l.name], 0.2), pointRadius: 0, pointHoverRadius: 0, fill: '+1', tension: 0, order: 2 });
+        datasets.push({ label: '__band_min', data: l.min, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0, order: 2 });
       }
     });
     const visible = lines.filter(l => !hidden.includes(l.name));

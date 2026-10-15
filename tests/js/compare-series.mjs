@@ -30,9 +30,11 @@ eq('all-missing stays missing', S.fillEdges([null, null]), [null, null]);
 eq('zero is a value, not a gap', S.fillEdges([0, null]), [0, 0]);
 
 // Averaging windows and labels.
-eq('1d uses 15-min buckets', S.COMPARE_BUCKETS['1d'], 900);
+eq('1d uses 5-min buckets', S.COMPARE_BUCKETS['1d'], 300);
 eq('labels', ['1h', '1d', '7d', '30d', '1yr'].map(p => S.averageLabel(S.COMPARE_BUCKETS[p])),
-  ['5-min averages', '15-min averages', '1-hour averages', '4-hour averages', '2-day averages']);
+  ['1-min averages', '5-min averages', '30-min averages', '2-hour averages', '1-day averages']);
+eq('every period keeps at least 60 points', ['1h', '6h', '1d', '7d', '30d', '90d', '180d', '1yr']
+  .every(p => ({ '1h': 3600, '6h': 21600, '1d': 86400, '7d': 604800, '30d': 2592000, '90d': 7776000, '180d': 15552000, '1yr': 31536000 })[p] / S.COMPARE_BUCKETS[p] >= 60), true);
 
 // Bucketing at 1h (5-min buckets) over per-minute rows whose value is the minute index.
 // Node b is offline for minutes 10-24 (three whole buckets) and its last sample is
@@ -45,7 +47,7 @@ const bs = S.bucketSeries([
   { name: 'a', trendData: { hour: rows(all) } },
   { name: 'b', trendData: { hour: rows(all.filter(m => (m < 10 || m > 24) && m <= 54)) } },
   { name: 'c', trendData: {} },
-], H1, 'cpu');
+], H1, 'cpu', 300);
 eq('one shared axis of whole buckets', bs.times.length === 12 && bs.times[0] === T0 && bs.times[1] - bs.times[0] === 300, true);
 eq('bucket averages', bs.lines[0].values, [2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57]);
 eq('raw range kept for the band', [bs.lines[0].min[1], bs.lines[0].max[1]], [5, 9]);
@@ -53,7 +55,7 @@ eq('outage stays a gap, lagging end filled', bs.lines[1].values, [2, 7, null, nu
 eq('node without data is left out', bs.lines.map(l => l.name), ['a', 'b']);
 eq('label carried', bs.label, '5-min averages');
 eq('metric with no samples -> null', S.bucketSeries([{ name: 'a', trendData: { hour: rows(all) } }], H1, 'iowait'), null);
-eq('falls back to day rows', S.bucketSeries([{ name: 'a', trendData: { day: rows(all) } }], H1, 'cpu').lines[0].values[0], 2);
+eq('falls back to day rows', S.bucketSeries([{ name: 'a', trendData: { day: rows(all) } }], H1, 'cpu', 300).lines[0].values[0], 2);
 eq('nothing to draw -> null', S.bucketSeries([{ name: 'a', trendData: { hour: [] } }], H1, 'cpu'), null);
 
 // Axis ceiling.
