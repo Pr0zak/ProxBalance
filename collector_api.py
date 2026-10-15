@@ -317,12 +317,30 @@ class ProxmoxAPICollector:
             return []
 
     def get_resource_pools(self) -> List[Dict]:
-        """Fetch resource pools"""
+        """Fetch resource pools with their members (read-only).
+
+        Sets ``self.pools_available``: False when ``/pools`` could not be read
+        (for example the token lacks Pool.Audit), so pool-based placement
+        rules are skipped instead of treating every pool as empty.
+        """
         try:
-            return self.proxmox.pools.get()
+            pools = self.proxmox.pools.get() or []
         except Exception as e:
+            self.pools_available = False
             self._note_error("resource pools", e)
             return []
+        self.pools_available = True
+        # Some PVE versions list pools without members; ask for each one then.
+        for pool in pools:
+            if "members" in pool or not pool.get("poolid"):
+                continue
+            pid = pool["poolid"]
+            try:
+                pool["members"] = (self.proxmox.pools(pid).get() or {}).get("members", [])
+            except Exception as e:
+                self._note_error(f"pool {pid}", e)
+                pool["members"] = []
+        return pools
 
     def get_guest_agent_info(self, node: str, vmid: int) -> Dict:
         """Fetch guest agent information (VMs only)"""
@@ -1071,6 +1089,8 @@ class ProxmoxAPICollector:
             "cluster_health": getattr(self, 'cluster_health', {}),
             "ha_status": getattr(self, 'ha_status', {}),
             "pve_crs": getattr(self, 'crs_config', {}),
+            # False when /pools could not be read; pool placement rules are then skipped.
+            "pools_available": getattr(self, 'pools_available', None),
             "performance": getattr(self, 'perf_metrics', {}),
             # Failed Proxmox calls this run, each with its error kind
             # (network / connect_timeout / read_timeout / auth / application).

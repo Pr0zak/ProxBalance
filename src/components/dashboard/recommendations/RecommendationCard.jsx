@@ -137,6 +137,7 @@ export default function RecommendationCard({
     hasConflict && `Several suggestions target ${rec.conflict_target || rec.target_node}; together they may push it over the limits.`,
     inflow && `Inflow cap: automation sends at most ${inflow.cap} migration${inflow.cap === 1 ? '' : 's'} into ${inflow.target} per run.`,
     ...ha.map(w => `HA rule: ${w}`),
+    ...(rec.affinity_split || []).map(g => `Splits soft group ${g}.`),
     ...storageWarnings(rec),
     changedTarget && `Target changed from ${changedTarget.old_target} to ${changedTarget.new_target} since the last generation.`,
     rec.bind_mount_warning && rec.bind_mount_warning.replace(/^[⚠ℹ]️?\s*/, ''),

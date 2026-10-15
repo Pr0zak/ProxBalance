@@ -16,6 +16,7 @@ from proxbalance.scoring import (
 from proxbalance.recommendations import generate_recommendations, check_storage_compatibility, build_storage_cache
 from proxbalance.error_handlers import api_route
 from proxbalance.rec_observation import annotate_seen_counts
+from proxbalance.placement_rules import anti_affinity_conflict, build_rules as build_placement_rules
 from proxbalance.storage_projection import (
     LEVEL_WONT_FIT, entries_at_least, format_storage_line, project_target_storage,
 )
@@ -778,6 +779,12 @@ def guest_migration_options(vmid):
     except Exception:
         pass
 
+    try:
+        placement = build_placement_rules(guests, load_config().get("automated_migrations", {}).get("rules", {}),
+                                          cache_data.get("pools_available"))
+    except Exception:
+        placement = []
+
     # Calculate scores on all other nodes
     target_options = []
     for node_name, node in nodes.items():
@@ -796,22 +803,13 @@ def guest_migration_options(vmid):
             target_options.append(entry)
             continue
 
-        # Check anti-affinity conflicts
-        conflict = False
+        # Check anti-affinity conflicts (exclude_* tags, anti-affinity pools)
         conflict_reason = None
-        if guest.get("tags", {}).get("exclude_groups", []):
-            for other_vmid in node.get("guests", []):
-                other_key = str(other_vmid) if str(other_vmid) in guests else other_vmid
-                if other_key not in guests:
-                    continue
-                other = guests[other_key]
-                for excl_group in guest["tags"]["exclude_groups"]:
-                    if excl_group in other.get("tags", {}).get("all_tags", []):
-                        conflict = True
-                        conflict_reason = f"Anti-affinity conflict (group: {excl_group})"
-                        break
-                if conflict:
-                    break
+        hit = anti_affinity_conflict(guest.get("vmid", vmid), node_name, placement, guests,
+                                     node_guests=node.get("guests", []))
+        if hit:
+            conflict_reason = f"Anti-affinity conflict ({hit})"
+        conflict = conflict_reason is not None
 
         if conflict:
             entry.update({"score": 999999, "suitability_rating": 0, "suitable": False, "reason": conflict_reason, "disqualified": True})

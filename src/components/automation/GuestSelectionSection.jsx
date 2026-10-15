@@ -7,6 +7,7 @@ import NumberRow from './NumberRow.jsx';
 import TriggerThresholds from './TriggerThresholds.jsx';
 import DistributionBalancingSection from './DistributionBalancingSection.jsx';
 import SectionHeader from '../SectionHeader.jsx';
+import PlacementRules from './PlacementRules.jsx';
 
 const { useState } = React;
 
@@ -89,16 +90,26 @@ export default function GuestSelectionSection({
               />
               <ToggleRow
                 label="Keep Affinity Groups Together"
-                description="Keeps VMs with the same affinity tag together on the same node. Companion VMs follow when one is migrated."
+                description="Hard groups (affinity_req_ tag) move together. Soft groups (affinity_ tag) only make a split cost score."
                 checked={automationConfig.rules?.respect_affinity_rules !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
               />
+              {automationConfig.rules?.respect_affinity_rules !== false && (
+                <NumberRow
+                  label="Soft split penalty"
+                  description="Added to a target's score when the move splits a soft group"
+                  min="0" max="100"
+                  value={automationConfig.rules?.affinity_soft_penalty ?? 15}
+                  onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, affinity_soft_penalty: Math.max(0, Math.min(100, val)) } })}
+                />
+              )}
               <ToggleRow
                 label="Keep Anti-Affinity Groups Apart"
                 description="Prevents VMs with the same exclude tag from clustering on one node."
                 checked={automationConfig.rules?.respect_exclude_affinity !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
               />
+              <PlacementRules />
               <ToggleRow
                 label="Allow Container Restarts (causes downtime)"
                 description="Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime."

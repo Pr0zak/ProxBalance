@@ -232,7 +232,9 @@ Blackout windows always take priority over migration windows. If the `migration_
 | `respect_ignore_tags` | bool | `true` | Honor `ignore` tags (skip tagged guests) |
 | `respect_exclude_tags` | bool | `true` | Honor `exclude_*` tags (anti-affinity) |
 | `respect_exclude_affinity` | bool | `true` | Enforce anti-affinity placement checks |
-| `respect_affinity_rules` | bool | `true` | Honor `affinity_*` tags (pro-affinity companion migrations) |
+| `respect_affinity_rules` | bool | `true` | Honor affinity rules: the soft split penalty, and companion migrations for required groups |
+| `affinity_soft_penalty` | number | `15` | Score points added to a target that splits a soft affinity group (0-100). See [Affinity rules](AUTOMATION.md#affinity-rules-affinity_-tags-soft-or-required) |
+| `pool_rules` | object | `{}` | Proxmox pools as placement groups: `{"<pool>": "affinity" \| "anti-affinity"}` or `{"<pool>": {"type": "affinity", "required": true}}`. See [Pool rules](AUTOMATION.md#pool-rules) |
 | `require_auto_migrate_ok_tag` | bool | `false` | Whitelist mode: only migrate guests tagged `auto_migrate_ok` (the older `auto-migrate-ok` spelling also works) |
 
 ### Safety Checks

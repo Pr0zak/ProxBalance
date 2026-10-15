@@ -111,7 +111,7 @@ pvesh set /nodes/pve1/qemu/101/config --tags "exclude_database"
 pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
 ```
 
-Guests with matching `exclude_*` tags are penalized when placed on the same node. Violations are flagged in the dashboard.
+Anti-affinity is a hard rule: a node that already runs a guest with the same `exclude_*` tag is never a target. Violations are flagged in the dashboard, and **Enforce now** (Automation → Guest Rules) plans and runs the moves that fix them. Proxmox pools can be anti-affinity groups too (`pool_rules`).
 
 ### Affinity Rules
 
@@ -122,7 +122,7 @@ pvesh set /nodes/pve1/qemu/200/config --tags "affinity_webstack"
 pvesh set /nodes/pve1/qemu/201/config --tags "affinity_webstack"
 ```
 
-Guests with matching `affinity_*` tags are kept on the same node. When one member is migrated, companion migrations are automatically generated for the rest of the group. Split groups (members on different nodes) are flagged in the dashboard.
+`affinity_*` groups are soft: a move that splits the group adds a score penalty (`affinity_soft_penalty`, default 15) but is allowed. Tag a member `affinity_req_<name>` to make the group required: when one member migrates, companion migrations move the rest with it, and a split shows up as a hard-rule violation that **Enforce now** can fix. Proxmox pools can be affinity groups too (`pool_rules`). Split groups (members on different nodes) are flagged in the dashboard. See [Automation](AUTOMATION.md#affinity-rules-affinity_-tags-soft-or-required).
 
 ### Storage Compatibility
 
@@ -175,7 +175,7 @@ Balances guest counts across nodes by migrating small VMs/CTs. Addresses uneven 
 
 - `ignore` and `no-auto-migrate` tags exclude guests from automation
 - `exclude_*` tags enforce anti-affinity (keep guests apart)
-- `affinity_*` tags enforce pro-affinity (keep guests together) with automatic companion migrations
+- `affinity_*` tags prefer guests together (soft score penalty); `affinity_req_*` keeps them together with companion migrations
 - `auto_migrate_ok` (or `auto-migrate-ok`) opts a guest in when whitelist mode is on
 - Tags are bypassed for maintenance evacuations
 
