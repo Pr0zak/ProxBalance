@@ -1,4 +1,4 @@
-import { Clock, Pause, Play, Loader, Settings, ChevronDown, MoveRight, Eye } from '../Icons.jsx';
+import { Clock, Pause, Play, Loader, Settings, ChevronDown, ChevronRight, MoveRight, Eye, Check } from '../Icons.jsx';
 import { RunStrip } from './RunHistoryDisplay.jsx';
 import RunDetailBlock from './RunDetailBlock.jsx';
 import MigrationOutcomes from './recommendations/insights/MigrationOutcomes.jsx';
@@ -6,7 +6,7 @@ import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
 import { useAppStatus } from '../AppStatus.jsx';
 import { statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
-import { lastCheckSentence, lastCheckParts, lastRealMove, shortDateTime } from '../../utils/automationStory.js';
+import { lastCheckSentence, lastCheckParts, lastRealMove, shortDateTime, pendingApprovals } from '../../utils/automationStory.js';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -29,6 +29,7 @@ export function getStatus(automationStatus) {
   // scheduled runs will exit early, so don't claim "Active".
   const cw = (automationStatus.state?.current_window || '').toLowerCase();
   if (cw.startsWith('outside')) return { label: 'Idle', color: 'gray', dotColor: 'bg-gray-400' };
+  if (automationStatus.mode === 'semi') return { label: 'Semi-auto', color: 'green', dotColor: 'bg-green-400' };
   return { label: 'Active', color: 'green', dotColor: 'bg-green-400' };
 }
 
@@ -151,6 +152,8 @@ export default function AutoStatusPill({
   const tracking = automationStatus.intelligent_tracking;
   const watching = (tracking?.items || []).filter(i => i.status === 'observing');
   const periods = tracking?.observation_periods || null;
+  // Semi-automatic mode: moves asking for a decision (approved ones just wait to run).
+  const awaiting = automationStatus.mode === 'semi' ? pendingApprovals(automationStatus.approval_queue) : [];
 
   if (size === 'pill') {
     return (
@@ -272,7 +275,7 @@ export default function AutoStatusPill({
           </div>
         )}
       </div>
-      {size === 'banner' && automationStatus.enabled && (last || realMove || watching.length > 0) && (
+      {size === 'banner' && automationStatus.enabled && (last || realMove || watching.length > 0 || awaiting.length > 0) && (
         <div className="px-4 pb-2">
           {last && (
             <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm" title={lastCheckSentence(lastRunObj, storyCtx)}>
@@ -281,7 +284,7 @@ export default function AutoStatusPill({
               {last.subject && <span className="text-pb-text dark:text-gray-200 min-w-0 break-words">{last.subject}</span>}
             </p>
           )}
-          {(realMove || watching.length > 0) && (
+          {(realMove || watching.length > 0 || awaiting.length > 0) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-pb-text2 dark:text-gray-400">
               {realMove && (
                 <span className="inline-flex items-center gap-1.5 min-w-0 flex-wrap" title={realMove.reason || undefined}>
@@ -292,6 +295,18 @@ export default function AutoStatusPill({
                   {realMove.status === 'failed' && <span className="text-red-600 dark:text-red-400">failed</span>}
                   <span className="text-pb-text2 dark:text-gray-500">· {shortDateTime(realMove.timestamp)}</span>
                 </span>
+              )}
+              {awaiting.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage?.('automation')}
+                  className="inline-flex items-center gap-1.5 hover:text-pb-text dark:hover:text-gray-200"
+                  title={awaiting.map(e => `${e.name || e.vmid} ${e.source_node} → ${e.target_node}`).join('\n')}
+                >
+                  <Check size={12} className="text-indigo-500 dark:text-indigo-400" />
+                  <span className="text-pb-text dark:text-gray-200">{awaiting.length}</span> move{awaiting.length !== 1 ? 's' : ''} waiting for approval
+                  <ChevronRight size={12} />
+                </button>
               )}
               {watching.length > 0 && (
                 <button

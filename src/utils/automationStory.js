@@ -8,8 +8,9 @@
  *   { timestamp, status: success|partial|failed|skipped|no_action|running|disabled,
  *     mode: live|dry_run, decisions: [...], safety_checks: {...}, ... }
  * and each decision has an `action`: executed|failed|pending|observing|
- * deferred|skipped|filtered. In a dry run, "executed" means the engine
- * logged the move without making it.
+ * deferred|skipped|filtered|queued. In a dry run, "executed" means the engine
+ * logged the move without making it. "queued" (semi-automatic mode) means the
+ * move waits for approval; in a dry run nothing is actually queued.
  */
 import { parseTimestamp, runFailureReason, decisionSkipLabel } from './formatters.js';
 
@@ -21,6 +22,12 @@ const guestName = (d) => d?.name || (d?.vmid != null ? `guest ${d.vmid}` : 'a gu
 const route = (d) => (d?.source_node && d?.target_node ? `${d.source_node} → ${d.target_node}` : '');
 
 export const isDryRun = (run) => run?.mode === 'dry_run';
+
+/** Decisions in a run that wait for approval (semi-automatic mode). */
+export const queuedDecisions = (run) => (Array.isArray(run?.decisions) ? run.decisions : []).filter(d => d.action === 'queued');
+
+/** Chip for a queued move; a dry run never queues, it only says it would. */
+export const queuedChip = (dry) => (dry ? 'would ask' : 'needs approval');
 
 /** "just now" / "3 min ago" / "2 h ago" / "4 d ago", or "" without a time. */
 export function agoText(ts, now = new Date()) {
@@ -103,7 +110,7 @@ export function skipReason(run, { opensAt } = {}) {
 /**
  * What one run amounted to.
  * Returns { kind, count, chip, tone, reason }:
- *   kind  — moved | would_move | nothing | waiting | held | skipped | failed | running | off
+ *   kind  — moved | would_move | queued | nothing | waiting | held | skipped | failed | running | off
  *   chip  — short label for an outcome chip ("would move 1", "skipped")
  *   tone  — green | blue | gray | yellow | red | purple (statusBadge colours)
  */
@@ -133,6 +140,8 @@ export function runOutcome(run, ctx = {}) {
   if (failedMoves.length > 0) {
     return { kind: 'failed', count: failedMoves.length, chip: 'failed', tone: 'red', reason: failedMoves[0].error || runFailureReason(run) };
   }
+  const queued = queuedDecisions(run);
+  if (queued.length > 0) return { kind: 'queued', count: queued.length, chip: queuedChip(dry), tone: 'blue', reason: null };
   const observing = decisions.filter(d => d.action === 'observing');
   const held = decisions.filter(d => HELD_ACTIONS.has(d.action));
   if (held.length > 0) return { kind: 'held', count: held.length, chip: 'held back', tone: 'orange', reason: null };
@@ -164,7 +173,15 @@ export function runSummary(run, ctx = {}) {
       return `${movePhrase(moved.length ? moved : [{}], 'would have moved')} — dry run, nothing moved`;
     case 'moved': {
       const base = movePhrase(moved.length ? moved : [{}], 'moved');
-      return o.failed ? `${base}; ${plural(o.failed, 'move')} failed` : base;
+      const waiting = queuedDecisions(run).length;
+      return [base, o.failed && `${plural(o.failed, 'move')} failed`, waiting && `${plural(waiting, 'move')} ${waiting === 1 ? 'needs' : 'need'} approval`]
+        .filter(Boolean).join('; ');
+    }
+    case 'queued': {
+      const queued = queuedDecisions(run);
+      return isDryRun(run)
+        ? `${movePhrase(queued, 'would ask approval to move')} — dry run, nothing queued`
+        : `${movePhrase(queued, 'asks approval to move')}`;
     }
     case 'waiting':
       return waitingPhrase(decisions.filter(d => d.action === 'observing'));
@@ -228,7 +245,16 @@ export function shortWhy(d) {
   return why.length > 60 ? `${why.slice(0, 57)}…` : why;
 }
 
-/** Shorten a held-back reason to fit a chip. */
+/**
+ * Why a move ran, for a moved row: in semi-automatic mode the engine says
+ * why it didn't need approval ("approved", "pve5 CPU 92% > 85%").
+ */
+export function autoRunWhy(d) {
+  if (d?.auto_run === 'approved') return `approved · ${shortWhy(d)}`;
+  if (d?.auto_run === 'critical' && d.auto_run_detail) return d.auto_run_detail;
+  return shortWhy(d);
+}
+
 /**
  * Held-back reason as a short phrase that groups well: every "lower
  * priority, ranked #N of M" guest is simply waiting for a later check.
@@ -261,6 +287,7 @@ export function lastCheckParts(run, ctx = {}) {
   let subject = '';
   const first = (ds) => (ds.length ? `${guestName(ds[0])} ${route(ds[0])}${ds.length > 1 ? ` +${ds.length - 1} more` : ''}`.replace(/\s+/g, ' ').trim() : '');
   if (o.kind === 'moved' || o.kind === 'would_move') subject = first(decisions.filter(d => MOVE_ACTIONS.has(d.action)));
+  else if (o.kind === 'queued') subject = first(queuedDecisions(run));
   else if (o.kind === 'waiting') {
     const obs = decisions.filter(d => d.action === 'observing');
     const p = observationProgress(obs[0]);
@@ -293,7 +320,9 @@ export function lastCheckRows(run, ctx = {}) {
     const base = { name: guestName(d), route: route(d) };
     if (MOVE_ACTIONS.has(d.action)) {
       rows.push({ ...base, chip: dry ? 'would move' : 'moved', tone: dry ? 'yellow' : 'green',
-        pips: n && !d.distribution_balancing ? { seen: n, need: n } : null, why: shortWhy(d), order: 0 });
+        pips: n && !d.distribution_balancing ? { seen: n, need: n } : null, why: autoRunWhy(d), order: 0 });
+    } else if (d.action === 'queued') {
+      rows.push({ ...base, chip: queuedChip(dry), tone: 'blue', pips: null, why: shortWhy(d), order: 1 });
     } else if (d.action === 'failed') {
       rows.push({ ...base, chip: 'failed', tone: 'red', pips: null, why: d.error || shortWhy(d), order: 0 });
     } else if (d.action === 'observing') {
@@ -330,6 +359,7 @@ export const CATEGORY_LABELS = [
   ['waiting', 'waiting'],
   ['would_move', 'would move (dry run)'],
   ['moved', 'moved'],
+  ['queued', 'needs approval'],
   ['held', 'held back'],
   ['skipped', 'skipped'],
   ['failed', 'failed'],
@@ -503,3 +533,54 @@ export function helpedTally(outcomes) {
 }
 
 export { pct as formatPct };
+
+// ---------------------------------------------------------------------------
+// Semi-automatic mode: mode choices and the approval queue
+// ---------------------------------------------------------------------------
+
+/**
+ * The automation modes with one line each. `limits` are the safety-check
+ * limits that make a node "critical": { cpu, mem } in percent.
+ */
+export function automationModes({ cpu = 85, mem = 90 } = {}) {
+  return [
+    { id: 'automatic', label: 'Automatic', line: 'Runs every move that passes the rules.' },
+    { id: 'semi', label: 'Semi-automatic', line: `Runs evacuations and moves off nodes over ${cpu}% CPU or ${mem}% memory; asks you about the rest.` },
+  ];
+}
+
+/** "in 3 h" / "in 40 min" until a time, or "" when past or missing. */
+export function inText(ts, now = new Date()) {
+  const d = ts instanceof Date ? ts : parseTimestamp(ts);
+  if (!d) return '';
+  const mins = Math.floor((d - now) / 60000);
+  if (mins < 1) return '';
+  if (mins < 60) return `in ${mins} min`;
+  return `in ${Math.floor(mins / 60)} h`;
+}
+
+/**
+ * One approval-queue entry (GET /api/automigrate/queue) as display parts:
+ * { vmid, name, route, why, approved, detail } — `detail` is the hidden
+ * second line (full reason, confidence, when it was queued and expires).
+ */
+export function approvalRow(entry, now = new Date()) {
+  const expires = inText(entry?.expires_at, now);
+  const detail = [
+    entry?.reason ? String(entry.reason).replace(/\.\s*$/, '') : null,
+    entry?.confidence != null ? `confidence ${Math.round(Number(entry.confidence))}%` : null,
+    entry?.queued_at ? `queued ${agoText(entry.queued_at, now)}` : null,
+    expires ? `expires ${expires}` : null,
+  ].filter(Boolean).join(' · ');
+  return {
+    vmid: entry?.vmid,
+    name: guestName(entry),
+    route: route(entry),
+    why: shortWhy(entry),
+    approved: entry?.status === 'approved',
+    detail,
+  };
+}
+
+/** Entries still asking for a decision (approved ones only wait to run). */
+export const pendingApprovals = (queue) => (queue || []).filter(e => e?.status !== 'approved' && e?.status !== 'dismissed');

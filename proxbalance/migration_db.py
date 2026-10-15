@@ -461,3 +461,146 @@ def clear_stale_tracking(hours: int = 72) -> int:
         conn.commit()
 
     return len(stale_keys)
+
+
+# ---------------------------------------------------------------------------
+# Approval queue (semi-automatic mode)
+# ---------------------------------------------------------------------------
+
+QUEUE_PENDING = "pending"
+QUEUE_APPROVED = "approved"
+QUEUE_DISMISSED = "dismissed"
+
+
+def _queue_row(row: Any) -> Dict[str, Any]:
+    entry = dict(row)
+    extra = entry.pop("extra_json", None)
+    try:
+        entry.update(json.loads(extra) if extra else {})
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return entry
+
+
+def queue_for_approval(entry: Dict[str, Any], ttl_hours: int) -> str:
+    """Queue one move for approval; a newer decision replaces an older one.
+
+    The same guest and target as an unexpired entry keeps that entry's status
+    (approved stays approved, dismissed stays dismissed) and its expiry. A
+    different target replaces the entry with a fresh pending one.
+
+    Args:
+        entry: vmid, name, type, source_node, target_node, reason, confidence,
+            plus optional extra keys (score_improvement, distribution_balancing).
+        ttl_hours: Hours until a new entry expires.
+
+    Returns:
+        "new" (first time, or the target changed), or the existing entry's
+        status: "pending", "approved" or "dismissed".
+    """
+    known = {"vmid", "name", "type", "source_node", "target_node", "reason", "confidence"}
+    extra = {k: v for k, v in entry.items() if k not in known}
+    extra_json = json.dumps(extra) if extra else None
+    vmid = int(entry["vmid"])
+    now = datetime.now(timezone.utc)
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT target_node, status, expires_at FROM approval_queue WHERE vmid = ?", (vmid,)
+    ).fetchone()
+    if row and row["target_node"] == entry.get("target_node") and row["expires_at"] > now.isoformat():
+        conn.execute(
+            "UPDATE approval_queue SET name = ?, guest_type = ?, source_node = ?, reason = ?, "
+            "confidence = ?, updated_at = ?, extra_json = ? WHERE vmid = ?",
+            (entry.get("name"), entry.get("type"), entry.get("source_node"), entry.get("reason"),
+             entry.get("confidence"), now.isoformat(), extra_json, vmid),
+        )
+        conn.commit()
+        return row["status"]
+    conn.execute(
+        "INSERT OR REPLACE INTO approval_queue "
+        "(vmid, name, guest_type, source_node, target_node, reason, confidence, status, "
+        " queued_at, updated_at, expires_at, approved_at, extra_json) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+        (vmid, entry.get("name"), entry.get("type"), entry.get("source_node"),
+         entry.get("target_node"), entry.get("reason"), entry.get("confidence"), QUEUE_PENDING,
+         now.isoformat(), now.isoformat(), (now + timedelta(hours=ttl_hours)).isoformat(),
+         extra_json),
+    )
+    conn.commit()
+    return "new"
+
+
+def expire_approval_queue(keep_vmids: Optional[List[int]] = None) -> int:
+    """Drop expired entries, and with *keep_vmids* every guest not in it.
+
+    Args:
+        keep_vmids: Guests that still have a recommendation. None keeps every
+            unexpired entry.
+
+    Returns:
+        Number of entries removed.
+    """
+    conn = get_connection()
+    now = datetime.now(timezone.utc).isoformat()
+    removed = conn.execute("DELETE FROM approval_queue WHERE expires_at <= ?", (now,)).rowcount
+    if keep_vmids is not None:
+        keep = sorted({int(v) for v in keep_vmids})
+        if keep:
+            placeholders = ",".join("?" * len(keep))
+            removed += conn.execute(
+                f"DELETE FROM approval_queue WHERE vmid NOT IN ({placeholders})", keep
+            ).rowcount
+        else:
+            removed += conn.execute("DELETE FROM approval_queue").rowcount
+    conn.commit()
+    return removed
+
+
+def get_approval_queue(include_dismissed: bool = False) -> List[Dict[str, Any]]:
+    """Unexpired queue entries, oldest first."""
+    conn = get_connection()
+    now = datetime.now(timezone.utc).isoformat()
+    sql = "SELECT * FROM approval_queue WHERE expires_at > ?"
+    params: List[Any] = [now]
+    if not include_dismissed:
+        sql += " AND status != ?"
+        params.append(QUEUE_DISMISSED)
+    rows = conn.execute(sql + " ORDER BY queued_at, vmid", params).fetchall()
+    return [_queue_row(r) for r in rows]
+
+
+def get_queue_entry(vmid: int) -> Optional[Dict[str, Any]]:
+    """One unexpired queue entry (any status), or None."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT * FROM approval_queue WHERE vmid = ? AND expires_at > ?",
+        (int(vmid), datetime.now(timezone.utc).isoformat()),
+    ).fetchone()
+    return _queue_row(row) if row else None
+
+
+def get_approved_moves() -> Dict[int, str]:
+    """vmid -> target node for every approved, unexpired entry."""
+    return {e["vmid"]: e["target_node"] for e in get_approval_queue()
+            if e.get("status") == QUEUE_APPROVED}
+
+
+def set_queue_status(vmid: int, status: str) -> bool:
+    """Mark an unexpired entry approved or dismissed. False when there is none."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_connection()
+    cur = conn.execute(
+        "UPDATE approval_queue SET status = ?, updated_at = ?, "
+        "approved_at = CASE WHEN ? = 'approved' THEN ? ELSE approved_at END "
+        "WHERE vmid = ? AND expires_at > ?",
+        (status, now, status, now, int(vmid), now),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def remove_from_queue(vmid: int) -> None:
+    """Remove a guest's entry (its move ran)."""
+    conn = get_connection()
+    conn.execute("DELETE FROM approval_queue WHERE vmid = ?", (int(vmid),))
+    conn.commit()

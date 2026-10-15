@@ -54,12 +54,41 @@ Quick Setup shows one status line (state, the reason, the last run and its resul
 |---------|---------|-------------|
 | Enable Automation | `false` | Master switch |
 | Dry Run | `true` | Simulate without executing |
+| Mode (`mode`) | `automatic` | `automatic` or `semi`. See [Semi-automatic mode](#semi-automatic-mode) |
+| Approval expiry (`approval_ttl_hours`) | `24` | Semi-automatic mode: hours a queued move waits for approval (1-168) |
 | Check Interval | `5 min` | How often the engine evaluates |
 | Min Confidence Score | `75` | Minimum suitability rating (0-100) |
 | Max Migrations Per Run | `3` | Rate limit per cycle |
 | Max Concurrent | `1` | Concurrent migration limit |
 | Max Into One Node Per Run | `0` (off) | Most migrations one target node may receive in a run (0-5). See [Target inflow cap](#target-inflow-cap) |
 | Cooldown | `30 min` | Time between migrations per guest |
+
+### Semi-automatic mode
+
+Quick Setup has a mode choice under the two switches. It acts immediately, like the switches.
+
+| Mode | What runs on its own | What waits |
+|------|----------------------|------------|
+| Automatic (default) | Every move that passes the rules | Nothing |
+| Semi-automatic | Maintenance evacuations, and moves whose **source** node is over its critical limit | Every other move the run would have made |
+
+The critical limit is the pair of target safety limits under **Safety checks**: `max_node_cpu_percent` (default 85, on the ~15-minute CPU average) and `max_node_memory_percent` (default 90). A node over either one is too busy to receive guests, and in semi-automatic mode its guests can leave without approval.
+
+The split happens after every other rule, so semi-automatic mode never runs a move that automatic mode would refuse: windows, blackouts, cooldown, confidence, Smart Migrations observation, HA rules, tag rules, target storage, the inflow cap and target safety all still apply. Affinity companions follow a move that runs, as in automatic mode.
+
+**Waiting for approval.** Each queued move appears in Quick Setup (guest, from → to, why; the full reason, confidence and expiry under the row's arrow) with **Approve** and **Dismiss**; the dashboard's automation banner shows "N moves waiting for approval". The queue is stored in SQLite (`approval_queue`), one entry per guest:
+
+- A later run that wants the same guest on a different target replaces the entry (and its approval).
+- An entry is removed when the guest no longer has a recommendation, after `approval_ttl_hours` (default 24), or when its move runs.
+- A run queues at most as many moves as it could have executed (`max_migrations_per_run` minus moves already made); the rest are recorded as lower priority, as in automatic mode.
+
+**Approve** marks the entry approved and starts a run (the same path as Run Now), which executes it with every check evaluated again. If a check fails (for example outside the migration window, or the target is now too busy) the move stays approved and runs on a later check, until it expires or its recommendation changes. If a migration is already running, the move runs on the next check.
+
+**Dismiss** hides the move; it is not asked again until the entry expires or the target changes.
+
+**Dry run wins.** With dry run on, semi-automatic runs record which moves they would queue (shown as "would ask") but never write the queue, ignore approvals, and the approve endpoint refuses. `POST /api/automigrate/test` never touches the queue.
+
+In run history a queued move has its own action, `queued`, and its own colour in Recent checks ("needs approval"). A move that ran without approval in semi-automatic mode carries `auto_run` (`evacuation`, `critical` or `approved`) and `auto_run_detail` in its decision. With `notifications.on_queued` (default on) a notification is sent once per guest and target when a move starts waiting.
 
 ### Sensitivity
 

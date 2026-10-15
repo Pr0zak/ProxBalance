@@ -1,6 +1,6 @@
 import { AlertTriangle, ChevronDown } from '../Icons.jsx';
 import { statusBadge } from '../../utils/designTokens.js';
-import { lastCheckRows, isDryRun, agoText, shortDateTime, observationProgress, heldKey } from '../../utils/automationStory.js';
+import { lastCheckRows, isDryRun, agoText, shortDateTime, observationProgress, heldKey, queuedChip } from '../../utils/automationStory.js';
 
 const { useState } = React;
 
@@ -14,6 +14,7 @@ function actionLabel(d, dry) {
   if (d.action === 'executed') return dry ? 'dry run' : 'moved';
   if (d.action === 'pending') return dry ? 'dry run' : 'moving';
   if (d.action === 'observing') return 'waiting';
+  if (d.action === 'queued') return queuedChip(dry);
   if (d.action === 'filtered' || d.action === 'skipped') return 'held back';
   return d.action || '—';
 }
@@ -42,7 +43,7 @@ function resultText(d, dry) {
  */
 function DecisionsList({ decisions, dry }) {
   if (!decisions || decisions.length === 0) return null;
-  const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['observing'].includes(d.action) ? 1 : 2);
+  const order = (d) => (['executed', 'pending', 'failed'].includes(d.action) ? 0 : ['queued', 'observing'].includes(d.action) ? 1 : 2);
   const sorted = [...decisions].sort((a, b) => (order(a) - order(b)) || ((a.priority_rank || 999) - (b.priority_rank || 999)));
   return (
     <div className="overflow-x-auto">

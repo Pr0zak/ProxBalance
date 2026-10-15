@@ -6,6 +6,9 @@ from proxbalance.config_manager import load_config, save_config, CONFIG_FILE, BA
 from proxbalance.error_handlers import api_route
 from proxbalance.secret_fields import redact_automation_config, restore_placeholders
 from proxbalance.inflow_cap import CONFIG_KEY as INFLOW_CAP_KEY, validate_target_inflow_cap
+from proxbalance.semi_auto import (
+    MODE_SEMI, get_mode, get_approval_ttl_hours, validate_mode, validate_approval_ttl_hours,
+)
 
 automation_bp = Blueprint("automation", __name__)
 
@@ -541,10 +544,20 @@ def get_automigrate_status():
         except Exception:
             pass
 
+        mode = get_mode(auto_config)
+        approval_queue = []
+        if mode == MODE_SEMI:
+            try:
+                approval_queue = migration_db.get_approval_queue()
+            except Exception as e:
+                print(f"Warning: could not read the approval queue: {e}", file=sys.stderr)
+
         return jsonify({
             "success": True,
             "enabled": auto_config.get('enabled', False),
             "dry_run": auto_config.get('dry_run', True),
+            "mode": mode,
+            "approval_queue": approval_queue,
             "timer_active": timer_active,
             "check_interval_minutes": check_interval_minutes,
             "next_check": next_check,
@@ -669,6 +682,53 @@ def test_automigrate():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _inflight_migration_error():
+    """Message naming a migration in flight cluster-wide, or None.
+
+    Reuses the status endpoint's own view of in-flight migrations. (This used
+    to call an undefined helper whose NameError was swallowed, so Run Now
+    never blocked on a running move.) A failed check returns None: don't
+    block on it.
+    """
+    try:
+        status_resp = get_automigrate_status()
+        if isinstance(status_resp, tuple):
+            status_resp = status_resp[0]
+        status_data = status_resp.get_json(silent=True) or {}
+        running = status_data.get('in_progress_migrations') or []
+        if running:
+            m = running[0]
+            return (f"Cannot start new migration: {m['name']} ({m['vmid']}) is currently migrating "
+                    f"from {m['source_node']} to {m.get('target_node', 'unknown')}")
+    except Exception as check_err:
+        print(f"Warning: Could not check for running migrations: {check_err}", file=sys.stderr)
+    return None
+
+
+def _spawn_automigrate(log_name='automigrate_manual.log', label='Manual run'):
+    """Start one automigrate.py run in the background, logging to *log_name*.
+
+    Returns:
+        (process, log_file), or (None, error message) when the script is missing.
+    """
+    script_path = os.path.join(BASE_PATH, 'automigrate.py')
+    venv_python = os.path.join(BASE_PATH, 'venv', 'bin', 'python3')
+    if not os.path.exists(script_path):
+        return None, f"automigrate.py not found at {script_path}"
+    log_file = os.path.join(BASE_PATH, log_name)
+    with open(log_file, 'w') as f:
+        f.write(f"{'='*80}\n")
+        f.write(f"{label} started at {datetime.now().isoformat()}\n")
+        f.write(f"{'='*80}\n\n")
+    process = subprocess.Popen(
+        [venv_python, script_path],
+        stdout=open(log_file, 'a'),
+        stderr=subprocess.STDOUT,
+        cwd=BASE_PATH
+    )
+    return process, log_file
+
+
 @automation_bp.route("/api/automigrate/run", methods=["POST"])
 @api_route
 def run_automigrate():
@@ -677,55 +737,15 @@ def run_automigrate():
         print("Manual 'Run Now' triggered via API", file=sys.stderr)
 
         # Check if any migrations are currently running cluster-wide
-        try:
-            # Reuse the status endpoint's own view of in-flight migrations.
-            # (This used to call an undefined helper; the NameError was
-            # swallowed below, so Run Now never blocked on a running move.)
-            status_resp = get_automigrate_status()
-            if isinstance(status_resp, tuple):
-                status_resp = status_resp[0]
-            status_data = status_resp.get_json(silent=True) or {}
-            if status_data.get('in_progress_migrations') and len(status_data['in_progress_migrations']) > 0:
-                running_migrations = status_data['in_progress_migrations']
-                migration_info = running_migrations[0]
-                return jsonify({
-                    "success": False,
-                    "error": f"Cannot start new migration: {migration_info['name']} ({migration_info['vmid']}) is currently migrating from {migration_info['source_node']} to {migration_info.get('target_node', 'unknown')}"
-                }), 409  # 409 Conflict
-        except Exception as check_err:
-            print(f"Warning: Could not check for running migrations: {check_err}", file=sys.stderr)
-            # Continue anyway - don't block on check failure
+        inflight = _inflight_migration_error()
+        if inflight:
+            return jsonify({"success": False, "error": inflight}), 409  # 409 Conflict
 
-        # Run automigrate.py
-        script_path = os.path.join(BASE_PATH, 'automigrate.py')
-        venv_python = os.path.join(BASE_PATH, 'venv', 'bin', 'python3')
-
-        if not os.path.exists(script_path):
-            return jsonify({
-                "success": False,
-                "error": f"automigrate.py not found at {script_path}"
-            }), 404
-
-        # Run automation and capture initial output to return migration details
-        # Run in background for long-running migrations, but capture first few seconds of output
-        import time
-        import re
-
-        log_file = os.path.join(BASE_PATH, 'automigrate_manual.log')
-
-        # Clear/create log file
-        with open(log_file, 'w') as f:
-            f.write(f"{'='*80}\n")
-            f.write(f"Manual run started at {datetime.now().isoformat()}\n")
-            f.write(f"{'='*80}\n\n")
-
-        # Start process in background
-        process = subprocess.Popen(
-            [venv_python, script_path],
-            stdout=open(log_file, 'a'),
-            stderr=subprocess.STDOUT,
-            cwd=BASE_PATH
-        )
+        # Run automation in the background (long-running migrations), but
+        # capture the first few seconds of output to return migration details.
+        process, log_file = _spawn_automigrate()
+        if process is None:
+            return jsonify({"success": False, "error": log_file}), 404
 
         # Wait for script to start and log initial output (recommendations can take 10-15 seconds)
         time.sleep(12)
@@ -767,6 +787,72 @@ def run_automigrate():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ---------------------------------------------------------------------------
+# Approval queue (semi-automatic mode)
+# ---------------------------------------------------------------------------
+
+def _queue_context():
+    """(config, auto_config, mode, dry_run) for the queue endpoints."""
+    config = load_config()
+    auto_config = config.get('automated_migrations', {}) if not config.get('error') else {}
+    return config, auto_config, get_mode(auto_config), bool(auto_config.get('dry_run', True))
+
+
+@automation_bp.route("/api/automigrate/queue", methods=["GET"])
+@api_route
+def get_approval_queue():
+    """Moves waiting for approval (semi-automatic mode), oldest first."""
+    _, auto_config, mode, dry_run = _queue_context()
+    from proxbalance import migration_db
+    return jsonify({
+        "success": True,
+        "mode": mode,
+        "dry_run": dry_run,
+        "approval_ttl_hours": get_approval_ttl_hours(auto_config),
+        "queue": migration_db.get_approval_queue(),
+    })
+
+
+@automation_bp.route("/api/automigrate/queue/<int:vmid>/approve", methods=["POST"])
+@api_route
+def approve_queued_move(vmid):
+    """Approve a queued move and start a run that executes it.
+
+    The run goes through automigrate like Run Now, so every check (windows,
+    cooldown, inflow cap, HA rules, target safety, storage, live placement)
+    is evaluated again; a move that fails one stays approved until it
+    expires or its recommendation disappears.
+    """
+    _, _, mode, dry_run = _queue_context()
+    if mode != MODE_SEMI:
+        return jsonify({"success": False, "error": "Approval applies only in semi-automatic mode"}), 409
+    if dry_run:
+        return jsonify({"success": False, "error": "Dry run is on, so nothing would move. Turn dry run off to approve."}), 409
+    from proxbalance import migration_db
+    if not migration_db.get_queue_entry(vmid) or not migration_db.set_queue_status(vmid, migration_db.QUEUE_APPROVED):
+        return jsonify({"success": False, "error": f"No move for {vmid} is waiting for approval"}), 404
+
+    inflight = _inflight_migration_error()
+    if inflight:
+        return jsonify({"success": True, "started": False,
+                        "message": "Approved. It runs on the next check; a migration is in progress."})
+    process, err = _spawn_automigrate(label=f"Approval of {vmid}")
+    if process is None:
+        return jsonify({"success": True, "started": False, "message": f"Approved, but no run started: {err}"})
+    return jsonify({"success": True, "started": True,
+                    "message": "Approved. A run started; it moves the guest if every check still passes."})
+
+
+@automation_bp.route("/api/automigrate/queue/<int:vmid>/dismiss", methods=["POST"])
+@api_route
+def dismiss_queued_move(vmid):
+    """Dismiss a queued move. It is not asked again until it expires or its target changes."""
+    from proxbalance import migration_db
+    if not migration_db.set_queue_status(vmid, migration_db.QUEUE_DISMISSED):
+        return jsonify({"success": False, "error": f"No move for {vmid} is waiting for approval"}), 404
+    return jsonify({"success": True})
+
+
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
 @api_route
 def automigrate_config():
@@ -804,6 +890,14 @@ def automigrate_config():
 
             # Keys that belong at the root config level, not under automated_migrations
             root_level_keys = {'distribution_balancing'}
+
+            try:
+                if 'mode' in updates:
+                    updates['mode'] = validate_mode(updates['mode'])
+                if 'approval_ttl_hours' in updates:
+                    updates['approval_ttl_hours'] = validate_approval_ttl_hours(updates['approval_ttl_hours'])
+            except ValueError as e:
+                return jsonify({"success": False, "error": str(e)}), 400
 
             # Check if cooldown_minutes is being changed — if so, record a reset timestamp
             # so that the automigrate service ignores older migration history for cooldown checks

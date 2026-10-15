@@ -26,6 +26,7 @@ const CAT_CLASS = {
   waiting: 'bg-violet-400 dark:bg-violet-500',
   would_move: 'bg-amber-100 dark:bg-amber-400/15 ring-2 ring-inset ring-amber-500 dark:ring-amber-400',
   moved: 'bg-blue-600 dark:bg-blue-400',
+  queued: 'bg-indigo-50 dark:bg-indigo-400/15 ring-2 ring-inset ring-indigo-500 dark:ring-indigo-400',
   held: 'bg-orange-300 dark:bg-orange-400/80',
   failed: 'bg-red-500 dark:bg-red-400',
   skipped: 'text-slate-400 dark:text-slate-500 ring-1 ring-inset ring-slate-300 dark:ring-slate-600',

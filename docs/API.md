@@ -737,13 +737,36 @@ Runs one automation cycle **always as a dry run**, regardless of the configured 
 
 Triggers an immediate automation cycle in the background, using the configured `dry_run` value. Returns `409` if a migration is already running cluster-wide. The response includes `migration_info` (`vmid`, `name`, `type`, `source_node`, `target_node`) when a migration started within the first seconds.
 
+### GET /api/automigrate/queue
+
+Semi-automatic mode: moves waiting for approval, oldest first (expired and dismissed entries are left out). `GET /api/automigrate/status` also returns `mode` and, in semi-automatic mode, the same list as `approval_queue`.
+
+```json
+{
+  "success": true, "mode": "semi", "dry_run": false, "approval_ttl_hours": 24,
+  "queue": [{ "vmid": 101, "name": "web01", "guest_type": "CT", "source_node": "pve4", "target_node": "pve6",
+              "reason": "...", "confidence": 82, "status": "pending",
+              "queued_at": "...", "updated_at": "...", "expires_at": "...", "approved_at": null }]
+}
+```
+
+`status` is `pending` or `approved` (approved moves run on the next check that passes every rule).
+
+### POST /api/automigrate/queue/{vmid}/approve
+
+Approves a queued move and starts an automation run in the background (as Run Now does) that executes it with every check evaluated again. Returns `409` when the mode is not `semi` or dry run is on, `404` when nothing for that guest is waiting. `started` is `false` (and the move runs on the next check) when a migration is already in flight.
+
+### POST /api/automigrate/queue/{vmid}/dismiss
+
+Dismisses a queued move: it is not asked again until the entry expires or its target changes. `404` when nothing for that guest is waiting.
+
 ### GET /api/automigrate/config
 
 Returns `config.automated_migrations`. Notification credentials are replaced by `***` (see [Secret fields](#secret-fields)).
 
 ### POST /api/automigrate/config
 
-Updates automation configuration. Top-level keys in the body are merged one level deep into `automated_migrations` (a nested object such as `rules` or `schedule` is updated key by key; lists such as `maintenance_nodes` are replaced). `distribution_balancing` is stored at the config root. Values sent back as `***` keep the stored secret. Changing `rules.cooldown_minutes` records a cooldown reset time. The response returns the updated config with secrets redacted.
+Updates automation configuration. Top-level keys in the body are merged one level deep into `automated_migrations` (a nested object such as `rules` or `schedule` is updated key by key; lists such as `maintenance_nodes` are replaced). `distribution_balancing` is stored at the config root. Values sent back as `***` keep the stored secret. Changing `rules.cooldown_minutes` records a cooldown reset time. `mode` must be `automatic` or `semi` and `approval_ttl_hours` a whole number from 1 to 168, or the request fails with `400`. The response returns the updated config with secrets redacted.
 
 ```bash
 curl -X POST http://<host>/api/automigrate/config \

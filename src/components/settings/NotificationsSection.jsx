@@ -260,6 +260,12 @@ export default function NotificationsSection({ automationConfig, saveAutomationC
                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                               Evacuation events
                             </label>
+                            <label className="flex items-center gap-2 text-sm text-pb-text dark:text-gray-300 cursor-pointer" title="Semi-automatic mode: once per move when it starts waiting for approval">
+                              <input type="checkbox" checked={automationConfig.notifications?.on_queued !== false}
+                                onChange={(e) => saveAutomationConfig({ notifications: { ...automationConfig.notifications, on_queued: e.target.checked } })}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              Waiting for approval
+                            </label>
                           </div>
                         </div>
 
