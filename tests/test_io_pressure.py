@@ -141,6 +141,7 @@ def _collector(with_psi):
     col = object.__new__(collector_api.ProxmoxAPICollector)
     col.get_node_rrd_data = lambda node, tf: _rrd(60, with_psi)
     col.get_storage_status = lambda node: []
+    col.get_disk_health = lambda node: None
     return col
 
 
