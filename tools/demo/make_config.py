@@ -48,7 +48,7 @@ def build() -> dict:
         "blackout_windows": [{"name": "Nightly backups", "enabled": True, "days": EVERY_DAY,
                               "start_time": "01:00", "end_time": "03:00"}],
     }
-    am["rules"]["pool_rules"] = {"k8s": "anti-affinity"}
+    am["rules"]["pool_rules"] = {"k8s-control": "anti-affinity"}
     am["rules"]["intelligent_migrations"]["observation_periods"] = 3
     am["rules"]["intelligent_migrations"]["minimum_data_collection_hours"] = 0
     notif = am["notifications"]
