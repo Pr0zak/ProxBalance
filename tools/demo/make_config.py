@@ -50,7 +50,7 @@ def build() -> dict:
     }
     am["rules"]["pool_rules"] = {"k8s": "anti-affinity"}
     am["rules"]["intelligent_migrations"]["observation_periods"] = 3
-    am["rules"]["intelligent_migrations"]["minimum_data_collection_hours"] = 1
+    am["rules"]["intelligent_migrations"]["minimum_data_collection_hours"] = 0
     notif = am["notifications"]
     notif.update({"enabled": True, "on_resource_threshold": True, "on_recommendations": True, "on_queued": True})
     for provider in notif["providers"].values():
