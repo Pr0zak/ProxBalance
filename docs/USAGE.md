@@ -219,7 +219,7 @@ On the Suggestions tab, use **Run all N in order** or select a subset and use **
 ### Containers with mount points
 
 - **Shared storage mounts** (cyan indicator): safe to migrate. The target node reconnects to the same shared storage.
-- **Unshared bind mounts** (orange indicator): need manual data migration or mount point setup on the target first.
+- **Unshared bind mounts** (orange indicator): Proxmox refuses to migrate the container ("cannot migrate local bind mount point"), so ProxBalance offers no move for it. When the folder exists on every node, mark the mount `shared=1` (`pct set <vmid> -mp0 <source>,mp=<path>,shared=1`); otherwise remove the mount, move the container and add the mount back.
 
 ### VMs with passthrough disks or devices
 

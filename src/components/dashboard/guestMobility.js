@@ -99,7 +99,7 @@ export function guestMobility(g, rec, skipped) {
     detail = engine('passthrough_disk') || engine('passthrough_device') || 'It cannot migrate, not even when its node is emptied for maintenance.';
   } else if (bind) {
     key = 'manual';
-    detail = engine('unshared_bind_mount') || 'Move it by hand with a restart, after checking the folder exists on the new node.';
+    detail = engine('unshared_bind_mount') || "Proxmox won't migrate it while the folder mount is local: mark it shared once the folder exists on every node, or remove the mount, move it and add it back.";
   } else if (ha) {
     key = 'ha';
     detail = engine('ha_managed') || 'Proxmox HA (CRS) places it; ProxBalance leaves it alone.';

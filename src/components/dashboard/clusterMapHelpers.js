@@ -107,8 +107,10 @@ export const moveChecks = (guest, target, proj, allGuests, maintenanceNodes) => 
       out.push({ level: 'warn', text: `Overcommit: ${Math.round(proj.committedPct)}% of RAM would be allocated to running guests` });
     }
   }
-  if (guest.mount_points?.has_unshared_bind_mount) {
-    out.push({ level: 'warn', text: 'Unshared bind mount: the path must exist on the target, and the move needs a restart' });
+  // Proxmox refuses to migrate a container with an unshared bind mount, so
+  // this blocks the move (it used to be a warning that the move then failed on).
+  if (guest.mount_points?.has_unshared_bind_mount && !isVmType(guest)) {
+    out.push({ level: 'block', text: "Host folder mount: Proxmox won't migrate it until the mount is shared" });
   }
   if (guest.tags?.has_ignore) out.push({ level: 'info', text: 'Tagged "ignore": automation will leave it wherever you put it' });
   if (guest.ha_managed) out.push({ level: 'info', text: 'HA-managed: Proxmox CRS may rebalance it again later' });

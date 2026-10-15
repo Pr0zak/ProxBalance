@@ -201,7 +201,10 @@ export default function GuestDetailPanel({
   const isRunning = guest.status === 'running';
   const memPct = guest.mem_max_gb > 0 ? ((guest.mem_used_gb || 0) / guest.mem_max_gb) * 100 : 0;
   const cpuHour = typeof guest.cpu_avg_hour === 'number' ? guest.cpu_avg_hour : (guest.cpu_current || 0);
-  const canMove = canMigrate && !!setConfirmMigration && !pinned;
+  // Proxmox refuses to migrate a container with an unshared bind mount
+  // ("cannot migrate local bind mount point"), restart or not.
+  const hostFolder = !isVM && !!guest.mount_points?.has_unshared_bind_mount;
+  const canMove = canMigrate && !!setConfirmMigration && !pinned && !hostFolder;
 
   const migrateTo = (opt) => {
     if (!setConfirmMigration) return;
@@ -303,7 +306,7 @@ export default function GuestDetailPanel({
     verdict = {
       tone: 'amber', icon: AlertTriangle, title: 'Moves by hand only',
       short: 'A host folder is mounted into it',
-      detail: 'ProxBalance won\'t move it. Move it with a restart after checking the folder exists on the new node.',
+      detail: "Proxmox won't migrate a container with a host folder mount. Once the folder exists on every node, mark the mount shared (shared=1); or remove the mount, move it, and add the mount back.",
     };
   } else if (mob.key === 'ha') {
     verdict = { tone: 'blue', icon: Info, title: 'Proxmox HA places it', short: 'ProxBalance leaves it to the Proxmox balancer' };
@@ -371,7 +374,7 @@ export default function GuestDetailPanel({
               <div className="flex flex-wrap gap-2 mt-2.5">
                 {verdict.action && <button onClick={verdict.action.run} className={`${BTN_PRIMARY} !px-3 !py-1.5 !text-xs`}><MoveRight size={14} /> {verdict.action.label}</button>}
                 {showMoveButtons && <button onClick={() => migrateTo(best)} className={`${BTN_PRIMARY} !px-3 !py-1.5 !text-xs`}><MoveRight size={14} /> Move to {best.node}</button>}
-                {moveOpts && candidates.length > 0 && !pinned && mob.key !== 'ha' && (
+                {moveOpts && candidates.length > 0 && !pinned && !hostFolder && mob.key !== 'ha' && (
                   <button onClick={() => setShowTargets(s => !s)} className={`${BTN_SECONDARY} !px-3 !py-1.5 !text-xs`}>
                     {showTargets ? 'Hide nodes' : 'Other nodes…'}
                   </button>
@@ -472,7 +475,7 @@ export default function GuestDetailPanel({
               <MoreInfo
                 className="text-[11px] text-orange-700 dark:text-orange-300 mt-0.5"
                 label="How to move it"
-                detail={<>Create <span className="font-mono">{mp.source}</span> on the target, then run <span className="font-mono">pct migrate {guest.vmid} &lt;target&gt; --restart</span>.</>}
+                detail={<>Proxmox won't migrate it while this mount is local. When <span className="font-mono">{mp.source}</span> exists on every node: <span className="font-mono">pct set {guest.vmid} -{mp.key} {mp.config},shared=1</span>. Or remove the mount, move it, and add it back.</>}
               >Move by hand</MoreInfo>
             )}
           </FactRow>

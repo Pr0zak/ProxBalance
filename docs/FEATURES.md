@@ -43,7 +43,7 @@ Combinable Node, Type, State, Rules and Balancer filters, search by name, VMID o
 
 **Markers on guests:**
 - Cyan: container with shared mount points (safe to migrate)
-- Orange: container with unshared bind mounts (may need manual migration)
+- Orange: container with unshared bind mounts (Proxmox won't migrate it until the mount is shared; no move is offered)
 - Red: pinned guest, with passthrough disks or PCI/USB passthrough (cannot migrate, left out of suggestions)
 
 ### Charts
