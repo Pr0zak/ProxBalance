@@ -1,211 +1,113 @@
 #!/usr/bin/env node
 /**
- * Capture README/docs screenshots for ProxBalance.
+ * Capture the README/docs screenshots from a running ProxBalance.
  *
- * Loops every {theme} × {page} combo, screenshots to docs/images/<page>-<theme>.png.
- * Themes are toggled by writing localStorage.darkMode before first navigation,
- * so React's useDarkMode hook reads the right value on mount. Pages are
- * switched by clicking the TopNav button (the SPA stores currentPage in
- * React state — there are no per-page URLs).
+ * Point it at the demo cluster (tools/demo/pb-demo.sh on), which uses
+ * made-up node and guest names, so nothing needs blurring.
  *
  * Usage:
- *   PB_URL=http://localhost/ node tools/screenshots.js
- *   PB_URL=http://localhost/ PAGES=dashboard,automation node tools/screenshots.js
- *   PB_URL=http://localhost/ THEMES=dark node tools/screenshots.js
+ *   PB_URL=http://proxbalance-staging.lan/ node tools/screenshots.js
+ *   PB_URL=... SHOTS=dashboard,wall node tools/screenshots.js   # a subset
+ *   PB_URL=... THEME=light node tools/screenshots.js           # light mode
  *
- * Requirements: `npm install puppeteer` in the repo root (puppeteer is gitignored).
+ * Writes docs/images/<name>.png (1440x900 at 2x unless a shot says otherwise).
+ * Needs puppeteer (`npm install puppeteer`; node_modules is gitignored).
  */
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const URL_BASE = process.env.PB_URL || 'http://localhost/';
+const URL_BASE = (process.env.PB_URL || 'http://localhost/').replace(/\/?$/, '/');
 const OUTDIR = path.resolve(__dirname, '..', 'docs', 'images');
-const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 };
-
-const ALL_PAGES = [
-  { id: 'dashboard',  navText: 'Dashboard'  },
-  { id: 'automation', navText: 'Automation' },
-  { id: 'settings',   navText: 'Settings'   },
-];
-const ALL_THEMES = ['dark', 'light'];
-
-// The README embeds per-tab Cluster shots (dashboard-<file>.png). When
-// CLUSTER_TABS is set, capture the dashboard once per Cluster tab instead of
-// the plain page-level shot. Labels match the tab buttons in ClusterSection.
-const CLUSTER_TABS = [
-  { label: 'Nodes',       file: 'nodes'  },
-  { label: 'Guests',      file: 'guests' },
-  { label: 'Map',         file: 'map'    },
-  { label: 'Charts',      file: 'charts' },
-  { label: 'Suggestions', file: 'recs'   },
-];
-const USE_CLUSTER_TABS = (process.env.CLUSTER_TABS || '') === '1';
-
-const PAGES  = (process.env.PAGES  || '').trim()
-  ? ALL_PAGES.filter(p => process.env.PAGES.split(',').map(s => s.trim()).includes(p.id))
-  : ALL_PAGES;
-const THEMES = (process.env.THEMES || '').trim()
-  ? process.env.THEMES.split(',').map(s => s.trim()).filter(t => ALL_THEMES.includes(t))
-  : ALL_THEMES;
-
-if (!fs.existsSync(OUTDIR)) fs.mkdirSync(OUTDIR, { recursive: true });
-
+const THEME = process.env.THEME === 'light' ? 'light' : 'dark';
+const DESKTOP = { width: 1440, height: 900, deviceScaleFactor: 2 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function waitForReact(page) {
-  // Wait for either: real content rendered into #root, or the loading screen
-  // to be marked hidden. Either way we know React is past mount.
+// Scroll so the element whose heading/label text matches `text` is near the top.
+async function scrollToText(page, text, offset = 80, exact = false) {
+  const found = await page.evaluate((t, off, ex) => {
+    const els = [...document.querySelectorAll('h2,h3,h4,button,span,div')]
+      .filter(e => e.children.length <= 3 && e.offsetParent
+        && (ex ? e.textContent.trim() === t : e.textContent.trim().startsWith(t)));
+    const el = els[0];
+    if (!el) return false;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - off);
+    return true;
+  }, text, offset, exact);
+  if (!found) console.warn(`  ! text not found: ${text}`);
+  await sleep(800);
+}
+
+async function clickText(page, text, selector = 'button') {
+  const ok = await page.evaluate((t, sel) => {
+    const el = [...document.querySelectorAll(sel)].find(e => e.textContent.trim().startsWith(t) && e.offsetParent);
+    if (el) el.click();
+    return !!el;
+  }, text, selector);
+  if (!ok) console.warn(`  ! button not found: ${text}`);
+  await sleep(1200);
+}
+
+// Each shot: hash route, optional viewport, optional storage, optional action.
+const SHOTS = [
+  { name: 'dashboard', hash: '#/dashboard' },
+  { name: 'dashboard-nodes', hash: '#/dashboard/nodes', collapse: true, act: p => scrollToText(p, 'Cluster', 24, true) },
+  { name: 'dashboard-guests', hash: '#/dashboard/guests', collapse: true, act: p => scrollToText(p, 'Cluster', 24, true) },
+  { name: 'dashboard-map', hash: '#/dashboard/map', collapse: true, act: p => scrollToText(p, 'Cluster', 24, true) },
+  { name: 'dashboard-charts', hash: '#/dashboard/charts', collapse: true, act: p => scrollToText(p, 'Cluster', 24, true) },
+  { name: 'dashboard-recs', hash: '#/dashboard/suggestions', collapse: true, act: p => scrollToText(p, 'Cluster', 24, true) },
+  { name: 'node-panel', hash: '#/dashboard/nodes/node/cygnus' },
+  { name: 'insights', hash: '#/insights' },
+  { name: 'rolling-update', hash: '#/insights', act: p => scrollToText(p, 'Rolling update plan') },
+  { name: 'automation', hash: '#/automation' },
+  { name: 'approvals', hash: '#/automation', act: p => scrollToText(p, 'Waiting for approval', 330) },
+  { name: 'placement-rules', hash: '#/automation/filters', act: p => scrollToText(p, 'Guest Rules') },
+  { name: 'change-log', hash: '#/automation/history', act: async p => { await clickText(p, 'Change log'); await scrollToText(p, 'Change log', 140); } },
+  { name: 'settings', hash: '#/settings/notifications' },
+  { name: 'diagnostics', hash: '#/settings/diagnostics', wait: 6000 },
+  { name: 'wall', hash: '#/wall', viewport: { width: 1920, height: 1080, deviceScaleFactor: 1 } },
+  {
+    name: 'quick-search', hash: '#/dashboard',
+    act: async p => {
+      await p.keyboard.down('Control'); await p.keyboard.press('KeyK'); await p.keyboard.up('Control');
+      await sleep(600);
+      await p.keyboard.type('post', { delay: 60 });
+      await sleep(800);
+    },
+  },
+  { name: 'mobile', hash: '#/dashboard', viewport: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true } },
+];
+
+async function waitForApp(page) {
   await page.waitForFunction(() => {
     const root = document.getElementById('root');
     const splash = document.getElementById('loading-screen');
-    const skeleton = document.getElementById('static-skeleton');
-    const rootHasContent = root && root.children.length > 0;
-    const splashGone = !splash || splash.classList.contains('hidden') || splash.style.display === 'none';
-    const skeletonGone = !skeleton || skeleton.classList.contains('hidden') || skeleton.style.display === 'none';
-    return rootHasContent && splashGone && skeletonGone;
+    return root && root.children.length > 0 && (!splash || splash.classList.contains('hidden') || splash.style.display === 'none');
   }, { timeout: 30000 });
-  // Settle: charts and conditional sections render after the first data fetch.
-  await sleep(2000);
-}
-
-async function shoot(browser, theme, page, clusterTab) {
-  const tab = await browser.newPage();
-  await tab.setViewport(VIEWPORT);
-
-  // Inject dark-mode preference *before* the first navigation so the
-  // useDarkMode hook reads the right value on its initial useState.
-  await tab.evaluateOnNewDocument((t, ct) => {
-    try {
-      localStorage.setItem('darkMode', t === 'dark' ? 'true' : 'false');
-      // The Charts docs shot reads better at the 7-day range than the 30-day default.
-      if (ct === 'charts') localStorage.setItem('clusterHealthChartPeriod', '7d');
-    } catch (_) {}
-  }, theme, clusterTab ? clusterTab.file : null);
-
-  await tab.goto(URL_BASE, { waitUntil: 'networkidle0', timeout: 30000 });
-  await waitForReact(tab);
-
-  // Switch page by clicking the TopNav button. Skip if we're already on Dashboard.
-  if (page.id !== 'dashboard') {
-    await tab.evaluate((label) => {
-      const btn = [...document.querySelectorAll('nav button')].find(
-        el => el.textContent.trim() === label
-      );
-      if (btn) btn.click();
-    }, page.navText);
-    await sleep(1500);
-  }
-
-  // Activate a Cluster section tab (Nodes/Guests/Map/Charts/Suggestions). These
-  // buttons live in the Cluster card, not the TopNav; strip any "(N)" count.
-  if (clusterTab) {
-    await tab.evaluate((label) => {
-      const btn = [...document.querySelectorAll('button')].find(
-        el => !el.closest('nav') && el.textContent.trim().replace(/\s*\(\d+\)$/, '') === label
-      );
-      if (btn) btn.click();
-    }, clusterTab.label);
-    await sleep(1800);
-
-    // The per-node line charts (Chart.js <canvas>) mount before the app finishes
-    // lazy-loading Chart.js, so their first effect bails and they come out blank.
-    // Wait for Chart.js, then toggle the "Markers" overlay (off→on) so each
-    // NodeChart's effect re-runs with Chart available and actually paints. Then
-    // the capture below goes full-page so all of them are in frame.
-    if (clusterTab.file === 'charts') {
-      await tab.waitForFunction(() => typeof window.Chart !== 'undefined', { timeout: 10000 }).catch(() => {});
-      await sleep(500);
-      for (let i = 0; i < 2; i++) {
-        await tab.evaluate(() => {
-          const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Markers');
-          if (b) b.click();
-        });
-        await sleep(500);
-      }
-      await tab.waitForFunction(
-        () => [...document.querySelectorAll('canvas')].some(c => c.width > 0 && c.height > 0),
-        { timeout: 10000 }
-      ).catch(() => {});
-      await sleep(1500);
-    }
-  }
-
-  // Blur VM/CT names so screenshots are safe to publish. Pull the live
-  // guest list from /api/guests-only, walk every text node in the DOM,
-  // and replace matches with a blurred span. Generic across all pages —
-  // nothing in the source needs to opt in.
-  if (process.env.BLUR_NAMES !== '0') {
-    const names = await tab.evaluate(async () => {
-      try {
-        const r = await fetch('/api/guests-only');
-        const d = await r.json();
-        const guests = (d.data && d.data.guests) || {};
-        return Object.values(guests)
-          .map(g => g.name)
-          .filter(n => typeof n === 'string' && n.length >= 3);
-      } catch (e) { return []; }
-    });
-    await tab.evaluate((names) => {
-      if (!names || !names.length) return;
-      names.sort((a, b) => b.length - a.length);
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-        acceptNode: (n) => {
-          if (!n.parentElement) return NodeFilter.FILTER_REJECT;
-          if (n.parentElement.closest('script, style, [data-no-blur]')) return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        },
-      });
-      const targets = [];
-      while (walker.nextNode()) {
-        const t = walker.currentNode.textContent;
-        if (t && names.some(n => t.includes(n))) targets.push(walker.currentNode);
-      }
-      for (const node of targets) {
-        const span = document.createElement('span');
-        span.style.filter = 'blur(4px)';
-        span.style.userSelect = 'none';
-        span.textContent = node.textContent;
-        node.parentNode.replaceChild(span, node);
-      }
-    }, names);
-    await sleep(500);
-  }
-
-  const filename = clusterTab ? `${page.id}-${clusterTab.file}.png` : `${page.id}-${theme}.png`;
-  const outPath = path.join(OUTDIR, filename);
-  await tab.screenshot({ path: outPath, fullPage: false });
-  await tab.close();
-  console.log(`✓ ${path.relative(process.cwd(), outPath)}`);
 }
 
 (async () => {
-  console.log(`URL:     ${URL_BASE}`);
-  console.log(`Out:     ${OUTDIR}`);
-  console.log(`Pages:   ${PAGES.map(p => p.id).join(', ')}`);
-  console.log(`Themes:  ${THEMES.join(', ')}`);
-  console.log('');
-
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-
-  try {
-    for (const theme of THEMES) {
-      for (const page of PAGES) {
-        if (USE_CLUSTER_TABS && page.id === 'dashboard') {
-          for (const ct of CLUSTER_TABS) await shoot(browser, theme, page, ct);
-        } else {
-          await shoot(browser, theme, page);
-        }
-      }
-    }
-  } finally {
-    await browser.close();
+  if (!fs.existsSync(OUTDIR)) fs.mkdirSync(OUTDIR, { recursive: true });
+  const only = (process.env.SHOTS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const shots = only.length ? SHOTS.filter(s => only.includes(s.name)) : SHOTS;
+  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  for (const shot of shots) {
+    const page = await browser.newPage();
+    await page.setViewport(shot.viewport || DESKTOP);
+    await page.evaluateOnNewDocument((theme, collapse) => {
+      try {
+        localStorage.setItem('darkMode', theme === 'dark' ? 'true' : 'false');
+        localStorage.setItem('autoBannerExpanded', collapse ? 'false' : 'true');
+      } catch (e) { /* private mode */ }
+    }, THEME, !!shot.collapse);
+    await page.goto(URL_BASE + shot.hash, { waitUntil: 'networkidle2', timeout: 60000 });
+    await waitForApp(page);
+    await sleep(shot.wait || 3000);
+    if (shot.act) await shot.act(page);
+    const file = path.join(OUTDIR, `${shot.name}${THEME === 'light' ? '-light' : ''}.png`);
+    await page.screenshot({ path: file });
+    console.log(`✓ ${path.relative(process.cwd(), file)}`);
+    await page.close();
   }
-  console.log('\nDone.');
-})().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+  await browser.close();
+})().catch(e => { console.error(e); process.exit(1); });
