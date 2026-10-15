@@ -19,27 +19,32 @@ def hourly(days, start, rate_per_day):
 
 
 def test_crossing_day():
-    ts, vals = hourly(7, 40, 2)
+    ts, vals = hourly(16, 22, 2)  # 16 days of history: the full 30-day horizon applies
     out = projection_series(ts, vals, rate_per_day=2, current=54, threshold=80)
     assert out["days_to_limit"] == 13.0
+    assert out["status"] == "crossing"
     assert out["limit"] == 80
     assert out["horizon_days"] == 30
+    assert out["max_horizon_days"] == 30
+    assert out["days_to_full"] == 23.0
     # The dashed line starts at "now" from the current value and stops at 100 %.
     assert out["projection"][0] == [0, 54]
     assert out["projection"][1] == [23.0, 100.0]
 
 
 def test_flat_trend_has_no_crossing():
-    ts, vals = hourly(7, 50, 0)
+    ts, vals = hourly(16, 50, 0)
     out = projection_series(ts, vals, rate_per_day=0.0, current=50, threshold=80)
     assert out["days_to_limit"] is None
+    assert out["status"] == "not_rising"
     assert out["projection"] == [[0, 50], [30.0, 50.0]]
 
 
 def test_decreasing_trend_has_no_crossing():
-    ts, vals = hourly(7, 70, -1)
+    ts, vals = hourly(16, 79, -1)
     out = projection_series(ts, vals, rate_per_day=-1, current=63, threshold=80)
     assert out["days_to_limit"] is None
+    assert out["status"] == "not_rising"
     assert out["projection"][1] == [30.0, 33.0]
 
 
@@ -50,14 +55,60 @@ def test_falling_line_stops_at_zero():
 
 def test_horizon_cap():
     # 40 days away: beyond the default 30-day horizon, inside a 60-day one.
-    ts, vals = hourly(7, 39, 1)
-    assert projection_series(ts, vals, 1, 40, 80)["days_to_limit"] is None
+    ts, vals = hourly(31, 9, 1)
+    out = projection_series(ts, vals, 1, 40, 80)
+    assert out["days_to_limit"] is None
+    assert out["status"] == "beyond_horizon"
     assert projection_series(ts, vals, 1, 40, 80, horizon_days=60)["days_to_limit"] == 40.0
+
+
+def test_short_history_shrinks_the_horizon():
+    # 3 days of samples: projected at most 6 days ahead, not 30.
+    ts, vals = hourly(3, 60, 1)
+    out = projection_series(ts, vals, rate_per_day=1, current=63, threshold=70)
+    assert out["window_days"] == pytest.approx(3, abs=0.05)
+    assert out["horizon_days"] == pytest.approx(6, abs=0.1)
+    assert out["max_horizon_days"] == 30
+    # 7 days to the limit is past the 6-day horizon.
+    assert out["days_to_limit"] is None
+    assert out["status"] == "beyond_horizon"
+    # The dashed line stops at the horizon too.
+    assert out["projection"][1][0] == pytest.approx(6, abs=0.1)
+    # Inside the shortened horizon it is still a crossing.
+    near = projection_series(ts, vals, rate_per_day=1, current=66, threshold=70)
+    assert near["days_to_limit"] == 4.0
+
+
+def test_horizon_never_exceeds_the_request():
+    ts, vals = hourly(60, 10, 0.5)
+    assert projection_series(ts, vals, 0.5, 40, 80, horizon_days=30)["horizon_days"] == 30
+
+
+def test_effective_horizon():
+    from proxbalance.forecasting import effective_horizon_days
+    assert effective_horizon_days(1) == 2
+    assert effective_horizon_days(7) == 14
+    assert effective_horizon_days(30) == 30
+    assert effective_horizon_days(0) == 0
+    assert effective_horizon_days(-1) == 0
+    assert effective_horizon_days(1, max_days=1) == 1
+
+
+def test_over_limit_and_rising():
+    # Already past the limit: no crossing, but the line still says when it is full.
+    ts, vals = hourly(30, 65, 0.5)
+    out = projection_series(ts, vals, rate_per_day=0.5, current=80, threshold=70)
+    assert out["status"] == "over_limit"
+    assert out["days_to_limit"] is None
+    assert out["days_to_full"] is None  # 40 days to 100 %, past the horizon
+    fast = projection_series(ts, vals, rate_per_day=2, current=80, threshold=70)
+    assert fast["days_to_full"] == 10.0
 
 
 def test_already_over_limit_has_no_crossing():
     out = projection_series([NOW - DAY, NOW], [80, 90], rate_per_day=10, current=90, threshold=80)
     assert out["days_to_limit"] is None
+    assert out["status"] == "over_limit"
 
 
 def test_never_zero_days():
@@ -68,6 +119,7 @@ def test_never_zero_days():
 def test_no_threshold():
     out = projection_series([NOW - DAY, NOW], [10, 20], rate_per_day=10, current=20, threshold=None)
     assert out["days_to_limit"] is None
+    assert out["status"] == "no_limit"
 
 
 def test_history_is_downsampled_and_relative_to_last_sample():
@@ -127,3 +179,36 @@ def test_route_passes_series_and_iowait_threshold(monkeypatch):
     assert seen["series"] is True
     assert seen["iowait_threshold"] == 20.0
     assert seen["horizon_days"] == 365
+
+
+def _score_history(hours, start, rate_per_hour, node="nodeA"):
+    """Hourly score-history snapshots ending now, memory rising linearly."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    return [
+        {
+            "timestamp": (now - timedelta(hours=hours - i)).isoformat(),
+            "nodes": {node: {"cpu": 10.0, "mem": start + rate_per_hour * i}},
+        }
+        for i in range(hours + 1)
+    ]
+
+
+def test_engine_short_history_shrinks_look_ahead():
+    from proxbalance.forecasting import generate_forecast_recommendations
+    nodes = {"nodeA": {"status": "online"}}
+    # Both end at 60 % and climb 0.25 points an hour: 70 % is 40 hours away.
+    # 6 hours of samples are projected 12 hours ahead, so no alert.
+    assert generate_forecast_recommendations(nodes, _score_history(6, 58.5, 0.25), 80, 70) == []
+    # Two days of samples get the full 48-hour look-ahead.
+    out = generate_forecast_recommendations(nodes, _score_history(48, 48, 0.25), 80, 70)
+    assert [f["metric"] for f in out] == ["memory"]
+    assert out[0]["estimated_hours_to_crossing"] == pytest.approx(40, abs=0.5)
+
+
+def test_trend_fit_short_history_horizon():
+    # Two days of hourly samples: the forecast block uses a 4-day horizon.
+    ts, vals = hourly(2, 60, 1)
+    fit = trend_analysis._analyze_metric_trend(samples(ts, vals), "memory", 48, 70, series=True)
+    assert fit["forecast"]["horizon_days"] == pytest.approx(4, abs=0.1)
+    assert fit["forecast"]["status"] == "beyond_horizon"

@@ -86,7 +86,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
           </div>
           {noForecasts ? (
             <div className={`${GLASS_CARD} xl:col-span-2 !py-3`}>
-              <ForecastsClear days={trendDays} />
+              <ForecastsClear days={trendDays} trends={trendsState.data} />
             </div>
           ) : (
             <div className={GLASS_CARD}>

@@ -116,6 +116,26 @@ def project_trend(values: List[float], timestamps: List[float], hours_ahead: flo
 FORECAST_HORIZON_DAYS = 30
 FORECAST_HISTORY_POINTS = 120
 
+# A straight line fitted to N days of samples is projected at most this many
+# times N days ahead: a one-day fit says nothing about next month.
+HORIZON_WINDOW_MULTIPLE = 2
+
+# The recommendation engine's own look-ahead (the alerts automation acts on).
+ENGINE_HORIZON_HOURS = 48
+
+
+def effective_horizon_days(window_days: float, max_days: float = FORECAST_HORIZON_DAYS) -> float:
+    """How far ahead a fit over ``window_days`` of samples may be projected.
+
+    Args:
+        window_days: Time between the first and last sample, in days.
+        max_days: The requested horizon.
+
+    Returns:
+        ``min(max_days, HORIZON_WINDOW_MULTIPLE * window_days)``, never negative.
+    """
+    return max(0.0, min(float(max_days), HORIZON_WINDOW_MULTIPLE * max(0.0, window_days)))
+
 
 def projection_series(
     timestamps: List[float],
@@ -132,26 +152,37 @@ def projection_series(
     ``current`` (the recent value the crossing estimate also starts from), so
     the dashed line, the headline and ``hours_to_threshold`` all agree.
 
+    The horizon actually used is ``horizon_days`` shortened to
+    ``HORIZON_WINDOW_MULTIPLE`` times the span of the samples
+    (:func:`effective_horizon_days`), so a short history is not extrapolated
+    a month ahead.
+
     Args:
         timestamps: Sample Unix timestamps (seconds), any order.
         values: Sample values (percent), parallel to ``timestamps``.
         rate_per_day: Fitted slope in percentage points per day.
         current: Recent value the projection starts from (at day 0 = last sample).
         threshold: The limit for this metric, or None when there is none.
-        horizon_days: Crossings further out than this are reported as None.
+        horizon_days: The longest horizon wanted, in days.
         max_points: History is averaged into at most this many points.
 
     Returns:
         Dict with ``history`` ([[days, value], ...], days <= 0 relative to the
         last sample), ``projection`` ([[0, current], [end_day, value]], clipped
-        to 0-100 %), ``days_to_limit`` (None when flat, falling, already over
-        or beyond the horizon), ``limit`` and ``horizon_days``.
+        to 0-100 % and to the horizon), ``days_to_limit`` (set only when
+        ``status`` is ``crossing``), ``days_to_full`` (days until the line
+        reaches 100 %, None beyond the horizon), ``status`` (``crossing``,
+        ``over_limit``, ``beyond_horizon``, ``not_rising`` or ``no_limit``),
+        ``limit``, ``horizon_days`` (the horizon used), ``max_horizon_days``
+        (the one asked for) and ``window_days`` (span of the samples).
     """
     pairs = sorted((t, v) for t, v in zip(timestamps, values) if t is not None and v is not None)
     history: List[List[float]] = []
+    window_days = 0.0
     if pairs:
         last_ts = pairs[-1][0]
         span = last_ts - pairs[0][0]
+        window_days = span / 86400
         width = span / max_points if span > 0 else 1.0
         buckets: Dict[int, List[float]] = {}
         for t, v in pairs:
@@ -164,16 +195,31 @@ def projection_series(
             t_sum, v_sum, n = buckets[idx]
             history.append([round((t_sum / n - last_ts) / 86400, 3), round(v_sum / n, 2)])
 
+    horizon = effective_horizon_days(window_days, horizon_days)
+
     days_to_limit = None
-    if threshold is not None and rate_per_day > 0 and current < threshold:
+    if threshold is None:
+        status = "no_limit"
+    elif current >= threshold:
+        status = "over_limit"
+    elif rate_per_day <= 0:
+        status = "not_rising"
+    else:
         days = (threshold - current) / rate_per_day
-        if days <= horizon_days:
+        if days <= horizon:
+            status = "crossing"
             # Below the limit means some time is left; never report 0.
             days_to_limit = max(round(days, 1), 0.1)
+        else:
+            status = "beyond_horizon"
 
-    end_day = float(horizon_days)
+    days_to_full = None
+    end_day = horizon
     if rate_per_day > 0 and current < 100:
-        end_day = min(end_day, (100 - current) / rate_per_day)
+        full = (100 - current) / rate_per_day
+        if full <= horizon:
+            days_to_full = max(round(full, 1), 0.1)
+        end_day = min(end_day, full)
     elif rate_per_day < 0 and current > 0:
         end_day = min(end_day, current / -rate_per_day)
     end_value = max(0.0, min(100.0, current + rate_per_day * end_day))
@@ -182,8 +228,12 @@ def projection_series(
         "history": history,
         "projection": [[0, round(current, 2)], [round(end_day, 2), round(end_value, 2)]],
         "days_to_limit": days_to_limit,
+        "days_to_full": days_to_full,
+        "status": status,
         "limit": threshold,
-        "horizon_days": horizon_days,
+        "horizon_days": round(horizon, 2),
+        "max_horizon_days": horizon_days,
+        "window_days": round(window_days, 2),
     }
 
 
@@ -193,7 +243,9 @@ def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data:
 
     Reads historical score snapshots and uses linear regression to identify nodes
     whose CPU or memory metrics are trending toward their thresholds. Generates
-    proactive warnings before the threshold is actually crossed.
+    proactive warnings before the threshold is actually crossed. The look-ahead
+    is ENGINE_HORIZON_HOURS, shortened to HORIZON_WINDOW_MULTIPLE times the
+    span of the node's samples when the history is shorter than that.
 
     Args:
         nodes: Current node data dict.
@@ -263,7 +315,9 @@ def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data:
 
         # Project CPU trend
         if len(cpu_values) >= 3:
-            cpu_projection = project_trend(cpu_values, cpu_timestamps, hours_ahead=48)
+            cpu_hours = 24 * effective_horizon_days(
+                (cpu_timestamps[-1] - cpu_timestamps[0]) / 86400, ENGINE_HORIZON_HOURS / 24)
+            cpu_projection = project_trend(cpu_values, cpu_timestamps, hours_ahead=cpu_hours)
             current_cpu = cpu_projection["current_value"]
             projected_cpu = cpu_projection["projected_value"]
 
@@ -302,7 +356,9 @@ def generate_forecast_recommendations(nodes: Dict[str, Any], score_history_data:
 
         # Project memory trend
         if len(mem_values) >= 3:
-            mem_projection = project_trend(mem_values, mem_timestamps, hours_ahead=48)
+            mem_hours = 24 * effective_horizon_days(
+                (mem_timestamps[-1] - mem_timestamps[0]) / 86400, ENGINE_HORIZON_HOURS / 24)
+            mem_projection = project_trend(mem_values, mem_timestamps, hours_ahead=mem_hours)
             current_mem = mem_projection["current_value"]
             projected_mem = mem_projection["projected_value"]
 

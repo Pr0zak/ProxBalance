@@ -23,18 +23,6 @@ export function formatHorizon(hours) {
 }
 
 /**
- * Confident threshold crossings from a /api/trends/nodes response, soonest
- * first. Low-confidence fits (r² near 0) project noise and are left out.
- */
-export function trendCrossings(trends, thresholds) {
-  const nodes = Object.values(trends?.nodes || {});
-  return nodes
-    .flatMap(n => METRICS.map(([k, label]) => ({ node: n.node, metric: k, label, m: n[k] || {}, threshold: thresholds[k] })))
-    .filter(({ m }) => m.confidence && m.confidence !== 'low' && m.hours_to_threshold != null && m.hours_to_threshold < HORIZON_LIMIT_HOURS)
-    .sort((a, b) => a.m.hours_to_threshold - b.m.hours_to_threshold);
-}
-
-/**
  * Load `loader()` whenever `deps` change. Keeps the last good data while a new
  * request is in flight and drops responses that a newer request superseded.
  */
