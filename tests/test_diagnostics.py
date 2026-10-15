@@ -87,23 +87,23 @@ ALL_PRIVS = {'/': {p: 1 for p in (
 def healthy_routes():
     return {
         'version': {'version': '9.2.1', 'release': '9.2'},
-        'nodes': [{'node': 'pve3', 'status': 'online'}, {'node': 'pve4', 'status': 'online'}],
-        'nodes/pve3/version': {'version': '9.2.1'},
-        'nodes/pve4/version': {'version': '9.2.1'},
+        'nodes': [{'node': 'lyra', 'status': 'online'}, {'node': 'orion', 'status': 'online'}],
+        'nodes/lyra/version': {'version': '9.2.1'},
+        'nodes/orion/version': {'version': '9.2.1'},
         'cluster/status': [
             {'type': 'cluster', 'name': 'lab', 'quorate': 1, 'nodes': 2},
-            {'type': 'node', 'name': 'pve3', 'online': 1},
-            {'type': 'node', 'name': 'pve4', 'online': 1},
+            {'type': 'node', 'name': 'lyra', 'online': 1},
+            {'type': 'node', 'name': 'orion', 'online': 1},
         ],
         'access/permissions': ALL_PRIVS,
-        'nodes/pve3/storage': [{'storage': 'local', 'type': 'dir', 'enabled': 1, 'active': 1}],
-        'nodes/pve4/storage': [{'storage': 'local', 'type': 'dir', 'enabled': 1, 'active': 1}],
+        'nodes/lyra/storage': [{'storage': 'local', 'type': 'dir', 'enabled': 1, 'active': 1}],
+        'nodes/orion/storage': [{'storage': 'local', 'type': 'dir', 'enabled': 1, 'active': 1}],
     }
 
 
 def base_config(**over):
     cfg = {
-        'proxmox_host': '10.0.0.3', 'proxmox_port': 8006,
+        'proxmox_host': '192.168.1.3', 'proxmox_port': 8006,
         'proxmox_api_token_id': 'proxbalance@pam!pb', 'proxmox_api_token_secret': SECRET,
         'collection_interval_minutes': 60,
         'updates': {'channel': 'stable'},
@@ -130,7 +130,7 @@ def files(tmp_path):
     cache = tmp_path / 'cluster_cache.json'
     cache.write_text(json.dumps({
         'collected_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        'nodes': {'pve3': {}, 'pve4': {}}, 'guests': {'100': {}}, 'collection_errors': [],
+        'nodes': {'lyra': {}, 'orion': {}}, 'guests': {'100': {}}, 'collection_errors': [],
     }))
     db = tmp_path / 'proxbalance.db'
     conn = sqlite3.connect(db)
@@ -162,7 +162,7 @@ def test_healthy_cluster_all_pass(files):
     bad = [r for r in out['results'] if r['status'] != 'pass']
     assert bad == []
     ids = {r['id'] for r in out['results']}
-    assert {'api_host', 'node:pve3', 'node:pve4', 'quorum', 'permissions', 'storage:pve3', 'storage:pve4',
+    assert {'api_host', 'node:lyra', 'node:orion', 'quorum', 'permissions', 'storage:lyra', 'storage:orion',
             'collector', 'timers', 'database', 'cache', 'updates'} <= ids
     assert out['summary']['pass'] == len(out['results'])
     assert not any(c[0] == 'WRITE' for c in px.calls)
@@ -200,7 +200,7 @@ def test_slow_check_reported_unfinished(files):
 
 def test_api_down_fails_proxmox_lines_only(files):
     def factory(timeout=None):
-        raise ConnectTimeout('Connection to 10.0.0.3 timed out. (connect timeout=3)')
+        raise ConnectTimeout('Connection to 192.168.1.3 timed out. (connect timeout=3)')
 
     ctx = D.DiagContext(base_config(), client_factory=factory,
                         services_reader=healthy_services, paths=files)
@@ -261,14 +261,14 @@ def test_api_auth_failure(files):
 
 def test_node_offline_and_unanswering(files):
     routes = healthy_routes()
-    routes['nodes'] = [{'node': 'pve3', 'status': 'online'}, {'node': 'pve4', 'status': 'online'},
-                       {'node': 'pve5', 'status': 'offline'}]
-    routes['nodes/pve4/version'] = ReadTimeout('Read timed out')
+    routes['nodes'] = [{'node': 'lyra', 'status': 'online'}, {'node': 'orion', 'status': 'online'},
+                       {'node': 'rigel', 'status': 'offline'}]
+    routes['nodes/orion/version'] = ReadTimeout('Read timed out')
     ctx, _ = make_ctx(files, routes=routes)
     r = by_id(D.check_nodes(ctx))
-    assert r['node:pve3']['status'] == 'pass'
-    assert r['node:pve4']['status'] == 'fail' and 'no reply' in r['node:pve4']['fact']
-    assert r['node:pve5']['status'] == 'fail' and 'offline' in r['node:pve5']['fact']
+    assert r['node:lyra']['status'] == 'pass'
+    assert r['node:orion']['status'] == 'fail' and 'no reply' in r['node:orion']['fact']
+    assert r['node:rigel']['status'] == 'fail' and 'offline' in r['node:rigel']['fact']
 
 
 # ---------------------------------------------------------------------------
@@ -358,33 +358,33 @@ def test_required_privileges_cover_code_calls():
 
 def test_storage_inactive_warns_disabled_ignored(files):
     routes = healthy_routes()
-    routes['nodes/pve3/storage'] = [
+    routes['nodes/lyra/storage'] = [
         {'storage': 'local', 'enabled': 1, 'active': 1},
         {'storage': 'nas', 'enabled': 1, 'active': 0},
         {'storage': 'old', 'enabled': 0, 'active': 0},
     ]
-    routes['nodes/pve4/storage'] = [{'storage': 'local', 'enabled': 1, 'active': 1},
+    routes['nodes/orion/storage'] = [{'storage': 'local', 'enabled': 1, 'active': 1},
                                     {'storage': 'old', 'enabled': 0, 'active': 0}]
     ctx, _ = make_ctx(files, routes=routes)
     r = by_id(D.check_storage(ctx))
-    assert r['storage:pve3']['status'] == 'warn' and 'nas' in r['storage:pve3']['fact']
-    assert r['storage:pve4']['status'] == 'pass' and 'disabled: old' in r['storage:pve4']['fact']
+    assert r['storage:lyra']['status'] == 'warn' and 'nas' in r['storage:lyra']['fact']
+    assert r['storage:orion']['status'] == 'pass' and 'disabled: old' in r['storage:orion']['fact']
 
 
 def test_storage_timeout_fails_that_node_only(files):
     routes = healthy_routes()
-    routes['nodes/pve4/storage'] = ReadTimeout('Read timed out')
+    routes['nodes/orion/storage'] = ReadTimeout('Read timed out')
     ctx, _ = make_ctx(files, routes=routes)
     r = by_id(D.check_storage(ctx))
-    assert r['storage:pve3']['status'] == 'pass'
-    assert r['storage:pve4']['status'] == 'fail' and 'hanging' in r['storage:pve4']['fact']
+    assert r['storage:lyra']['status'] == 'pass'
+    assert r['storage:orion']['status'] == 'fail' and 'hanging' in r['storage:orion']['fact']
 
 
 def test_storage_skips_offline_nodes(files):
     routes = healthy_routes()
-    routes['nodes'] = [{'node': 'pve3', 'status': 'online'}, {'node': 'pve4', 'status': 'offline'}]
+    routes['nodes'] = [{'node': 'lyra', 'status': 'online'}, {'node': 'orion', 'status': 'offline'}]
     ctx, _ = make_ctx(files, routes=routes)
-    assert [r['id'] for r in D.check_storage(ctx)] == ['storage:pve3']
+    assert [r['id'] for r in D.check_storage(ctx)] == ['storage:lyra']
 
 
 # ---------------------------------------------------------------------------
@@ -402,12 +402,12 @@ def test_collector_failed_run(files):
 def test_collector_errors_warn(files):
     with open(files['cache']) as f:
         cache = json.load(f)
-    cache['collection_errors'] = [{'node': 'pve5', 'call': 'RRD data (day)', 'kind': 'read_timeout'}]
+    cache['collection_errors'] = [{'node': 'rigel', 'call': 'RRD data (day)', 'kind': 'read_timeout'}]
     with open(files['cache'], 'w') as f:
         json.dump(cache, f)
     ctx, _ = make_ctx(files)
     r = D.check_collector(ctx)[0]
-    assert r['status'] == 'warn' and 'pve5' in r['fact']
+    assert r['status'] == 'warn' and 'rigel' in r['fact']
 
 
 def test_collector_overdue_warns(files):

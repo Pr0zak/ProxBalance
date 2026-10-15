@@ -83,7 +83,7 @@ async function waitForReact(page) {
         });
         await page.evaluate((names) => {
           if (!names || !names.length) return;
-          // Sort longest-first so "myvitals-prod" gets matched before "myvitals"
+          // Sort longest-first so "webapp-prod" gets matched before "webapp"
           names.sort((a, b) => b.length - a.length);
           const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
             acceptNode: (n) => {

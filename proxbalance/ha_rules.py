@@ -3,7 +3,7 @@ ProxBalance Proxmox HA rule checks
 
 Proxmox VE 9 replaced HA groups with HA rules (``/cluster/ha/rules``):
 
-- ``node-affinity`` rules list nodes with priorities (``"pve3:2,pve4:1"``) for
+- ``node-affinity`` rules list nodes with priorities (``"lyra:2,orion:1"``) for
   a set of HA resources. A ``strict`` rule only lets those resources run on the
   listed nodes; a non-strict rule only states a preference, which the HA
   manager acts on by moving the resource back to the highest-priority node.
@@ -53,7 +53,7 @@ def _truthy(value: Any) -> bool:
 
 
 def parse_node_list(value: Any) -> Dict[str, int]:
-    """Parse a Proxmox node list such as ``"pve3:2,pve4"`` into ``{node: priority}``.
+    """Parse a Proxmox node list such as ``"lyra:2,orion"`` into ``{node: priority}``.
 
     Args:
         value: Comma-separated string, list of strings, or dict.
@@ -233,7 +233,7 @@ def fetch_ha_data(proxmox: Any, resources_raw: Optional[List[Dict[str, Any]]] = 
 # ---------------------------------------------------------------------------
 
 def _label(vmid: str, guests: Dict[str, Any]) -> str:
-    """Readable guest label: ``"CT 101 (pihole)"`` or ``"101"``."""
+    """Readable guest label: ``"CT 101 (dns-01)"`` or ``"101"``."""
     g = guests.get(str(vmid)) or {}
     name = g.get("name")
     kind = g.get("type")
@@ -272,7 +272,7 @@ def _guest_group(vmid: str, ha: Dict[str, Any], guests: Dict[str, Any]) -> Optio
 
 
 def _fmt_nodes(nodes: Dict[str, int]) -> str:
-    """``"pve3 (priority 2), pve4"`` — priorities only shown when they differ."""
+    """``"lyra (priority 2), orion"`` — priorities only shown when they differ."""
     if len(set(nodes.values())) <= 1:
         return ", ".join(sorted(nodes))
     ordered = sorted(nodes.items(), key=lambda kv: (-kv[1], kv[0]))

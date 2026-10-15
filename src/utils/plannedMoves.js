@@ -61,7 +61,7 @@ export function groupPlannedMoves({ recommendations, approvalQueue = null, guest
     .sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
 }
 
-/** Hover / tap text for an edge: "pve4 → pve6: grafana, sonarr (awaiting approval)". */
+/** Hover / tap text for an edge: "orion → vega: loki, nextcloud (awaiting approval)". */
 export function edgeTitle(edge) {
   const names = edge.guests.map(g => (g.approval && edge.kind !== 'approval' ? `${g.name} (awaiting approval)` : g.name));
   return `${edge.from} → ${edge.to}${edge.kind === 'approval' ? ' · awaiting approval' : ''}: ${names.join(', ')}`;

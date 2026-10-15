@@ -76,7 +76,7 @@ def app_with(*blueprints, **config):
     return app.test_client()
 
 
-XFF = {"X-Forwarded-For": "10.0.0.50, 10.0.0.1"}
+XFF = {"X-Forwarded-For": "192.168.1.50, 192.168.1.1"}
 
 
 # ---------------------------------------------------------------- migrations
@@ -96,11 +96,11 @@ def migrate_api(env, monkeypatch):
 
 def test_manual_migration_is_one_user_row_with_actor(migrate_api):
     client, _ = migrate_api
-    body = {"vmid": 101, "source_node": "pve4", "target_node": "pve6", "type": "CT"}
+    body = {"vmid": 101, "source_node": "orion", "target_node": "vega", "type": "CT"}
     assert client.post("/api/migrate", json=body, headers=XFF).status_code == 200
     row = only("migration.start")
-    assert row["source"] == "user" and row["subject"] == "101" and row["actor"] == "10.0.0.50"
-    assert "pve4 → pve6" in row["summary"]
+    assert row["source"] == "user" and row["subject"] == "101" and row["actor"] == "192.168.1.50"
+    assert "orion → vega" in row["summary"]
     assert json.loads(row["details_json"])["task_id"] == "UPID:x"
 
 
@@ -157,15 +157,15 @@ def test_enforce_rules_now_is_one_row(env, monkeypatch):
 def test_automigrate_migrations_are_automation_rows(env):
     import automigrate
     automigrate.record_migration({"id": "m1", "vmid": 101, "name": "web", "type": "CT",
-                                  "source_node": "pve4", "target_node": "pve6", "status": "completed",
+                                  "source_node": "orion", "target_node": "vega", "status": "completed",
                                   "initiated_by": "automated", "dry_run": False})
-    automigrate.record_migration({"id": "m2", "vmid": 102, "source_node": "pve4", "target_node": "pve5",
+    automigrate.record_migration({"id": "m2", "vmid": 102, "source_node": "orion", "target_node": "rigel",
                                   "status": "failed", "error": "storage missing", "dry_run": False})
     automigrate.record_migration({"id": "m3", "vmid": 103, "source_node": "a", "target_node": "b",
                                   "status": "completed", "dry_run": True})
     done, failed = only("migration.done"), only("migration.failed")
     assert done["source"] == failed["source"] == "automation"
-    assert "CT 101 (web) pve4 → pve6" in done["summary"]
+    assert "CT 101 (web) orion → vega" in done["summary"]
     assert "storage missing" in failed["summary"]
     assert len(rows()) == 2  # the dry run moved nothing
 
@@ -179,8 +179,8 @@ def test_evacuation_start_and_finish(env, monkeypatch):
     from proxbalance import evacuation
     from proxbalance.routes import evacuation as routes
     cache = env["tmp"] / "cache.json"
-    cache.write_text(json.dumps({"nodes": {"pve4": {"status": "online", "guests": [101]},
-                                           "pve5": {"status": "online", "guests": []}}}))
+    cache.write_text(json.dumps({"nodes": {"orion": {"status": "online", "guests": [101]},
+                                           "rigel": {"status": "online", "guests": []}}}))
     monkeypatch.setattr(routes, "CACHE_FILE", str(cache))
     proxmox = mock.MagicMock()
     proxmox.nodes.return_value.storage.get.return_value = []
@@ -190,19 +190,19 @@ def test_evacuation_start_and_finish(env, monkeypatch):
     monkeypatch.setattr(routes, "_write_session", lambda *a: None)
     monkeypatch.setattr(routes, "_execute_evacuation", lambda *a, **k: None)
     client = app_with(routes.evacuation_bp)
-    assert client.post("/api/nodes/evacuate", json={"node": "pve4", "confirm": True}).status_code == 200
-    assert only("evacuation.start")["subject"] == "pve4"
+    assert client.post("/api/nodes/evacuate", json={"node": "orion", "confirm": True}).status_code == 200
+    assert only("evacuation.start")["subject"] == "orion"
 
     monkeypatch.setattr(evacuation, "fetch_ha_data", lambda p: None)
     monkeypatch.setattr(evacuation, "trigger_collection", lambda: None)
     monkeypatch.setattr(evacuation, "_read_session", lambda s: None)
-    evacuation._execute_evacuation("s1", "pve4", [], [], {}, None)
+    evacuation._execute_evacuation("s1", "orion", [], [], {}, None)
     assert only("evacuation.done")["source"] == "user"
 
     def boom(p):
         raise RuntimeError("api down")
     monkeypatch.setattr(evacuation, "fetch_ha_data", boom)
-    evacuation._execute_evacuation("s2", "pve4", [], [], {}, None)
+    evacuation._execute_evacuation("s2", "orion", [], [], {}, None)
     assert "api down" in only("evacuation.failed")["summary"]
 
 
@@ -222,8 +222,8 @@ def auto_api(env, monkeypatch):
 
 
 def _queue(vmid):
-    migration_db.queue_for_approval({"vmid": vmid, "name": f"g{vmid}", "type": "CT", "source_node": "pve4",
-                                     "target_node": "pve6", "reason": "Balance CPU", "confidence": 80}, 24)
+    migration_db.queue_for_approval({"vmid": vmid, "name": f"g{vmid}", "type": "CT", "source_node": "orion",
+                                     "target_node": "vega", "reason": "Balance CPU", "confidence": 80}, 24)
 
 
 def test_approve_and_dismiss(auto_api):
@@ -234,7 +234,7 @@ def test_approve_and_dismiss(auto_api):
     assert client.post("/api/automigrate/queue/102/dismiss").status_code == 200
     approve, dismiss = only("approval.approve"), only("approval.dismiss")
     assert approve["source"] == dismiss["source"] == "user"
-    assert "101 (g101) pve4 → pve6" in approve["summary"]
+    assert "101 (g101) orion → vega" in approve["summary"]
     assert dismiss["subject"] == "102"
     client.post("/api/automigrate/queue/999/dismiss")
     assert len(rows()) == 2
@@ -257,21 +257,21 @@ def test_toggle_timer(auto_api, monkeypatch):
 def test_automation_toggles_maintenance_and_settings(auto_api):
     client, _ = auto_api
     r = client.post("/api/automigrate/config", json={
-        "enabled": True, "dry_run": True, "mode": "automatic", "maintenance_nodes": ["pve4"],
+        "enabled": True, "dry_run": True, "mode": "automatic", "maintenance_nodes": ["orion"],
         "rules": {"cooldown_minutes": 45},
     })
     assert r.status_code == 200
     assert only("automation.enable")["summary"] == "Automation enabled"
     assert only("automation.dry_run")["summary"] == "Dry run on"
     assert "automatic" in only("automation.mode")["summary"]
-    assert only("maintenance.on")["subject"] == "pve4"
+    assert only("maintenance.on")["subject"] == "orion"
     change = only("config.change")
     # cooldown_reset_at is bookkeeping, the own-event keys are not repeated
     assert json.loads(change["details_json"])["keys"] == ["automated_migrations.rules.cooldown_minutes"]
     assert {r["source"] for r in rows()} == {"user"}
 
     client.post("/api/automigrate/config", json={"maintenance_nodes": []})
-    assert only("maintenance.off")["summary"] == "pve4 left maintenance"
+    assert only("maintenance.off")["summary"] == "orion left maintenance"
     # saving the same values again records nothing
     before = len(rows())
     client.post("/api/automigrate/config", json={"enabled": True})
@@ -321,7 +321,7 @@ def test_tag_add_and_remove(env, monkeypatch):
     proxmox.nodes.return_value.lxc.return_value.config.get.return_value = {"tags": "keep;old"}
     monkeypatch.setattr(guests, "get_proxmox_client", lambda *a, **k: proxmox)
     monkeypatch.setattr(guests, "trigger_collection", lambda: None)
-    monkeypatch.setattr(guests, "read_cache", lambda: {"guests": {"101": {"node": "pve4", "type": "CT"}}})
+    monkeypatch.setattr(guests, "read_cache", lambda: {"guests": {"101": {"node": "orion", "type": "CT"}}})
     client = app_with(guests.guests_bp)
     assert client.post("/api/guests/101/tags", json={"tag": "ignore"}).status_code == 200
     assert client.delete("/api/guests/101/tags/old").status_code == 200

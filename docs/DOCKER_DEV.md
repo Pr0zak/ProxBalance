@@ -68,8 +68,8 @@ cat > dev-cache/cluster_cache.json << 'EOF'
 {
   "collected_at": "2025-01-16T12:00:00",
   "nodes": [
-    {"name": "pve1", "cpu_percent": 45.5, "mem_percent": 62.3, "load_1": 2.5, "status": "online"},
-    {"name": "pve2", "cpu_percent": 35.2, "mem_percent": 55.1, "load_1": 1.8, "status": "online"}
+    {"name": "cygnus", "cpu_percent": 45.5, "mem_percent": 62.3, "load_1": 2.5, "status": "online"},
+    {"name": "draco", "cpu_percent": 35.2, "mem_percent": 55.1, "load_1": 1.8, "status": "online"}
   ],
   "guests": []
 }

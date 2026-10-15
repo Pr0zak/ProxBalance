@@ -52,8 +52,8 @@ def guest(vmid, node_name):
 def make_cache():
     return {
         "cluster_health": {"quorate": True},
-        "nodes": {"pve3": node(30, 40), "pve4": node(60, 70), "pve5": node(92, 60), "pve6": node(20, 30)},
-        "guests": {str(v): guest(v, n) for v, n in [(101, "pve4"), (102, "pve5"), (103, "pve3"), (104, "pve4")]},
+        "nodes": {"lyra": node(30, 40), "orion": node(60, 70), "rigel": node(92, 60), "vega": node(20, 30)},
+        "guests": {str(v): guest(v, n) for v, n in [(101, "orion"), (102, "rigel"), (103, "lyra"), (104, "orion")]},
     }
 
 
@@ -127,7 +127,7 @@ def actions(cluster):
 # ---------------------------------------------------------------- default mode
 
 def test_default_mode_is_automatic_and_executes_everything(harness):
-    c = harness([rec(101, "pve4", "pve6"), rec(103, "pve3", "pve6")])
+    c = harness([rec(101, "orion", "vega"), rec(103, "lyra", "vega")])
     assert [e[0] for e in c.executed] == [101, 103]
     assert "automation_mode" not in c.last_run
     assert all("auto_run" not in d for d in c.last_run["decisions"])
@@ -144,28 +144,28 @@ def test_unknown_mode_falls_back_to_automatic():
 # ---------------------------------------------------------------- semi mode
 
 def test_semi_normal_move_queues(harness):
-    c = harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    c = harness([rec(101, "orion", "vega")], {"mode": "semi"})
     assert c.executed == []
     assert actions(c) == {101: "queued"}
     assert [(e["vmid"], e["source_node"], e["target_node"], e["status"]) for e in c.queue] == [
-        (101, "pve4", "pve6", "pending")]
+        (101, "orion", "vega", "pending")]
     assert c.last_run["status"] == "no_action"
     assert [n[1]["vmid"] for n in c.notifications if n[0] == "queued"] == [101]
 
 
 def test_semi_evacuation_auto_runs(harness):
-    c = harness([rec(101, "pve4", "pve6", reason="Maintenance evacuation")],
-                {"mode": "semi", "maintenance_nodes": ["pve4"]})
-    assert c.executed == [(101, "pve4", "pve6")]
+    c = harness([rec(101, "orion", "vega", reason="Maintenance evacuation")],
+                {"mode": "semi", "maintenance_nodes": ["orion"]})
+    assert c.executed == [(101, "orion", "vega")]
     d = c.last_run["decisions"][0]
     assert d["action"] == "executed" and d["auto_run"] == "evacuation"
     assert c.queue == []
 
 
 def test_semi_move_off_critical_node_auto_runs(harness):
-    # pve5 is at 92% CPU (> 85%): its move runs, the pve4 one waits.
-    c = harness([rec(102, "pve5", "pve6"), rec(101, "pve4", "pve6")], {"mode": "semi"})
-    assert c.executed == [(102, "pve5", "pve6")]
+    # rigel is at 92% CPU (> 85%): its move runs, the orion one waits.
+    c = harness([rec(102, "rigel", "vega"), rec(101, "orion", "vega")], {"mode": "semi"})
+    assert c.executed == [(102, "rigel", "vega")]
     acts = actions(c)
     assert acts[102] == "executed" and acts[101] == "queued"
     d102 = next(d for d in c.last_run["decisions"] if d["vmid"] == 102)
@@ -174,24 +174,24 @@ def test_semi_move_off_critical_node_auto_runs(harness):
 
 
 def test_semi_queue_is_one_entry_per_guest_and_notifies_once(harness):
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
-    c = harness([rec(101, "pve4", "pve3")], {"mode": "semi"})
-    assert [(e["vmid"], e["target_node"]) for e in c.queue] == [(101, "pve3")]
-    c = harness([rec(101, "pve4", "pve3")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
+    c = harness([rec(101, "orion", "lyra")], {"mode": "semi"})
+    assert [(e["vmid"], e["target_node"]) for e in c.queue] == [(101, "lyra")]
+    c = harness([rec(101, "orion", "lyra")], {"mode": "semi"})
     assert len(c.queue) == 1
     assert not [n for n in c.notifications if n[0] == "queued"]  # same move again: no repeat
 
 
 def test_semi_entry_expires_when_recommendation_disappears(harness):
-    harness([rec(101, "pve4", "pve6"), rec(104, "pve4", "pve3")], {"mode": "semi"})
-    c = harness([rec(104, "pve4", "pve3")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega"), rec(104, "orion", "lyra")], {"mode": "semi"})
+    c = harness([rec(104, "orion", "lyra")], {"mode": "semi"})
     assert [e["vmid"] for e in c.queue] == [104]
     c = harness([], {"mode": "semi"})
     assert c.queue == []
 
 
 def test_semi_entry_expires_after_ttl(harness):
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     conn = db.get_connection()
     conn.execute("UPDATE approval_queue SET expires_at = '2000-01-01T00:00:00+00:00'")
     conn.commit()
@@ -200,7 +200,7 @@ def test_semi_entry_expires_after_ttl(harness):
 
 
 def test_semi_queue_holds_no_more_than_the_run_would_have_executed(harness):
-    recs = [rec(101, "pve4", "pve6"), rec(103, "pve3", "pve6"), rec(104, "pve4", "pve3")]
+    recs = [rec(101, "orion", "vega"), rec(103, "lyra", "vega"), rec(104, "orion", "lyra")]
     c = harness(recs, {"mode": "semi", "rules": {**BASE_CONFIG["automated_migrations"]["rules"],
                                                  "max_migrations_per_run": 2}})
     acts = actions(c)
@@ -209,23 +209,23 @@ def test_semi_queue_holds_no_more_than_the_run_would_have_executed(harness):
 
 
 def test_semi_approved_move_runs_on_next_run(harness):
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     assert migration_db.set_queue_status(101, migration_db.QUEUE_APPROVED)
     db.close_all()
-    c = harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
-    assert c.executed == [(101, "pve4", "pve6")]
+    c = harness([rec(101, "orion", "vega")], {"mode": "semi"})
+    assert c.executed == [(101, "orion", "vega")]
     assert c.last_run["decisions"][0]["auto_run"] == "approved"
     assert c.queue == []
 
 
 def test_semi_approval_rechecks_rules(harness):
     """An approved move still has to pass every rule at run time."""
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     migration_db.set_queue_status(101, migration_db.QUEUE_APPROVED)
     db.close_all()
     cache = make_cache()
-    cache["nodes"]["pve6"] = node(95, 30)  # target now too busy to receive guests
-    c = harness([rec(101, "pve4", "pve6")], {"mode": "semi"}, cache=cache)
+    cache["nodes"]["vega"] = node(95, 30)  # target now too busy to receive guests
+    c = harness([rec(101, "orion", "vega")], {"mode": "semi"}, cache=cache)
     assert c.executed == []
     d = c.last_run["decisions"][-1]
     assert d["action"] == "skipped" and "CPU too high" in d["reason"]
@@ -233,19 +233,19 @@ def test_semi_approval_rechecks_rules(harness):
 
 
 def test_semi_approval_for_another_target_does_not_run(harness):
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     migration_db.set_queue_status(101, migration_db.QUEUE_APPROVED)
     db.close_all()
-    c = harness([rec(101, "pve4", "pve3")], {"mode": "semi"})
+    c = harness([rec(101, "orion", "lyra")], {"mode": "semi"})
     assert c.executed == []
-    assert [(e["target_node"], e["status"]) for e in c.queue] == [("pve3", "pending")]
+    assert [(e["target_node"], e["status"]) for e in c.queue] == [("lyra", "pending")]
 
 
 def test_semi_dismissed_move_is_not_asked_again(harness):
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     migration_db.set_queue_status(101, migration_db.QUEUE_DISMISSED)
     db.close_all()
-    c = harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    c = harness([rec(101, "orion", "vega")], {"mode": "semi"})
     assert actions(c) == {101: "filtered"}
     assert c.executed == []
     assert not [n for n in c.notifications if n[0] == "queued"]
@@ -255,10 +255,10 @@ def test_semi_dismissed_move_is_not_asked_again(harness):
 
 def test_dry_run_wins_in_semi_mode(harness):
     # Prior live run queued 101 and the user approved it; then dry run went on.
-    harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    harness([rec(101, "orion", "vega")], {"mode": "semi"})
     migration_db.set_queue_status(101, migration_db.QUEUE_APPROVED)
     db.close_all()
-    recs = [rec(101, "pve4", "pve6"), rec(102, "pve5", "pve6"), rec(104, "pve4", "pve3")]
+    recs = [rec(101, "orion", "vega"), rec(102, "rigel", "vega"), rec(104, "orion", "lyra")]
     c = harness(recs, {"mode": "semi", "dry_run": True})
     assert c.executed == []  # nothing really moves, approved or critical
     acts = actions(c)
@@ -271,7 +271,7 @@ def test_dry_run_wins_in_semi_mode(harness):
 
 def test_forced_dry_run_test_never_writes_the_queue(harness, monkeypatch):
     monkeypatch.setenv("PROXBALANCE_FORCE_DRY_RUN", "1")
-    c = harness([rec(101, "pve4", "pve6")], {"mode": "semi"})
+    c = harness([rec(101, "orion", "vega")], {"mode": "semi"})
     assert actions(c) == {101: "queued"}
     assert c.queue == []
 
@@ -281,11 +281,11 @@ def test_forced_dry_run_test_never_writes_the_queue(harness, monkeypatch):
 def test_node_over_critical_uses_safety_limits():
     cfg = copy.deepcopy(BASE_CONFIG)
     cache = make_cache()
-    assert node_over_critical("pve5", cfg, cache)[0] is True
-    assert node_over_critical("pve4", cfg, cache)[0] is False
-    cache["nodes"]["pve4"]["mem_percent"] = 91
-    over, msg = node_over_critical("pve4", cfg, cache)
-    assert over and msg == "pve4 memory 91% > 90%"
+    assert node_over_critical("rigel", cfg, cache)[0] is True
+    assert node_over_critical("orion", cfg, cache)[0] is False
+    cache["nodes"]["orion"]["mem_percent"] = 91
+    over, msg = node_over_critical("orion", cfg, cache)
+    assert over and msg == "orion memory 91% > 90%"
     assert node_over_critical("nope", cfg, cache) == (False, "")
 
 
@@ -339,8 +339,8 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setattr(automation, "_inflight_migration_error", lambda: None)
     app = Flask(__name__)
     app.register_blueprint(automation.automation_bp)
-    migration_db.queue_for_approval({"vmid": 101, "name": "g101", "type": "CT", "source_node": "pve4",
-                                     "target_node": "pve6", "reason": "Balance CPU", "confidence": 80}, 24)
+    migration_db.queue_for_approval({"vmid": 101, "name": "g101", "type": "CT", "source_node": "orion",
+                                     "target_node": "vega", "reason": "Balance CPU", "confidence": 80}, 24)
     yield app.test_client(), cfg_file, spawned
     db.close_all()
 

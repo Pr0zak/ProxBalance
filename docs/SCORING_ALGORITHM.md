@@ -140,7 +140,7 @@ For each node, the engine sums the CPU of its running anchored guests (each gues
 movable_cpu = (node_cpu - anchored_cpu) / (100 - anchored_cpu) * 100
 ```
 
-Example: SilverNAS holds 50% of pve5. pve5 at 60% has 10 of its 50 free points in use, so movable CPU is 20% and pve5 is not a source. At 92%, movable CPU is 84%, above a 70% threshold, so ProxBalance moves guests off it.
+Example: a NAS VM holds 50% of rigel. rigel at 60% has 10 of its 50 free points in use, so movable CPU is 20% and rigel is not a source. At 92%, movable CPU is 84%, above a 70% threshold, so ProxBalance moves guests off it.
 
 Anchored load still counts in full when a node is scored as a migration **target**, because an incoming guest will compete with it. The node-scores API returns `anchored_cpu` and `anchored_guests` for each node.
 

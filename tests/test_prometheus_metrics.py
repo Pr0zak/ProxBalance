@@ -17,28 +17,28 @@ NOW = datetime(2026, 10, 11, 23, 30, tzinfo=timezone.utc).timestamp()
 CACHE = {
     "collected_at": "2026-10-11T23:20:00Z",
     "nodes": {
-        "pve3": {
-            "name": "pve3", "status": "online", "cpu_percent": 30.0, "mem_percent": 50.0,
+        "lyra": {
+            "name": "lyra", "status": "online", "cpu_percent": 30.0, "mem_percent": 50.0,
             "anchored_cpu": 5.5,
             "metrics": {"current_cpu": 30.0, "recent_cpu": 25.0, "current_mem": 50.0,
                         "current_iowait": 9.5},
         },
-        "pve4": {
+        "orion": {
             # No recent_cpu, no iowait, no anchored_cpu: those samples must be omitted.
-            "name": "pve4", "status": "online", "cpu_percent": 0, "mem_percent": 40.0,
+            "name": "orion", "status": "online", "cpu_percent": 0, "mem_percent": 40.0,
             "metrics": {"current_cpu": 0, "current_mem": 40.0},
         },
-        "pve5": {
-            "name": "pve5", "status": "offline", "cpu_percent": 99.0,
+        "rigel": {
+            "name": "rigel", "status": "offline", "cpu_percent": 99.0,
             "metrics": {"current_cpu": 99.0},
         },
     },
     "guests": {
-        "100": {"vmid": 100, "name": "proxbalance", "type": "CT", "node": "pve3",
+        "100": {"vmid": 100, "name": "proxbalance", "type": "CT", "node": "lyra",
                 "status": "running", "cpu_current": 2.5, "mem_used_gb": 0.5},
-        "101": {"vmid": 101, "name": 'we"ird\\name\nx', "type": "VM", "node": "pve4",
+        "101": {"vmid": 101, "name": 'we"ird\\name\nx', "type": "VM", "node": "orion",
                 "status": "running", "cpu_current": None},
-        "102": {"vmid": 102, "name": "stopped-one", "type": "CT", "node": "pve3",
+        "102": {"vmid": 102, "name": "stopped-one", "type": "CT", "node": "lyra",
                 "status": "stopped", "cpu_current": 0, "mem_used_gb": 1.0},
     },
 }
@@ -124,8 +124,8 @@ def _by(fams, name, label):
 FULL_SNAPSHOT = {
     "cache": CACHE,
     "version": "v2.15.0",
-    "node_scores": {"pve3": 22.694, "pve4": 130.0},
-    "maintenance_nodes": ["pve4"],
+    "node_scores": {"lyra": 22.694, "orion": 130.0},
+    "maintenance_nodes": ["orion"],
     "automation": {"enabled": True, "dry_run": False},
     "last_run": {"status": "no_action", "timestamp": "2026-10-11T23:00:00+00:00"},
     "migration_counts": [
@@ -145,12 +145,12 @@ def test_full_snapshot_is_valid_exposition():
     assert _samples(fams, "collection_age_seconds") == [({}, 600.0)]
     assert _samples(fams, "collection_last_success_timestamp_seconds")[0][1] == parse_timestamp(
         CACHE["collected_at"])
-    assert _by(fams, "node_cpu_recent_percent", "node") == {"pve3": 25.0}
-    assert _by(fams, "node_score", "node") == {"pve3": 22.69, "pve4": 130.0}
-    assert _by(fams, "node_suitability_percent", "node") == {"pve3": 77.3, "pve4": 0.0}
-    assert _by(fams, "node_maintenance", "node") == {"pve3": 0, "pve4": 1, "pve5": 0}
-    assert _by(fams, "node_online", "node") == {"pve3": 1, "pve4": 1, "pve5": 0}
-    assert _by(fams, "node_guests_running", "node") == {"pve3": 1, "pve4": 1}
+    assert _by(fams, "node_cpu_recent_percent", "node") == {"lyra": 25.0}
+    assert _by(fams, "node_score", "node") == {"lyra": 22.69, "orion": 130.0}
+    assert _by(fams, "node_suitability_percent", "node") == {"lyra": 77.3, "orion": 0.0}
+    assert _by(fams, "node_maintenance", "node") == {"lyra": 0, "orion": 1, "rigel": 0}
+    assert _by(fams, "node_online", "node") == {"lyra": 1, "orion": 1, "rigel": 0}
+    assert _by(fams, "node_guests_running", "node") == {"lyra": 1, "orion": 1}
     assert _samples(fams, "automation_last_run_status") == [({"status": "no_action"}, 1.0)]
     assert _samples(fams, "recommendations_pending") == [({}, 0.0)]
     mig = {(lbl["result"], lbl["dry_run"]): v for lbl, v in _samples(fams, "migrations_total")}
@@ -159,14 +159,14 @@ def test_full_snapshot_is_valid_exposition():
 
 def test_missing_values_are_omitted_not_zero():
     fams = parse_exposition(format_metrics({"cache": CACHE}, now=NOW))
-    # pve4 has no recent_cpu / iowait / anchored_cpu: no sample at all.
-    assert "pve4" not in _by(fams, "node_cpu_recent_percent", "node")
-    assert "pve4" not in _by(fams, "node_iowait_percent", "node")
-    assert "pve4" not in _by(fams, "node_anchored_cpu_percent", "node")
+    # orion has no recent_cpu / iowait / anchored_cpu: no sample at all.
+    assert "orion" not in _by(fams, "node_cpu_recent_percent", "node")
+    assert "orion" not in _by(fams, "node_iowait_percent", "node")
+    assert "orion" not in _by(fams, "node_anchored_cpu_percent", "node")
     # A real zero is still reported.
-    assert _by(fams, "node_cpu_percent", "node")["pve4"] == 0
+    assert _by(fams, "node_cpu_percent", "node")["orion"] == 0
     # Offline node: only node_online, nothing stale.
-    assert "pve5" not in _by(fams, "node_cpu_percent", "node")
+    assert "rigel" not in _by(fams, "node_cpu_percent", "node")
     # Guest 101 has no CPU and no memory reading.
     assert "101" not in _by(fams, "guest_cpu_percent", "vmid")
     assert "101" not in _by(fams, "guest_memory_bytes", "vmid")
@@ -194,7 +194,7 @@ def test_stale_cache_reports_age_and_keeps_serving():
     fams = parse_exposition(format_metrics({"cache": stale}, now=NOW))
     assert _samples(fams, "up") == [({}, 1.0)]
     assert _samples(fams, "collection_age_seconds") == [({}, 86400.0)]
-    assert _by(fams, "node_cpu_percent", "node")["pve3"] == 30.0
+    assert _by(fams, "node_cpu_percent", "node")["lyra"] == 30.0
 
 
 def test_unparseable_collected_at_omits_collection_metrics():
@@ -236,7 +236,7 @@ def tmp_env(tmp_path, monkeypatch):
     db.init_db()
     cfg = tmp_path / "config.json"
     cfg.write_text(json.dumps({"proxmox_host": "192.168.1.10", "automated_migrations": {
-        "enabled": True, "dry_run": True, "maintenance_nodes": ["pve3"]}}))
+        "enabled": True, "dry_run": True, "maintenance_nodes": ["lyra"]}}))
     monkeypatch.setattr(config_manager, "CONFIG_FILE", str(cfg))
     import proxbalance.routes.metrics as metrics_route
     monkeypatch.setattr(metrics_route, "BASE_PATH", str(tmp_path))
@@ -255,8 +255,8 @@ def _client(cache):
 
 
 def test_route_serves_text_exposition(tmp_env):
-    migration_db.record_migration({"migration_id": "m1", "vmid": 100, "source_node": "pve3",
-                                   "target_node": "pve4", "status": "completed"})
+    migration_db.record_migration({"migration_id": "m1", "vmid": 100, "source_node": "lyra",
+                                   "target_node": "orion", "status": "completed"})
     migration_db.archive_run({"run_id": "r1", "timestamp": "2026-10-11T23:00:00+00:00",
                               "status": "success"})
     resp = _client(CACHE).get("/api/metrics")
@@ -265,11 +265,11 @@ def test_route_serves_text_exposition(tmp_env):
     fams = parse_exposition(resp.get_data(as_text=True))
     assert _samples(fams, "up") == [({}, 1.0)]
     assert _samples(fams, "automation_dry_run") == [({}, 1.0)]
-    assert _by(fams, "node_maintenance", "node")["pve3"] == 1
+    assert _by(fams, "node_maintenance", "node")["lyra"] == 1
     assert _samples(fams, "recommendations_pending") == [({}, 2.0)]
     assert _samples(fams, "automation_last_run_status") == [({"status": "success"}, 1.0)]
     assert _samples(fams, "migrations_total") == [({"result": "completed", "dry_run": "false"}, 1.0)]
-    assert set(_by(fams, "node_score", "node")) == {"pve3", "pve4"}
+    assert set(_by(fams, "node_score", "node")) == {"lyra", "orion"}
 
 
 def test_route_without_cache_still_answers(tmp_env):

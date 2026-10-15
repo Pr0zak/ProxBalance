@@ -93,7 +93,7 @@ def node_over_critical(
     average, current memory), so "critical" means one thing everywhere.
 
     Returns:
-        (over, message) — the message names the metric, e.g. "pve4 CPU 92% > 85%".
+        (over, message) — the message names the metric, e.g. "orion CPU 92% > 85%".
     """
     node = (cache_data.get("nodes") or {}).get(node_name)
     if not node:

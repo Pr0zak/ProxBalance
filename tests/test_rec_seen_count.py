@@ -18,12 +18,12 @@ AUTO = {'enabled': True, 'check_interval_minutes': 30, 'maintenance_nodes': [],
         'rules': {'intelligent_migrations': IM}}
 
 
-def rec(vmid=101, target='pve6', source='pve5', **kw):
+def rec(vmid=101, target='vega', source='rigel', **kw):
     return {'vmid': vmid, 'name': f'g{vmid}', 'source_node': source, 'target_node': target,
             'confidence_score': 90, 'score_improvement': 50, **kw}
 
 
-def entry(count=2, target='pve6', streak=None, minutes_ago=10, status='observing', obs=None, **kw):
+def entry(count=2, target='vega', streak=None, minutes_ago=10, status='observing', obs=None, **kw):
     e = {'vmid': 101, 'consecutive_count': count, 'last_target_node': target, 'status': status,
          'last_seen': (NOW - timedelta(minutes=minutes_ago)).isoformat(),
          'first_seen': (NOW - timedelta(hours=2)).isoformat(),
@@ -73,8 +73,8 @@ def test_freshness_scales_with_check_interval():
 
 
 def test_bypassed_recs_not_annotated():
-    auto = {**AUTO, 'maintenance_nodes': ['pve5']}
-    recs = [rec(), rec(vmid=102, source='pve4', distribution_balancing=True)]
+    auto = {**AUTO, 'maintenance_nodes': ['rigel']}
+    recs = [rec(), rec(vmid=102, source='orion', distribution_balancing=True)]
     tracked = {'101': entry(), '102': entry()}
     out = annotate_seen_counts(recs, tracked, auto, now=NOW)
     assert all('seen_count' not in r for r in out)
@@ -95,25 +95,25 @@ def test_default_required_is_three():
 # --- same_target_streak ------------------------------------------------------
 
 def test_streak_zero_when_automation_last_saw_another_target():
-    assert same_target_streak(entry(count=4, target='pve3', streak=4), 'pve6') == 0
+    assert same_target_streak(entry(count=4, target='lyra', streak=4), 'vega') == 0
 
 
 def test_streak_uses_field_capped_at_count():
-    assert same_target_streak(entry(count=2, streak=5), 'pve6') == 2
+    assert same_target_streak(entry(count=2, streak=5), 'vega') == 2
 
 
 def test_streak_derived_from_observations_when_field_missing():
-    obs = [{'target_node': 'pve3'}, {'target_node': 'pve6'}, {'target_node': 'pve6'}]
-    assert same_target_streak(entry(count=5, obs=obs), 'pve6') == 2
+    obs = [{'target_node': 'lyra'}, {'target_node': 'vega'}, {'target_node': 'vega'}]
+    assert same_target_streak(entry(count=5, obs=obs), 'vega') == 2
 
 
 def test_streak_unknown_when_window_holds_no_break_shorter_than_count():
-    obs = [{'target_node': 'pve6'}]
-    assert same_target_streak(entry(count=4, obs=obs), 'pve6') is None
+    obs = [{'target_node': 'vega'}]
+    assert same_target_streak(entry(count=4, obs=obs), 'vega') is None
 
 
 def test_streak_full_when_window_covers_count():
-    assert same_target_streak(entry(count=3), 'pve6') == 3
+    assert same_target_streak(entry(count=3), 'vega') == 3
 
 
 # --- automigrate tracking ----------------------------------------------------
@@ -125,11 +125,11 @@ def run(tracking, recs):
 
 def test_target_streak_restarts_on_target_change_but_gate_count_does_not():
     t = {'tracked': {}}
-    t, _, _ = run(t, [rec(target='pve6')])
-    t, _, _ = run(t, [rec(target='pve6')])
+    t, _, _ = run(t, [rec(target='vega')])
+    t, _, _ = run(t, [rec(target='vega')])
     e = t['tracked']['101']
     assert (e['consecutive_count'], e['target_streak']) == (2, 2)
-    t, ready, _ = run(t, [rec(target='pve3')])
+    t, ready, _ = run(t, [rec(target='lyra')])
     e = t['tracked']['101']
     assert (e['consecutive_count'], e['target_streak']) == (3, 1)
     assert ready  # gating is per guest, unchanged

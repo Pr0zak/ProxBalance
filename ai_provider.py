@@ -297,7 +297,7 @@ Return JSON format:
   "insights": [
     {{
       "vmid": 999,
-      "insight": "pve4 is a good choice because...",
+      "insight": "orion is a good choice because...",
       "confidence_adjustment": 0  // -10 to +10 to adjust algorithm confidence
     }}
   ]

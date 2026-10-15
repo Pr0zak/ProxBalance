@@ -231,7 +231,7 @@ Columns: Type Icon, VMID, Name, Node, CPU/Memory, Status, Actions
 Card layout per guest:
 +----------------------------------+
 | [VM icon] Guest Name             |
-| ID: 100 | Node: pve1 | running  |
+| ID: 100 | Node: cygnus | running  |
 | Tags: [tag1] [tag2]             |
 | [Migrate] [Manage Tags]         |
 +----------------------------------+
@@ -252,7 +252,7 @@ Columns: Time, VM, Migration path, Score, Reason, Status, Duration
 ```
 +----------------------------------+
 | [Status] VM Name (ID: 100)      |
-| pve1 -> pve2 | 2m 15s           |
+| cygnus -> draco | 2m 15s           |
 | Score: 85 | CPU overload         |
 | Jan 15, 2025 2:30 PM            |
 +----------------------------------+

@@ -14,7 +14,7 @@ const run = {
   ran_at: '2026-10-14T10:00:00+00:00', duration_ms: 812,
   summary: { pass: 2, warn: 1, fail: 1, skip: 0 },
   results: [
-    { id: 'api_host', group: 'Proxmox', name: 'Proxmox API (10.0.0.3)', status: 'pass', fact: 'Reachable in 12 ms', details: { latency_ms: 12 } },
+    { id: 'api_host', group: 'Proxmox', name: 'Proxmox API (192.168.1.3)', status: 'pass', fact: 'Reachable in 12 ms', details: { latency_ms: 12 } },
     { id: 'permissions', group: 'Proxmox', name: 'Token permissions', status: 'warn',
       fact: "Token lacks VM.Migrate — automation can't move guests", details: { token_id: 'pb@pam!pb' } },
     { id: 'collector', group: 'ProxBalance', name: 'Collector', status: 'fail', fact: 'Last run failed', details: {} },
@@ -39,7 +39,7 @@ test('overall status is the worst line', () => {
 test('report has one line per check, grouped, with version', () => {
   const text = M.formatReport(run, { version: 'v2.18.0' });
   assert.match(text, /Version: v2\.18\.0/);
-  assert.match(text, /\[Proxmox\]\nPASS  Proxmox API \(10\.0\.0\.3\): Reachable in 12 ms/);
+  assert.match(text, /\[Proxmox\]\nPASS  Proxmox API \(192\.168\.1\.3\): Reachable in 12 ms/);
   assert.match(text, /WARN  Token permissions: Token lacks VM\.Migrate/);
   assert.match(text, /\[ProxBalance\]\nFAIL  Collector: Last run failed/);
   assert.match(text, /api_host: \{"latency_ms":12\}/);

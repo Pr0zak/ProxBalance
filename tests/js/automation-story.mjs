@@ -28,25 +28,25 @@ const inWindow = { cluster_health: 'Cluster safety checks passed', migration_win
 const dryRun = {
   timestamp: ago(3), status: 'success', mode: 'dry_run', migrations_executed: 1, migrations_successful: 1, duration_seconds: 1,
   safety_checks: inWindow,
-  decisions: [{ action: 'executed', status: 'completed', name: 'zentry-det-pve5', vmid: 245, type: 'CT', source_node: 'pve5', target_node: 'pve3',
+  decisions: [{ action: 'executed', status: 'completed', name: 'worker-02', vmid: 245, type: 'CT', source_node: 'rigel', target_node: 'lyra',
     priority_rank: 1, total_candidates: 1, target_node_score: 40.87, confidence_score: 92.7,
-    reason: 'zentry-det-pve5 should move to pve3 because pve5 has elevated CPU usage (51% CPU, 30% of it unmovable, 45% mem; CPU rising), while pve3 has more capacity (18% CPU, 49% mem).',
+    reason: 'worker-02 should move to lyra because rigel has elevated CPU usage (51% CPU, 30% of it unmovable, 45% mem; CPU rising), while lyra has more capacity (18% CPU, 49% mem).',
     selected_reason: '✅ SELECTED - Highest priority recommendation (ranked #1 of 1)' }],
 };
 const realMove = { ...dryRun, mode: 'live', decisions: [{ ...dryRun.decisions[0], name: 'web01' }] };
 const nothing = (min) => ({ timestamp: ago(min), status: 'no_action', mode: 'live', migrations_executed: 0, migrations_successful: 0, decisions: [], safety_checks: inWindow });
-const waiting = { ...nothing(3), mode: 'dry_run', decisions: [{ action: 'observing', name: 'zentry-det-pve5', vmid: 245, source_node: 'pve5', target_node: 'pve3', reason: 'Observing 2/3 consecutive runs' }] };
+const waiting = { ...nothing(3), mode: 'dry_run', decisions: [{ action: 'observing', name: 'worker-02', vmid: 245, source_node: 'rigel', target_node: 'lyra', reason: 'Observing 2/3 consecutive runs' }] };
 const skippedWindow = { timestamp: ago(3), status: 'skipped', mode: 'unknown', decisions: [],
   safety_checks: { migration_window: 'Outside all migration windows (Current time: Monday 01:00 America/Chicago)', cluster_health: 'Unknown', running_migrations: 0 } };
 const skippedCluster = { ...skippedWindow, safety_checks: { ...inWindow, cluster_health: 'Cluster status unknown: the last collection could not read it (Proxmox API timeout)' } };
 const failed = { timestamp: ago(3), status: 'failed', mode: 'live', decisions: [], safety_checks: { ...inWindow, cluster_health: 'Cluster not quorate' } };
-const held = { ...nothing(3), decisions: [{ action: 'filtered', name: 'db01', vmid: 300, source_node: 'pve4', target_node: 'pve3', reason: 'In cooldown period' },
-  { action: 'skipped', name: 'web02', vmid: 301, source_node: 'pve4', target_node: 'pve3', skip_code: 'target_inflow_cap', reason: 'pve3 already received 1 migration this run' }] };
+const held = { ...nothing(3), decisions: [{ action: 'filtered', name: 'db01', vmid: 300, source_node: 'orion', target_node: 'lyra', reason: 'In cooldown period' },
+  { action: 'skipped', name: 'web02', vmid: 301, source_node: 'orion', target_node: 'lyra', skip_code: 'target_inflow_cap', reason: 'lyra already received 1 migration this run' }] };
 
 // --- banner sentence ----------------------------------------------------------
 eq('dry run sentence', S.lastCheckSentence(dryRun, { now }),
-  'Last check 3 min ago: would have moved zentry-det-pve5 pve5 → pve3 — dry run, nothing moved.');
-eq('real move sentence', S.lastCheckSentence(realMove, { now }), 'Last check 3 min ago: moved web01 pve5 → pve3.');
+  'Last check 3 min ago: would have moved worker-02 rigel → lyra — dry run, nothing moved.');
+eq('real move sentence', S.lastCheckSentence(realMove, { now }), 'Last check 3 min ago: moved web01 rigel → lyra.');
 eq('nothing-to-do sentence', S.lastCheckSentence(nothing(3), { now }), 'Last check 3 min ago: nothing to do — all nodes within thresholds.');
 eq('waiting sentence', S.lastCheckSentence(waiting, { now }), 'Last check 3 min ago: 1 suggestion still waiting (2 of 3 checks).');
 eq('skipped outside window', S.lastCheckSentence(skippedWindow, { now, opensAt: '03:00' }),
@@ -67,16 +67,16 @@ eq('nothing kind', S.runOutcome(nothing(1)).kind, 'nothing');
 const pDry = S.lastCheckParts(dryRun, { now });
 eq('dry parts lead', pDry.lead, 'Last check 3 min ago');
 eq('dry parts chip', pDry.chip, 'would move');
-eq('dry parts subject', pDry.subject, 'zentry-det-pve5 pve5 → pve3');
+eq('dry parts subject', pDry.subject, 'worker-02 rigel → lyra');
 eq('nothing parts has no subject', S.lastCheckParts(nothing(3), { now }).subject, '');
 eq('nothing parts chip', S.lastCheckParts(nothing(3), { now }).chip, 'nothing to do');
-eq('waiting parts subject', S.lastCheckParts(waiting, { now }).subject, 'zentry-det-pve5 pve5 → pve3 · 2 of 3 checks');
+eq('waiting parts subject', S.lastCheckParts(waiting, { now }).subject, 'worker-02 rigel → lyra · 2 of 3 checks');
 eq('count never exceeds requirement', JSON.stringify(S.observationProgress({ action: 'observing', reason: 'Observing 6/3 consecutive runs' })), JSON.stringify({ seen: 3, need: 3 }));
 {
   const run = { timestamp: '2026-10-12T01:45:00Z', mode: 'dry_run', dry_run: true, status: 'success', migrations_executed: 1, migrations_successful: 1,
     decisions: [
-      { action: 'executed', name: 'sonarr', source_node: 'pve3', target_node: 'pve6', reason: 'sonarr must be evacuated because pve3 is entering maintenance' },
-      ...[2, 3, 4, 5, 6].map(n => ({ action: 'skipped', name: `g${n}`, source_node: 'pve3', target_node: 'pve6', reason: `Lower priority - Ranked #${n} of 20` })),
+      { action: 'executed', name: 'nextcloud', source_node: 'lyra', target_node: 'vega', reason: 'nextcloud must be evacuated because lyra is entering maintenance' },
+      ...[2, 3, 4, 5, 6].map(n => ({ action: 'skipped', name: `g${n}`, source_node: 'lyra', target_node: 'vega', reason: `Lower priority - Ranked #${n} of 20` })),
     ] };
   const rows = S.lastCheckRows(run, { now });
   eq('held rows folded into one', rows.filter(r => r.chip === 'held back').length, 1);
@@ -90,7 +90,7 @@ eq('nothing to do has no rows', S.lastCheckRows(nothing(3)), null);
 const rDry = S.lastCheckRows(dryRun, { observationPeriods: 3 });
 eq('dry row chip', rDry[0].chip, 'would move');
 eq('dry row pips full', JSON.stringify(rDry[0].pips), '{"seen":3,"need":3}');
-eq('dry row short why', rDry[0].why, 'CPU on pve5 rising');
+eq('dry row short why', rDry[0].why, 'CPU on rigel rising');
 eq('live row chip', S.lastCheckRows(realMove)[0].chip, 'moved');
 const rWait = S.lastCheckRows(waiting, { observationPeriods: 3 });
 eq('waiting row pips', JSON.stringify(rWait[0].pips), '{"seen":2,"need":3}');
@@ -100,9 +100,9 @@ has('held row reason', rHeld[0].why, 'cooldown period');
 eq('inflow cap row chip', rHeld[1].chip, 'held back');
 has('inflow cap row reason', rHeld[1].why, 'per-node limit');
 eq('skipped row reason', S.lastCheckRows(skippedWindow)[0].why, 'outside the migration window');
-eq('old-format reason rising', S.shortWhy({ reason: 'atlas should move to pve6 because pve5 has elevated CPU usage (63% CPU, 35% mem with an upward trend), while pve6 has more capacity (42% CPU, 19% mem).' }), 'CPU on pve5 rising');
-eq('memory reason not rising', S.shortWhy({ reason: 'x should move to pve3 because pve4 has high memory usage (20% CPU, 81% mem), while pve3 has more capacity.' }), 'memory on pve4 high');
-eq('only memory rising does not make CPU rising', S.shortWhy({ reason: 'x should move to pve3 because pve4 has high CPU usage (75% CPU, 40% mem; memory rising), while pve3 has more.' }), 'CPU on pve4 high');
+eq('old-format reason rising', S.shortWhy({ reason: 'gitlab should move to vega because rigel has elevated CPU usage (63% CPU, 35% mem with an upward trend), while vega has more capacity (42% CPU, 19% mem).' }), 'CPU on rigel rising');
+eq('memory reason not rising', S.shortWhy({ reason: 'x should move to lyra because orion has high memory usage (20% CPU, 81% mem), while lyra has more capacity.' }), 'memory on orion high');
+eq('only memory rising does not make CPU rising', S.shortWhy({ reason: 'x should move to lyra because orion has high CPU usage (75% CPU, 40% mem; memory rising), while lyra has more.' }), 'CPU on orion high');
 
 // --- strip layout ------------------------------------------------------------------------
 eq('category dry', S.runCategory(dryRun), 'would_move');
@@ -126,20 +126,20 @@ eq('mixed legend order', JSON.stringify(few.categories), '["nothing","waiting","
 eq('empty strip', S.stripLayout([], { now }).items.length, 0);
 
 // --- last real move --------------------------------------------------------------------
-const recent = [{ dry_run: true, status: 'completed', name: 'zentry-det-pve5' }, { dry_run: false, status: 'completed', name: 'atlas' }];
-eq('last real move skips dry run', S.lastRealMove(recent).name, 'atlas');
+const recent = [{ dry_run: true, status: 'completed', name: 'worker-02' }, { dry_run: false, status: 'completed', name: 'gitlab' }];
+eq('last real move skips dry run', S.lastRealMove(recent).name, 'gitlab');
 eq('no real move', S.lastRealMove([recent[0]]), null);
 
 // --- outcome verdicts ----------------------------------------------------------------------
 const snap = (cpu, mem = 40, late = false) => ({ late, source_node: { cpu, mem }, timestamp: '2026-10-10T20:48:16Z' });
-const outcome = (verdict, pre, p5, p24, status = 'completed') => ({ status, verdict, source_node: 'pve5', target_node: 'pve6',
+const outcome = (verdict, pre, p5, p24, status = 'completed') => ({ status, verdict, source_node: 'rigel', target_node: 'vega',
   pre_migration: { ...snap(pre), timestamp: '2026-10-10T20:30:05Z' }, post_5min: snap(p5), post_24h: p24 == null ? null : snap(p24) });
-// Production's atlas move: 89% → 70% (5 min) → 72% (24 h), verdict beneficial, 24 h mem up.
+// A real-world gitlab move: 89% → 70% (5 min) → 72% (24 h), verdict beneficial, 24 h mem up.
 const helped = outcome('beneficial', 88.84, 70.48, 72.02);
 const h = S.outcomeHeadline(helped);
 eq('helped verdict', h.verdict, 'helped');
 eq('helped tone green', h.tone, 'green');
-eq('headline uses 24 h', S.headlineText(h), 'pve5 CPU 89% → 72% after 24 h');
+eq('headline uses 24 h', S.headlineText(h), 'rigel CPU 89% → 72% after 24 h');
 const worse = S.outcomeHeadline(outcome('harmful', 40, 45, 52));
 eq('worse verdict', worse.verdict, 'worse');
 eq('worse tone red', worse.tone, 'red');
@@ -147,7 +147,7 @@ eq('contradictory helped downgraded', S.outcomeHeadline(outcome('beneficial', 40
 eq('contradictory worse downgraded', S.outcomeHeadline(outcome('harmful', 60, 50, 40)).verdict, 'no_change');
 const pend = S.outcomeHeadline(outcome(null, 80, 60, null, 'pending_24h'));
 eq('pending measuring', pend.verdict, 'measuring');
-eq('pending headline 5 min', S.headlineText(pend), 'pve5 CPU 80% → 60% after 5 min');
+eq('pending headline 5 min', S.headlineText(pend), 'rigel CPU 80% → 60% after 5 min');
 const late = S.outcomeHeadline({ ...helped, post_24h: snap(72, 40, true) });
 eq('late 24 h is unclear', late.verdict, 'unclear');
 eq('summary', S.outcomesSummary([helped, helped, outcome('harmful', 40, 45, 52)]), 'Last 3 moves: 2 helped, 1 made things worse');

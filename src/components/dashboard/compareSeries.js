@@ -153,7 +153,7 @@ export function spreadNow(metricKey, lines, clusterSpread) {
 // Whole numbers from 10 up, one decimal below (IO wait lives in single digits).
 const num = (v) => (Math.abs(v) >= 10 ? String(Math.round(v)) : String(+v.toFixed(1)));
 
-/** "Spread now: 24 pts (pve6 26% → pve3 50%)", or "Spread now: —". */
+/** "Spread now: 24 pts (vega 26% → lyra 50%)", or "Spread now: —". */
 export function spreadText(s) {
   if (!s) return 'Spread now: —';
   return `Spread now: ${num(s.spread)} pts (${s.low.name} ${num(s.low.value)}% → ${s.high.name} ${num(s.high.value)}%)`;

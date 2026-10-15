@@ -34,9 +34,9 @@ eq('automation error is bad', C.eventTone('automation.error'), 'bad');
 eq('done is neutral', C.eventTone('migration.done'), null);
 
 eq('detail rows', C.detailRows({
-  action: 'config.change', actor: '10.0.0.50',
+  action: 'config.change', actor: '192.168.1.50',
   details: { keys: ['a.b', 'c'], endpoint: 'POST /api/config', empty: '', dry_run: false },
-}), [['keys', 'a.b, c'], ['endpoint', 'POST /api/config'], ['dry run', 'no'], ['from', '10.0.0.50'],
+}), [['keys', 'a.b, c'], ['endpoint', 'POST /api/config'], ['dry run', 'no'], ['from', '192.168.1.50'],
   ['action', 'config.change']]);
 eq('batch moves: one line each', C.detailRows({
   details: { moves: [{ vmid: 1, target_node: 'b', started: true }, { vmid: 2, target_node: 'c', started: false }] },

@@ -14,7 +14,7 @@ from proxbalance.disk_health import (
     summarize_disks,
 )
 
-# Shapes copied from this cluster's pve4 (2026-10-14), serials trimmed.
+# Shapes copied from this cluster's orion (2026-10-14), serials trimmed.
 NVME = {"devpath": "/dev/nvme0n1", "health": "PASSED", "model": "SPCC M.2 PCIe SSD",
         "size": 2048408248320, "type": "nvme", "wearout": 87, "used": "LVM"}
 SATA_SSD = {"devpath": "/dev/sda", "health": "PASSED", "model": "T-FORCE_T253TY004T",
@@ -112,17 +112,17 @@ def _collector(get_fn):
 
 def test_collector_returns_summary():
     c = _collector(lambda: [NVME, HDD])
-    s = c.get_disk_health("pve4")
+    s = c.get_disk_health("orion")
     assert s["count"] == 2 and s["notable"] == 0
 
 
 def test_collector_permission_error_is_none_and_logged_once(capsys):
     def denied():
-        raise ResourceException(403, "Forbidden", "Permission check failed (/nodes/pve4, Sys.Audit)")
+        raise ResourceException(403, "Forbidden", "Permission check failed (/nodes/orion, Sys.Audit)")
 
     c = _collector(denied)
-    assert c.get_disk_health("pve3") is None
-    assert c.get_disk_health("pve4") is None
+    assert c.get_disk_health("lyra") is None
+    assert c.get_disk_health("orion") is None
     err = capsys.readouterr().err
     assert err.count("disk health unavailable") == 1
     assert "[auth]" in err and "Sys.Audit" in err

@@ -8,8 +8,8 @@ import pytest
 from proxbalance import db, outcomes
 
 CACHE = {"nodes": {
-    "pve3": {"cpu_percent": 60.0, "mem_percent": 45.0, "metrics": {"current_iowait": 5.0}, "guest_count": 15},
-    "pve4": {"cpu_percent": 10.0, "mem_percent": 30.0, "metrics": {"current_iowait": 1.0}, "guest_count": 31},
+    "lyra": {"cpu_percent": 60.0, "mem_percent": 45.0, "metrics": {"current_iowait": 5.0}, "guest_count": 15},
+    "orion": {"cpu_percent": 10.0, "mem_percent": 30.0, "metrics": {"current_iowait": 1.0}, "guest_count": 31},
 }}
 
 
@@ -26,9 +26,9 @@ def tmp_db(tmp_path, monkeypatch):
 
 
 def _record(minutes_ago):
-    snap = outcomes.capture_pre_migration_snapshot(101, "pve3", "pve4")
+    snap = outcomes.capture_pre_migration_snapshot(101, "lyra", "orion")
     snap["timestamp"] = (datetime.utcnow() - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    assert outcomes.record_migration_outcome(101, "pve3", "pve4", "CT", snap, predicted_improvement=20)
+    assert outcomes.record_migration_outcome(101, "lyra", "orion", "CT", snap, predicted_improvement=20)
 
 
 def test_timely_capture_is_not_late(tmp_db):
@@ -60,7 +60,7 @@ def _migrate_client(monkeypatch):
 
 def test_manual_migration_records_outcome(tmp_db, monkeypatch):
     c = _migrate_client(monkeypatch)
-    r = c.post("/api/migrate", json={"vmid": 101, "source_node": "pve3", "target_node": "pve4", "type": "CT"})
+    r = c.post("/api/migrate", json={"vmid": 101, "source_node": "lyra", "target_node": "orion", "type": "CT"})
     assert r.status_code == 200
     rows = outcomes.get_migration_outcomes()
     assert len(rows) == 1 and rows[0]["status"] == "pending_5min"
@@ -68,6 +68,6 @@ def test_manual_migration_records_outcome(tmp_db, monkeypatch):
 
 def test_automigrate_call_does_not_double_record(tmp_db, monkeypatch):
     c = _migrate_client(monkeypatch)
-    c.post("/api/migrate", json={"vmid": 101, "source_node": "pve3", "target_node": "pve4",
+    c.post("/api/migrate", json={"vmid": 101, "source_node": "lyra", "target_node": "orion",
                                  "type": "CT", "record_outcome": False})
     assert outcomes.get_migration_outcomes() == []

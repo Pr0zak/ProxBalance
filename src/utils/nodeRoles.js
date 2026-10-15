@@ -20,7 +20,7 @@ const guestWord = (n) => `${n} guest${n === 1 ? '' : 's'}`;
 const guestName = (r) => r.name || (r.vmid != null ? `guest ${r.vmid}` : 'guest');
 
 /** Names grouped by the node on the other end, in first-seen order:
- *  "sonarr, prowlarr → pve6; grafana → pve4". Long lists end in "+N more". */
+ *  "nextcloud, mqtt-broker → vega; loki → orion". Long lists end in "+N more". */
 function groupedList(moves, otherKey, arrow) {
   const shown = moves.slice(0, MAX_NAMES);
   const groups = [];

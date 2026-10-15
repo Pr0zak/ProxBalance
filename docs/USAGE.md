@@ -34,7 +34,7 @@ Each node gets a **Headroom** score out of 100. Higher means more room to take g
 | 30 to 49 | Amber | Getting tight |
 | Under 30 | Red | Under pressure |
 
-The Cluster health tile on the dashboard reads the busiest node's headroom and says it in plain words: "All nodes have room" (with the node that has least room) when it is 50 or above, otherwise the busiest node and its biggest problem, for example "pve4: disk wait high this week". Tap it for the per-node breakdown.
+The Cluster health tile on the dashboard reads the busiest node's headroom and says it in plain words: "All nodes have room" (with the node that has least room) when it is 50 or above, otherwise the busiest node and its biggest problem, for example "orion: disk wait high this week". Tap it for the per-node breakdown.
 
 Headroom is 100 minus the node's penalty points (current and sustained load, IOWait, trends, spikes and so on). See [Scoring Algorithm](SCORING_ALGORITHM.md) for how penalties are calculated.
 
@@ -85,7 +85,7 @@ A compact, sortable list of every guest with state, CPU and memory bars, allocat
 | Verdict | Meaning |
 |---------|---------|
 | Suggested | There is a current suggestion for it; a Move button opens the migrate dialog |
-| Movable | Eligible, but no move is needed right now. The tooltip names the exact gate (for example "pve3 mem 45% < 65% floor") |
+| Movable | Eligible, but no move is needed right now. The tooltip names the exact gate (for example "lyra mem 45% < 65% floor") |
 | Manual only | Needs manual steps (for example unshared bind mounts) |
 | Pinned | Cannot migrate (for example passthrough or local disks) |
 | HA / CRS | Managed by Proxmox HA, which the native CRS balances |

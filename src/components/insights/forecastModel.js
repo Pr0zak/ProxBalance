@@ -49,7 +49,7 @@ export function timePhrase(days) {
   return `about ${d} day${d === 1 ? '' : 's'}`;
 }
 
-/** "pve5 memory reaches 85% in about 12 days". */
+/** "rigel memory reaches 85% in about 12 days". */
 export function headline({ node, metric, limit, days }) {
   const words = METRIC_WORDS[metric] || metric;
   const when = timePhrase(days);

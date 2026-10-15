@@ -357,7 +357,7 @@ def submit_migration(
         source: Node the guest is on.
         vmid: Guest id.
         guest_type: ``"VM"`` (qemu) or ``"CT"`` (lxc).
-        params: POST body, e.g. ``{"target": "pve4", "online": 1}``.
+        params: POST body, e.g. ``{"target": "orion", "online": 1}``.
         clock: Time source (injectable for tests).
 
     Returns:

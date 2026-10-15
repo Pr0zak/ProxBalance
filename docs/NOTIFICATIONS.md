@@ -316,13 +316,13 @@ All webhook requests send a JSON body with this structure:
 | `complete` | Automation run | `Migration Run Completed` | high if any failed, else normal |
 | `failure` | Automation run | `Migration Safety Check Failed` | high |
 | `action` | Automation run, per migration | `Migration Completed: VM 100` / `Migration Failed: VM 100` | normal / high |
-| `node_status` | Collector | `Node Offline: pve1` / `Node Back Online: pve1` | emergency / normal |
-| `resource_threshold` | Collector | `Resource Alert: pve1 CPU at 91.2%` | high above 110% of the limit, else normal |
+| `node_status` | Collector | `Node Offline: cygnus` / `Node Back Online: cygnus` | emergency / normal |
+| `resource_threshold` | Collector | `Resource Alert: cygnus CPU at 91.2%` | high above 110% of the limit, else normal |
 | `recommendations` | Recommendation generator | `New Migration Recommendations` | normal |
 | `recommendations_urgent` | Recommendation generator | `Urgent Migration Recommendations` | high |
 | `recommendations_cleared` | Recommendation generator | `Cluster Balanced - No Migrations Needed` | low |
 | `capacity_warning` | Recommendation generator | `Cluster Capacity Warning` | high |
-| `evacuation` | Node evacuation | `Evacuation Started/Completed/Failed: pve1` | high / high if any failed, else normal / emergency |
+| `evacuation` | Node evacuation | `Evacuation Started/Completed/Failed: cygnus` | high / high if any failed, else normal / emergency |
 | `collector_status` | Collector | `Data Collection Completed` / `Data Collection Failed` | low / high |
 | `update_available` | Update check | `Update Available: <version>` | normal |
 
@@ -505,8 +505,8 @@ Active alerts and active silences.
 ```json
 {
   "success": true,
-  "alerts": [{"fingerprint": "resource_threshold:pve4/cpu", "alert_type": "resource_threshold",
-              "subject": "pve4/cpu", "label": "pve4 CPU 91.2%", "value": 91.2, "threshold": 85,
+  "alerts": [{"fingerprint": "resource_threshold:orion/cpu", "alert_type": "resource_threshold",
+              "subject": "orion/cpu", "label": "orion CPU 91.2%", "value": 91.2, "threshold": 85,
               "first_seen": "...", "last_seen": "...", "notified_at": "...",
               "clear_count": 1, "repeats": 4, "silence": null}],
   "silences": [{"id": 3, "fingerprint": null, "alert_type": "capacity_warning",

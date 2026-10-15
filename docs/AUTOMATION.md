@@ -191,8 +191,8 @@ Manual plans on the dashboard (Suggestions > Run plan) are not blocked by the ca
 
 A migration copies every disk on node-local storage (local-lvm, a ZFS pool, a directory) onto the storage with the same id on the target node. Before each move the engine projects that storage's usage after the copy, adding the disks of guests this run has already moved there. Shared storage (NFS, CIFS, PBS, Ceph, shared LVM/iSCSI: anything Proxmox marks `shared`) is not copied and never counts. Disk sizes are the provisioned sizes from the guest config, which is the worst case for thin storage.
 
-- If a disk won't fit (projected usage above 100%, or more data than the storage's free space), the move is skipped with the reason "Target storage full: local-lvm on pve6: 96% → 104% (40 GB won't fit)" and `skip_code: "target_storage_full"` on its decision. This applies to maintenance evacuations and affinity companions too, because Proxmox would fail the migration anyway.
-- If any storage would end above 90%, the move still runs, and its decision carries `storage_warning` (for example "Target storage nearly full: local-lvm on pve6: 85% → 95%"), which is also written to the automation log.
+- If a disk won't fit (projected usage above 100%, or more data than the storage's free space), the move is skipped with the reason "Target storage full: local-lvm on vega: 96% → 104% (40 GB won't fit)" and `skip_code: "target_storage_full"` on its decision. This applies to maintenance evacuations and affinity companions too, because Proxmox would fail the migration anyway.
+- If any storage would end above 90%, the move still runs, and its decision carries `storage_warning` (for example "Target storage nearly full: local-lvm on vega: 85% → 95%"), which is also written to the automation log.
 - The recommendation engine already avoids targets whose storage can't hold the guest, so a skip here usually means storage filled up since the recommendations were generated, or an earlier move in the same run took the room.
 - No disk data (a cache from a collector before this feature) or no usage numbers for the storage means no check: missing data never blocks a move.
 
@@ -229,8 +229,8 @@ Guests tagged with the same `exclude_<group>` tag are prevented from being place
 
 ```bash
 # Tag two database VMs to stay on separate nodes
-pvesh set /nodes/pve1/qemu/101/config --tags "exclude_database"
-pvesh set /nodes/pve2/qemu/102/config --tags "exclude_database"
+pvesh set /nodes/cygnus/qemu/101/config --tags "exclude_database"
+pvesh set /nodes/draco/qemu/102/config --tags "exclude_database"
 ```
 
 When the automation considers migrating a guest, it checks whether the target node already hosts another guest with the same `exclude_*` tag. If so, the migration is blocked. Anti-affinity is always a hard rule.
@@ -243,8 +243,8 @@ To make a group **required** (hard), tag at least one member `affinity_req_<grou
 
 ```bash
 # Tag VMs that must stay together
-pvesh set /nodes/pve1/qemu/200/config --tags "affinity_req_webstack"
-pvesh set /nodes/pve1/qemu/201/config --tags "affinity_req_webstack"
+pvesh set /nodes/cygnus/qemu/200/config --tags "affinity_req_webstack"
+pvesh set /nodes/cygnus/qemu/201/config --tags "affinity_req_webstack"
 ```
 
 Companion migration behavior (required groups only):

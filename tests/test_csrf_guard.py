@@ -38,7 +38,7 @@ def client(cfg):
     return app.test_client()
 
 
-def _post(client, headers=None, base_url='http://10.0.0.211', path='/api/thing', method='post'):
+def _post(client, headers=None, base_url='http://192.168.1.211', path='/api/thing', method='post'):
     return getattr(client, method)(path, json={}, headers=headers or {}, base_url=base_url)
 
 
@@ -51,12 +51,12 @@ def test_cross_site_fetch_site_blocked(client):
 
 
 def test_same_site_fetch_site_blocked(client):
-    r = _post(client, {'Sec-Fetch-Site': 'same-site', 'Origin': 'http://10.0.0.211:8080'})
+    r = _post(client, {'Sec-Fetch-Site': 'same-site', 'Origin': 'http://192.168.1.211:8080'})
     assert r.status_code == 403
 
 
 def test_same_origin_fetch_site_passes(client):
-    r = _post(client, {'Sec-Fetch-Site': 'same-origin', 'Origin': 'http://10.0.0.211'})
+    r = _post(client, {'Sec-Fetch-Site': 'same-origin', 'Origin': 'http://192.168.1.211'})
     assert r.status_code == 200
 
 
@@ -89,15 +89,15 @@ def test_null_origin_blocked(client):
 
 
 def test_matching_origin_direct_lan_passes(client):
-    assert _post(client, {'Origin': 'http://10.0.0.211'}).status_code == 200
+    assert _post(client, {'Origin': 'http://192.168.1.211'}).status_code == 200
 
 
 def test_matching_origin_explicit_default_port_passes(client):
-    assert _post(client, {'Origin': 'http://10.0.0.211:80'}).status_code == 200
+    assert _post(client, {'Origin': 'http://192.168.1.211:80'}).status_code == 200
 
 
 def test_different_port_blocked(client):
-    assert _post(client, {'Origin': 'http://10.0.0.211:8080'}).status_code == 403
+    assert _post(client, {'Origin': 'http://192.168.1.211:8080'}).status_code == 403
 
 
 def test_matching_origin_non_default_port_passes(client):
@@ -107,14 +107,14 @@ def test_matching_origin_non_default_port_passes(client):
 
 def test_origin_behind_tls_proxy_passes(client):
     # NPM terminates TLS and sets X-Forwarded-Proto; nginx keeps Host.
-    r = _post(client, {'Origin': 'https://proxbalance.zynack.net', 'X-Forwarded-Proto': 'https'},
-              base_url='http://proxbalance.zynack.net')
+    r = _post(client, {'Origin': 'https://proxbalance.example.com', 'X-Forwarded-Proto': 'https'},
+              base_url='http://proxbalance.example.com')
     assert r.status_code == 200
 
 
 def test_https_origin_without_forwarded_proto_blocked(client):
-    r = _post(client, {'Origin': 'https://proxbalance.zynack.net'},
-              base_url='http://proxbalance.zynack.net')
+    r = _post(client, {'Origin': 'https://proxbalance.example.com'},
+              base_url='http://proxbalance.example.com')
     assert r.status_code == 403
 
 

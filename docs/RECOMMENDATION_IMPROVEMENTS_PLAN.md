@@ -86,9 +86,9 @@ Add an expandable "Score Breakdown" to each recommendation card showing exactly 
 **Proposed:** An expandable panel per recommendation showing:
 
 ```
-Score Breakdown for VM 100 → pve2
+Score Breakdown for VM 100 → draco
 ─────────────────────────────────────────────
-Source Node (pve1)          Target Node (pve2)
+Source Node (cygnus)          Target Node (draco)
   Current load:    +45        Current load:    +18
   Sustained load:  +20        Sustained load:  +5
   IOWait:          +10        IOWait:          +0
@@ -151,7 +151,7 @@ Replace the current reason strings with structured, multi-factor reasons.
     {"factor": "target_headroom", "value": 58, "weight": "medium", "label": "Target has 58% CPU headroom"},
     {"factor": "rising_trend", "value": true, "label": "Source CPU trending upward over 24h"}
   ],
-  "summary": "VM 100 should move to pve2 because pve1 has high CPU usage (78%) with an upward trend, while pve2 has significant headroom (42% used)."
+  "summary": "VM 100 should move to draco because cygnus has high CPU usage (78%) with an upward trend, while draco has significant headroom (42% used)."
 }
 ```
 
@@ -199,7 +199,7 @@ Add a new API endpoint and UI element showing guests that were evaluated but NOT
       "vmid": 300,
       "name": "database-1",
       "reason": "insufficient_improvement",
-      "detail": "Best target (pve3) would improve score by only 7 points (minimum: 15)",
+      "detail": "Best target (lyra) would improve score by only 7 points (minimum: 15)",
       "current_score": 62,
       "best_target_score": 55
     },
@@ -253,7 +253,7 @@ Restructure recommendation cards for scannability and clarity.
 ┌─────────────────────────────────────────────────────┐
 │  [VM icon] VM 100 — web-app-1          [Migrate ▶]  │
 │                                                     │
-│  pve1  ────────────────────────▶  pve2              │
+│  cygnus  ────────────────────────▶  draco              │
 │  CPU: 78%                         CPU: 42%          │
 │  Mem: 65%                         Mem: 51%          │
 │                                                     │
@@ -261,8 +261,8 @@ Restructure recommendation cards for scannability and clarity.
 │  │  ████████████████████░░░░░  +55 pts (Great)  │    │
 │  └──────────────────────────────────────────────┘    │
 │                                                     │
-│  Reason: High CPU on pve1 (78%, trending up).       │
-│          pve2 has 58% CPU headroom.                 │
+│  Reason: High CPU on cygnus (78%, trending up).       │
+│          draco has 58% CPU headroom.                 │
 │                                                     │
 │  Confidence: 82%  ●●●●●●●●○○                       │
 │                                                     │
@@ -396,9 +396,9 @@ Add a "What If" simulator that shows how configuration changes would affect curr
 │  Proposed settings: 8 recommendations                 │
 │                                                       │
 │  New recommendations that would appear:               │
-│  • VM 300 → pve3 (improvement: 18 pts, was 7 pts)     │
-│  • VM 450 → pve2 (improvement: 22 pts, was 12 pts)    │
-│  • CT 600 → pve4 (improvement: 16 pts, was 9 pts)     │
+│  • VM 300 → lyra (improvement: 18 pts, was 7 pts)     │
+│  • VM 450 → draco (improvement: 22 pts, was 12 pts)    │
+│  • CT 600 → orion (improvement: 16 pts, was 9 pts)     │
 │                                                       │
 │  Recommendations that would disappear:                │
 │  (none)                                               │
@@ -457,13 +457,13 @@ After a migration is executed, track the outcome and display it.
 
 Display this as a report:
 ```
-Migration VM 100: pve1 → pve2
+Migration VM 100: cygnus → draco
 ────────────────────────────
 Predicted improvement: +55 pts
 Actual improvement:    +48 pts (87% accuracy)
 
-pve1 CPU: 78% → 62% (-16%)  ✓ Improved
-pve2 CPU: 42% → 49% (+7%)   ✓ Within expected range
+cygnus CPU: 78% → 62% (-16%)  ✓ Improved
+draco CPU: 42% → 49% (+7%)   ✓ Within expected range
 ```
 
 This builds user trust and provides data to validate the scoring algorithm.
@@ -724,7 +724,7 @@ Generate recommendations before thresholds are crossed based on trend analysis.
   "urgency": "low",
   "primary_reason": "trend_crossing",
   "primary_label": "CPU approaching threshold",
-  "summary": "pve1 CPU has risen from 42% to 57% over the past 5 days. At this rate, it will exceed the 60% threshold in approximately 2 days. Consider migrating VM 100 (web-app-1) to pve3 preemptively.",
+  "summary": "cygnus CPU has risen from 42% to 57% over the past 5 days. At this rate, it will exceed the 60% threshold in approximately 2 days. Consider migrating VM 100 (web-app-1) to lyra preemptively.",
   "forecast": {
     "metric": "cpu",
     "current_value": 57.2,
@@ -787,7 +787,7 @@ Extend recommendations beyond "move this guest" to include capacity planning adv
 
 **Proposed:** Add cluster-level recommendations:
 - "Your cluster is 78% utilized. Consider adding a node before deploying additional workloads."
-- "pve2 has 85% memory used with no viable migration targets. All other nodes are similarly loaded. Consider adding RAM to pve2 or adding a new node."
+- "draco has 85% memory used with no viable migration targets. All other nodes are similarly loaded. Consider adding RAM to draco or adding a new node."
 - "3 of your 4 nodes are above 70% CPU. Migration can redistribute but won't reduce total load."
 
 These are advisory only — no migration action — but help administrators plan infrastructure changes.
@@ -825,7 +825,7 @@ These are advisory only — no migration action — but help administrators plan
 
 Detect when two or more recommended migrations conflict with each other.
 
-**Current:** Each migration is evaluated independently. If VM A and VM B are both recommended to move to pve3, the system doesn't account for the combined load impact. The `pending_target_guests` parameter exists in `calculate_target_node_score()` but is only used within a single recommendation cycle's iteration — it doesn't fully simulate the combined effect of all recommendations.
+**Current:** Each migration is evaluated independently. If VM A and VM B are both recommended to move to lyra, the system doesn't account for the combined load impact. The `pending_target_guests` parameter exists in `calculate_target_node_score()` but is only used within a single recommendation cycle's iteration — it doesn't fully simulate the combined effect of all recommendations.
 
 **Proposed:** After generating individual recommendations, run a validation pass:
 1. Group recommendations by target node
@@ -837,14 +837,14 @@ Detect when two or more recommended migrations conflict with each other.
 {
   "conflicts": [
     {
-      "target_node": "pve3",
+      "target_node": "lyra",
       "incoming_guests": [
         {"vmid": 100, "name": "web-app-1", "predicted_cpu_impact": 12.5},
         {"vmid": 200, "name": "api-server", "predicted_cpu_impact": 18.3}
       ],
       "combined_predicted_cpu": 78.8,
       "threshold": 60.0,
-      "resolution": "Consider moving VM 200 to pve4 instead (score: 72 vs. 68 on pve3)"
+      "resolution": "Consider moving VM 200 to orion instead (score: 72 vs. 68 on lyra)"
     }
   ]
 }
@@ -862,7 +862,7 @@ Determine the optimal order for executing multiple migrations.
 **Current:** Batch migrations execute in the order they appear in the recommendation list. There's no analysis of whether order matters.
 
 **Proposed:** Analyze migration dependencies:
-- **Resource sequencing** — If pve1 is overloaded and pve2 needs to send a guest to pve1's current target (pve3), the pve1 migration should execute first to free capacity
+- **Resource sequencing** — If cygnus is overloaded and draco needs to send a guest to cygnus's current target (lyra), the cygnus migration should execute first to free capacity
 - **Affinity chain ordering** — When affinity companions need to move together, determine which should go first to maintain service availability
 - **Risk minimization** — Execute highest-confidence migrations first so that if the process is interrupted, the most impactful changes are already complete
 
@@ -870,9 +870,9 @@ Determine the optimal order for executing multiple migrations.
 {
   "execution_plan": {
     "ordered_migrations": [
-      {"step": 1, "vmid": 100, "source": "pve1", "target": "pve3", "reason": "Frees capacity on pve1 for step 3"},
-      {"step": 2, "vmid": 300, "source": "pve2", "target": "pve4", "reason": "Independent, high confidence"},
-      {"step": 3, "vmid": 200, "source": "pve3", "target": "pve1", "reason": "Depends on step 1 completing"}
+      {"step": 1, "vmid": 100, "source": "cygnus", "target": "lyra", "reason": "Frees capacity on cygnus for step 3"},
+      {"step": 2, "vmid": 300, "source": "draco", "target": "orion", "reason": "Independent, high confidence"},
+      {"step": 3, "vmid": 200, "source": "lyra", "target": "cygnus", "reason": "Depends on step 1 completing"}
     ],
     "parallel_groups": [[1, 2], [3]],
     "estimated_total_downtime": "minimal (online migrations)"
@@ -898,15 +898,15 @@ Show the cumulative impact of executing all recommendations as a batch.
   "batch_impact": {
     "before": {
       "cluster_health": 62,
-      "node_scores": {"pve1": 45, "pve2": 78, "pve3": 32, "pve4": 55},
+      "node_scores": {"cygnus": 45, "draco": 78, "lyra": 32, "orion": 55},
       "score_variance": 18.7,
-      "worst_node": "pve2"
+      "worst_node": "draco"
     },
     "after": {
       "cluster_health": 81,
-      "node_scores": {"pve1": 38, "pve2": 42, "pve3": 45, "pve4": 48},
+      "node_scores": {"cygnus": 38, "draco": 42, "lyra": 45, "orion": 48},
       "score_variance": 4.1,
-      "worst_node": "pve4"
+      "worst_node": "orion"
     },
     "improvement": {
       "health_delta": "+19 points",
@@ -993,7 +993,7 @@ Run automated checks before migration execution to catch issues early.
       {"check": "staleness", "passed": true, "detail": "Recommendation generated 4 minutes ago"},
       {"check": "storage", "passed": true, "detail": "Target has ceph-rbd storage available"},
       {"check": "resources", "passed": true, "detail": "Target has 45% CPU and 52% memory headroom"},
-      {"check": "guest_state", "passed": true, "detail": "Guest is running on pve1"},
+      {"check": "guest_state", "passed": true, "detail": "Guest is running on cygnus"},
       {"check": "locks", "passed": true, "detail": "No active locks or running snapshots"},
       {"check": "affinity", "passed": true, "detail": "No affinity conflicts on target"}
     ],
@@ -1021,18 +1021,18 @@ Surface information about migration reversibility.
 - Store the source node in the migration history entry
 - Add a "Rollback" button to recently migrated guests (within a configurable window, e.g., 2 hours)
 - Before rollback, validate that the original node still has capacity
-- Show whether conditions have changed since the migration (e.g., "pve1 load has decreased since this guest left — rollback is safe")
+- Show whether conditions have changed since the migration (e.g., "cygnus load has decreased since this guest left — rollback is safe")
 
 ```json
 {
   "rollback_info": {
-    "original_node": "pve1",
+    "original_node": "cygnus",
     "migration_timestamp": "2026-02-08T10:30:00Z",
     "time_since_migration": "45 minutes",
     "rollback_available": true,
     "original_node_current_load": {"cpu": 52.1, "mem": 48.3},
     "rollback_safe": true,
-    "detail": "pve1 has sufficient capacity for this guest"
+    "detail": "cygnus has sufficient capacity for this guest"
   }
 }
 ```
@@ -1108,9 +1108,9 @@ Track node scores over time to show scoring trends.
     {
       "timestamp": "2026-02-08T10:30:00Z",
       "nodes": {
-        "pve1": {"score": 45.2, "suitability": 54.8, "cpu": 62.1, "mem": 48.3},
-        "pve2": {"score": 78.1, "suitability": 21.9, "cpu": 81.5, "mem": 72.0},
-        "pve3": {"score": 32.4, "suitability": 67.6, "cpu": 38.2, "mem": 45.1}
+        "cygnus": {"score": 45.2, "suitability": 54.8, "cpu": 62.1, "mem": 48.3},
+        "draco": {"score": 78.1, "suitability": 21.9, "cpu": 81.5, "mem": 72.0},
+        "lyra": {"score": 32.4, "suitability": 67.6, "cpu": 38.2, "mem": 45.1}
       },
       "cluster_health": 62
     }
@@ -1140,13 +1140,13 @@ Track what changed between recommendation cycles.
     "timestamp": "2026-02-08T10:30:00Z",
     "previous_timestamp": "2026-02-08T10:20:00Z",
     "new_recommendations": [
-      {"vmid": 400, "reason": "pve2 CPU rose from 58% to 67%, crossing threshold"}
+      {"vmid": 400, "reason": "draco CPU rose from 58% to 67%, crossing threshold"}
     ],
     "removed_recommendations": [
-      {"vmid": 100, "reason": "pve1 CPU dropped from 72% to 55% after load decrease"}
+      {"vmid": 100, "reason": "cygnus CPU dropped from 72% to 55% after load decrease"}
     ],
     "changed_targets": [
-      {"vmid": 200, "old_target": "pve3", "new_target": "pve4", "reason": "pve3 load increased"}
+      {"vmid": 200, "old_target": "lyra", "new_target": "orion", "reason": "lyra load increased"}
     ],
     "unchanged": 2
   }
@@ -1188,10 +1188,10 @@ Emit webhook events for recommendation-related actions.
     "recommendation": {
       "vmid": 200,
       "name": "database-primary",
-      "source_node": "pve2",
-      "target_node": "pve3",
+      "source_node": "draco",
+      "target_node": "lyra",
       "score_improvement": 62,
-      "reason": "pve2 CPU at 92% with rising trend"
+      "reason": "draco CPU at 92% with rising trend"
     },
     "cluster_health": 45
   }
@@ -1213,7 +1213,7 @@ Add filtering and pagination to the recommendation API for larger clusters.
 
 ```
 GET /api/recommendations?filter=urgent&limit=10&offset=0
-GET /api/recommendations?min_confidence=80&target_node=pve3
+GET /api/recommendations?min_confidence=80&target_node=lyra
 GET /api/recommendations?type=forecast&sort=score_improvement
 GET /api/recommendations/skipped?reason=insufficient_improvement&limit=20
 ```
@@ -1240,8 +1240,8 @@ GET /api/automigrate/history/export?format=csv&from=2026-01-01&to=2026-02-08
 CSV format for recommendations:
 ```csv
 VMID,Name,Type,Source,Target,Score Improvement,Confidence,Risk,Reason
-100,web-app-1,VM,pve1,pve3,55,82,low,High CPU on source (78% trending up)
-200,api-server,VM,pve2,pve4,38,71,moderate,Memory pressure on source (85%)
+100,web-app-1,VM,cygnus,lyra,55,82,low,High CPU on source (78% trending up)
+200,api-server,VM,draco,orion,38,71,moderate,Memory pressure on source (85%)
 ```
 
 **Files affected:**

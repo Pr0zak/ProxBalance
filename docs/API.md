@@ -54,7 +54,7 @@ curl http://<host>/api/metrics
 proxbalance_up 1
 # HELP proxbalance_node_cpu_recent_percent Node CPU usage averaged over the last 15 minutes, percent (what scoring uses).
 # TYPE proxbalance_node_cpu_recent_percent gauge
-proxbalance_node_cpu_recent_percent{node="pve3"} 23.4
+proxbalance_node_cpu_recent_percent{node="lyra"} 23.4
 ```
 
 The full metric list, a Prometheus scrape config and a Grafana dashboard are in [PROMETHEUS.md](PROMETHEUS.md).
@@ -179,8 +179,8 @@ curl "http://<host>/api/score-history?limit=48&bucket=60"
       "cluster_health": 72.4,
       "recommendation_count": 3,
       "nodes": {
-        "pve1": {"suitability": 68.2, "cpu": 41.5, "mem": 63.0},
-        "pve2": {"suitability": 77.9, "cpu": 22.1, "mem": 48.7}
+        "cygnus": {"suitability": 68.2, "cpu": 41.5, "mem": 63.0},
+        "draco": {"suitability": 77.9, "cpu": 22.1, "mem": 48.7}
       }
     }
   ]
@@ -228,7 +228,7 @@ Each move is estimated on its own: the target side uses the guest's allocated me
 
 ```json
 {
-  "target_node": "pve2",
+  "target_node": "draco",
   "incoming_guests": [{"vmid": 101, "name": "app-01", "predicted_cpu_impact": 8.5, "predicted_mem_impact": 12.5}],
   "outgoing_guests": [{"vmid": 105, "name": "cache-01", "freed_cpu": 3.1, "freed_mem": 4.0}],
   "combined_predicted_cpu": 71.0,
@@ -237,11 +237,11 @@ Each move is estimated on its own: the target side uses the guest's allocated me
   "mem_threshold": 90,
   "exceeds_cpu": false,
   "exceeds_mem": true,
-  "resolution": "Consider moving app-01 (VM 101) to pve3 instead",
+  "resolution": "Consider moving app-01 (VM 101) to lyra instead",
   "resolution_action": "retarget",
   "resolution_vmid": 101,
   "resolution_name": "app-01",
-  "resolution_target": "pve3"
+  "resolution_target": "lyra"
 }
 ```
 
@@ -265,7 +265,7 @@ The fields are omitted, never zero-filled, when the count is unknown: automation
 
 ```json
 "target_storage": [
-  {"storage": "local-lvm", "node": "pve6", "size_gb": 32.0, "pending_gb": 8.0, "total_gb": 793.8,
+  {"storage": "local-lvm", "node": "vega", "size_gb": 32.0, "pending_gb": 8.0, "total_gb": 793.8,
    "used_before_pct": 72.0, "used_after_pct": 77.0, "level": "ok"}
 ],
 "target_storage_level": "ok"
@@ -319,7 +319,7 @@ curl -X POST http://<host>/api/guest/100/migration-options \
   -d '{"cpu_threshold": 60, "mem_threshold": 70, "maintenance_nodes": []}'
 ```
 
-Each option for another node carries `target_storage` (same shape as on recommendations, without counting other planned moves) when the guest has disks on that node's local storage; the key is absent otherwise. A node where a disk won't fit is returned with `disqualified: true` and a reason like "Storage full: local-lvm on pve3: 2% → 200% (96 GB won't fit)". The migrate confirmation dialog uses this to show the target storage lines and to block a move that won't fit.
+Each option for another node carries `target_storage` (same shape as on recommendations, without counting other planned moves) when the guest has disks on that node's local storage; the key is absent otherwise. A node where a disk won't fit is returned with `disqualified: true` and a reason like "Storage full: local-lvm on lyra: 2% → 200% (96 GB won't fit)". The migrate confirmation dialog uses this to show the target storage lines and to block a move that won't fit.
 
 ### POST /api/penalty-config/simulate
 
@@ -399,8 +399,8 @@ curl -X POST http://<host>/api/migrate \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 100,
-    "source_node": "pve1",
-    "target_node": "pve2",
+    "source_node": "cygnus",
+    "target_node": "draco",
     "type": "VM"
   }'
 ```
@@ -418,8 +418,8 @@ curl -X POST http://<host>/api/migrate/batch \
   -H "Content-Type: application/json" \
   -d '{
     "migrations": [
-      {"vmid": 100, "source_node": "pve1", "target_node": "pve2", "type": "VM"},
-      {"vmid": 101, "source_node": "pve1", "target_node": "pve3", "type": "CT"}
+      {"vmid": 100, "source_node": "cygnus", "target_node": "draco", "type": "VM"},
+      {"vmid": 101, "source_node": "cygnus", "target_node": "lyra", "type": "CT"}
     ]
   }'
 ```
@@ -433,8 +433,8 @@ curl -X POST http://<host>/api/migrate/validate \
   -H "Content-Type: application/json" \
   -d '{
     "vmid": 100,
-    "source_node": "pve1",
-    "target_node": "pve2",
+    "source_node": "cygnus",
+    "target_node": "draco",
     "type": "VM"
   }'
 ```
@@ -446,7 +446,7 @@ curl -X POST http://<host>/api/migrate/validate \
     "passed": true,
     "checks": [
       {"name": "staleness", "passed": true, "detail": "Data is 5 minutes old"},
-      {"name": "guest_state", "passed": true, "detail": "Guest running on pve1"},
+      {"name": "guest_state", "passed": true, "detail": "Guest running on cygnus"},
       {"name": "resources", "passed": true, "detail": "Target has sufficient capacity"},
       {"name": "storage", "passed": true, "detail": "Storage compatible"},
       {"name": "locks", "passed": true, "detail": "No active locks"},
@@ -476,7 +476,7 @@ Maintenance mode is stored on the server, in `automated_migrations.maintenance_n
 ```bash
 curl -X POST http://<host>/api/automigrate/config \
   -H "Content-Type: application/json" \
-  -d '{"maintenance_nodes": ["pve1"]}'
+  -d '{"maintenance_nodes": ["cygnus"]}'
 ```
 
 The web UI does a read-modify-write of this list, one node at a time. Recommendation generation and the automation service read it from the config; with live automation enabled, the next run starts moving guests off maintenance nodes (see [Automation - Maintenance mode](AUTOMATION.md#maintenance-mode)).
@@ -500,16 +500,16 @@ Target priority is: the guest's entry in `guest_targets`, then `target_node`, th
 # Review the plan
 curl -X POST http://<host>/api/nodes/evacuate \
   -H "Content-Type: application/json" \
-  -d '{"node": "pve1"}'
+  -d '{"node": "cygnus"}'
 
 # Execute with explicit per-guest choices
 curl -X POST http://<host>/api/nodes/evacuate \
   -H "Content-Type: application/json" \
   -d '{
-    "node": "pve1",
+    "node": "cygnus",
     "confirm": true,
     "guest_actions": {"100": "migrate", "101": "ignore"},
-    "guest_targets": {"100": "pve2"}
+    "guest_targets": {"100": "draco"}
   }'
 ```
 
@@ -518,13 +518,13 @@ Plan response (`confirm: false`):
 ```json
 {
   "success": true,
-  "source_node": "pve1",
-  "available_targets": ["pve2", "pve3"],
+  "source_node": "cygnus",
+  "available_targets": ["draco", "lyra"],
   "total_guests": 2,
   "will_migrate": 1,
   "will_skip": 1,
   "plan": [
-    {"vmid": 100, "name": "web-01", "type": "qemu", "status": "running", "target": "pve2",
+    {"vmid": 100, "name": "web-01", "type": "qemu", "status": "running", "target": "draco",
      "will_restart": false, "skipped": false, "skip_reason": null,
      "storage_volumes": ["local-lvm"], "storage_compatible": true}
   ]
@@ -548,7 +548,7 @@ Verifies that the storage used by the given guests exists on the target nodes.
 ```bash
 curl -X POST http://<host>/api/storage/verify \
   -H "Content-Type: application/json" \
-  -d '{"source_node": "pve1", "target_nodes": ["pve2", "pve3"], "guests": [100, 101]}'
+  -d '{"source_node": "cygnus", "target_nodes": ["draco", "lyra"], "guests": [100, 101]}'
 ```
 
 ---
@@ -597,16 +597,16 @@ Each guest carries `kind`: `vm` or `ct`. Totals are split the same way (`totals.
 {
   "success": true, "window_days": 7, "min_history_days": 3,
   "guests": [
-    {"vmid": 106, "name": "haos10.5", "node": "pve3", "type": "VM", "kind": "vm", "ignored": false,
+    {"vmid": 110, "name": "win-desktop", "node": "lyra", "type": "VM", "kind": "vm", "ignored": false,
      "running_pct": 100.0, "days": 7.0, "vcpus_freed": 1, "gb_freed": 0.0,
      "hints": [{"kind": "cpu", "current": 2, "suggested": 1, "avg_pct": 5.6, "p95_pct": 8.9, "vcpus_freed": 1, "gb_freed": 0.0}]},
-    {"vmid": 241, "name": "claude-dev", "node": "pve4", "type": "CT", "kind": "ct", "ignored": true,
+    {"vmid": 120, "name": "dev-box", "node": "orion", "type": "CT", "kind": "ct", "ignored": true,
      "running_pct": 100.0, "days": 7.0, "vcpus_freed": 2, "gb_freed": 9.5,
      "hints": [
        {"kind": "cpu", "current": 4, "suggested": 2, "avg_pct": 3.4, "p95_pct": 9.0, "vcpus_freed": 2, "gb_freed": 0.0},
        {"kind": "memory", "current_gb": 16.0, "suggested_gb": 6.5, "suggested_mb": 6656, "avg_gb": 3.89, "p95_gb": 4.87, "avg_pct": 24.3, "vcpus_freed": 0, "gb_freed": 9.5}
      ]},
-    {"vmid": 238, "name": "networkoptimizer", "node": "pve4", "type": "CT", "kind": "ct", "ignored": false,
+    {"vmid": 130, "name": "netmon", "node": "orion", "type": "CT", "kind": "ct", "ignored": false,
      "running_pct": 4.4, "days": 7.0, "vcpus_freed": 0, "gb_freed": 0.0,
      "hints": [{"kind": "stopped", "running_pct": 4.4, "vcpus_freed": 0, "gb_freed": 0.0}]}
   ],
@@ -657,11 +657,11 @@ curl http://<host>/api/affinity-groups
     {
       "name": "affinity_webstack",
       "members": [
-        {"vmid": 200, "name": "nginx", "type": "VM", "node": "pve1", "status": "running"},
-        {"vmid": 201, "name": "app-server", "type": "VM", "node": "pve1", "status": "running"}
+        {"vmid": 200, "name": "nginx", "type": "VM", "node": "cygnus", "status": "running"},
+        {"vmid": 201, "name": "app-server", "type": "VM", "node": "cygnus", "status": "running"}
       ],
       "member_count": 2,
-      "nodes": ["pve1"],
+      "nodes": ["cygnus"],
       "is_split": false,
       "status": "together"
     }
@@ -684,8 +684,8 @@ Every affinity and anti-affinity rule from tags (`exclude_*`, `affinity_*`, `aff
   "success": true,
   "rules": [
     {"id": "tag:exclude_dns", "name": "exclude_dns", "kind": "anti-affinity", "required": true,
-     "source": "tag", "hard": true, "ok": false, "nodes": ["pve3", "pve5"],
-     "members": [{"vmid": 233, "name": "dns1", "node": "pve3", "status": "running"}]}
+     "source": "tag", "hard": true, "ok": false, "nodes": ["lyra", "rigel"],
+     "members": [{"vmid": 233, "name": "dns1", "node": "lyra", "status": "running"}]}
   ],
   "violations": 1,
   "soft_penalty": 15,
@@ -703,9 +703,9 @@ The moves that would make every hard rule hold. Plans only.
 ```json
 {
   "success": true,
-  "violations": [{"rule_id": "tag:exclude_dns", "name": "exclude_dns", "kind": "anti-affinity", "detail": "2 on pve3"}],
-  "moves": [{"vmid": 234, "name": "dns2", "type": "CT", "source_node": "pve3", "target_node": "pve5",
-             "rule": "exclude_dns", "reason": "Leave pve3, which also runs another exclude_dns member", "mem_gb": 1.0}],
+  "violations": [{"rule_id": "tag:exclude_dns", "name": "exclude_dns", "kind": "anti-affinity", "detail": "2 on lyra"}],
+  "moves": [{"vmid": 234, "name": "dns2", "type": "CT", "source_node": "lyra", "target_node": "rigel",
+             "rule": "exclude_dns", "reason": "Leave lyra, which also runs another exclude_dns member", "mem_gb": 1.0}],
   "unresolved": [],
   "execution_plan": {"total_steps": 1, "ordered_recommendations": [...]},
   "dry_run": false
@@ -768,7 +768,7 @@ Semi-automatic mode: moves waiting for approval, oldest first (expired and dismi
 ```json
 {
   "success": true, "mode": "semi", "dry_run": false, "approval_ttl_hours": 24,
-  "queue": [{ "vmid": 101, "name": "web01", "guest_type": "CT", "source_node": "pve4", "target_node": "pve6",
+  "queue": [{ "vmid": 101, "name": "web01", "guest_type": "CT", "source_node": "orion", "target_node": "vega",
               "reason": "...", "confidence": 82, "status": "pending",
               "queued_at": "...", "updated_at": "...", "expires_at": "...", "approved_at": null }]
 }
@@ -840,13 +840,13 @@ Response:
     {
       "vmid": 100,
       "name": "web-server",
-      "source_node": "pve1",
-      "target_node": "pve2",
+      "source_node": "cygnus",
+      "target_node": "draco",
       "type": "VM",
       "priority": "high",
       "reasoning": "Detailed explanation...",
       "risk_score": 0.15,
-      "estimated_impact": "Reduces pve1 CPU to ~65%",
+      "estimated_impact": "Reduces cygnus CPU to ~65%",
       "best_time": "now"
     }
   ],
@@ -1132,7 +1132,7 @@ The change log: who or what changed things, newest first (Automation → History
   "success": true,
   "events": [
     {"id": 42, "ts": "2026-10-14T15:05:00Z", "source": "user", "action": "maintenance.on",
-     "subject": "pve4", "summary": "pve4 entered maintenance", "actor": "10.0.0.50",
+     "subject": "orion", "summary": "orion entered maintenance", "actor": "192.168.1.50",
      "details": {"endpoint": "POST /api/automigrate/config"}}
   ],
   "next": "2026-10-14T15:05:00Z|42",
@@ -1258,7 +1258,7 @@ Each pattern includes `daily_pattern`, `weekly_pattern`, `burst_detection` and:
 
 Only running guests on the failed node move. Guests with passthrough disks or hardware (the guest's `passthrough_devices`: hostpci, usb, container `dev` entries), unshared bind mounts or, in `strict` mode, node-local disks go to `cant_restart` with a reason. A disk is node-local when its storage (from the guest's `disks[].storage`) has `shared: false` on the node, or, for entries collected before the flag existed, a non-shared storage type. The rest are placed largest memory first onto the survivor with the most free memory that stays at or under `mem_ceiling`, skipping nodes that an `exclude_*` tag or a Proxmox HA rule blocks. Memory demand is a VM's allocation and a container's current use. The `ignore` tag does not block a restart; such placements carry `ignored: true`.
 
-Single node response (`data`): `status` (`ok`, `tight`, `stranded`, `short`, `offline`), `verdict`, `nodes` (per survivor `mem_before`, `mem_after`, `cpu_before`, `cpu_after`, `added`, `added_gb`), `placements` (`vmid`, `name`, `type`, `from`, `to`, `mem_gb`, `ha_managed`, `ignored`, optional `local_storage`), `cant_restart` and `doesnt_fit` (`vmid`, `name`, `type`, `mem_gb`, `reason`), `busiest`, `running_guests`, `local_storage_guests`, `local_disk_note` (for example `"If pve4 fails unexpectedly, its 5 guests don't restart elsewhere: their disks are node-local (restore from backup)"`, or null).
+Single node response (`data`): `status` (`ok`, `tight`, `stranded`, `short`, `offline`), `verdict`, `nodes` (per survivor `mem_before`, `mem_after`, `cpu_before`, `cpu_after`, `added`, `added_gb`), `placements` (`vmid`, `name`, `type`, `from`, `to`, `mem_gb`, `ha_managed`, `ignored`, optional `local_storage`), `cant_restart` and `doesnt_fit` (`vmid`, `name`, `type`, `mem_gb`, `reason`), `busiest`, `running_guests`, `local_storage_guests`, `local_disk_note` (for example `"If orion fails unexpectedly, its 5 guests don't restart elsewhere: their disks are node-local (restore from backup)"`, or null).
 
 Summary response (`data`): `nodes` (per node `status`, `verdict`, `placed`, `cant_restart`, `doesnt_fit`, `doesnt_fit_gb`, `busiest`, `local_disk_note`), `can_lose`, `n1_ok`, `local_storage_guests`, `verdict`.
 

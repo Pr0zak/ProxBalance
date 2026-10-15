@@ -54,7 +54,7 @@ def at(minutes):
 
 
 def observe(value, minute, warn=85.0):
-    return alert_state.observe_threshold("resource_threshold", "pve4/cpu", value, warn,
+    return alert_state.observe_threshold("resource_threshold", "orion/cpu", value, warn,
                                          settings=SETTINGS, now=at(minute))["action"]
 
 
@@ -99,26 +99,26 @@ def test_lower_is_worse_threshold():
 def test_fingerprint_dedupe_is_per_subject():
     assert observe(90, 0) == "fire"
     assert observe(91, 1) == "active"
-    other = alert_state.observe_threshold("resource_threshold", "pve5/cpu", 90, 85, settings=SETTINGS, now=at(1))
+    other = alert_state.observe_threshold("resource_threshold", "rigel/cpu", 90, 85, settings=SETTINGS, now=at(1))
     assert other["action"] == "fire"
     active = {a["fingerprint"]: a for a in alert_state.get_active_alerts(now=at(1))}
-    assert set(active) == {"resource_threshold:pve4/cpu", "resource_threshold:pve5/cpu"}
-    assert active["resource_threshold:pve4/cpu"]["repeats"] == 1
+    assert set(active) == {"resource_threshold:orion/cpu", "resource_threshold:rigel/cpu"}
+    assert active["resource_threshold:orion/cpu"]["repeats"] == 1
 
 
 def test_silence_suppresses_then_expires():
-    s = alert_state.create_silence(fingerprint="resource_threshold:pve4/cpu", duration="1h", now=at(0))
-    assert alert_state.is_silenced("resource_threshold:pve4/cpu", "resource_threshold", now=at(30))
-    t = alert_state.observe_threshold("resource_threshold", "pve4/cpu", 95, 85, settings=SETTINGS, now=at(30))
+    s = alert_state.create_silence(fingerprint="resource_threshold:orion/cpu", duration="1h", now=at(0))
+    assert alert_state.is_silenced("resource_threshold:orion/cpu", "resource_threshold", now=at(30))
+    t = alert_state.observe_threshold("resource_threshold", "orion/cpu", 95, 85, settings=SETTINGS, now=at(30))
     assert t["action"] == "fire" and t["silenced"] is True
-    assert not alert_state.is_silenced("resource_threshold:pve4/cpu", "resource_threshold", now=at(61))
+    assert not alert_state.is_silenced("resource_threshold:orion/cpu", "resource_threshold", now=at(61))
     assert alert_state.list_silences(now=at(61)) == []
     assert alert_state.delete_silence(s["id"]) is False  # already pruned
 
 
 def test_type_silence_and_until_resolved():
     alert_state.create_silence(alert_type="resource_threshold", duration="resolved", now=at(0))
-    t = alert_state.observe_threshold("resource_threshold", "pve4/cpu", 95, 85, settings=SETTINGS, now=at(1))
+    t = alert_state.observe_threshold("resource_threshold", "orion/cpu", 95, 85, settings=SETTINGS, now=at(1))
     assert t["silenced"] is True
     for m in (2, 3, 4):
         observe(60, m)
@@ -133,13 +133,13 @@ def test_silence_validation():
 
 
 def test_notify_threshold_sends_once_and_respects_silence(sent):
-    data = {"node": "pve4", "resource": "CPU", "value": 90.0, "threshold": 85}
+    data = {"node": "orion", "resource": "CPU", "value": 90.0, "threshold": 85}
     for v in (90, 84, 91, 83, 90):
-        notifications.notify_threshold(CONFIG, "resource_threshold", "pve4/cpu", v, 85, dict(data, value=float(v)))
-    assert len(sent) == 1 and sent[0].startswith("Resource Alert: pve4 CPU")
+        notifications.notify_threshold(CONFIG, "resource_threshold", "orion/cpu", v, 85, dict(data, value=float(v)))
+    assert len(sent) == 1 and sent[0].startswith("Resource Alert: orion CPU")
 
-    alert_state.create_silence(fingerprint="resource_threshold:pve5/cpu", duration="8h")
-    notifications.notify_threshold(CONFIG, "resource_threshold", "pve5/cpu", 99, 85, dict(data, node="pve5", value=99.0))
+    alert_state.create_silence(fingerprint="resource_threshold:rigel/cpu", duration="8h")
+    notifications.notify_threshold(CONFIG, "resource_threshold", "rigel/cpu", 99, 85, dict(data, node="rigel", value=99.0))
     assert len(sent) == 1
 
 
@@ -178,16 +178,16 @@ def test_collector_thresholds_and_node_status(sent):
     cfg["automated_migrations"]["notifications"]["on_node_status"] = True
 
     def collect(cpu, status="online"):
-        collector_api._check_resource_thresholds(cfg, {"nodes": {"pve4": {
+        collector_api._check_resource_thresholds(cfg, {"nodes": {"orion": {
             "status": status, "cpu_percent": cpu, "mem_percent": 40}}})
     for cpu in (90, 86, 84, 88, 70, 70):
         collect(cpu)
-    assert sent == ["Resource Alert: pve4 CPU at 90.0%"]
+    assert sent == ["Resource Alert: orion CPU at 90.0%"]
 
-    collector_api._check_node_status_changes(cfg, {"pve5": "online"}, {"nodes": {"pve5": {"status": "offline"}}})
-    collector_api._check_node_status_changes(cfg, {"pve5": "offline"}, {"nodes": {"pve5": {"status": "unknown"}}})
-    collector_api._check_node_status_changes(cfg, {"pve5": "unknown"}, {"nodes": {"pve5": {"status": "online"}}})
-    assert sent[1:] == ["Node Offline: pve5", "Node Back Online: pve5"]
+    collector_api._check_node_status_changes(cfg, {"rigel": "online"}, {"nodes": {"rigel": {"status": "offline"}}})
+    collector_api._check_node_status_changes(cfg, {"rigel": "offline"}, {"nodes": {"rigel": {"status": "unknown"}}})
+    collector_api._check_node_status_changes(cfg, {"rigel": "unknown"}, {"nodes": {"rigel": {"status": "online"}}})
+    assert sent[1:] == ["Node Offline: rigel", "Node Back Online: rigel"]
 
 
 def test_endpoints(tmp_path, monkeypatch):
@@ -201,10 +201,10 @@ def test_endpoints(tmp_path, monkeypatch):
 
     observe(95, 0)
     body = client.get("/api/notifications/alerts").get_json()
-    assert [a["fingerprint"] for a in body["alerts"]] == ["resource_threshold:pve4/cpu"]
+    assert [a["fingerprint"] for a in body["alerts"]] == ["resource_threshold:orion/cpu"]
     assert body["settings"] == {"resolve_collections": 3, "resolve_margin": 5.0}
 
-    r = client.post("/api/notifications/silences", json={"fingerprint": "resource_threshold:pve4/cpu",
+    r = client.post("/api/notifications/silences", json={"fingerprint": "resource_threshold:orion/cpu",
                                                         "duration": "24h"})
     sid = r.get_json()["silence"]["id"]
     body = client.get("/api/notifications/alerts").get_json()

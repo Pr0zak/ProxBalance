@@ -77,8 +77,8 @@ def verify_storage_availability():
 
     Request body:
     {
-        "source_node": "pve1",
-        "target_nodes": ["pve2", "pve3"],
+        "source_node": "cygnus",
+        "target_nodes": ["draco", "lyra"],
         "guests": [100, 101, 102]
     }
     """
