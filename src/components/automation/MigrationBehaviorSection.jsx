@@ -62,8 +62,8 @@ export default function MigrationBehaviorSection({
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Safety Checks</h3>
             <div className="space-y-3">
               <ToggleRow
-                label="Check Cluster Health Before Migrating"
-                description="Checks the cluster has quorum before each run."
+                label="Check cluster health first"
+                description="Needs quorum before each run"
                 checked={automationConfig.safety_checks?.check_cluster_health !== false}
                 onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, check_cluster_health: e.target.checked } })}
               />
@@ -71,14 +71,14 @@ export default function MigrationBehaviorSection({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <NumberRow
                   label="Max target CPU"
-                  description="Never move a guest onto a node above this"
+                  description="Targets above this are skipped"
                   unit="%" min="50" max="100"
                   value={automationConfig.safety_checks?.max_node_cpu_percent || 85}
                   onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_cpu_percent: val } })}
                 />
                 <NumberRow
                   label="Max target memory"
-                  description="Never move a guest onto a node above this"
+                  description="Targets above this are skipped"
                   unit="%" min="50" max="100"
                   value={automationConfig.safety_checks?.max_node_memory_percent || 90}
                   onCommit={(val) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, max_node_memory_percent: val } })}
@@ -86,21 +86,22 @@ export default function MigrationBehaviorSection({
               </div>
 
               <ToggleRow
-                label="Verify Guest Location Before Migrating"
-                description="Queries Proxmox directly to confirm each VM is on the expected node before migrating. Prevents failures from stale cache data."
+                label="Verify guest location first"
+                description="Re-checks each guest's node"
+                detail="Confirms each guest is still on the expected node right before its move, so stale cached data can't cause a failed migration."
                 checked={automationConfig.safety_checks?.verify_before_migrate !== false}
                 onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, verify_before_migrate: e.target.checked } })}
               />
 
               <ToggleRow
-                label="Stop Remaining Migrations on Failure"
-                description="Stops remaining migrations in the batch if any single migration fails."
+                label="Stop the batch on a failure"
+                description="Skips the rest of this run's moves"
                 checked={automationConfig.safety_checks?.abort_on_failure !== false}
                 onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, abort_on_failure: e.target.checked } })}
               />
               <ToggleRow
-                label="Auto-Disable on Failure (requires manual resume)"
-                description="Automatically disables automated migrations if any migration fails. Requires manual review before resuming."
+                label="Turn off automation on a failure"
+                description="Stays off until you turn it back on"
                 checked={automationConfig.safety_checks?.pause_on_failure === true}
                 onChange={(e) => saveAutomationConfig({ safety_checks: { ...automationConfig.safety_checks, pause_on_failure: e.target.checked } })}
               />
@@ -146,7 +147,7 @@ export default function MigrationBehaviorSection({
           {crs && typeof crs === 'object' && (
             <div className="border-t border-pb-border dark:border-slate-700 pt-4">
               <h3 className="text-base font-bold text-pb-text dark:text-white">Proxmox balancer (CRS)</h3>
-              <p className="text-sm text-pb-text2 dark:text-gray-400 mb-2">What Proxmox's built-in scheduler does with HA guests, so the two don't fight over them.</p>
+              <p className="text-sm text-pb-text2 dark:text-gray-400 mb-2">Proxmox's own HA balancer, shown so the two don't fight.</p>
               <CrsStatusBanner
                 pveCrs={crs}
                 automationEnabled={automationStatus?.enabled ?? automationConfig.enabled}

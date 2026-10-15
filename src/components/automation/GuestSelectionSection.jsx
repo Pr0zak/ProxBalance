@@ -64,7 +64,7 @@ export default function GuestSelectionSection({
               />
               <NumberRow
                 label="Max into one node per run"
-                description="Max migrations into one node per run (0 = no limit)"
+                description="0 = no limit"
                 min="0" max="5"
                 value={automationConfig.rules?.max_target_inflow_per_cycle ?? 0}
                 onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, max_target_inflow_per_cycle: Math.max(0, Math.min(5, val)) } })}
@@ -77,42 +77,46 @@ export default function GuestSelectionSection({
             <h3 className="text-base font-bold text-pb-text dark:text-white mb-3">Guest Rules</h3>
             <div className="space-y-3">
               <ToggleRow
-                label="Skip Ignored Guests ('ignore' tag)"
-                description="Skip guests tagged 'ignore' during automated migrations."
+                label="Skip 'ignore'-tagged guests"
+                description="They never move automatically"
                 checked={automationConfig.rules?.respect_ignore_tags !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_ignore_tags: e.target.checked } })}
               />
               <ToggleRow
-                label="Require 'auto_migrate_ok' Tag"
-                description="Only migrate VMs with 'auto-migrate-ok' or 'auto_migrate_ok' tag (opt-in mode)."
+                label="Require 'auto_migrate_ok' tag"
+                description="Only tagged guests move"
+                detail="Either spelling counts: auto_migrate_ok or auto-migrate-ok."
                 checked={automationConfig.rules?.require_auto_migrate_ok_tag || false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, require_auto_migrate_ok_tag: e.target.checked } })}
               />
               <ToggleRow
-                label="Keep Affinity Groups Together"
-                description="Hard groups (affinity_req_ tag) move together. Soft groups (affinity_ tag) only make a split cost score."
+                label="Keep affinity groups together"
+                description="Hard groups move as one"
+                detail="Hard groups (tag affinity_req_<name>) always move together. Soft groups (tag affinity_<name>) may split, but a split adds the soft split penalty to the target's score."
                 checked={automationConfig.rules?.respect_affinity_rules !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_affinity_rules: e.target.checked } })}
               />
               {automationConfig.rules?.respect_affinity_rules !== false && (
                 <NumberRow
                   label="Soft split penalty"
-                  description="Added to a target's score when the move splits a soft group"
+                  description="Added when a move splits a soft group"
                   min="0" max="100"
                   value={automationConfig.rules?.affinity_soft_penalty ?? 15}
                   onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, affinity_soft_penalty: Math.max(0, Math.min(100, val)) } })}
                 />
               )}
               <ToggleRow
-                label="Keep Anti-Affinity Groups Apart"
-                description="Prevents VMs with the same exclude tag from clustering on one node."
+                label="Keep anti-affinity groups apart"
+                description="exclude_ tag: kept apart"
+                detail="Guests sharing an exclude_<name> tag are not placed on the same node."
                 checked={automationConfig.rules?.respect_exclude_affinity !== false}
                 onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, respect_exclude_affinity: e.target.checked } })}
               />
               <PlacementRules />
               <ToggleRow
-                label="Allow Container Restarts (causes downtime)"
-                description="Enables automated migrations to restart containers that cannot be live-migrated. Containers will experience brief downtime."
+                label="Allow container restarts"
+                description="Restarts CTs: brief downtime"
+                detail="A container that can't live-migrate is stopped, moved and started again."
                 checked={automationConfig.rules?.allow_container_restarts === true}
                 onChange={(e) => {
                   if (e.target.checked) {

@@ -218,19 +218,19 @@ export default function ThresholdSlider({ label, value, onChange, min, max, step
         <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">
           {overNow.length > 0 ? (
             <span className="font-semibold text-amber-600 dark:text-amber-400">
-              Over {value}% now: {overNow.map(n => `${n.name} (${pct(n.now)})`).join(', ')}. Recommendations will target {overNow.length === 1 ? 'it' : 'them'}.
+              Over {value}% now, so a source: {overNow.map(n => `${n.name} ${pct(n.now)}`).join(', ')}.
             </span>
           ) : highest ? (
             <span>No node is over {value}% right now{anchoredOver.length === 0 ? ` (highest: ${highest.name} at ${pct(highest.now)})` : ''}.</span>
           ) : null}
           {anchoredOver.map(n => (
             <span key={n.name} className="ml-1">
-              {n.name} is at {pct(n.now)} only because of guests that don't move{n.anchoredNames.length ? ` (${n.anchoredNames.slice(0, 3).join(', ')})` : ''}, so it won't be a source.
+              {n.name} ({pct(n.now)}) is not a source: the load is from guests that don't move{n.anchoredNames.length ? ` (${n.anchoredNames.slice(0, 3).join(', ')})` : ''}.
             </span>
           ))}
           {exemptOver.length > 0 && (
             <span className="ml-1">
-              {exemptOver.map(n => `${n.name} (${pct(n.now)})`).join(', ')} {exemptOver.length === 1 ? 'is' : 'are'} exempt: that IOWait comes from passthrough or NAS storage, which moving guests can't fix.
+              {exemptOver.map(n => `${n.name} (${pct(n.now)})`).join(', ')} {exemptOver.length === 1 ? 'is' : 'are'} exempt: passthrough/NAS IOWait, which a move can't fix.
             </span>
           )}
           {peakOnly.length > 0 && (

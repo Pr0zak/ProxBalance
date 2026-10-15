@@ -6,6 +6,7 @@ import { API_BASE } from '../../utils/constants.js';
 import {
   INPUT_FIELD, ICON, INNER_CARD, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BANNER_SUCCESS, BANNER_WARN, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 import { formatRelativeTime } from '../../utils/formatters.js';
+import MoreInfo from '../MoreInfo.jsx';
 const { useState, useEffect, useRef } = React;
 
 const BTN_ROW = `${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5 !gap-1.5 text-xs`;
@@ -28,7 +29,7 @@ function ActionGroup({ title, note, children }) {
     <div>
       <h3 className="text-xs font-semibold uppercase tracking-wide text-pb-text2 dark:text-gray-400 mb-2">{title}</h3>
       <div className={`${INNER_CARD} !p-0 divide-y divide-slate-200/70 dark:divide-pb-border-dark/70`}>{children}</div>
-      {note && <p className="text-xs text-pb-text2 dark:text-gray-400 mt-2">{note}</p>}
+      {note && <div className="text-xs text-pb-text2 dark:text-gray-400 mt-2">{note}</div>}
     </div>
   );
 }
@@ -112,7 +113,7 @@ export function LogViewer({ service, onClose }) {
       </div>
       {text != null && shown.length > 0 && (
         <p className="text-[11px] text-pb-text3 dark:text-gray-500 mt-1.5">
-          Newest {shown.length} {problemsOnly ? 'warning/error' : ''} line{shown.length !== 1 ? 's' : ''} of the last {lines.length} journal lines. Download keeps all of them.
+          Newest {shown.length} {problemsOnly ? 'warning/error' : ''} line{shown.length !== 1 ? 's' : ''} of the last {lines.length}. Download keeps all.
         </p>
       )}
     </div>
@@ -444,7 +445,7 @@ function SystemActions({ data, config }) {
         </ActionRow>
       </ActionGroup>
 
-      <ActionGroup title="Configuration backup" note="Server backups live in /opt/proxmox-balance-manager/backups/ and rotate automatically (last 5 kept). One is also taken before every import.">
+      <ActionGroup title="Configuration backup" note={<MoreInfo as="span" label="Where backups are kept" detail="Server backups live in /opt/proxmox-balance-manager/backups/ and rotate automatically.">Last 5 server backups kept, plus one before every import.</MoreInfo>}>
         <ActionRow title="Export settings" detail="Download all settings as JSON, to keep or to move to another instance">
           <a href={`${API_BASE}/config/export`} className={BTN_ROW}>
             <Download size={12} /> Export
@@ -592,7 +593,7 @@ function ConnectionSettings({
             <p className={HELP}>
               {showSecretInput && secretSaved
                 ? 'Leave empty to keep the saved secret.'
-                : 'The UUID shown once when the token was created in Proxmox. Never sent back to the browser.'}
+                : 'UUID Proxmox shows once at creation. Never sent back to the browser.'}
             </p>
           </div>
 
@@ -623,9 +624,9 @@ function ConnectionSettings({
               {perms.map((perm, idx) => <li key={idx}>{perm}</li>)}
             </ul>
           )}
-          <p className="text-xs text-pb-text3 dark:text-gray-500">
-            The installer creates a token with the right permissions. Validating checks the token against the current host.
-          </p>
+          <MoreInfo className="text-xs text-pb-text3 dark:text-gray-500" detail="The installer creates a token with the right permissions.">
+            Validate checks the token against the current host.
+          </MoreInfo>
         </div>
       </div>
 

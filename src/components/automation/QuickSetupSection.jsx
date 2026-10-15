@@ -186,9 +186,9 @@ export default function QuickSetupSection({
             <div className="flex items-start gap-3">
               <AlertTriangle size={20} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Enable Automated Migrations?</div>
+                <div className="font-semibold text-orange-800 dark:text-orange-200 mb-1">Enable automated migrations?</div>
                 <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
-                  The system will automatically migrate VMs based on your configured rules.
+                  Guests will move on their own, by your rules.
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -220,12 +220,10 @@ export default function QuickSetupSection({
             <div className="flex items-start gap-3">
               <AlertTriangle size={24} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="font-bold text-red-800 dark:text-red-200 mb-2 text-lg">DISABLE DRY RUN MODE?</div>
-                <div className="text-sm text-red-700 dark:text-red-300 space-y-2 mb-4">
-                  <p className="font-semibold">This will enable REAL automated migrations!</p>
-                  <p>VMs will actually be migrated automatically based on your configured rules.</p>
-                  <p className="font-semibold">Are you absolutely sure?</p>
-                </div>
+                <div className="font-bold text-red-800 dark:text-red-200 mb-1 text-lg">Turn off dry run?</div>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-3">
+                  Migrations become real: guests will actually move, by your rules.
+                </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
@@ -242,7 +240,7 @@ export default function QuickSetupSection({
                     className={`${TAP_TARGET} ${BTN_SECONDARY} !px-3 !py-1.5`}
                   >
                     <X size={14} />
-                    Cancel (Keep Dry Run On)
+                    Keep dry run
                   </button>
                 </div>
               </div>

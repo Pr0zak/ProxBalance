@@ -118,7 +118,7 @@ export default function InsightsPage({ cpuThreshold, memThreshold, iowaitThresho
           </div>
           <div className={`${GLASS_CARD} xl:col-span-2`}>
             <SectionHeader title="Migration outcomes" icon={CheckCircle} accent={['emerald', 'green']} />
-            <p className="text-sm text-pb-text2 dark:text-gray-400 -mt-2 mb-3">Did recent migrations actually relieve the source node?</p>
+            <p className="text-sm text-pb-text2 dark:text-gray-400 -mt-2 mb-3">Did recent moves relieve the source node?</p>
             <OutcomesByDay />
           </div>
         </div>

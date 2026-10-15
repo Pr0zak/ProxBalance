@@ -1,7 +1,8 @@
 import {
-  Calendar, Check, ChevronDown, Clock, Edit, Info, Moon, Plus, Save, Trash, X
+  Calendar, Check, ChevronDown, Clock, Edit, Moon, Plus, Save, Trash, X
 } from '../Icons.jsx';
 import WeeklyScheduleOverview from './WeeklyScheduleOverview.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 import { describeDays, isOvernight, scheduleOutlook } from '../../utils/scheduleWindows.js';
 import { GLASS_CARD, INNER_CARD, EMPTY_STATE, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, BTN_ICON, ICON, INPUT_FIELD, SELECT_FIELD, statusBadge, TAP_TARGET } from '../../utils/designTokens.js';
 
@@ -53,14 +54,12 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
           }
 
           {/* Timezone Selector */}
-          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <label className="block text-sm font-semibold text-pb-text dark:text-gray-300 mb-2">
-                  Timezone for Time Windows
+          <div className="mb-2 flex items-center gap-3">
+                <label htmlFor="pb-window-tz" className="text-sm font-medium text-pb-text dark:text-gray-300 shrink-0">
+                  Timezone
                 </label>
                 <select
+                  id="pb-window-tz"
                   value={automationConfig.schedule?.timezone || 'UTC'}
                   onChange={(e) => saveAutomationConfig({
                     schedule: {
@@ -68,7 +67,7 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                       timezone: e.target.value
                     }
                   })}
-                  className={`${SELECT_FIELD} w-full`}
+                  className={`${SELECT_FIELD} flex-1 min-w-0 sm:flex-none sm:w-72`}
                 >
                   <option value="UTC">UTC (Server Time)</option>
                   <option value="America/New_York">Eastern Time (ET)</option>
@@ -89,17 +88,15 @@ export default function TimeWindowsSection({ automationConfig, savedConfig, auto
                   <option value="Australia/Sydney">Sydney (AEDT/AEST)</option>
                   <option value="Pacific/Auckland">Auckland (NZDT/NZST)</option>
                 </select>
-                <p className="text-xs text-pb-text2 dark:text-gray-400 mt-2">
-                  All time windows below use this timezone. Current server time (UTC): {new Date().toUTCString()}
-                </p>
-              </div>
-            </div>
           </div>
 
-          <p className="text-sm text-pb-text2 dark:text-gray-400 mb-4">
-            Configure when migrations are allowed (Migration Windows) or blocked (Blackout Windows).
-            If no windows are configured, migrations are allowed at any time.
-          </p>
+          <MoreInfo
+            className="text-xs text-pb-text2 dark:text-gray-400 mb-4"
+            label="About time windows"
+            detail={`Migration windows allow moves; blackout windows block them. All window times use the timezone above. Server time (UTC): ${new Date().toUTCString()}`}
+          >
+            No windows set means migrations may run any time.
+          </MoreInfo>
 
           {/* Weekly overview + live outlook */}
           <WeeklyScheduleOverview

@@ -181,7 +181,7 @@ export default function AIProviderSection({
                             </div>
                             <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded p-3">
                               <p className="text-sm text-blue-800 dark:text-blue-200">
-                                <strong>Note:</strong> Ensure Ollama is installed and running. Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="underline">ollama.ai</a> for installation instructions.
+                                Ollama must be installed and running (<a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="underline">ollama.ai</a>).
                               </p>
                             </div>
                           </div>

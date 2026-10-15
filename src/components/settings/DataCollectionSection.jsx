@@ -119,7 +119,7 @@ export default function DataCollectionSection({
             <option value="large">Large (100+ VMs/CTs) — 30 min interval</option>
             <option value="custom">Custom</option>
           </select>
-          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">Choosing a preset fills in the fields below; editing a field switches to Custom.</p>
+          <p className="text-xs text-pb-text2 dark:text-gray-400 mt-1">A preset fills the fields below; editing one switches to Custom.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -141,7 +141,7 @@ export default function DataCollectionSection({
 
         <ToggleRow label="Parallel collection" description="Process multiple nodes at once (3–5× faster)"
           checked={form.parallel_collection_enabled} onChange={(e) => set('parallel_collection_enabled', e.target.checked)} />
-        <ToggleRow label="Skip RRD for stopped guests" description="Don't fetch performance history for stopped VMs/CTs (faster)"
+        <ToggleRow label="Skip RRD for stopped guests" description="No history fetch for stopped guests (faster)"
           checked={form.skip_stopped_guest_rrd} onChange={(e) => set('skip_stopped_guest_rrd', e.target.checked)} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

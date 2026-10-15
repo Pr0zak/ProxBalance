@@ -10,15 +10,12 @@ const { useState } = React;
 
 const INTELLIGENCE_LEVELS = [
   { key: 'basic', label: 'Basic',
-    description: 'Observation tracking + Cycle detection',
-    detail: 'Prevents acting on transient spikes and migration ping-pong' },
+    description: 'Waits out spikes, stops ping-pong' },
   { key: 'standard', label: 'Standard',
-    description: 'Basic + Cost-benefit + Outcome learning + Guest tracking',
-    detail: 'Learns from past migrations and avoids low-value moves',
+    description: '+ cost-benefit, learns from past moves',
     recommended: true },
   { key: 'full', label: 'Full',
-    description: 'Standard + Trend analysis + Pattern recognition + Risk gating',
-    detail: 'Maximum intelligence with workload pattern recognition' },
+    description: '+ trends, workload patterns, risk gating' },
 ];
 
 function inferIntelligenceLevel(imConfig) {
@@ -58,9 +55,6 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
             ? <h3 className="text-base font-bold text-pb-text dark:text-white">Smart Migrations</h3>
             : <h2 className="text-xl font-bold text-pb-text dark:text-white">Smart Migrations</h2>
           }
-          <p className="text-sm text-pb-text2 dark:text-gray-400 mt-1">
-            Track recommendations over time and only act on persistent imbalances
-          </p>
         </div>
       </div>
 
@@ -68,8 +62,8 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
         <div className="space-y-4">
           {/* Enable/Disable Toggle */}
           <ToggleRow
-            label="Enable Smart Migrations"
-            description="Prevents acting on transient load spikes"
+            label="Enable smart migrations"
+            description="Ignores short spikes"
             checked={imConfig?.enabled !== false}
             onChange={(e) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, enabled: e.target.checked } } })}
           />
@@ -82,9 +76,9 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                   <div className="flex items-start gap-2 flex-1">
                     <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                     <div className="text-sm text-blue-800 dark:text-blue-200">
-                      You've collected enough data to enable <strong>{suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)}</strong> intelligence.
-                      {suggestedLevel === 'standard' && ' This adds cost-benefit analysis and outcome learning.'}
-                      {suggestedLevel === 'full' && ' This adds trend analysis, pattern recognition, and risk gating.'}
+                      Enough data for <strong>{suggestedLevel.charAt(0).toUpperCase() + suggestedLevel.slice(1)}</strong>
+                      {suggestedLevel === 'standard' && ': adds cost-benefit and outcome learning.'}
+                      {suggestedLevel === 'full' && ': adds trends, patterns and risk gating.'}
                       <button
                         onClick={() => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, intelligence_level: suggestedLevel } } })}
                         className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded font-semibold"
@@ -127,7 +121,6 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
                           </div>
                         </div>
                         <div className="text-xs text-pb-text dark:text-gray-300">{level.description}</div>
-                        <div className="text-xs text-pb-text2 dark:text-gray-400 mt-1">{level.detail}</div>
                       </button>
                     );
                   })}
@@ -138,23 +131,19 @@ export default function SmartMigrationsSection({ automationConfig, saveAutomatio
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <NumberRow
                   label="Observation periods"
-                  description="Times in a row a move must be recommended before acting"
+                  description="Runs in a row before a move"
                   min="2" max="10"
                   value={obsPeriods}
                   onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, observation_periods: val } } })}
                 />
                 <NumberRow
-                  label="Minimum data collection"
-                  description="Watch this long before the first migration (0 = no minimum)"
+                  label="Minimum data"
+                  description="Before the first move (0 = none)"
                   unit="h" min="0" max="72"
                   value={minDataHours}
                   onCommit={(val) => saveAutomationConfig({ rules: { ...automationConfig.rules, intelligent_migrations: { ...imConfig, minimum_data_collection_hours: val } } })}
                 />
               </div>
-
-              <p className="text-xs text-pb-text2 dark:text-gray-400">
-                The system will collect data for at least {minDataHours} hour{minDataHours !== 1 ? 's' : ''} and require {obsPeriods} consistent recommendation{obsPeriods !== 1 ? 's' : ''} before migrating.
-              </p>
 
               {/* Advanced Tuning */}
               <details className="group">

@@ -5,6 +5,7 @@ import {
 } from '../../utils/designTokens.js';
 import NumberField from '../NumberField.jsx';
 import Toggle, { ToggleRow } from '../Toggle.jsx';
+import MoreInfo from '../MoreInfo.jsx';
 import { API_BASE } from '../../utils/constants.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -195,7 +196,7 @@ export default function PenaltyScoringSection({
           <div>
             <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">Trend weight</label>
             <p className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
-              Higher means sustained load over the last day and week counts more than the current reading.
+              Higher: the last day and week count more than now.
             </p>
             <div className="flex items-center gap-3">
               <span className="text-xs text-pb-text2 dark:text-gray-400 whitespace-nowrap">Now</span>
@@ -220,9 +221,9 @@ export default function PenaltyScoringSection({
           {/* Analysis Lookback */}
           <div>
             <label className="block text-sm font-medium text-pb-text dark:text-gray-300 mb-1">History to analyze</label>
-            <p className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
-              Days of history used to spot trends. Longer is steadier but slower to react.
-            </p>
+            <MoreInfo className="text-xs text-pb-text2 dark:text-gray-400 mb-2" detail="Longer is steadier but slower to react.">
+              Days used to spot trends
+            </MoreInfo>
             <div className="flex flex-wrap gap-1.5">
               {LOOKBACK_OPTIONS.map(({ value, label }) => (
                 <button
@@ -259,7 +260,7 @@ export default function PenaltyScoringSection({
                   )}
                 </div>
                 <p className="text-xs text-pb-text2 dark:text-gray-400 mb-2">
-                  Minimum penalty score improvement (in points) required for a migration to be recommended. Lower values recommend more migrations.
+                  Points a move must gain to be suggested. Lower means more moves.
                 </p>
                 <div className="flex items-center gap-3">
                   <NumberField
@@ -280,8 +281,8 @@ export default function PenaltyScoringSection({
 
               {/* Protect Running Workloads */}
               <ToggleRow
-                label="Protect Running Workloads"
-                description="Avoid migrating guests during their detected peak usage hours to minimize disruption"
+                label="Protect running workloads"
+                description="Doesn't move guests in their peak hours"
                 checked={settings.protect_workloads !== false}
                 onChange={(e) => updateSetting('protect_workloads', e.target.checked)}
               />
@@ -291,7 +292,7 @@ export default function PenaltyScoringSection({
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">What-If Simulator</label>
-                    <p className="text-xs text-pb-text2 dark:text-gray-400">Preview how your current settings would affect recommendations before saving.</p>
+                    <p className="text-xs text-pb-text2 dark:text-gray-400">Suggestions with these settings, before saving</p>
                   </div>
                   <button
                     onClick={runSimulation}
@@ -403,7 +404,7 @@ export default function PenaltyScoringSection({
                 <div className="flex items-start gap-2">
                   <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
                   <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                    These values are automatically managed by the simplified settings above. Manual changes here will override automatic mapping and your settings will be saved as expert overrides.
+                    Set by the settings above. Editing here saves expert overrides that replace them.
                   </p>
                 </div>
               </div>
@@ -412,8 +413,9 @@ export default function PenaltyScoringSection({
               {penaltyConfig && (
                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <ToggleRow
-                    label="Exempt passthrough / NAS nodes from IOWait scoring"
-                    description="When a node's host IOWait is dominated by a guest on dedicated/passthrough storage (e.g. a NAS VM doing a RAID resync), don't penalize the node or recommend evacuating it — migration can't relieve that IOWait. Guests are auto-detected from passthrough disks, or tag one 'io_exempt'. Turn off to score IOWait normally everywhere."
+                    label="Exempt passthrough / NAS IOWait"
+                    description="Moving guests can't fix that IOWait"
+                    detail="When a node's IOWait comes mostly from a guest on dedicated or passthrough storage (e.g. a NAS VM doing a RAID resync), the node is not penalized or evacuated. Guests are detected from passthrough disks, or tag one 'io_exempt'. Off: IOWait is scored normally everywhere."
                     checked={penaltyConfig.iowait_exempt_enabled !== false}
                     onChange={(e) => setPenaltyConfig({ ...penaltyConfig, iowait_exempt_enabled: e.target.checked })}
                   />
@@ -426,7 +428,7 @@ export default function PenaltyScoringSection({
                   <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">Time Period Weights</label>
                     <p className="text-xs text-pb-text2 dark:text-gray-400">
-                      Control how much weight to give to recent vs. historical metrics. Values must sum to 1.0.
+                      Recent vs. history; must sum to 1.0.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -498,7 +500,7 @@ export default function PenaltyScoringSection({
                   <div className="space-y-3">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">Memory Penalties</label>
                     <p className="text-xs text-pb-text2 dark:text-gray-400">
-                      Proxmox memory is allocated, not dynamic — these penalties reflect allocation pressure, not active usage trends.
+                      Reflect allocated memory, not usage trends.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[['mem_high_penalty', 'High'], ['mem_very_high_penalty', 'Very High'], ['mem_extreme_penalty', 'Extreme']].map(([key, label]) => (
@@ -535,9 +537,9 @@ export default function PenaltyScoringSection({
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-pb-text2 dark:text-gray-400">
-                      IO pressure is the share of time tasks waited on disk (Proxmox VE 9 and later). Only its 7-day average counts.
-                    </p>
+                    <MoreInfo className="text-xs text-pb-text2 dark:text-gray-400" detail="IO pressure is the share of time tasks waited on disk (Proxmox VE 9 and later).">
+                      IO pressure: only the 7-day average counts.
+                    </MoreInfo>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[['io_pressure_sustained_high', 'IO pressure 7d > 30%'], ['io_pressure_sustained_critical', 'IO pressure 7d > 50%']].map(([key, label]) => (
                         <div key={key}>
@@ -559,7 +561,7 @@ export default function PenaltyScoringSection({
                   <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">Minimum Score Improvement</label>
                     <p className="text-xs text-pb-text2 dark:text-gray-400">
-                      Minimum score improvement (in points) required for a migration to be recommended.
+                      Points a move must gain to be suggested.
                     </p>
                     <div className="max-w-md">
                       <NumberField
