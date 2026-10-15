@@ -97,7 +97,7 @@ Share results in [GitHub Discussions](https://github.com/Pr0zak/ProxBalance/disc
 
 ## Demo Cluster and Screenshots
 
-`tools/demo/` runs ProxBalance against a made-up cluster instead of a real one. A small fake Proxmox API (`fake_pve.py`) serves five nodes (orion, lyra, vega, draco, cygnus) and 41 guests on `127.0.0.1:8006`. `seed.py` writes 90 days of history from the same load model, so charts, outcomes, the change log and automation runs agree with the live values. The scenario includes a busy node, a node whose memory grows, a NAS with high IO wait, a failed disk, broken and holding placement rules, HA rules and a move waiting for approval. All names are invented, so screenshots need no blurring.
+`tools/demo/` runs ProxBalance against a made-up cluster instead of a real one. A small fake Proxmox API (`fake_pve.py`) serves five nodes (orion, lyra, vega, draco, cygnus) and 41 guests on `127.0.0.1:8006`. `seed.py` writes 90 days of history from the same load model, so charts, outcomes, the change log and automation runs agree with the live values. The scenario includes a busy node, a node whose memory grows, a NAS with high IO wait, a failed disk, broken and holding placement rules, HA rules, guests that can't move (passthrough disks, host folder mounts, a shared media mount), guests tagged `ignore`, `io_exempt` and `auto_migrate_ok`, and a move waiting for approval. All names are invented, so screenshots need no blurring.
 
 Use it on a test install, never on the one that manages your cluster:
 

@@ -514,7 +514,8 @@ def migrate(node, kind, vmid):
     if target not in sc.NODES or target == node:
         return err(400, "parameter verification failed: target")
     extra = sc.GUESTS[v].get("extra", {})
-    if any(k.startswith(("hostpci", "usb")) for k in extra) or any(str(x).startswith("/") for x in extra.values()):
+    local_paths = [x for x in extra.values() if str(x).startswith("/") and "shared=1" not in str(x)]
+    if any(k.startswith(("hostpci", "usb")) for k in extra) or local_paths:
         return err(500, "can't migrate guest with local devices or bind mounts")
     duration = 8 + sc.GUESTS[v]["mem"] * 1.5
 
