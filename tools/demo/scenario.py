@@ -127,7 +127,8 @@ GUESTS: Dict[int, Dict[str, Any]] = {
     192: dict(name="elastic-3", t="qemu", node="lyra", cores=4, mem=20, cpu=0.22, amp=0.3, peak=11, memf=0.79, grow=0.30, tags="logging", disk=400),
     152: dict(name="loki", t="lxc", node="lyra", cores=2, mem=6, cpu=0.12, amp=0.2, peak=12, memf=0.62, tags="monitoring;affinity_monitoring", disk=200),
     161: dict(name="nextcloud", t="lxc", node="lyra", cores=2, mem=6, cpu=0.25, amp=0.7, peak=20, memf=0.58, tags="apps", disk=60),
-    171: dict(name="minio", t="lxc", node="lyra", cores=2, mem=4, cpu=0.08, amp=0.4, peak=2, memf=0.52, tags="storage", disk=20),
+    171: dict(name="minio", t="lxc", node="lyra", cores=2, mem=4, cpu=0.08, amp=0.4, peak=2, memf=0.52, tags="storage", disk=20,
+              extra={"mp0": "/srv/minio,mp=/data"}),
     # vega
     200: dict(name="nas-01", t="qemu", node="vega", cores=2, mem=16, cpu=0.20, amp=0.6, peak=2, memf=0.88, io=0.20, tags="storage", disk=32,
               extra={"hostpci0": "0000:03:00.0,pcie=1", "scsi1": "/dev/disk/by-id/ata-WDC_WD120EFBX-68B0EN0_D7G0A1B2,size=11176G"}),
@@ -135,8 +136,7 @@ GUESTS: Dict[int, Dict[str, Any]] = {
               extra={"mp0": "/dev/disk/by-id/usb-WD_Elements_25A3_575831314135,mp=/backup,backup=0"}),
     202: dict(name="syncthing", t="lxc", node="vega", cores=1, mem=1, cpu=0.05, amp=0.4, peak=21, memf=0.38, tags="storage", disk=8,
               extra={"mp0": "/mnt/tank/sync,mp=/data"}),
-    203: dict(name="photoprism", t="lxc", node="vega", cores=2, mem=6, cpu=0.10, amp=0.6, peak=21, memf=0.50, tags="apps", disk=30,
-              extra={"mp0": "/mnt/tank/photos,mp=/photos"}),
+    203: dict(name="photoprism", t="lxc", node="vega", cores=2, mem=6, cpu=0.10, amp=0.6, peak=21, memf=0.50, tags="apps", disk=30),
     204: dict(name="unifi", t="lxc", node="vega", cores=1, mem=2, cpu=0.06, amp=0.2, peak=12, memf=0.62, tags="infra;ignore", disk=12),
     # draco (busy: CI and builds)
     120: dict(name="gitlab", t="qemu", node="draco", cores=4, mem=12, cpu=0.30, amp=0.6, peak=14, memf=0.74, tags="dev;affinity_req_gitlab", disk=250, weekday=True),
@@ -179,7 +179,7 @@ PAST_MOVES = [
     (14, 161, "draco", "lyra", "cpu"),
     (12, 145, "lyra", "draco", "cpu"),
     (10, 153, "draco", "cygnus", "cpu"),
-    (9, 176, "orion", "cygnus", "cpu"),
+    (9, 173, "orion", "cygnus", "cpu"),
     (8, 203, "draco", "vega", "cpu"),
     (4.2, 190, "orion", "lyra", "mem"),
     (2.6, 131, "orion", "cygnus", "rule"),
