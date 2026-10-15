@@ -30,7 +30,7 @@ Five view modes (CPU, Memory, Allocated, Disk I/O, Network), colour by type or b
 **Visual indicators on guests:**
 - Cyan marker: container with shared mount points (safe to migrate)
 - Orange marker: container with unshared bind mounts (may require manual migration)
-- Red marker: VM with pinned or passthrough disks (cannot migrate, excluded from recommendations)
+- Red marker: pinned VM, with passthrough disks or PCI/USB passthrough (cannot migrate, excluded from recommendations)
 
 ### Charts
 

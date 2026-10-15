@@ -122,7 +122,7 @@ Returns node data without guest details.
 
 Returns guest data without node details.
 
-Each guest has a `disks` list: its storage-backed volumes from the guest config, `{key, storage, volume, size_gb}`, where `size_gb` is the provisioned size (`null` when the config gives none, as for most unused disks). Bind mounts, passthrough devices and CD-ROM drives are left out. Node storage entries (in `/api/cluster-analysis` and `/api/nodes-only`) carry `shared` (Proxmox's flag) next to `total_gb`, `used_gb`, `avail_gb` and `usage_pct`.
+Each guest has a `disks` list: its storage-backed volumes from the guest config, `{key, storage, volume, size_gb}`, where `size_gb` is the provisioned size (`null` when the config gives none, as for most unused disks). Bind mounts, passthrough devices and CD-ROM drives are left out. Each guest's `local_disks.is_pinned` is true when it cannot migrate: it has passthrough disks (`has_passthrough`, `passthrough_disks`), or it is a VM with PCI (`hostpciN`) or USB (`usbN`, not SPICE) passthrough. `pinned_devices` lists those device keys, `pinned_reasons` one phrase per cause, and `pinned_reason` joins them (for example `PCI passthrough (hostpci0)`). Container `devN` entries do not pin. When the recommendation engine skips a pinned guest, the skip reason is `passthrough_device` if only PCI/USB passthrough pins it and `passthrough_disk` otherwise. Node storage entries (in `/api/cluster-analysis` and `/api/nodes-only`) carry `shared` (Proxmox's flag) next to `total_gb`, `used_gb`, `avail_gb` and `usage_pct`.
 
 ### POST /api/refresh
 
@@ -712,7 +712,7 @@ The moves that would make every hard rule hold. Plans only.
 }
 ```
 
-`unresolved` lists guests the plan can't move (ignore tag, passthrough disks, no node that fits) with a reason. Soft rules never appear.
+`unresolved` lists guests the plan can't move (ignore tag, passthrough disks or VM PCI/USB passthrough, no node that fits) with a reason. Soft rules never appear.
 
 #### POST /api/placement-rules/enforce
 

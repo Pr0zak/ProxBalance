@@ -87,7 +87,7 @@ A compact, sortable list of every guest with state, CPU and memory bars, allocat
 | Suggested | There is a current suggestion for it; a Move button opens the migrate dialog |
 | Movable | Eligible, but no move is needed right now. The tooltip names the exact gate (for example "pve3 mem 45% < 65% floor") |
 | Manual only | Needs manual steps (for example unshared bind mounts) |
-| Pinned | Cannot migrate (for example passthrough or local disks) |
+| Pinned | Cannot migrate: a passthrough disk, or a VM with PCI/GPU (`hostpciN`) or USB (`usbN`, other than SPICE) passthrough |
 | HA / CRS | Managed by Proxmox HA, which the native CRS balances |
 | Ignored | Carries the `ignore` tag |
 | Stopped | Not running |
@@ -105,7 +105,7 @@ A visual view of each node and its guests as bubbles.
 - **View by**: CPU, Memory, Allocated, Disk I/O or Network sizes the bubbles. **Color** switches between guest type and load.
 - **Node cards** print their values: CPU % with allocated vCPU over physical cores, memory % with used/total GB, IOWait %, and committed RAM (orange above 100%).
 - **Find bar**: type a guest name, VMID or tag. Matches are ringed and labelled, everything else dims, each node shows how many matches it holds, and Enter opens the guest when exactly one matches. Quick-filter chips pick out guests that can't migrate, are ignored, carry affinity rules, are HA-managed or have mount points.
-- **Guest indicators**: a small square on a container means it has mount points (cyan when shared and safe to migrate, orange for unshared bind mounts that need manual work); a red square on a VM means pinned or passthrough disks, which cannot migrate.
+- **Guest indicators**: a small square on a container means it has mount points (cyan when shared and safe to migrate, orange for unshared bind mounts that need manual work); a red square on a VM means it is pinned (passthrough disks, or PCI/USB passthrough) and cannot migrate.
 
 **Previewing a move.** Drag a guest bubble over another node to see ghost bars and an "If here (est.)" readout; the source shows what it would free. Offline, maintenance and pinned cases refuse the drop. Dropping opens a before/after panel that flags anti-affinity or split-affinity conflicts, overcommit, CPU over 80% or memory over 85%, unshared bind mounts, the ignore tag and HA management. "Review migration..." hands off to the normal Confirm Migration dialog, so nothing starts from the map itself. On touch screens, tap a bubble to get a "Move to..." sheet with each node's estimate instead of dragging. All projections are estimates from current usage.
 
@@ -205,9 +205,11 @@ On the Suggestions tab, use **Run all N in order** or select a subset and use **
 - **Shared storage mounts** (cyan indicator): safe to migrate. The target node reconnects to the same shared storage.
 - **Unshared bind mounts** (orange indicator): need manual data migration or mount point setup on the target first.
 
-### VMs with passthrough disks
+### VMs with passthrough disks or devices
 
-VMs with passthrough or pinned local disks (red indicator) are excluded from migration suggestions. They need manual work: shut down the VM, move or reconfigure the disk on the target node, and start the VM there.
+VMs with passthrough disks, PCI/GPU passthrough (`hostpciN`) or USB passthrough (`usbN`, except SPICE redirection) are pinned (red indicator): Proxmox will not live-migrate them, so they are excluded from migration suggestions, automation and maintenance evacuation. They need manual work: shut down the VM, move or reconfigure the disk or device on the target node, and start the VM there. The guest panel names the device keys that pin it, for example "PCI passthrough (hostpci0)".
+
+Containers with device nodes (`devN`, such as a GPU render node) are not pinned. Proxmox can restart-migrate them when the same device exists on the target; the node-failure simulation still lists them as tied to their host.
 
 ---
 

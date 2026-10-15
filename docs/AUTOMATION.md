@@ -299,7 +299,7 @@ What happens next depends on the automation state:
 - **Live automation:** the next run starts moving every guest off the node, running and stopped, up to `max_migrations_per_run` per run. Maintenance moves bypass the observation period, cooldown, confidence threshold, conflict gate and ignore/exclude tags. Migration and blackout windows still apply.
 - **Dry run or automation off:** nothing moves on its own. Use the node's evacuation plan to move guests manually.
 
-The recommendation engine also treats maintenance nodes as sources to empty (including HA-managed and ignored guests) and never as targets. Guests with passthrough disks still cannot be moved.
+The recommendation engine also treats maintenance nodes as sources to empty (including HA-managed and ignored guests) and never as targets. Guests with passthrough disks, and VMs with PCI or USB passthrough, still cannot be moved.
 
 ---
 

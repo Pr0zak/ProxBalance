@@ -132,7 +132,7 @@ if target == source: penalty += 999999
 
 ## Anchored Load
 
-Some guests never move under normal operation: they carry the `ignore` tag or are pinned by passthrough disks (a NAS VM, a camera recorder). Their CPU is a fixed baseline on their host, so counting it as load ProxBalance could relieve makes the host look permanently overloaded and pushes every other guest off it without ever bringing CPU down.
+Some guests never move under normal operation: they carry the `ignore` tag or are pinned by passthrough disks or VM PCI/USB passthrough (a NAS VM, a VM with a GPU). Their CPU is a fixed baseline on their host, so counting it as load ProxBalance could relieve makes the host look permanently overloaded and pushes every other guest off it without ever bringing CPU down.
 
 For each node, the engine sums the CPU of its running anchored guests (each guest's last-hour average, as a share of the node's CPU) into `anchored_cpu`, capped at 90%. When deciding whether a node needs relief, and how much a move gives, node CPU is re-expressed as a share of the capacity the anchored guests leave free:
 
