@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
 import { Info } from './Icons.jsx';
+
+const { useState } = React;
 
 /**
  * A short line with its detail one tap away.
