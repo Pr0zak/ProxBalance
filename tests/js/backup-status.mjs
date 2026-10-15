@@ -69,3 +69,21 @@ test('formatters', () => {
   assert.equal(fmtDuration(600), '10 min');
   assert.equal(fmtDuration(null), null);
 });
+
+const { backupDays, backupDayText } =
+  await import('data:text/javascript,' + encodeURIComponent(out.outputFiles[0].text));
+
+test('backupDays marks ok, failed, none and unknown days', () => {
+  const now = new Date(2026, 9, 15, 12, 0, 0).getTime() / 1000;
+  const at = (d, h) => new Date(2026, 9, d, h, 0, 0).getTime() / 1000;
+  const runs = [
+    { time: at(13, 1), ok: true, duration_s: 20, storage: 'pbs' },
+    { time: at(14, 1), ok: false, error: 'got timeout' },
+    { time: at(15, 1), ok: true, duration_s: 90, storage: 'pbs' },
+  ];
+  const d = backupDays(runs, 5, now, at(12, 1));
+  assert.deepEqual(d.map(x => x.status), ['unknown', 'none', 'ok', 'failed', 'ok']);
+  assert.match(backupDayText(d[3]), /failed: got timeout$/);
+  assert.match(backupDayText(d[4]), /good, took 2 min · pbs$/);
+  assert.match(backupDayText(d[0]), /not recorded yet$/);
+});

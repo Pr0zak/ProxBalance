@@ -317,6 +317,20 @@ CREATE TABLE IF NOT EXISTS approval_queue (
 );
 
 -- Schema version tracking
+-- Per-guest backup results read from vzdump task logs (proxbalance/backups.py).
+-- Proxmox trims each node's task list on its own schedule, so ProxBalance keeps them.
+CREATE TABLE IF NOT EXISTS backup_runs (
+    vmid        TEXT    NOT NULL,
+    ts          INTEGER NOT NULL,
+    ok          INTEGER NOT NULL,
+    duration_s  INTEGER,
+    error       TEXT,
+    storage     TEXT,
+    node        TEXT,
+    PRIMARY KEY (vmid, ts)
+);
+CREATE INDEX IF NOT EXISTS idx_backup_runs_ts ON backup_runs(ts);
+
 CREATE TABLE IF NOT EXISTS schema_version (
     version     INTEGER PRIMARY KEY,
     applied_at  TEXT    NOT NULL,

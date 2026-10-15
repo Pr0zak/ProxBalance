@@ -22,6 +22,7 @@ taken as the task start, and later ones are offsets from it.
 """
 
 import re
+import time
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional
 
@@ -37,6 +38,9 @@ BACKUP_LOOKBACK_DAYS = 14
 BACKUP_TASKS_PER_NODE = 30
 # Task logs are paged (default 50 lines); one job log is ~20 lines per guest.
 BACKUP_LOG_MAX_LINES = 50000
+
+# How long stored results are kept.
+BACKUP_HISTORY_DAYS = 90
 
 # Longest error text kept per guest; vzdump errors can carry whole command lines.
 MAX_ERROR_LEN = 300
@@ -132,3 +136,50 @@ def summarize_backup_results(results: Iterable[Dict]) -> Dict[str, Dict]:
             s["fail_count"] += 1
             s["last_error"] = r.get("error")
     return out
+
+
+def record_backup_runs(results: Iterable[Dict], now: Optional[float] = None) -> int:
+    """Store finished results in ``backup_runs`` and drop rows past BACKUP_HISTORY_DAYS.
+
+    A result's time is derived from its task log, so re-reading the same log
+    on the next collection writes the same row again (replace, not duplicate).
+    Returns the number of rows written.
+    """
+    from proxbalance.db import get_connection
+
+    rows = [(str(r["vmid"]), int(r["time"]), 1 if r["ok"] else 0, r.get("duration_s"),
+             r.get("error"), r.get("storage"), r.get("node") or None)
+            for r in results if r.get("ok") is not None]
+    cutoff = int((now if now is not None else time.time()) - BACKUP_HISTORY_DAYS * 86400)
+    conn = get_connection()
+    conn.executemany(
+        "INSERT OR REPLACE INTO backup_runs (vmid, ts, ok, duration_s, error, storage, node) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+    conn.execute("DELETE FROM backup_runs WHERE ts < ?", (cutoff,))
+    conn.commit()
+    return len(rows)
+
+
+def load_backup_runs(since: int, vmid: Optional[str] = None) -> List[Dict]:
+    """Stored results since ``since`` (epoch), oldest first, as parse_vzdump_log rows."""
+    from proxbalance.db import get_connection
+
+    sql = "SELECT vmid, ts, ok, duration_s, error, storage, node FROM backup_runs WHERE ts >= ?"
+    args: list = [int(since)]
+    if vmid is not None:
+        sql += " AND vmid = ?"
+        args.append(str(vmid))
+    rows = get_connection().execute(sql + " ORDER BY ts", args).fetchall()
+    return [{"vmid": r[0], "time": r[1], "ok": bool(r[2]), "duration_s": r[3],
+             "error": r[4], "storage": r[5], "node": r[6]} for r in rows]
+
+
+def backup_history_start() -> Optional[int]:
+    """Epoch of the oldest stored result for any guest, or None when none are stored.
+
+    Days before it are unknown (not recorded yet), not days without a backup.
+    """
+    from proxbalance.db import get_connection
+
+    row = get_connection().execute("SELECT MIN(ts) FROM backup_runs").fetchone()
+    return row[0] if row and row[0] is not None else None

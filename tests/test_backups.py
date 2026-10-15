@@ -59,3 +59,47 @@ def test_log_without_job_line_has_no_storage():
     rows = parse_vzdump_log(["INFO: Starting Backup of VM 7 (lxc)",
                              "INFO: Finished Backup of VM 7 (00:00:01)"], task_start=9)
     assert rows[0]["storage"] is None and rows[0]["ok"] is True and rows[0]["time"] == 9
+
+
+def _db(monkeypatch, tmp_path):
+    from proxbalance import db
+    monkeypatch.setenv("PROXBALANCE_DB_PATH", str(tmp_path / "b.db"))
+    db.close_all()
+    db.init_db()
+    return db
+
+
+def test_record_is_idempotent_and_prunes(monkeypatch, tmp_path):
+    from proxbalance.backups import record_backup_runs, load_backup_runs
+    db = _db(monkeypatch, tmp_path)
+    now = 10_000_000
+    runs = [
+        {"vmid": "100", "ok": True, "time": now - 3600, "duration_s": 20, "error": None, "storage": "pbs", "node": "n1"},
+        {"vmid": "100", "ok": False, "time": now - 86400, "duration_s": None, "error": "boom", "storage": "pbs", "node": "n1"},
+        {"vmid": "100", "ok": True, "time": now - 100 * 86400, "duration_s": 5, "error": None, "storage": "pbs", "node": "n1"},
+        {"vmid": "200", "ok": None, "time": now, "duration_s": None, "error": None, "storage": "pbs", "node": "n2"},
+    ]
+    assert record_backup_runs(runs, now=now) == 3
+    record_backup_runs(runs, now=now)  # same logs read again
+    got = load_backup_runs(0)
+    assert [(r["vmid"], r["time"], r["ok"]) for r in got] == [("100", now - 86400, False), ("100", now - 3600, True)]
+    assert got[0]["error"] == "boom"
+    assert load_backup_runs(0, vmid="200") == []
+    db.close_all()
+
+
+def test_backups_endpoint(monkeypatch, tmp_path):
+    import time as _t
+    from flask import Flask
+    from proxbalance.backups import record_backup_runs
+    from proxbalance.routes.guests import guests_bp
+    db = _db(monkeypatch, tmp_path)
+    now = int(_t.time())
+    record_backup_runs([{"vmid": "7", "ok": True, "time": now - 60, "duration_s": 9,
+                         "error": None, "storage": "pbs", "node": "n1"}], now=now)
+    app = Flask(__name__)
+    app.register_blueprint(guests_bp)
+    j = app.test_client().get("/api/guests/7/backups?days=500").get_json()
+    assert j["success"] and j["days"] == 90 and j["recorded_from"] == now - 60
+    assert j["runs"] == [{"time": now - 60, "ok": True, "duration_s": 9, "error": None, "storage": "pbs", "node": "n1"}]
+    db.close_all()

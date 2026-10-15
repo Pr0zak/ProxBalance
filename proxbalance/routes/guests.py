@@ -561,6 +561,18 @@ def get_guest_profiles():
     return jsonify({"success": True, "profiles": result})
 
 
+@guests_bp.route("/api/guests/<int:vmid>/backups", methods=["GET"])
+@api_route
+def get_guest_backups(vmid):
+    """Stored backup results for a guest, oldest first (vzdump task logs)."""
+    from proxbalance.backups import BACKUP_HISTORY_DAYS, backup_history_start, load_backup_runs
+
+    days = max(1, min(request.args.get("days", 30, type=int), BACKUP_HISTORY_DAYS))
+    runs = load_backup_runs(int(time.time()) - days * 86400, vmid=str(vmid))
+    return jsonify({"success": True, "days": days, "recorded_from": backup_history_start(), "runs": [
+        {k: r[k] for k in ("time", "ok", "duration_s", "error", "storage", "node")} for r in runs]})
+
+
 @guests_bp.route("/api/guests/<vmid>/history", methods=["GET"])
 @api_route
 def get_guest_metrics_history(vmid):

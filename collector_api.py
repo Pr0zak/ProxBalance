@@ -28,7 +28,9 @@ from proxbalance.backups import (
     BACKUP_LOG_MAX_LINES,
     BACKUP_LOOKBACK_DAYS,
     BACKUP_TASKS_PER_NODE,
+    load_backup_runs,
     parse_vzdump_log,
+    record_backup_runs,
     summarize_backup_results,
 )
 
@@ -384,6 +386,13 @@ class ProxmoxAPICollector:
                 results.extend(parse_vzdump_log(lines, task.get("starttime") or 0, node=node))
         if not read_any:
             return None
+        # Keep every result, then summarize from the store: a node whose
+        # task list Proxmox has already trimmed still counts its older runs.
+        try:
+            record_backup_runs(results)
+            results = load_backup_runs(since)
+        except Exception as e:
+            print(f"Warning: backup history not stored: {e}", file=sys.stderr)
         return summarize_backup_results(results)
 
     def get_resource_pools(self) -> List[Dict]:

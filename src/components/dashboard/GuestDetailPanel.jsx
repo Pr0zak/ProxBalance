@@ -12,6 +12,7 @@ import { seenCountDetail } from './recommendations/seenCount.js';
 import { storageEntries, storageLine } from './recommendations/cardModel.js';
 import { panelParts } from '../../utils/rightsizing.js';
 import { backupView } from '../../utils/backupStatus.js';
+import BackupStrip from './BackupStrip.jsx';
 
 const { useState, useEffect } = React;
 
@@ -552,6 +553,7 @@ export default function GuestDetailPanel({
             </FactRow>
           );
         })()}
+        <BackupStrip vmid={vmid} API_BASE={API_BASE} />
 
         <FactRow label="Other">
           {[

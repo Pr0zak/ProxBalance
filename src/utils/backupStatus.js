@@ -64,3 +64,38 @@ export function backupView(guest, nowSec = Date.now() / 1000) {
     detail: `${took ? `Took ${took}` : 'Finished'}${b.last_node ? ` on ${b.last_node}` : ''}. ${counts}${manual}`,
   };
 }
+
+/**
+ * One cell per local calendar day, oldest first, for the guest panel strip.
+ * status: ok (newest run that day worked), failed (it failed), none (no run),
+ * unknown (before ProxBalance started recording, `recordedFrom`).
+ */
+export function backupDays(runs, days, nowSec, recordedFrom) {
+  const today = new Date(nowSec * 1000);
+  today.setHours(0, 0, 0, 0);
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const start = new Date(today);
+    start.setDate(today.getDate() - i);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const s = start.getTime() / 1000;
+    const e = end.getTime() / 1000;
+    const dayRuns = (runs || []).filter(r => r.time >= s && r.time < e);
+    const last = dayRuns[dayRuns.length - 1];
+    let status = 'none';
+    if (last) status = last.ok ? 'ok' : 'failed';
+    else if (recordedFrom == null || e <= recordedFrom) status = 'unknown';
+    out.push({ start: s, status, runs: dayRuns });
+  }
+  return out;
+}
+
+export function backupDayText(day) {
+  const date = new Date(day.start * 1000).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  if (day.status === 'unknown') return `${date}: not recorded yet`;
+  if (day.status === 'none') return `${date}: no backup`;
+  return `${date}: ` + day.runs.map(r => r.ok
+    ? `good${r.duration_s != null ? `, took ${fmtDuration(r.duration_s)}` : ''}${r.storage ? ` · ${r.storage}` : ''}`
+    : `failed: ${r.error || 'no error text'}`).join('; ');
+}
