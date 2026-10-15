@@ -266,8 +266,14 @@ curl -X POST http://<container-ip>/api/guests/<vmid>/tags/refresh
 
 The Insights page shows analysis the backend computes over time.
 
-- **Node trends**: for each node, the direction, current average and rate of change of CPU, memory and IOWait, plus stability and data coverage. Pick a 24h, 7d, 30d or 90d window (remembered per browser). Each cell has a sparkline scaled to the threshold, with the peak in red if the threshold was crossed. Time-to-threshold is shown only for confident fits; a faded rate means there is no clear trend (hover for r²). Confident threshold crossings projected within a year are listed in an amber line.
-- **Forecasts**: the crossings for the selected window, and separately the recommendation engine's own 48-hour look-ahead (fitted on the last 7 days of score history), which feeds automated migrations. An explicit all-clear is shown when nothing is projected.
+- **Node trends**: for each node, the direction, current average and rate of change of CPU, memory and IOWait, plus stability and data coverage. Pick a 24h, 7d, 30d or 90d window (remembered per browser). Each cell has a sparkline scaled to the threshold, with the peak in red if the threshold was crossed. Time-to-threshold is shown only for confident fits that cross within the forecast horizon; a faded rate means there is no clear trend (hover for r²).
+- **Forecasts**: what the selected window's trend fit projects. The horizon is 30 days, cut to twice the history the fit used (a 7-day window looks 14 days ahead, a 24-hour window 2 days). Each node metric falls into one of these:
+  - Past its limit and still rising (confident fit): a chart, headed for example "node3 memory is past its 70% limit and reaches 100% in about 10 days".
+  - Reaches its limit within the horizon (confident fit): a chart, headed for example "node2 CPU reaches 60% in about 5 days". Medium-confidence fits (r² 0.4 to 0.7) are marked rough estimate.
+  - Rising, but stays under its limit for the whole horizon: one line, for example "node1 memory rises 0.6 points a day and doesn't reach 70% within 14 days".
+  - Would reach its limit, but the fit is too weak (r² under 0.4): named in one line and not projected.
+
+  When nothing below its limit reaches it, the card says so for the horizon it checked, and how much history there was when that was less than the window. The recommendation engine's own 48-hour look-ahead (fitted on the last 7 days of score history, and on at most twice the history when there is less) is listed separately; it feeds automated migrations.
 - **Workload rhythm**: an hour-of-day heatmap over 30 days per node, in the automation schedule's time zone. Hours over the threshold are outlined, and an **Allowed** strip shows when your migration and blackout windows permit moves. Summary lines give the quietest stretch, the busiest allowed hour and the over-threshold hours, with a link to edit the migration windows.
 - **Migration outcomes**: did recent migrations actually relieve the source node? Source-node CPU and memory before each move versus 5 minutes and 24 hours after. Outcomes are recorded for manual, automated and affinity-companion migrations. Records whose after-snapshots were taken long after the move are counted but not shown, because they don't measure the migration.
 

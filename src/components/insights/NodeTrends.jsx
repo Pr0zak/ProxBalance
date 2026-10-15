@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Minus } from '../Icons.jsx';
-import { FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, BANNER_WARN } from '../../utils/designTokens.js';
-import { METRICS, RANGES, RANGE_LABEL, formatHorizon, trendCrossings, Loading, Failed } from './shared.jsx';
+import { FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE } from '../../utils/designTokens.js';
+import { METRICS, RANGES, RANGE_LABEL, HORIZON_LIMIT_HOURS, formatHorizon, Loading, Failed } from './shared.jsx';
 
 const DIRECTION_ICON = {
   rising: <TrendingUp size={14} className="text-orange-500" />,
@@ -119,9 +119,21 @@ export function RangePicker({ value, onChange }) {
   );
 }
 
+/**
+ * Hours until a confident fit reaches the threshold, or null. With a forecast
+ * block (series=1) this is its days_to_limit, so the cell and the Forecasts
+ * card use the same horizon; otherwise the fit's own estimate within a year.
+ */
+function hoursToLimit(m) {
+  if (m.confidence === 'low') return null;
+  if (m.forecast) return typeof m.forecast.days_to_limit === 'number' ? m.forecast.days_to_limit * 24 : null;
+  return m.hours_to_threshold != null && m.hours_to_threshold < HORIZON_LIMIT_HOURS ? m.hours_to_threshold : null;
+}
+
 /** Value, rate, sparkline and projection for one node metric. */
 function MetricCell({ node, metricKey, label, m, threshold, trendData, days }) {
   const noTrend = m.confidence === 'low';
+  const toLimit = hoursToLimit(m);
   const rateTitle = noTrend
     ? `No clear trend (r² ${m.r_squared ?? 0}): day-to-day noise outweighs the slope`
     : `${m.confidence || 'unknown'} confidence (r² ${m.r_squared ?? '—'})`;
@@ -141,8 +153,8 @@ function MetricCell({ node, metricKey, label, m, threshold, trendData, days }) {
         label={`${node} ${label}`}
         windowLabel={RANGE_LABEL[days]}
       />
-      {!noTrend && m.hours_to_threshold != null && m.hours_to_threshold < 24 * 365 && (
-        <div className="text-xs text-orange-600 dark:text-orange-400">threshold in {formatHorizon(m.hours_to_threshold)}</div>
+      {toLimit != null && (
+        <div className="text-xs text-orange-600 dark:text-orange-400">threshold in {formatHorizon(toLimit)}</div>
       )}
     </>
   );
@@ -150,7 +162,8 @@ function MetricCell({ node, metricKey, label, m, threshold, trendData, days }) {
 
 /**
  * Per-node trend table for the selected window. `state` is the page-level
- * /api/trends/nodes load so the Forecasts card reads the same fit.
+ * /api/trends/nodes load so the Forecasts card reads the same fit; the
+ * crossings themselves are stated there, not repeated here.
  */
 export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
   const { loading, data, error } = state;
@@ -160,7 +173,6 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
   if (!data?.data_available) return <p className="text-sm text-pb-text2 dark:text-gray-400">Not enough history yet — trends need a few days of collected metrics.</p>;
 
   const nodes = Object.values(data.nodes || {}).sort((a, b) => a.node.localeCompare(b.node));
-  const approaching = trendCrossings(data, thresholds);
   // Old backends lack the swing field: hide the column rather than show the old CV label.
   const showSwing = nodes.some(hasSwing);
   const anySeries = nodes.map(n => windowSeries(clusterNodes?.[n.node]?.trend_data, 'cpu', days)).find(Boolean);
@@ -178,21 +190,6 @@ export default function NodeTrends({ state, days, thresholds, clusterNodes }) {
           <> Biggest mover: <strong>{data.top_movers[0].node}</strong> {data.top_movers[0].metric} {data.top_movers[0].rate_display}.</>
         )}
       </p>
-      {approaching.length > 0 && (
-        <div className={BANNER_WARN}>
-          <TrendingUp size={16} className="shrink-0" />
-          <div className="text-sm">
-            {approaching.map(({ node, label, m, threshold }, i) => (
-              <span key={`${node}-${label}`}>
-                {i > 0 && ' · '}
-                <strong>{node}</strong> {label.toLowerCase()} reaches {threshold ? `${threshold}%` : 'its threshold'} in ~{formatHorizon(m.hours_to_threshold)}
-                <span className="opacity-75"> ({m.rate_display}, {m.confidence} confidence)</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Phones: one block per node with the metrics stacked, so nothing clips. */}
       <div className="sm:hidden divide-y divide-pb-border dark:divide-slate-700/50">
         {nodes.map(n => (

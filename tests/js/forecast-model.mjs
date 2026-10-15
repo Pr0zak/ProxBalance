@@ -30,8 +30,71 @@ test('unknown time is a dash, never 0', () => {
   assert.equal(M.headline({ node: 'pve4', metric: 'cpu', limit: 80, days: null }), 'pve4 CPU is heading for 80%');
 });
 
-test('clear line', () => {
-  assert.equal(M.clearText(), 'No node is heading for a limit in the next 30 days');
+test('clear line states the horizon checked, and why when history shortened it', () => {
+  assert.equal(M.clearText(), 'No node below its limit reaches it within 30 days');
+  // A full 7-day window gives a 14-day horizon; the window already says why.
+  assert.equal(M.clearText({ days: 14, capped: true, windowDays: 6.98 }, 7), 'No node below its limit reaches it within 14 days');
+  // Less history than the window asked for: say how much there is.
+  assert.equal(M.clearText({ days: 6, capped: true, windowDays: 3 }, 30), 'No node below its limit reaches it within 6 days (only 3 days of history)');
+  assert.equal(M.clearText({ days: 0.5, capped: true, windowDays: 0.25 }, 1), 'No node below its limit reaches it within 12 hours (only 6 hours of history)');
+});
+
+// A forecast block as /api/trends/nodes series=1 sends it.
+const fcMetric = ({ status, conf = 'high', cur = 50, rate = 2, limit = 70, dir = 'rising', toLimit = null, toFull = null, horizon = 30, max = 30, win = 30, r2 = 0.8 }) => ({
+  confidence: conf, current_avg: cur, rate_per_day: rate, direction: dir, r_squared: r2, data_points: 500,
+  forecast: { status, limit, days_to_limit: toLimit, days_to_full: toFull, horizon_days: horizon, max_horizon_days: max, window_days: win, history: [], projection: [] },
+});
+
+test('past the limit and rising gets a chart first; flat past the limit does not', () => {
+  const t = trends({
+    lyra: { memory: fcMetric({ status: 'over_limit', cur: 79.7, rate: 2.02, conf: 'medium', toFull: 10.1, horizon: 14, win: 7 }) },
+    draco: { cpu: fcMetric({ status: 'over_limit', cur: 71, rate: 1.6, conf: 'low', limit: 60, r2: 0.02 }) },
+    vega: { cpu: fcMetric({ status: 'crossing', toLimit: 5, limit: 60 }) },
+  });
+  const c = M.projectedCrossings(t);
+  assert.deepEqual(c.map(x => `${x.node}-${x.metric}-${x.kind}`), ['lyra-memory-over', 'vega-cpu-crossing']);
+  assert.equal(M.headline(c[0]), 'lyra memory is past its 70% limit and reaches 100% in about 10 days');
+  assert.equal(c[0].rough, true);
+  assert.equal(M.headline({ ...c[0], days: null }), 'lyra memory is past its 70% limit and still rising');
+});
+
+test('a rise that stays under the limit is said, not dropped', () => {
+  const t = trends({
+    cygnus: { memory: fcMetric({ status: 'beyond_horizon', cur: 16, rate: 0.39, dir: 'stable' }) },
+    vega: { memory: fcMetric({ status: 'beyond_horizon', cur: 36, rate: 0.6, horizon: 14, win: 7 }) },
+    orion: { memory: fcMetric({ status: 'not_rising', rate: -0.8, dir: 'falling' }) },
+  });
+  const b = M.risingBeyondHorizon(t);
+  assert.equal(b.length, 1); // cygnus +0.39/day counts as stable
+  assert.equal(M.beyondText(b[0]), "vega memory rises 0.6 points a day and doesn't reach 70% within 14 days");
+  assert.deepEqual(M.projectedCrossings(t), []);
+});
+
+test('weak fits that would cross are named, not projected', () => {
+  const t = trends({
+    lyra: { cpu: fcMetric({ status: 'crossing', conf: 'low', toLimit: 3.2, limit: 60, r2: 0.03 }) },
+    vega: { iowait: fcMetric({ status: 'crossing', conf: 'low', toLimit: 1.1, limit: 30, r2: 0.17 }) },
+  });
+  assert.deepEqual(M.projectedCrossings(t), []);
+  assert.equal(M.weakText(M.weakFits(t)), 'Not projected, fit too weak (r² under 0.4): lyra CPU, vega IO wait');
+  assert.equal(M.weakText([]), null);
+});
+
+test('checked horizon is the shortest one used', () => {
+  const t = trends({
+    a: { cpu: fcMetric({ status: 'not_rising', horizon: 30 }) },
+    b: { cpu: fcMetric({ status: 'not_rising', horizon: 4, win: 2 }) },
+  });
+  assert.deepEqual(M.checkedHorizon(t), { days: 4, capped: true, windowDays: 2 });
+  assert.deepEqual(M.checkedHorizon({ nodes: {} }), { days: 30, capped: false, windowDays: null });
+});
+
+test('old backend without status: worked out from days_to_limit and current value', () => {
+  assert.equal(M.forecastStatus({ current_avg: 80, forecast: { limit: 70, days_to_limit: null } }), 'over_limit');
+  assert.equal(M.forecastStatus({ current_avg: 50, forecast: { limit: 70, days_to_limit: 4 } }), 'crossing');
+  assert.equal(M.forecastStatus({ current_avg: 50, rate_per_day: 1, forecast: { limit: 70, days_to_limit: null } }), 'beyond_horizon');
+  assert.equal(M.forecastStatus({ current_avg: 50, forecast: { limit: null } }), 'no_limit');
+  assert.equal(M.forecastStatus({}), null);
 });
 
 test('crossings: soonest first, low confidence and no crossing left out', () => {
@@ -61,6 +124,9 @@ test('shared range: history window left, a little past the furthest crossing rig
   assert.deepEqual(M.sharedDayRange([{ days: 12 }, { days: 4 }], 7), { min: -7, max: 15 });
   assert.deepEqual(M.sharedDayRange([{ days: 29 }], 30), { min: -30, max: 30 });
   assert.deepEqual(M.sharedDayRange([{ days: 0.5 }], 1), { min: -1, max: 3 });
+  // Never past the horizon the charts were projected over.
+  assert.deepEqual(M.sharedDayRange([{ days: 1.5, forecast: { horizon_days: 2 } }], 1), { min: -1, max: 2 });
+  assert.deepEqual(M.sharedDayRange([{ days: null, forecast: { horizon_days: 14 } }], 7), { min: -7, max: 14 });
 });
 
 test('day ticks', () => {

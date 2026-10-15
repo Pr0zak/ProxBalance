@@ -49,7 +49,7 @@ Five view modes (CPU, Memory, Allocated, Disk I/O, Network), colour by type or b
 A separate page for analysis over time:
 
 - **Node trends** over 24h, 7d, 30d or 90d: direction, average and rate for CPU, memory and IOWait, with sparklines and time-to-threshold for confident fits only
-- **Forecasts**: projected threshold crossings, plus the recommendation engine's 48-hour look-ahead that feeds automation
+- **Forecasts**: nodes past a limit and still rising, projected threshold crossings, rises that stay under the limit for the whole horizon, and weak fits that were not projected, plus the recommendation engine's 48-hour look-ahead that feeds automation. A trend is projected at most twice as far ahead as the history it was fitted on (30 days at most)
 - **Workload rhythm**: hour-of-day heatmap over 30 days in the schedule's time zone, with the hours your migration windows allow and the quietest stretch
 - **Right-sizing**: guests whose vCPUs or memory don't match their last 7 days of use, biggest savings first. VMs lead with a total of what they could free ("VMs could free 9 vCPUs and 14 GB"); containers sit in a collapsed "Containers (limits only)" group and aren't counted, because their cores and memory are limits the host doesn't reserve. Idle CPU (average under 10%, p95 at most 60%) suggests 40% of the vCPUs; oversized memory (average under 30%) suggests p95 plus 30% headroom rounded up to 512 MB; guests running under 30% of the week are marked mostly stopped. Needs 3 days of history; VMs' memory only with the guest agent
 
