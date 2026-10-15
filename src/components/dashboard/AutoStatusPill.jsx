@@ -85,6 +85,8 @@ export default function AutoStatusPill({
   runHistory,
   API_BASE,
   automationConfig,
+  // Wall monitor: no buttons and no expand control.
+  readOnly = false,
 }) {
   const lastRun = automationStatus?.state?.last_run;
   const lastRunObj = lastRun && typeof lastRun === 'object' ? lastRun : null;
@@ -137,8 +139,8 @@ export default function AutoStatusPill({
   if (!automationStatus) return null;
   const status = getStatus(automationStatus);
   const nextCheck = getNextCheck(automationStatus);
-  const showActions = (size === 'banner' || size === 'card' || size === 'strip') && automationStatus.enabled;
-  const canExpand = size === 'banner' && lastRunObj;
+  const showActions = !readOnly && (size === 'banner' || size === 'card' || size === 'strip') && automationStatus.enabled;
+  const canExpand = !readOnly && size === 'banner' && lastRunObj;
   const outsideWindow = automationStatus.enabled
     && (automationStatus.state?.current_window || '').toLowerCase().startsWith('outside');
 

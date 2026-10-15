@@ -139,6 +139,8 @@ export default function ClusterMap({
   canMigrate = false,
   setConfirmMigration = null,
   embedded = false,
+  // Wall-monitor view: map only — no toolbar, find bar, hints, drag or long legend.
+  wall = false,
 }) {
   if (!data) return null;
 
@@ -147,9 +149,11 @@ export default function ClusterMap({
   });
   const setColor = (m) => { setColorMode(m); try { localStorage.setItem('clusterMapColorMode', m); } catch {} };
 
-  const [showPlan, setShowPlanState] = useState(() => {
+  const [showPlanSaved, setShowPlanState] = useState(() => {
     try { return localStorage.getItem('clusterMapShowPlan') !== '0'; } catch { return true; }
   });
+  // The wall is drawn scaled, which the arrow measurement doesn't account for.
+  const showPlan = showPlanSaved && !wall;
   const setShowPlan = (v) => { setShowPlanState(v); try { localStorage.setItem('clusterMapShowPlan', v ? '1' : '0'); } catch {} };
 
   // Find-on-map: free text + one quick filter. Matches glow, the rest dim.
@@ -281,7 +285,7 @@ export default function ClusterMap({
 
   return (
     <Wrapper {...wrapperProps}>
-      <div className={`flex flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
+      {!wall && <div className={`flex flex-wrap items-center justify-between gap-y-3 ${embedded ? 'mb-3' : 'mb-6'}`}>
         {!embedded && (
           <div className="flex items-center gap-3 min-w-0">
             <div className={iconBadge('teal', 'cyan')}>
@@ -408,9 +412,9 @@ export default function ClusterMap({
             )}
           </div>
         )}
-      </div>
+      </div>}
 
-      {!isCollapsed && (
+      {!isCollapsed && !wall && (
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <div className="relative w-full sm:w-72">
             <Search size={ICON.inline} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-pb-text3-dark pointer-events-none" />
@@ -466,7 +470,7 @@ export default function ClusterMap({
         </div>
       )}
 
-      {!isCollapsed && !pendingMove && (
+      {!isCollapsed && !pendingMove && !wall && (
         <div className="flex items-center gap-1.5 text-xs text-pb-text2 dark:text-gray-500 mb-1">
           <MoveRight size={12} className="shrink-0" />
           {isTouch
@@ -505,7 +509,7 @@ export default function ClusterMap({
       )}
 
       {!isCollapsed && (
-        <div ref={mapAreaRef} className="relative" style={{minHeight: '400px'}}>
+        <div ref={mapAreaRef} className="relative" style={wall ? undefined : { minHeight: '400px' }}>
           {showPlan && arrows.length > 0 && (
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" style={{ overflow: 'visible' }} aria-label="Planned moves">
               <defs>
@@ -563,7 +567,7 @@ export default function ClusterMap({
             </div>
           )}
           <div
-            className="grid gap-x-4 gap-y-10 items-start py-6"
+            className={`grid gap-x-4 gap-y-10 items-start ${wall ? 'pt-3 pb-2' : 'py-6'}`}
             style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${NODE_COL_MIN}px), 1fr))` }}
           >
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
@@ -787,7 +791,7 @@ export default function ClusterMap({
                       const matched = findActive && isMatch(guest);
                       const dimmed = findActive && !matched;
                       const isPreviewed = previewVmid === guest.vmid;
-                      const canDrag = !isTouch && !isMigrating && !guest.local_disks?.is_pinned;
+                      const canDrag = !wall && !isTouch && !isMigrating && !guest.local_disks?.is_pinned;
 
                       return (
                         <div key={guest.vmid} className={`relative group flex flex-col items-center ${dimmed ? 'opacity-20' : ''}`}>
@@ -931,8 +935,9 @@ export default function ClusterMap({
             })}
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-col items-center gap-2 mt-6 text-xs text-pb-text2 dark:text-gray-400">
+          {/* Legend (the wall keeps only the node roles) */}
+          <div className={`flex flex-col items-center gap-2 ${wall ? 'mt-2' : 'mt-6'} text-xs text-pb-text2 dark:text-gray-400`}>
+            {!wall && <>
             <div className="flex items-center justify-center gap-x-6 gap-y-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-full bg-purple-600"></div>
@@ -989,6 +994,7 @@ export default function ClusterMap({
                 </span>
               ))}
             </div>
+            </>}
             <NodeRoleLegend roles={roles} className="justify-center" />
           </div>
         </div>

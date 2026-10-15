@@ -1,3 +1,5 @@
+import { isWallHash } from '../utils/wallMode.js';
+
 const { useState, useEffect, useCallback } = React;
 
 const PAGES = ['dashboard', 'insights', 'automation', 'settings'];
@@ -5,6 +7,8 @@ const PAGES = ['dashboard', 'insights', 'automation', 'settings'];
 // Hash routes: #/<page>[/<sub>], e.g. #/automation/filters, #/dashboard/map.
 // Reload keeps your place, Back/Forward work, and any view can be linked.
 function parseHash() {
+  // #/wall: the full-screen wall-monitor view (no sub-pages).
+  if (isWallHash(window.location.hash)) return { page: 'wall', sub: null };
   const [page, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
   return {
     page: PAGES.includes(page) ? page : 'dashboard',

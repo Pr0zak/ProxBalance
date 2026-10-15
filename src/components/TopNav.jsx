@@ -1,4 +1,4 @@
-import { ProxBalanceLogo, RefreshCw, GitHub, Sun, Moon, Search } from './Icons.jsx';
+import { ProxBalanceLogo, RefreshCw, GitHub, Sun, Moon, Search, Maximize } from './Icons.jsx';
 import {
   TOP_NAV, NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_INACTIVE,
   CONNECTION_BADGE_ONLINE, CONNECTION_BADGE_OFFLINE, CONNECTION_BADGE_IDLE, BTN_ICON
@@ -20,6 +20,7 @@ export default function TopNav({
   systemInfo, onShowUpdate,
   automationStatus,
   onOpenSearch,
+  onOpenWall,
 }) {
   const outsideWindow = connected
     && automationStatus?.enabled
@@ -115,6 +116,13 @@ export default function TopNav({
             {onOpenSearch && (
               <button onClick={onOpenSearch} className={BTN_ICON} title="Search (Ctrl+K)" aria-label="Search" aria-keyshortcuts="Control+K Meta+K /">
                 <Search size={16} />
+              </button>
+            )}
+
+            {/* Wall-monitor view (big screens only; #/wall opens it directly) */}
+            {onOpenWall && (
+              <button onClick={onOpenWall} className={`${BTN_ICON} hidden lg:inline-flex`} title="Wall mode (Esc to leave)" aria-label="Wall mode">
+                <Maximize size={16} />
               </button>
             )}
 
