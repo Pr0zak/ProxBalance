@@ -521,7 +521,7 @@ export default function PenaltyScoringSection({
                   <div className="space-y-3">
                     <label className="block text-sm font-medium text-pb-text dark:text-gray-300">IOWait Penalties</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {[['iowait_moderate_penalty', 'Moderate'], ['iowait_high_penalty', 'High'], ['iowait_severe_penalty', 'Severe']].map(([key, label]) => (
+                      {[['iowait_high_penalty', 'Over 10%'], ['iowait_very_high_penalty', 'Over 20%'], ['iowait_extreme_penalty', 'Over 30%']].map(([key, label]) => (
                         <div key={key}>
                           <label className="block text-xs text-pb-text dark:text-gray-300 mb-1">
                             {label} (default: {penaltyDefaults[key]})
