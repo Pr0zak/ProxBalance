@@ -1,17 +1,24 @@
 /**
  * Pure helpers for the "One chart" node comparison (NodeCompareChart): node
  * colours, averaging every node's samples into shared time buckets, the y-axis
- * ceiling, and the "Spread now" line under the chart.
+ * ceiling, the min/max band and the spread line under the chart.
  * No React or Chart.js here, so tests/js/compare-series.mjs can run them in node.
  */
 import { NODE_COLORS } from './nodeSeries.js';
 
 /** Metrics the one-chart view can show, in segmented-control order. */
 export const COMPARE_METRICS = [
-  { key: 'cpu',    label: 'CPU',     spreadKey: 'cpu' },
-  { key: 'mem',    label: 'Memory',  spreadKey: 'memory' },
-  { key: 'iowait', label: 'IO wait', spreadKey: null },
+  { key: 'cpu',    label: 'CPU' },
+  { key: 'mem',    label: 'Memory' },
+  { key: 'iowait', label: 'IO wait' },
 ];
+
+/**
+ * Buckets either side of a point that the min/max band looks at when buckets
+ * hold a single raw sample each (1h, 7d and 90d on a stock RRD), so the band
+ * covers 2 * BAND_REACH + 1 samples instead of collapsing onto the line.
+ */
+export const BAND_REACH = 2;
 
 /**
  * Stable colour per node: names sorted, then NODE_COLORS in order (cycled), the
@@ -81,9 +88,16 @@ const rawRows = (trendData, cfg) => {
  * bucket is filled (fillEdges).
  *
  * Returns null when nothing can be drawn, else
- * { times, bucket, label, latestTime, periodSeconds, lines: [{ name, values, min, max }] }
- * with times in unix seconds, values the bucket averages and min/max the raw
- * range inside each bucket.
+ * { times, bucket, label, latestTime, periodSeconds, band, lines: [{ name, values, min, max }] }
+ * with times in unix seconds and values the bucket averages.
+ *
+ * min/max is the band. When buckets typically hold two or more raw samples it
+ * is the raw range inside each bucket (band.rolling false). When they hold one
+ * (the bucket equals the RRD step, so the line is the raw samples), an
+ * in-bucket range would have zero width; the band is then the lowest and
+ * highest raw sample within BAND_REACH buckets either side of each point
+ * (band.rolling true). Either way the line lies inside the band and every band
+ * edge is a real sample. band.seconds is the span the band covers.
  */
 export function bucketSeries(nodes, cfg, metricKey, bucket = COMPARE_BUCKETS[cfg.id] || 300) {
   const periodSeconds = cfg.ms / 1000;
@@ -94,7 +108,7 @@ export function bucketSeries(nodes, cfg, metricKey, bucket = COMPARE_BUCKETS[cfg
   const startB = Math.ceil(from / bucket);
   const count = Math.floor(latestTime / bucket) - startB + 1;
   const times = Array.from({ length: count }, (_, i) => (startB + i) * bucket);
-  const lines = withRows.map(n => {
+  const perNode = withRows.map(n => {
     const sum = new Array(count).fill(0), cnt = new Array(count).fill(0);
     const lo = new Array(count).fill(null), hi = new Array(count).fill(null);
     n.rows.forEach(p => {
@@ -105,11 +119,56 @@ export function bucketSeries(nodes, cfg, metricKey, bucket = COMPARE_BUCKETS[cfg
       lo[i] = lo[i] == null ? v : Math.min(lo[i], v);
       hi[i] = hi[i] == null ? v : Math.max(hi[i], v);
     });
-    const avg = sum.map((s, i) => (cnt[i] ? round1(s / cnt[i]) : null));
-    return { name: n.name, values: fillEdges(avg), min: fillEdges(lo.map(round1)), max: fillEdges(hi.map(round1)) };
-  }).filter(l => l.values.some(v => v != null));
-  if (!lines.length) return null;
-  return { times, bucket, label: averageLabel(bucket), latestTime, periodSeconds, lines };
+    return { name: n.name, cnt, lo, hi, avg: sum.map((s, i) => (cnt[i] ? round1(s / cnt[i]) : null)) };
+  }).filter(l => l.avg.some(v => v != null));
+  if (!perNode.length) return null;
+  const rolling = medianCount(perNode.flatMap(l => l.cnt)) < 2;
+  const lines = perNode.map(l => {
+    const lo = rolling ? rollingExtreme(l.lo, BAND_REACH, Math.min) : l.lo;
+    const hi = rolling ? rollingExtreme(l.hi, BAND_REACH, Math.max) : l.hi;
+    return { name: l.name, values: fillEdges(l.avg), min: fillEdges(lo.map(round1)), max: fillEdges(hi.map(round1)) };
+  });
+  const band = { rolling, seconds: rolling ? (2 * BAND_REACH + 1) * bucket : bucket };
+  // One sample per bucket means nothing was averaged; say so.
+  const label = rolling ? `raw samples every ${spanText(bucket)}` : averageLabel(bucket);
+  return { times, bucket, label, latestTime, periodSeconds, band, lines };
+}
+
+/** Median of the non-zero sample counts per bucket (0 when there are none). */
+function medianCount(counts) {
+  const c = counts.filter(n => n > 0).sort((a, b) => a - b);
+  return c.length ? c[Math.floor(c.length / 2)] : 0;
+}
+
+/**
+ * For each bucket that has a value, the min (or max) over the buckets within
+ * `reach` of it; empty buckets stay null so an outage remains a gap.
+ */
+export function rollingExtreme(values, reach, pick) {
+  return values.map((v, i) => {
+    if (v == null) return null;
+    let out = v;
+    for (let j = Math.max(0, i - reach); j <= Math.min(values.length - 1, i + reach); j++) {
+      if (values[j] != null) out = pick(out, values[j]);
+    }
+    return out;
+  });
+}
+
+/** "5 min", "2.5 hours", "1 day". */
+export function spanText(seconds) {
+  const fmt = (v, unit) => `${+v.toFixed(1)} ${unit}${+v.toFixed(1) === 1 ? '' : 's'}`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  if (seconds < 86400) return fmt(seconds / 3600, 'hour');
+  return fmt(seconds / 86400, 'day');
+}
+
+/** What the min/max band shows, for the line under the chart. */
+export function bandText(band) {
+  if (!band) return '';
+  return band.rolling
+    ? `band: lowest to highest sample over ${spanText(band.seconds)} around each point`
+    : `band: lowest to highest sample in each ${averageLabel(band.seconds).replace(/ averages$/, '')} average`;
 }
 
 /**
@@ -124,37 +183,35 @@ export function axisMax(metricKey, lines, threshold) {
   return Math.min(100, Math.ceil((ceiling * 1.15) / 5) * 5) || 10;
 }
 
-/** Last non-missing value of a line, or null. */
-export const lastValue = (values) => {
-  for (let i = (values || []).length - 1; i >= 0; i--) if (values[i] != null) return values[i];
-  return null;
-};
-
 /**
- * Lowest and highest node right now. Prefers the API's cluster_spread figure
- * for the metric (so it reads the same as the KPI row); otherwise uses each
- * line's last value. Returns null with fewer than two nodes.
+ * Lowest and highest node at the last plotted point: the newest bucket of the
+ * series, as drawn (a node lagging by one bucket shows its previous bucket,
+ * as its line does). Nodes in `hidden`, and nodes with no value there (offline),
+ * are left out. Returns null with fewer than two values.
  * -> { spread, low: { name, value }, high: { name, value } }
  */
-export function spreadNow(metricKey, lines, clusterSpread) {
-  const m = COMPARE_METRICS.find(x => x.key === metricKey);
-  const api = m && m.spreadKey ? clusterSpread?.[m.spreadKey] : null;
-  if (api && typeof api.spread === 'number' && api.min_node && api.max_node
-      && typeof api.min === 'number' && typeof api.max === 'number') {
-    return { spread: api.spread, low: { name: api.min_node, value: api.min }, high: { name: api.max_node, value: api.max } };
-  }
-  const vals = (lines || []).map(l => ({ name: l.name, value: lastValue(l.values) })).filter(v => v.value != null);
+export function spreadAtLast(lines, hidden = []) {
+  const vals = (lines || [])
+    .filter(l => !hidden.includes(l.name))
+    .map(l => ({ name: l.name, value: (l.values || [])[(l.values || []).length - 1] }))
+    .filter(v => isNum(v.value));
   if (vals.length < 2) return null;
+  // Ties: low is the first node with the lowest value, high the last with the
+  // highest, so a 0-pt spread still names two nodes.
   let low = vals[0], high = vals[0];
-  vals.forEach(v => { if (v.value < low.value) low = v; if (v.value > high.value) high = v; });
+  vals.forEach(v => { if (v.value < low.value) low = v; if (v.value >= high.value) high = v; });
   return { spread: high.value - low.value, low, high };
 }
 
 // Whole numbers from 10 up, one decimal below (IO wait lives in single digits).
 const num = (v) => (Math.abs(v) >= 10 ? String(Math.round(v)) : String(+v.toFixed(1)));
 
-/** "Spread now: 24 pts (pve6 26% → pve3 50%)", or "Spread now: —". */
-export function spreadText(s) {
-  if (!s) return 'Spread now: —';
-  return `Spread now: ${num(s.spread)} pts (${s.low.name} ${num(s.low.value)}% → ${s.high.name} ${num(s.high.value)}%)`;
+/**
+ * "Spread at last point (14:35): 24 pts (pve6 26% → pve3 50%)", or
+ * "Spread at last point: —". `when` is the point's time label.
+ */
+export function spreadText(s, when) {
+  const head = `Spread at last point${when ? ` (${when})` : ''}`;
+  if (!s) return `${head}: —`;
+  return `${head}: ${num(s.spread)} pts (${s.low.name} ${num(s.low.value)}% → ${s.high.name} ${num(s.high.value)}%)`;
 }

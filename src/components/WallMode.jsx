@@ -246,7 +246,6 @@ export default function WallMode({
                 pixelRatio={(window.devicePixelRatio || 1) * view.scale}
                 nodes={compareNodes}
                 thresholds={thresholds}
-                clusterSpread={data.cluster_spread}
                 chartPeriod={chartPeriod}
                 chartReady={!!chartJsLoaded}
                 migrationHistory={migrationHistory}

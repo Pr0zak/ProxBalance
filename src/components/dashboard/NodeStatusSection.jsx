@@ -441,7 +441,6 @@ export default function NodeStatusSection({
             <NodeCompareChart
               nodes={compareNodes}
               thresholds={thresholds}
-              clusterSpread={data.cluster_spread}
               chartPeriod={chartPeriod}
               chartReady={!!chartJsLoaded}
               migrationHistory={migrationHistory}
