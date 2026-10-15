@@ -8,7 +8,7 @@ const out = await build({
   entryPoints: ['src/utils/plannedMoves.js'],
   bundle: true, format: 'esm', write: false,
 });
-const { groupPlannedMoves, layoutPlannedMoves, routeEdge, edgeTitle, edgeWidth } =
+const { groupPlannedMoves, layoutPlannedMoves, plannedMovesTop, routeEdge, edgeTitle, edgeWidth } =
   await import('data:text/javascript,' + encodeURIComponent(out.outputFiles[0].text));
 
 const now = new Date('2026-10-14T12:00:00Z');
@@ -93,7 +93,7 @@ test('neighbours in a row: straight line between the facing sides, outside both 
 test('cards in between: arc over the row, label above every card', () => {
   const r = routeEdge(row.lyra, row.vega, { others: [row.orion, row.rigel] });
   assert.equal(r.shape, 'arc');
-  assert.ok(r.d.startsWith('M123.1,24 Q'), r.d);
+  assert.ok(r.d.startsWith('M123.1,24 L123.1,'), r.d);
   assert.ok(r.mid.y < 24, `label at y=${r.mid.y} must sit above the cards`);
   Object.values(row).forEach(c => assert.ok(!inside(r.mid, c)));
   // Both endpoints on the left part of the top border (badge is top-right).
@@ -150,4 +150,60 @@ test('layout: a margin run and a column-gap run next to it are kept apart', () =
   assert.equal(xs[0], 242);
   assert.ok(Math.abs(xs[1] - xs[0]) >= 8, `runs at ${xs}`);
   assert.ok(xs[1] > 226 && xs[1] < 270, 'gap run stays between the columns');
+});
+
+// Five cards in one row, like the 1440 px dashboard.
+const five = { a: card(0), b: card(1), c: card(2), d: card(3), e: card(4) };
+const endpoints = (e) => { const n = e.d.match(/-?[\d.]+/g).map(Number); return { x1: n[0], x2: n[n.length - 2] }; };
+
+test('layout: long arcs over one row get their own height, endpoints and badge spot', () => {
+  const edges = groupPlannedMoves({ recommendations: [
+    rec(1, 'g1', 'c', 'a'), rec(2, 'g2', 'c', 'a'),   // c → a, one card between
+    rec(3, 'g3', 'b', 'd'), rec(4, 'g4', 'b', 'd'), rec(5, 'g5', 'b', 'd'), // b → d
+    rec(6, 'g6', 'b', 'e'),                            // b → e, the longest
+    rec(7, 'g7', 'b', 'c'),                            // neighbours: a straight line
+  ], now });
+  const laid = layoutPlannedMoves(edges, five, 1500);
+  const arcs = laid.filter(e => e.shape === 'arc');
+  assert.equal(arcs.length, 3);
+  assert.equal(laid.find(e => e.key === 'b->c').shape, 'line');
+  // Overlapping spans: every arc on its own level, the longest on top.
+  assert.equal(new Set(arcs.map(e => e.level)).size, 3);
+  const be = arcs.find(e => e.key === 'b->e');
+  assert.ok(arcs.every(e => e === be || e.mid.y > be.mid.y), 'longest arc rides highest');
+  // No two arc ends share a point, and all sit on the left part of the top border.
+  const pts = arcs.flatMap(e => { const p = endpoints(e); return [[e.from, p.x1], [e.to, p.x2]]; });
+  pts.forEach(([n, x], i) => {
+    assert.ok(x > five[n].left && x < five[n].left + (five[n].right - five[n].left) * 0.55, `${n} end at ${x}`);
+    pts.slice(i + 1).forEach(([m, y]) => assert.ok(n !== m || Math.abs(x - y) >= 8, `${n}: ends ${x} and ${y} too close`));
+  });
+  // Badges don't touch each other.
+  laid.forEach((p, i) => laid.slice(i + 1).forEach(q => {
+    assert.ok(Math.abs(p.mid.x - q.mid.x) >= 22 || Math.abs(p.mid.y - q.mid.y) >= 16, `${p.key} / ${q.key} badges overlap`);
+  }));
+  assert.ok(plannedMovesTop(laid) < five.a.top - 26);
+});
+
+test('layout: arcs over separate stretches share the lowest level', () => {
+  const six = { ...five, f: card(5) };
+  const edges = groupPlannedMoves({ recommendations: [rec(1, 'x', 'a', 'c'), rec(2, 'y', 'd', 'f')], now });
+  assert.deepEqual(layoutPlannedMoves(edges, six, 2000).map(e => e.level), [0, 0]);
+});
+
+test('layout: an elbow badge slides off a line badge in the same column gap', () => {
+  // Three columns, e wraps under a. b → a is a straight line, b → e an
+  // elbow down the same gap.
+  const rects = { a: card(0), b: card(1), c: card(2), e: card(0, 600) };
+  const edges = groupPlannedMoves({ recommendations: [rec(1, 'x', 'b', 'a'), rec(2, 'y', 'b', 'e')], now });
+  const laid = layoutPlannedMoves(edges, rects, 900);
+  const line = laid.find(e => e.shape === 'line');
+  const elbow = laid.find(e => e.shape === 'elbow');
+  assert.ok(Math.abs(line.mid.x - elbow.mid.x) < 22, 'same gap');
+  assert.ok(Math.abs(line.mid.y - elbow.mid.y) >= 16, `badges at ${line.mid.y} and ${elbow.mid.y}`);
+  assert.ok(elbow.mid.y > elbow.run[0] && elbow.mid.y < elbow.run[1], 'still on the vertical run');
+});
+
+test('plannedMovesTop: highest point, Infinity when nothing is drawn', () => {
+  assert.equal(plannedMovesTop([]), Infinity);
+  assert.equal(plannedMovesTop([{ top: 12 }, { top: -40 }, {}]), -40);
 });

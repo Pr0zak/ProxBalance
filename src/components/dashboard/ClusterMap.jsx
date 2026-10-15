@@ -5,7 +5,7 @@ import {
 import {
   GLASS_CARD, GLASS_CARD_SUBTLE, INNER_CARD, iconBadge, BTN_PRIMARY, BTN_SECONDARY, BTN_ICON, ICON,
   INPUT_FIELD, FILTER_CHIP, FILTER_CHIP_ACTIVE, FILTER_CHIP_INACTIVE, headroomHex, TAP_TARGET, NODE_ROLE, PLANNED_MOVE } from '../../utils/designTokens.js';
-import { groupPlannedMoves, layoutPlannedMoves, edgeTitle, edgeWidth } from '../../utils/plannedMoves.js';
+import { groupPlannedMoves, layoutPlannedMoves, plannedMovesTop, edgeTitle, edgeWidth } from '../../utils/plannedMoves.js';
 import { nodeRoles } from '../../utils/nodeRoles.js';
 import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 import { HEADROOM_HINT } from '../../utils/constants.js';
@@ -230,6 +230,8 @@ export default function ClusterMap({
   const mapAreaRef = useRef(null);
   const nodeRefs = useRef({});
   const [arrows, setArrows] = useState([]);
+  // Extra room above the node cards for arcs stacked over the row.
+  const [arcPad, setArcPad] = useState(0);
   const [openEdge, setOpenEdge] = useState(null); // edge key with its guest list open
 
   // Pending moves, one edge per source → target node. Guests migrating or
@@ -245,7 +247,7 @@ export default function ClusterMap({
 
   // Measure the node cards and route the planned-move edges around them.
   useLayoutEffect(() => {
-    if (!showPlan || !mapAreaRef.current || plannedEdges.length === 0) { setArrows([]); return undefined; }
+    if (!showPlan || !mapAreaRef.current || plannedEdges.length === 0) { setArrows([]); setArcPad(0); return undefined; }
     const measure = () => {
       const c = mapAreaRef.current;
       if (!c) return;
@@ -256,7 +258,15 @@ export default function ClusterMap({
         const r = el.getBoundingClientRect();
         rects[name] = { left: r.left - cRect.left, top: r.top - cRect.top, right: r.right - cRect.left, bottom: r.bottom - cRect.top };
       });
-      setArrows(layoutPlannedMoves(plannedEdges, rects, cRect.width));
+      const laid = layoutPlannedMoves(plannedEdges, rects, cRect.width);
+      setArrows(laid);
+      // Keep the highest arc and its count badge 4 px inside the map area;
+      // the re-measure after the padding changes settles on the same value.
+      const top = plannedMovesTop(laid);
+      setArcPad(p => {
+        const next = Math.max(0, Math.round(p + 4 - top));
+        return Math.abs(next - p) < 2 ? p : next;
+      });
     };
     measure();
     const t = setTimeout(measure, 80);
@@ -264,7 +274,7 @@ export default function ClusterMap({
     let ro = null;
     try { ro = new ResizeObserver(measure); ro.observe(mapAreaRef.current); } catch { ro = null; }
     return () => { clearTimeout(t); window.removeEventListener('resize', measure); if (ro) ro.disconnect(); };
-  }, [showPlan, edgesKey, clusterMapViewMode, showPoweredOffGuests, openStopped, colorMode, collapsedSections, data]);
+  }, [showPlan, edgesKey, clusterMapViewMode, showPoweredOffGuests, openStopped, colorMode, collapsedSections, data, arcPad]);
 
   // Close the open guest list when its edge goes away or on Escape.
   useEffect(() => {
@@ -568,7 +578,7 @@ export default function ClusterMap({
           )}
           <div
             className={`grid gap-x-4 gap-y-10 items-start ${wall ? 'pt-3 pb-2' : 'py-6'}`}
-            style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${NODE_COL_MIN}px), 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${NODE_COL_MIN}px), 1fr))`, ...(arcPad ? { paddingTop: 24 + arcPad } : null) }}
           >
             {Object.values(data.nodes).slice().sort((a, b) => a.name.localeCompare(b.name)).map(node => {
               const allNodeGuests = Object.values(data.guests || {}).filter(g => g.node === node.name);

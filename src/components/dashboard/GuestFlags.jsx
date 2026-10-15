@@ -1,4 +1,4 @@
-import { Lock, Folder, Link, HardDrive } from '../Icons.jsx';
+import { Lock, EyeOff, Folder, Link, HardDrive } from '../Icons.jsx';
 
 // Migration-relevant flags on a guest, shown on Cluster Map bubbles.
 //
@@ -13,6 +13,12 @@ const FLAG_META = {
     chip: 'bg-red-500 text-white',
     text: 'text-red-600 dark:text-red-400',
     label: "Pinned: can't migrate",
+  },
+  ignored: {
+    icon: EyeOff,
+    chip: 'bg-slate-500 text-white',
+    text: 'text-slate-600 dark:text-slate-300',
+    label: 'Ignored: automation skips it',
   },
   localMount: {
     icon: Folder,
@@ -46,6 +52,9 @@ export function getGuestFlags(guest) {
       key: 'pinned',
       detail: `${disks.pinned_reason || 'Pinned to its host'}${n ? ` (${n} disk${n > 1 ? 's' : ''})` : ''}`,
     });
+  }
+  if (guest.tags?.has_ignore) {
+    flags.push({ key: 'ignored', detail: "Tagged 'ignore'; suggestions and automated moves leave it where it is" });
   }
   if (mounts.has_unshared_bind_mount) {
     flags.push({ key: 'localMount', detail: `${mounts.mount_count || 1} mount point(s); paths must exist on the target` });
