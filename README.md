@@ -44,7 +44,9 @@ ProxBalance is a web app that monitors a Proxmox VE cluster, scores each node wi
 - Node panel with the score breakdown ("Why N?"), disk health from SMART, and IO pressure (Proxmox VE 9)
 - Guests tab that says for every guest whether ProxBalance can move it, and why not
 - Quick search (Ctrl+K or Cmd+K, or /) to jump to any guest, node or page
-- Wall-monitor mode (`#/wall`): a full-screen view for a screen on the wall
+- **Overview** dashboard: gauges, charts and the Cluster Map as widgets you pick, drag into place and resize, with presets and named layouts
+- A **Wall** preset for a screen on the wall (full screen with F11)
+- Each guest's last backup and a 30-day backup history, read from Proxmox's backup task logs
 - Light and dark modes, and a layout that works on phones
 
 **Insights**
@@ -108,7 +110,44 @@ Open `http://<container-ip>` in your browser.
 
 The screenshots come from a demo cluster with five nodes. Every page and tab has its own address, for example `#/dashboard/map` or `#/automation/filters`.
 
-### Dashboard
+### Overview
+
+<div align="center">
+<img src="docs/images/overview.png" alt="The Overview: cluster gauges, the Cluster Map and node tiles" width="900"/>
+</div>
+
+The **Overview** (switch at the top right) is a dashboard of widgets you pick, drag into place and resize: gauges, charts, the Cluster Map, backups, forecasts and what needs you. Presets (including a Wall layout for a screen on the wall, full screen with F11) and named layouts.
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/overview-charts.png" alt="Charts preset: load, busy hours, memory map and busiest guests" width="450"/>
+        <br/>
+        <b>Charts preset</b>: load, busy hours, memory map, busiest guests
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/overview-arrange.png" alt="Arrange mode: a tall map with two widgets stacked beside it" width="450"/>
+        <br/>
+        <b>Arrange</b>: drag to move, resize width and rows
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/images/guest-backups.png" alt="Guest panel with the last backup and a 30-day backup strip" width="450"/>
+        <br/>
+        <b>Backups</b>: last backup and 30 days per guest
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/map-affinity.png" alt="Map hover ringing a guest's affinity partners" width="450"/>
+        <br/>
+        <b>Affinity on hover</b>: partners ringed, rule checked
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Dashboard (Detailed)
 
 <div align="center">
 <img src="docs/images/dashboard.png" alt="Top of the dashboard: needs attention, KPI row and automation status" width="900"/>
@@ -218,9 +257,9 @@ The top of the dashboard: the *Needs attention* strip, the KPI row and the autom
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="docs/images/wall.png" alt="Wall-monitor mode" width="450"/>
+        <img src="docs/images/wall.png" alt="The Wall preset in full screen" width="450"/>
         <br/>
-        <b>Wall mode</b> (<code>#/wall</code>): full screen, no menus
+        <b>Wall screen</b>: the Wall preset, full screen with F11
       </td>
       <td align="center" width="50%">
         <img src="docs/images/quick-search.png" alt="Quick search palette" width="450"/>
@@ -229,10 +268,15 @@ The top of the dashboard: the *Needs attention* strip, the KPI row and the autom
       </td>
     </tr>
     <tr>
-      <td align="center" colspan="2">
+      <td align="center" width="50%">
         <img src="docs/images/mobile.png" alt="Dashboard on a phone" width="260"/>
         <br/>
         <b>Phone</b>: bottom tab bar and compact tables
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/images/overview-mobile.png" alt="The Overview on a phone" width="260"/>
+        <br/>
+        <b>Overview on a phone</b>: one widget per row
       </td>
     </tr>
   </table>

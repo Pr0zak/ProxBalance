@@ -76,29 +76,15 @@ Press **Ctrl+K** (Cmd+K on a Mac) or **/** (outside a text field), or use the se
 
 ### Overview
 
+![The Overview](images/overview.png)
+
 An **Overview / Detailed** switch in the top bar. Overview shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, the Cluster Map, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks, drags into place and resizes (¼ to a full row wide and 1 to 4 rows tall with smaller widgets stacked beside, widened automatically on small screens; charts grow both ways), with Calm, Operator, Wall and Charts presets and layouts saved under a name. See "Overview" in [USAGE.md](USAGE.md).
 
-### Wall-monitor mode
+### Wall screen
 
-![Wall mode](images/wall.png)
+![The Wall preset in full screen](images/wall.png)
 
-The full-screen button in the top bar (large screens), or the address `#/wall`, shows this browser's Overview full screen, for a monitor on the wall: no menus, links or panels, scaled to fit the screen, scrolling slowly by itself if the layout is still too tall. The **Wall** preset gives the classic layout (the summary tiles, the Cluster Map, CPU per node and the automation banner) and fits 1080p and 720p. It keeps the screen awake where the browser allows. Press Esc, leave full screen, or use the Exit button that appears when you move the mouse. On a phone it is a normal scrolling page.
-
----
-
-## Insights
-
-![Insights](images/insights.png)
-
-A separate page for analysis over time:
-
-- **Node trends** over 24 h, 7 d, 30 d or 90 d: direction, average and rate for CPU, memory and IOWait, with sparklines and time-to-threshold for confident fits that cross within the forecast horizon
-- **Forecasts**: a trend is projected at most twice as far ahead as the history it was fitted on (30 days at most). Each node metric that is past its limit and still rising, or that reaches its limit within the horizon, gets one chart with the history, a dashed trend line, a marker at now and a dashed line at the limit, and one headline, for example "lyra memory is past its 70% limit and reaches 100% in about 10 days" or "cygnus memory reaches 80% in about 12 days". Medium-confidence fits say "rough estimate", and the fit details are behind **Details**. At most three charts show, soonest first, with **Show all** for the rest. Rises that stay under the limit for the whole horizon get one line each, and weak fits that would cross are named but not projected. When nothing below its limit reaches it, the card is one line. The recommendation engine's 48-hour look-ahead that feeds automation is listed separately. The IO wait forecast uses the configured IO wait threshold
-- **Workload rhythm**: hour-of-day heatmap over 30 days in the schedule's time zone, with the hours your migration windows allow and the quietest stretch
-- **What if a node fails?**: pick a node and see where its running guests would restart (largest first, onto the survivor with the most free memory, up to 95%, respecting anti-affinity tags and Proxmox HA rules), which can't restart elsewhere (passthrough hardware, host bind mounts, node-local disks) and which don't fit, with each survivor's memory before and after. Every node carries a chip: can fail, tight (a survivor ends above 85%), can't restart, or left out. The **Unplanned failure** toggle treats guests on node-local disks as unable to restart
-- **Rolling update plan**: see [below](#rolling-update-plan)
-- **Right-sizing**: guests whose vCPUs or memory don't match their last 7 days of use, biggest savings first. Totals count VMs only ("VMs could free 9 vCPUs and 14 GB"); containers sit in a collapsed "Containers (limits only)" group, because their cores and memory are limits the host doesn't reserve. Needs 3 days of history; VM memory only with the guest agent
-- **Migration outcomes**: source-node CPU and memory before each migration versus 5 minutes and 24 hours after, for manual, automated and companion migrations
+For a screen on the wall, open the Overview, pick the **Wall** preset (the Detailed dashboard's summary tiles across the top, the Cluster Map on the left, the CPU-by-node chart and the automation banner stacked on the right) or arrange your own, and press **F11** for the browser's full screen. Keep the layout to what fits the screen: Arrange shows the sizes, and a widget can be made 2 to 4 rows tall so others stack beside it. Old `#/wall` links open the Overview.
 
 ### Rolling update plan
 

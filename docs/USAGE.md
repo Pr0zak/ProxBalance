@@ -21,7 +21,7 @@ Every page and sub-tab has its own address, so you can bookmark or share a view 
 - `#/insights`
 - `#/automation/schedule`, `#/automation/filters`, `#/automation/behavior`, `#/automation/history`, `#/automation/reference`
 - `#/settings/connection`, `#/settings/collection`, `#/settings/notifications`, `#/settings/ai`, `#/settings/system`, `#/settings/diagnostics`
-- `#/wall` for the [wall-monitor view](#wall-monitor-mode)
+- `#/overview` for the [Overview](#overview) (`#/simple` and the old `#/wall` work too)
 
 Side panels have addresses too, for example `#/dashboard/guest/100`. The browser's Back and Forward buttons move between views. If a page has unsaved edits, leaving it (by link, tab or Back/Forward) asks first.
 
@@ -55,6 +55,8 @@ If a request fails, the affected area says so ("status unavailable", "Couldn't l
 
 ## Overview
 
+![The Overview](images/overview.png)
+
 The **Overview / Detailed** switch in the top bar picks which dashboard this browser opens. Detailed is the dashboard described below. Overview (`#/overview`, also `#/simple`) hides scores, penalties and tables and shows a dashboard of widgets you pick and arrange: gauges, small charts and the Cluster Map, each with a short line of text:
 
 | Widget | Shows |
@@ -81,9 +83,13 @@ The **Overview / Detailed** switch in the top bar picks which dashboard this bro
 | Storage | Every storage pool by how full it is (shared pools once, local pools per node), amber from 80% and red from 90% |
 | Memory map | A column per node, as tall as its memory, split into its running guests (largest at the bottom), the host and anything else, and free, with the limit as a line. Tap a block to name it |
 
-Each widget links to the full page it summarizes. **Customize** picks widgets, their order and size, or applies a preset: **Calm** (the default), **Operator**, **Wall** (the classic wall layout, see [Wall-monitor mode](#wall-monitor-mode)) or **Charts** (the cluster map, load chart, memory map, busy hours, busiest guests and storage first). Each widget's metric switch (CPU, Memory and so on) is remembered in this browser. To keep a layout, type a name under **Save this layout as** in Customize and press Save (a name you already used is replaced; preset names are taken). The **Layout** menu next to Customize switches between the presets and your saved layouts, and the × on a saved layout in Customize deletes it. Saved layouts live in this browser only. The layout and the Overview/Detailed choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Detailed.
+Each widget links to the full page it summarizes. **Customize** picks widgets, their order and size, or applies a preset: **Calm** (the default), **Operator**, **Wall** (the classic wall-screen layout, see [Wall screen](#wall-screen)) or **Charts** (the cluster map, load chart, memory map, busy hours, busiest guests and storage first). Each widget's metric switch (CPU, Memory and so on) is remembered in this browser. To keep a layout, type a name under **Save this layout as** in Customize and press Save (a name you already used is replaced; preset names are taken). The **Layout** menu next to Customize switches between the presets and your saved layouts, and the × on a saved layout in Customize deletes it. Saved layouts live in this browser only. The layout and the Overview/Detailed choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Detailed.
 
-**Arrange** (next to Customize) lets you lay the page out by hand. Drag a widget's **Move** grip to put it before or after another widget. Drag a widget's right edge, or tap one of its size chips, to make it ¼, ⅓, ½, ⅔ or a full row wide. Drag a widget's bottom edge, or use its **− ↕ +** control, to make it 1 to 4 rows tall: that many smaller widgets then stack beside it and stretch to its height (the Wall preset does this with the map). Charts (load, the node chart, the memory map, the forecast, moves and backups per day) grow to fill a taller widget as well as a wider one. Press Done when finished; changes are saved as you make them. Widgets never get narrower than about 300 px: on a smaller screen a widget takes the next size up (on a phone every widget is a full row), and the chips only offer the sizes that fit. The page uses the whole width of large screens, gaps are filled by later widgets that fit, and charts grow taller in wider widgets. The Cluster Map widget scales down to keep every node in one row when there is room for that at 60% or more, and wraps otherwise.
+![The Charts preset](images/overview-charts.png)
+
+**Arrange** (next to Customize) lets you lay the page out by hand. Drag a widget's **Move** grip to put it before or after another widget. Drag a widget's right edge, or tap one of its size chips, to make it ¼, ⅓, ½, ⅔ or a full row wide. Drag a widget's bottom edge, or use its **− ↕ +** control, to make it 1 to 4 rows tall: that many smaller widgets then stack beside it and stretch to its height (the Wall preset does this with the map). Charts (load, the node chart, the memory map, the forecast, moves and backups per day) grow to fill a taller widget as well as a wider one. Press Done when finished; changes are saved as you make them. ![Arrange: a tall map with two widgets stacked beside it](images/overview-arrange.png)
+
+Widgets never get narrower than about 300 px: on a smaller screen a widget takes the next size up (on a phone every widget is a full row), and the chips only offer the sizes that fit. The page uses the whole width of large screens, gaps are filled by later widgets that fit, and charts grow taller in wider widgets. The Cluster Map widget scales down to keep every node in one row when there is room for that at 60% or more, and wraps otherwise.
 
 ## Dashboard
 
@@ -150,6 +156,8 @@ A visual view of each node and its guests as bubbles.
 - **Planned moves**: current suggestions are drawn as dashed arrows from source to target node, one per node pair, with the number of guests in the middle. Hover or tap the number for the guest names. Moves waiting for approval (semi-automatic mode) are dotted blue. Arrows disappear once their moves run. The **Plan (N)** button hides the arrows; **Show plan (N)** brings them back. The choice is remembered per browser.
 - **Find bar**: type a guest name, VMID or tag. Matches are ringed and labelled, everything else dims, each node shows how many matches it holds, and Enter opens the guest when exactly one matches. Quick-filter chips pick out guests that can't migrate, are ignored, carry affinity rules, are HA-managed or have mount points.
 - **Affinity on hover**: point at a guest that is in an affinity or anti-affinity rule (tag or pool rule) and its partners get a ring, green for keep-with and red for keep-apart, while the other guests dim. Its tooltip names each rule, whether it is required or preferred, and for each partner whether the rule holds now (✓ same node / ✗ on another node for affinity; ✓ on another node / ✗ same node for anti-affinity). This also works in the Overview's Cluster Map widget.
+
+![Hovering prometheus rings its affinity partners](images/map-affinity.png)
 - **Guest indicators**: a small square on a container means it has mount points (cyan when shared and safe to migrate, orange for unshared bind mounts that need manual work); a red square on a VM means it is pinned (passthrough disks, or PCI/USB passthrough) and cannot migrate.
 
 **Previewing a move.** Drag a guest bubble over another node to see ghost bars and an "If here (est.)" readout; the source shows what it would free. Offline, maintenance and pinned cases refuse the drop. Dropping opens a before/after panel that flags anti-affinity or split-affinity conflicts, overcommit, CPU over 80% or memory over 85%, unshared bind mounts, the ignore tag and HA management. "Review migration..." hands off to the normal Confirm Migration dialog, so nothing starts from the map itself. On touch screens, tap a bubble to get a "Move to..." sheet with each node's estimate instead of dragging. All projections are estimates from current usage.
@@ -205,6 +213,8 @@ Click a node in the table, map or charts, or find it with quick search. The pane
 ### Guest panel
 
 Click a guest anywhere in the UI to see CPU and memory with history, disk and network I/O, tags, mount points or passthrough disks, and its behaviour profile.
+
+![Guest panel with the Backup row and the 30-day strip](images/guest-backups.png)
 
 The **Backup** row shows the guest's newest good backup and where it went ("7h ago · pbs"), read from the vzdump task logs of the last 14 days. It turns amber when the newest good backup is more than 3 days old, and red when the last attempt failed ("Failed 5h ago · last good 2d ago"); tap ⓘ for the error, the node it ran on and the good/failed counts. "Not backed up" means no backup job covers the guest and none ran in 14 days. Reading the task logs needs only `Sys.Audit`, which the read-only PVEAuditor token has. Under it, **Backups, 30 days** has one cell per day: green good, red failed, grey no backup, and a dashed outline for days before ProxBalance started recording. Tap a cell for that day's result. ProxBalance stores each result it reads for 90 days, because Proxmox trims each node's task list on its own schedule (sometimes to a week). The backup files on a storage can't be listed with that token, so ProxBalance doesn't show how many copies are kept.
 
@@ -491,11 +501,11 @@ The version number in the top nav opens the update window from any page: pick th
 
 ---
 
-## Wall-monitor mode
+## Wall screen
 
-![Wall mode](images/wall.png)
+![The Wall preset in full screen](images/wall.png)
 
-Click the full-screen button in the top bar (large screens), or open `#/wall`. The wall shows this browser's [Overview](#overview), with the same widgets, sizes and order, and nothing else: no menus, links, metric switches, side panels or search. Set the screen's browser to the **Wall** preset for the classic wall layout (the Detailed dashboard's summary tiles across the top, the Cluster Map on the left, the CPU-by-node chart and the automation banner with its recent checks stacked on the right), or arrange any layout you like. On screens 1024 px and wider the page is scaled down to fit the screen, to 60% at most; a layout that is still taller scrolls slowly down and back up by itself (not when the system asks for reduced motion). The Wall preset fits 1080p and 720p without scrolling. The wall asks the browser to keep the screen awake. To leave, press Esc, leave full screen, or move the mouse and click **Exit**. On a phone the wall is a normal scrolling page.
+For a screen on the wall, open the Overview, pick the **Wall** preset (the Detailed dashboard's summary tiles across the top, the Cluster Map on the left, the CPU-by-node chart and the automation banner stacked on the right) or arrange your own, and press **F11** for the browser's full screen. Keep the layout to what fits the screen: Arrange shows the sizes, and a widget can be made 2 to 4 rows tall so others stack beside it. Old `#/wall` links open the Overview.
 
 ---
 
