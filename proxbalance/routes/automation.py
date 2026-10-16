@@ -869,6 +869,20 @@ def _audit_queue(action, verb, vmid, entry):
                      details={k: entry.get(k) for k in ("source_node", "target_node", "reason", "confidence")})
 
 
+def _regenerate_recommendations_async() -> None:
+    """Start the recommendations generator now without waiting for it.
+
+    Failures are logged and ignored: the timer regenerates on its own later,
+    and a config save must not fail because systemd was unavailable.
+    """
+    systemctl = '/usr/bin/systemctl' if os.path.exists('/usr/bin/systemctl') else '/bin/systemctl'
+    try:
+        subprocess.run([systemctl, 'start', '--no-block', 'proxmox-balance-recommendations.service'],
+                       capture_output=True, timeout=10)
+    except Exception as e:
+        print(f"Could not start recommendations regeneration: {e}", file=sys.stderr)
+
+
 @automation_bp.route("/api/automigrate/config", methods=["GET", "POST"])
 @api_route
 def automigrate_config():
@@ -932,6 +946,8 @@ def automigrate_config():
                     incoming_rules['cooldown_reset_at'] = datetime.utcnow().isoformat() + 'Z'
                     updates['rules'] = incoming_rules
 
+            old_maintenance = set(config['automated_migrations'].get('maintenance_nodes') or [])
+
             # Update configuration (deep merge)
             for key, value in updates.items():
                 if key in root_level_keys:
@@ -951,6 +967,13 @@ def automigrate_config():
                     "success": False,
                     "error": "Failed to save configuration"
                 }), 500
+
+            # Maintenance changes which guests get evacuated, so the cached
+            # recommendations are wrong the moment it changes. Regenerate now
+            # instead of leaving the old list up until the next timer run.
+            new_maintenance = set(config['automated_migrations'].get('maintenance_nodes') or [])
+            if new_maintenance != old_maintenance:
+                _regenerate_recommendations_async()
 
             # Update systemd timer if check_interval_minutes changed
             if 'check_interval_minutes' in updates:
