@@ -76,7 +76,7 @@ Press **Ctrl+K** (Cmd+K on a Mac) or **/** (outside a text field), or use the se
 
 ### Simple view
 
-A **Simple / Full** switch in the top bar. Simple shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance) that each viewer picks and orders, with Calm, Operator and Wall presets. See "Simple View" in [USAGE.md](USAGE.md).
+A **Simple / Full** switch in the top bar. Simple shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks and orders, with Calm, Operator, Wall and Charts presets. See "Simple View" in [USAGE.md](USAGE.md).
 
 ### Wall-monitor mode
 

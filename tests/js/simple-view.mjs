@@ -33,9 +33,9 @@ test('layout edits round-trip through storage', () => {
   assert.equal(S.matchingPreset(l), null);
   S.writeLayout(l, st);
   assert.deepEqual(S.readLayout(st), l);
-  assert.deepEqual(l.map(x => x.id), ['status', 'nodes', 'moves', 'backups', 'guests', 'timeline']);
+  assert.deepEqual(l.map(x => x.id), ['status', 'load', 'nodes', 'moves', 'backups', 'guests', 'timeline']);
   assert.equal(S.moveWidget(l, 'status', -1), l);
-  assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'nodes');
+  assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'load');
 });
 
 test('view mode defaults to full', () => {
@@ -166,4 +166,44 @@ test('cluster KPIs and guest spread', () => {
   assert.equal(S.trackPos(1000, 1000), 1);
   assert.equal(S.trackPos(1000 - 12 * 3600e3, 1000), 0.5);
   assert.equal(S.trackPos(0, 48 * 3600e3), 0);
+});
+
+test('aligned series and hour grid', () => {
+  const now = new Date(2026, 9, 15, 12, 0).getTime() / 1000;
+  const a = [{ time: now - 3600 * 23.5, cpu: 10 }, { time: now - 3600 * 23.4, cpu: 30 }, { time: now - 60, cpu: 50 }, { time: now - 3600 * 30, cpu: 99 }];
+  const s = S.alignedSeries({ a, b: [] }, 'cpu', { nowSec: now, hours: 24, n: 4 });
+  assert.deepEqual(s.lines.a, [20, null, null, 50]);
+  assert.deepEqual(s.lines.b, [null, null, null, null]);
+  assert.equal(s.times.length, 4);
+  const at = (d, h) => new Date(2026, 9, d, h, 10).getTime() / 1000;
+  const g = S.hourGrid({ a: [{ time: at(15, 9), cpu: 40 }, { time: at(15, 9), cpu: 60 }], b: [{ time: at(14, 3), cpu: 20 }] }, 'cpu', now * 1000, 2);
+  assert.equal(g.rows.length, 2);
+  assert.equal(g.rows[1].cells[9], 50);
+  assert.equal(g.rows[0].cells[3], 20);
+  assert.equal(g.rows[0].cells[4], null);
+  assert.deepEqual([g.max, g.min, g.peak.hour, g.peak.label], [50, 20, 9, 'Today']);
+});
+
+test('top guests, storage pools and memory columns', () => {
+  const guests = {
+    1: { vmid: 1, name: 'a', node: 'n1', status: 'running', cpu_current: 80, cpu_cores: 2, mem_used_gb: 2, mem_max_gb: 4, net_in_bps: 1500, net_out_bps: 500 },
+    2: { vmid: 2, name: 'b', node: 'n1', status: 'running', cpu_current: 20, cpu_cores: 1, mem_used_gb: 6, mem_max_gb: 8 },
+    3: { vmid: 3, name: 'c', node: 'n1', status: 'stopped', cpu_current: 99 },
+  };
+  assert.deepEqual(S.topGuests(guests, 'cpu').map(g => [g.name, g.text]), [['a', '80% of 2 cores'], ['b', '20% of 1 core']]);
+  assert.deepEqual(S.topGuests(guests, 'mem').map(g => g.name), ['b', 'a']);
+  assert.deepEqual(S.topGuests(guests, 'net').map(g => [g.name, g.text]), [['a', '2.0 KB/s']]);
+  assert.equal(S.fmtRate(999), '999 B/s');
+  assert.equal(S.fmtGb(9400), '9.4 TB');
+  const nodes = {
+    n1: { name: 'n1', status: 'online', total_mem_gb: 32, mem_percent: 50, guests: [1, 2, 3],
+      storage: [{ storage: 'pbs', shared: true, total_gb: 100, used_gb: 95, usage_pct: 95 }, { storage: 'local', total_gb: 10, used_gb: 1, usage_pct: 10 }] },
+    n2: { name: 'n2', status: 'online', total_mem_gb: 16, mem_percent: 0, guests: [],
+      storage: [{ storage: 'pbs', shared: true, total_gb: 100, used_gb: 95, usage_pct: 95 }, { storage: 'local', total_gb: 10, used_gb: 8.5, usage_pct: 85 }] },
+  };
+  assert.deepEqual(S.storagePools(nodes).map(p => [p.id, p.tone]), [['pbs', 'bad'], ['local@n2', 'warn'], ['local@n1', 'ok']]);
+  const cols = S.memoryColumns(nodes, guests);
+  assert.deepEqual(cols[0].guests.map(g => g.name), ['b', 'a']);
+  assert.deepEqual([cols[0].otherGb, cols[0].freeGb], [8, 16]);
+  assert.deepEqual([cols[1].otherGb, cols[1].freeGb], [0, 16]);
 });

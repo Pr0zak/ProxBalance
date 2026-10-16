@@ -1,4 +1,6 @@
 import { X, ChevronRight, Settings } from './Icons.jsx';
+import { DOT, TEXT, listNames, Dot, Card, Empty } from './simple/parts.jsx';
+import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget } from './simple/chartWidgets.jsx';
 import { attentionItems } from './dashboard/NeedsAttentionStrip.jsx';
 import { getStatus, getNextCheck } from './dashboard/AutoStatusPill.jsx';
 import { projectedCrossings, checkedHorizon, spanPhrase } from './insights/forecastModel.js';
@@ -19,38 +21,6 @@ import { WALL_PANEL, BTN_PRIMARY, BTN_SECONDARY, MODAL_OVERLAY, MODAL_CONTAINER,
 const { useState, useEffect, useMemo } = React;
 
 const REFRESH_MS = 60000;
-
-// Semantic colours (not the accent): dots, bars and text.
-const DOT = { ok: 'bg-green-500', info: 'bg-blue-500', warn: 'bg-amber-500', bad: 'bg-red-500', none: 'bg-slate-400' };
-const TEXT = {
-  ok: 'text-green-700 dark:text-green-400', warn: 'text-amber-700 dark:text-amber-400',
-  bad: 'text-red-600 dark:text-red-400', muted: 'text-pb-text2 dark:text-gray-400',
-};
-const LINK = 'text-blue-600 dark:text-blue-400 hover:underline';
-
-const listNames = (guests, max = 2) => {
-  const names = guests.map(g => g.name);
-  return names.length > max ? `${names.slice(0, max).join(', ')} +${names.length - max}` : names.join(', ');
-};
-
-function Dot({ tone, className = '' }) {
-  return <span aria-hidden="true" className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${DOT[tone] || DOT.none} ${className}`} />;
-}
-
-/** A widget card: small uppercase title, optional "Open" link, body. */
-function Card({ title, href, linkText = 'Open', wide, children }) {
-  return (
-    <section className={`${WALL_PANEL} flex flex-col gap-3 min-w-0 ${wide ? 'md:col-span-2 xl:col-span-3' : ''}`}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-400">{title}</h2>
-        {href && <a href={href} className={`text-xs ${LINK} inline-flex items-center`}>{linkText}<ChevronRight size={12} /></a>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-const Empty = ({ children }) => <p className={`text-sm ${TEXT.muted}`}>{children}</p>;
 
 // ---------------------------------------------------------------------------
 // Widgets
@@ -576,6 +546,7 @@ const RENDER = {
   backups: BackupsWidget, forecast: ForecastWidget, automation: AutomationWidget,
   approvals: ApprovalsWidget, timeline: TimelineWidget, capacity: CapacityWidget,
   maintenance: MaintenanceWidget, guests: GuestsWidget,
+  load: LoadWidget, rhythm: RhythmWidget, topguests: TopGuestsWidget, storage: StorageWidget, memmap: MemoryMapWidget,
 };
 
 // ---------------------------------------------------------------------------
@@ -700,7 +671,7 @@ export default function SimpleView({
   });
   const ctx = {
     data, nowMs, migrations, trends, backups, backupRuns, needs, maintenanceNodes,
-    cpuThreshold, memThreshold, automationStatus, fetchAutomationStatus, runHistory, canMigrate,
+    cpuThreshold, memThreshold, iowaitThreshold, automationStatus, fetchAutomationStatus, runHistory, canMigrate,
   };
 
   return (

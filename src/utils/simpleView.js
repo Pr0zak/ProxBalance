@@ -23,6 +23,11 @@ export const WIDGETS = [
   { id: 'timeline', name: 'What happened', desc: 'The last 24 hours on a time line, newest first.' },
   { id: 'capacity', name: 'Room left', desc: 'Memory per node up to your limit, and how many 4 GB guests fit.' },
   { id: 'guests', name: 'Guests', desc: 'Running and stopped guests on each node.' },
+  { id: 'load', name: 'Load, 24 h', desc: 'A line per node for CPU, memory or IO wait; touch the chart to read a time.' },
+  { id: 'rhythm', name: 'Busy hours', desc: 'Cluster CPU by hour of day for the last 7 days, as a heat map.' },
+  { id: 'topguests', name: 'Busiest guests', desc: 'The guests using the most CPU, memory, network or disk right now.' },
+  { id: 'storage', name: 'Storage', desc: 'How full each storage pool is, fullest first.' },
+  { id: 'memmap', name: 'Memory map', desc: 'Each node’s memory split into its guests, the host, and free.' },
   { id: 'maintenance', name: 'Maintenance', desc: 'Nodes in maintenance and the guests still on them.' },
 ];
 
@@ -35,7 +40,8 @@ const L = (...items) => items.map(([id, wide]) => ({ id, wide: !!wide }));
 export const PRESETS = [
   { id: 'calm', label: 'Calm', layout: L(['status', 1], ['nodes', 1], ['attention'], ['backups'], ['moves'], ['forecast'], ['automation'], ['capacity']) },
   { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention'], ['approvals'], ['automation'], ['nodes', 1], ['moves'], ['backups'], ['forecast'], ['guests'], ['capacity'], ['timeline']) },
-  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['nodes', 1], ['moves'], ['backups'], ['timeline']) },
+  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['load', 1], ['nodes', 1], ['moves'], ['backups'], ['timeline']) },
+  { id: 'charts', label: 'Charts', layout: L(['status', 1], ['load', 1], ['memmap', 1], ['rhythm'], ['topguests'], ['storage'], ['moves'], ['backups'], ['forecast']) },
 ];
 export const DEFAULT_PRESET = 'calm';
 export const presetLayout = (id) => (PRESETS.find(p => p.id === id) || PRESETS[0]).layout.map(x => ({ ...x }));
@@ -392,4 +398,175 @@ export function guestSpread(nodes, guests) {
 /** Where an epoch-ms time sits on the last `hours`, 0 (oldest) to 1 (now). */
 export function trackPos(ms, nowMs = Date.now(), hours = 24) {
   return Math.max(0, Math.min(1, 1 - (nowMs - ms) / (hours * 3600e3)));
+}
+
+/**
+ * Average each node's [{time (s), <key>}] samples into `n` equal time buckets
+ * ending at `nowSec` and covering `hours`. Returns { times: [bucket start s],
+ * lines: { node: [value|null] } } so every node shares one time axis.
+ */
+export function alignedSeries(seriesByNode, key, { nowSec = Date.now() / 1000, hours = 24, n = 96 } = {}) {
+  const span = hours * 3600;
+  const start = nowSec - span;
+  const step = span / n;
+  const times = Array.from({ length: n }, (_, i) => start + i * step);
+  const lines = {};
+  for (const [node, pts] of Object.entries(seriesByNode || {})) {
+    const sum = new Array(n).fill(0);
+    const cnt = new Array(n).fill(0);
+    for (const p of pts || []) {
+      const v = p?.[key];
+      if (typeof p?.time !== 'number' || typeof v !== 'number' || !isFinite(v)) continue;
+      const b = Math.floor((p.time - start) / step);
+      if (b < 0 || b >= n) continue;
+      sum[b] += v; cnt[b] += 1;
+    }
+    lines[node] = sum.map((s, i) => (cnt[i] ? s / cnt[i] : null));
+  }
+  return { times, lines };
+}
+
+/**
+ * Cluster-wide average of `key` per local day and hour over the last `days`
+ * days: { rows: [{ key, label, cells: [24 × value|null] }], max, min, peak }.
+ * `peak` is the busiest cell { label, hour, value }. Hours still to come
+ * today are null.
+ */
+export function hourGrid(seriesByNode, key, nowMs = Date.now(), days = 7) {
+  const buckets = dayBuckets(nowMs, days);
+  const sum = buckets.map(() => new Array(24).fill(0));
+  const cnt = buckets.map(() => new Array(24).fill(0));
+  for (const pts of Object.values(seriesByNode || {})) {
+    for (const p of pts || []) {
+      const v = p?.[key];
+      if (typeof p?.time !== 'number' || typeof v !== 'number' || !isFinite(v)) continue;
+      const ms = p.time * 1000;
+      const d = buckets.findIndex(b => ms >= b.start && ms < b.end);
+      if (d < 0) continue;
+      const h = new Date(ms).getHours();
+      sum[d][h] += v; cnt[d][h] += 1;
+    }
+  }
+  let max = 0;
+  let min = null;
+  let peak = null;
+  const rows = buckets.map((b, d) => ({
+    key: b.key, label: b.label,
+    cells: sum[d].map((s, h) => {
+      if (!cnt[d][h]) return null;
+      const v = s / cnt[d][h];
+      if (v > max) { max = v; peak = { label: b.label, hour: h, value: v }; }
+      if (min == null || v < min) min = v;
+      return v;
+    }),
+  }));
+  return { rows, max, min, peak };
+}
+
+/** Bytes per second as "1.2 MB/s". */
+export function fmtRate(bps) {
+  if (typeof bps !== 'number' || !isFinite(bps)) return '—';
+  const u = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  let v = bps;
+  let i = 0;
+  while (v >= 1000 && i < u.length - 1) { v /= 1000; i += 1; }
+  return `${v >= 100 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
+}
+
+export const GUEST_METRICS = [
+  { id: 'cpu', label: 'CPU' },
+  { id: 'mem', label: 'Memory' },
+  { id: 'net', label: 'Network' },
+  { id: 'disk', label: 'Disk' },
+];
+
+/**
+ * The `n` busiest running guests by one metric:
+ * [{ vmid, name, node, type, value, max, text }], biggest first. CPU is the
+ * share of the guest's own cores, memory is used GB against its maximum,
+ * network and disk are in + out (read + write) per second.
+ */
+export function topGuests(guests, metric = 'cpu', n = 6) {
+  const num = (v) => (typeof v === 'number' && isFinite(v) ? v : null);
+  const rows = Object.values(guests || {})
+    .filter(g => !g.template && g.status === 'running')
+    .map(g => {
+      let value = null;
+      let max = null;
+      let text = '—';
+      if (metric === 'cpu') {
+        value = num(g.cpu_current);
+        max = 100;
+        if (value != null) text = `${Math.round(value)}% of ${g.cpu_cores || '?'} core${g.cpu_cores === 1 ? '' : 's'}`;
+      } else if (metric === 'mem') {
+        value = num(g.mem_used_gb);
+        max = num(g.mem_max_gb);
+        if (value != null) text = `${value.toFixed(1)} of ${max != null ? max.toFixed(0) : '?'} GB`;
+      } else if (metric === 'net') {
+        const a = num(g.net_in_bps);
+        const b = num(g.net_out_bps);
+        if (a != null || b != null) { value = (a || 0) + (b || 0); text = fmtRate(value); }
+      } else if (metric === 'disk') {
+        const a = num(g.disk_read_bps);
+        const b = num(g.disk_write_bps);
+        if (a != null || b != null) { value = (a || 0) + (b || 0); text = fmtRate(value); }
+      }
+      return { vmid: g.vmid, name: g.name || `guest ${g.vmid}`, node: g.node, type: g.type, value, max, text };
+    })
+    .filter(r => r.value != null && r.value > 0)
+    .sort((a, b) => b.value - a.value);
+  return rows.slice(0, n);
+}
+
+/**
+ * Storage pools by how full they are: shared pools once, local pools per
+ * node. [{ id, name, node, shared, type, usedGb, totalGb, pct, tone }].
+ */
+export function storagePools(nodes) {
+  const seen = new Set();
+  const out = [];
+  for (const n of Object.values(nodes || {})) {
+    if (n.status !== 'online') continue;
+    for (const s of n.storage || []) {
+      if (!s || s.active === false || typeof s.total_gb !== 'number' || s.total_gb <= 0) continue;
+      const id = s.shared ? s.storage : `${s.storage}@${n.name}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const pct = typeof s.usage_pct === 'number' ? s.usage_pct : (s.used_gb / s.total_gb) * 100;
+      out.push({
+        id, name: s.storage, node: s.shared ? null : n.name, shared: !!s.shared, type: s.type,
+        usedGb: s.used_gb, totalGb: s.total_gb, pct, tone: pct >= 90 ? 'bad' : pct >= 80 ? 'warn' : 'ok',
+      });
+    }
+  }
+  return out.sort((a, b) => b.pct - a.pct || a.id.localeCompare(b.id));
+}
+
+/** "936 GB", "9.4 TB". */
+export function fmtGb(gb) {
+  if (typeof gb !== 'number' || !isFinite(gb)) return '—';
+  return gb >= 1000 ? `${(gb / 1000).toFixed(gb >= 10000 ? 0 : 1)} TB` : `${Math.round(gb)} GB`;
+}
+
+/**
+ * One column per online node for the memory map: its running guests by
+ * memory used (largest first), what the host and anything else uses, and
+ * what is free. [{ name, totalGb, guests: [{ vmid, name, type, gb }],
+ * otherGb, freeGb }].
+ */
+export function memoryColumns(nodes, guests) {
+  return Object.values(nodes || {})
+    .filter(n => n.status === 'online' && typeof n.total_mem_gb === 'number' && n.total_mem_gb > 0)
+    .map(n => {
+      const usedGb = typeof n.mem_percent === 'number' ? (n.mem_percent / 100) * n.total_mem_gb : null;
+      const gl = (n.guests || []).map(v => guests?.[v]).filter(g => g && !g.template && g.status === 'running'
+        && typeof g.mem_used_gb === 'number' && g.mem_used_gb > 0)
+        .map(g => ({ vmid: g.vmid, name: g.name || `guest ${g.vmid}`, type: g.type, gb: g.mem_used_gb }))
+        .sort((a, b) => b.gb - a.gb);
+      const guestGb = gl.reduce((a, g) => a + g.gb, 0);
+      const otherGb = usedGb == null ? 0 : Math.max(0, usedGb - guestGb);
+      const freeGb = Math.max(0, n.total_mem_gb - guestGb - otherGb);
+      return { name: n.name, totalGb: n.total_mem_gb, guests: gl, otherGb, freeGb };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

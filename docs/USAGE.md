@@ -71,8 +71,13 @@ The **Simple / Full** switch in the top bar picks which dashboard this browser o
 | Room left | Memory used per node against a line at your limit, and how many more 4 GB guests fit on each |
 | Guests | Running and stopped guests per node |
 | Maintenance | Nodes in maintenance and how many running guests are still on them |
+| Load, 24 h | A line per node for CPU, memory or IO wait over the last 24 hours with your limit dashed. Touch or hover the chart to read every node at that time |
+| Busy hours | Cluster CPU (or IO wait) by day and hour for the last 7 days as a heat map, shaded from the week's quietest hour to its busiest, with hours at your limit outlined in amber and the busiest hour named. Tap a cell for its value |
+| Busiest guests | The six running guests using the most CPU, memory, network or disk, VMs and CTs in different colours |
+| Storage | Every storage pool by how full it is (shared pools once, local pools per node), amber from 80% and red from 90% |
+| Memory map | A column per node, as tall as its memory, split into its running guests (largest at the bottom), the host and anything else, and free, with the limit as a line. Tap a block to name it |
 
-Each widget links to the full page it summarizes. **Customize** picks widgets, their order and (on wide screens) full width, or applies a preset: **Calm** (the default), **Operator** or **Wall**. The layout and the Simple/Full choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Full.
+Each widget links to the full page it summarizes. **Customize** picks widgets, their order and (on wide screens) full width, or applies a preset: **Calm** (the default), **Operator**, **Wall** or **Charts** (the load chart, memory map, busy hours, busiest guests and storage first). Each widget's metric switch (CPU, Memory and so on) is remembered in this browser. The layout and the Simple/Full choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Full.
 
 ## Dashboard
 
