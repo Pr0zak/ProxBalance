@@ -20,8 +20,8 @@ test('layout defaults to Calm and survives junk', () => {
   const st = mem();
   st.setItem(S.LAYOUT_KEY, '{not json');
   assert.equal(S.matchingPreset(S.readLayout(st)), 'calm');
-  assert.deepEqual(S.normalizeLayout([{ id: 'nodes', wide: 1 }, 'nodes', { id: 'nope' }, 'backups']),
-    [{ id: 'nodes', wide: true }, { id: 'backups', wide: false }]);
+  assert.deepEqual(S.normalizeLayout([{ id: 'nodes', wide: 1 }, 'nodes', { id: 'nope' }, 'backups', { id: 'map' }, { id: 'load', span: 6 }]),
+    [{ id: 'nodes', span: 12 }, { id: 'backups', span: 4 }, { id: 'map', span: 8 }, { id: 'load', span: 6 }]);
 });
 
 test('layout edits round-trip through storage', () => {
@@ -29,12 +29,17 @@ test('layout edits round-trip through storage', () => {
   let l = S.presetLayout('wall');
   l = S.toggleWidget(l, 'guests');
   l = S.moveWidget(l, 'guests', -1);
-  l = S.toggleWide(l, 'guests');
+  l = S.setSpan(l, 'guests', 6);
+  assert.equal(l.find(x => x.id === 'guests').span, 6);
+  assert.equal(S.setSpan(l, 'guests', 5), l);
   assert.equal(S.matchingPreset(l), null);
   S.writeLayout(l, st);
   assert.deepEqual(S.readLayout(st), l);
-  assert.deepEqual(l.map(x => x.id), ['status', 'map', 'load', 'moves', 'backups', 'guests', 'timeline']);
+  assert.deepEqual(l.map(x => x.id), ['status', 'map', 'moves', 'load', 'backups', 'guests', 'timeline']);
   assert.equal(S.moveWidget(l, 'status', -1), l);
+  assert.deepEqual(S.moveWidgetTo(l, 'timeline', 'map').map(x => x.id), ['status', 'timeline', 'map', 'moves', 'load', 'backups', 'guests']);
+  assert.deepEqual(S.moveWidgetTo(l, 'status', 'guests', true).map(x => x.id), ['map', 'moves', 'load', 'backups', 'guests', 'status', 'timeline']);
+  assert.equal(S.moveWidgetTo(l, 'status', 'nope'), l);
   assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'map');
 });
 
@@ -211,17 +216,17 @@ test('top guests, storage pools and memory columns', () => {
 test('named layouts save, replace, match and delete', () => {
   const st = mem();
   assert.deepEqual(S.readSaved(st), []);
-  const a = [{ id: 'load', wide: true }, { id: 'storage', wide: false }];
+  const a = [{ id: 'load', span: 12 }, { id: 'storage', span: 4 }];
   let list = S.saveNamed([], '  Night shift ', a);
-  list = S.saveNamed(list, 'Phone', [{ id: 'status', wide: false }]);
+  list = S.saveNamed(list, 'Phone', [{ id: 'status', span: 4 }]);
   assert.deepEqual(list.map(s => s.name), ['Night shift', 'Phone']);
-  list = S.saveNamed(list, 'night SHIFT', [{ id: 'nodes', wide: false }]);
+  list = S.saveNamed(list, 'night SHIFT', [{ id: 'nodes', span: 4 }]);
   assert.deepEqual(list.map(s => s.name), ['night SHIFT', 'Phone']);
-  assert.deepEqual(list[0].layout, [{ id: 'nodes', wide: false }]);
+  assert.deepEqual(list[0].layout, [{ id: 'nodes', span: 4 }]);
   S.writeSaved(list, st);
   assert.deepEqual(S.readSaved(st), list);
-  assert.equal(S.matchingSaved([{ id: 'status', wide: false }], list), 'Phone');
-  assert.equal(S.matchingSaved([{ id: 'status', wide: true }], list), null);
+  assert.equal(S.matchingSaved([{ id: 'status', span: 4 }], list), 'Phone');
+  assert.equal(S.matchingSaved([{ id: 'status', span: 12 }], list), null);
   assert.deepEqual(S.deleteNamed(list, 'phone').map(s => s.name), ['night SHIFT']);
   assert.equal(S.nameProblem(' '), 'Give it a name.');
   assert.equal(S.nameProblem('calm'), '"Calm" is a preset name.');
@@ -230,5 +235,24 @@ test('named layouts save, replace, match and delete', () => {
   st.setItem(S.SAVED_KEY, '{"not":"a list"}');
   assert.deepEqual(S.readSaved(st), []);
   st.setItem(S.SAVED_KEY, JSON.stringify([{ name: 'ok', layout: ['load', 'bogus'] }, { name: '', layout: [] }, null]));
-  assert.deepEqual(S.readSaved(st), [{ name: 'ok', layout: [{ id: 'load', wide: false }] }]);
+  assert.deepEqual(S.readSaved(st), [{ name: 'ok', layout: [{ id: 'load', span: 8 }] }]);
+});
+
+test('spans fit the room', () => {
+  // 1248 px grid, 16 px gaps: a column is 89.3 px, 1/4 is 405 px.
+  assert.equal(S.minSpanFor(1248), 3);
+  assert.equal(S.minSpanFor(960), 4);   // 1/4 would be 228 px
+  assert.equal(S.minSpanFor(700), 6);
+  assert.equal(S.minSpanFor(340), 12);
+  assert.equal(S.minSpanFor(0), 12);
+  assert.equal(S.effectiveSpan(3, 4), 4);
+  assert.equal(S.effectiveSpan(8, 6), 8);
+  assert.equal(S.effectiveSpan(4, 12), 12);
+  assert.equal(S.effectiveSpan(5, 3), 4);
+  assert.equal(S.spanForWidth(600, 1248), 6);
+  assert.equal(S.spanForWidth(1240, 1248), 12);
+  assert.equal(S.spanForWidth(10, 1248, 16, 4), 4);
+  assert.equal(S.defaultSpan('map'), 12);
+  assert.equal(S.defaultSpan('load'), 8);
+  assert.equal(S.defaultSpan('storage'), 4);
 });

@@ -1,6 +1,6 @@
 import { X, ChevronRight, Settings } from './Icons.jsx';
-import { DOT, TEXT, listNames, Dot, Card, Empty } from './simple/parts.jsx';
-import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget, MapWidget } from './simple/chartWidgets.jsx';
+import { DOT, TEXT, listNames, Dot, Card, Empty, SlotContext, useSlot } from './simple/parts.jsx';
+import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget, MapWidget, fitPx } from './simple/chartWidgets.jsx';
 import { attentionItems } from './dashboard/NeedsAttentionStrip.jsx';
 import { getStatus, getNextCheck } from './dashboard/AutoStatusPill.jsx';
 import { projectedCrossings, checkedHorizon, spanPhrase } from './insights/forecastModel.js';
@@ -12,14 +12,16 @@ import { toNodeSet } from '../utils/nodeCondition.js';
 import { agoText, approvalRow, pendingApprovals } from '../utils/automationStory.js';
 import {
   WIDGETS, PRESETS, widgetById, presetLayout, matchingPreset, readLayout, writeLayout,
-  toggleWidget, moveWidget, toggleWide, nodeRows, clusterLine, backupTally, recentMoves,
+  toggleWidget, moveWidget, setSpan, moveWidgetTo, minSpanFor, effectiveSpan, spanForWidth, SPANS, SPAN_LABEL, GRID_COLS, nodeRows, clusterLine, backupTally, recentMoves,
   roomLeft, timelineEvents, eventTime, needsYou,
   readSaved, writeSaved, saveNamed, deleteNamed, matchingSaved, nameProblem, MAX_NAME,
   downsample, movesByDay, backupsByDay, clusterKpis, guestSpread, trackPos,
 } from '../utils/simpleView.js';
 import { WALL_PANEL, BTN_PRIMARY, BTN_SECONDARY, MODAL_OVERLAY, MODAL_CONTAINER, TAP_TARGET, INPUT_FIELD, SELECT_FIELD } from '../utils/designTokens.js';
 
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef, useLayoutEffect } = React;
+
+const GRID_GAP = 16;
 
 const REFRESH_MS = 60000;
 
@@ -54,7 +56,7 @@ function BigNumber({ value, tone = 'none', sub, size = 64 }) {
   );
 }
 
-function StatusWidget({ ctx, wide }) {
+function StatusWidget({ ctx }) {
   const line = clusterLine({
     nodes: ctx.data?.nodes, guests: ctx.data?.guests,
     attentionCount: ctx.needs.length, badCount: ctx.needs.filter(n => n.tone === 'bad').length,
@@ -67,7 +69,7 @@ function StatusWidget({ ctx, wide }) {
   const bTotal = b.good + b.failed.length + b.stale.length + b.none.length;
   const needTone = ctx.needs.some(n => n.tone === 'bad') ? 'bad' : ctx.needs.length ? 'warn' : 'ok';
   return (
-    <Card title="Cluster" wide={wide}>
+    <Card title="Cluster">
       <div className="flex items-center gap-3">
         <Dot tone={line.tone} className="w-3.5 h-3.5" />
         <div className="min-w-0">
@@ -106,11 +108,11 @@ function StatusWidget({ ctx, wide }) {
   );
 }
 
-function AttentionWidget({ ctx, wide }) {
+function AttentionWidget({ ctx }) {
   const bad = ctx.needs.filter(n => n.tone === 'bad').length;
   const warn = ctx.needs.length - bad;
   return (
-    <Card title="Needs you" wide={wide}>
+    <Card title="Needs you">
       {ctx.needs.length === 0 ? (
         <div className="flex items-center gap-3">
           <Ring value={1} max={1} tone="ok" center="✓" size={48} stroke={5} label="Nothing needs you" />
@@ -172,10 +174,10 @@ function NodeTile({ r, node, ctx }) {
   );
 }
 
-function NodesWidget({ ctx, wide }) {
+function NodesWidget({ ctx }) {
   const rows = nodeRows(ctx.data?.nodes, { cpuLimit: ctx.cpuThreshold, memLimit: ctx.memThreshold, maintenanceNodes: ctx.maintenanceNodes });
   return (
-    <Card title="Nodes" href="#/dashboard/nodes" wide={wide}>
+    <Card title="Nodes" href="#/dashboard/nodes">
       {rows.length === 0 ? <Empty>No node data yet.</Empty> : (
         <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2 sm:gap-3">
@@ -191,8 +193,9 @@ function NodesWidget({ ctx, wide }) {
   );
 }
 
-function MovesWidget({ ctx, wide }) {
-  if (ctx.migrations == null) return <Card title="Moves" href="#/automation/history" wide={wide}><Empty>Loading…</Empty></Card>;
+function MovesWidget({ ctx }) {
+  const { widthPx } = useSlot();
+  if (ctx.migrations == null) return <Card title="Moves" href="#/automation/history"><Empty>Loading…</Empty></Card>;
   const days = movesByDay(ctx.migrations, ctx.nowMs, 7).map(d => {
     const total = d.auto + d.manual + d.failed;
     return {
@@ -204,12 +207,12 @@ function MovesWidget({ ctx, wide }) {
   const week = days.reduce((a, d) => a + d.auto + d.manual, 0);
   const moves = recentMoves(ctx.migrations, ctx.nowMs).slice(0, 3);
   return (
-    <Card title="Moves" href="#/automation/history" wide={wide}>
+    <Card title="Moves" href="#/automation/history">
       <p className="text-pb-text dark:text-gray-100">
         <span className="text-2xl font-bold tabular-nums">{week}</span>
         <span className={`text-sm ${TEXT.muted}`}> in 7 days</span>
       </p>
-      <DayBars days={days} height={56} />
+      <DayBars days={days} height={fitPx(widthPx, 0.16, 56, 140)} />
       <Legend items={[{ tone: 'info', text: 'Automation' }, { tone: 'mem', text: 'By hand' }, { tone: 'bad', text: 'Failed' }]} />
       {moves.length > 0 && (
         <ul className="flex flex-col gap-1.5 pt-1 border-t border-pb-border/60 dark:border-slate-700/60">
@@ -226,10 +229,11 @@ function MovesWidget({ ctx, wide }) {
   );
 }
 
-function BackupsWidget({ ctx, wide }) {
+function BackupsWidget({ ctx }) {
+  const { widthPx } = useSlot();
   const t = ctx.backups;
   if (!t.known) {
-    return <Card title="Backups" wide={wide}><Empty>Backup results haven't been collected yet.</Empty></Card>;
+    return <Card title="Backups"><Empty>Backup results haven't been collected yet.</Empty></Card>;
   }
   const total = t.good + t.failed.length + t.stale.length + t.none.length;
   const share = total ? Math.round((t.good / total) * 100) : null;
@@ -239,9 +243,10 @@ function BackupsWidget({ ctx, wide }) {
     parts: [{ value: d.ok, tone: 'ok' }, { value: d.failed, tone: 'bad' }],
     text: !d.known ? 'not recorded yet' : d.ok + d.failed === 0 ? 'no backups' : `${d.ok} good${d.failed ? `, ${d.failed} failed` : ''}`,
   })) : null;
+  const narrow = (widthPx || 999) < 360;
   return (
-    <Card title="Backups" href="#/dashboard/guests" wide={wide}>
-      <div className="flex items-center gap-4">
+    <Card title="Backups" href="#/dashboard/guests">
+      <div className={`flex gap-4 ${narrow ? 'flex-col items-start' : 'items-center'}`}>
         <Donut size={92} center={share == null ? '—' : `${share}%`} sub="backed up" label={`${t.good} of ${total} guests backed up in the last 3 days`}
           parts={[{ value: t.good, tone: 'ok' }, { value: t.stale.length, tone: 'warn' }, { value: t.failed.length, tone: 'bad' }, { value: t.none.length, tone: 'none' }]} />
         <ul className="flex flex-col gap-1 text-sm min-w-0">
@@ -254,7 +259,7 @@ function BackupsWidget({ ctx, wide }) {
       {days && (
         <div>
           <div className={`text-[11px] mb-1 ${TEXT.muted}`}>Backups per day, 14 days</div>
-          <DayBars days={days} height={44} showEvery={2} />
+          <DayBars days={days} height={fitPx(narrow ? 0 : widthPx, 0.12, 44, 110)} showEvery={2} />
         </div>
       )}
     </Card>
@@ -297,7 +302,8 @@ function ForecastLine({ forecast, metric, height = 72 }) {
   );
 }
 
-function ForecastWidget({ ctx, wide }) {
+function ForecastWidget({ ctx: pageCtx }) {
+  const ctx = { ...pageCtx, widthPx: useSlot().widthPx };
   const tr = ctx.trends;
   let body;
   if (tr === undefined) body = <Empty>Checking…</Empty>;
@@ -321,7 +327,7 @@ function ForecastWidget({ ctx, wide }) {
             {first.rough && <span className={`font-normal ${TEXT.muted}`}> (rough)</span>}
           </span>
         </div>
-        <ForecastLine forecast={first.forecast} metric={first.metric} />
+        <ForecastLine forecast={first.forecast} metric={first.metric} height={fitPx(ctx.widthPx, 0.2, 72, 180)} />
         <Legend items={[{ tone: METRIC_TONE[first.metric] || 'cpu', text: 'History, then trend (dashed)' }, { tone: 'bad', text: `${first.limit}% limit` }]} />
         {items.length > 1 && (
           <ul className="flex flex-col gap-1 text-sm pt-1 border-t border-pb-border/60 dark:border-slate-700/60">
@@ -337,10 +343,10 @@ function ForecastWidget({ ctx, wide }) {
       </>
     );
   }
-  return <Card title="Coming up" href="#/insights" wide={wide}>{body}</Card>;
+  return <Card title="Coming up" href="#/insights">{body}</Card>;
 }
 
-function AutomationWidget({ ctx, wide }) {
+function AutomationWidget({ ctx }) {
   const st = ctx.automationStatus;
   const s = getStatus(st);
   const last = st?.state?.last_run;
@@ -349,7 +355,7 @@ function AutomationWidget({ ctx, wide }) {
   const tone = !st?.enabled ? 'none' : s.color === 'green' ? 'ok' : 'warn';
   const runs = ctx.runHistory?.length ? ctx.runHistory : (last && typeof last === 'object' ? [last] : []);
   return (
-    <Card title="Automation" href="#/automation" wide={wide}>
+    <Card title="Automation" href="#/automation">
       <div className="flex items-center gap-2.5">
         <Dot tone={tone} />
         <span className="text-xl font-bold text-pb-text dark:text-gray-100">{s.label}</span>
@@ -370,7 +376,7 @@ function AutomationWidget({ ctx, wide }) {
   );
 }
 
-function ApprovalsWidget({ ctx, wide }) {
+function ApprovalsWidget({ ctx }) {
   const st = ctx.automationStatus;
   const items = pendingApprovals(st?.approval_queue).map(e => approvalRow(e));
   const [busy, setBusy] = useState({});
@@ -384,7 +390,7 @@ function ApprovalsWidget({ ctx, wide }) {
     ctx.fetchAutomationStatus?.();
   };
   return (
-    <Card title="Waiting for approval" href="#/automation" wide={wide}>
+    <Card title="Waiting for approval" href="#/automation">
       {st?.mode !== 'semi' && items.length === 0 ? <Empty>Automation isn't asking for approval (it's not in semi-automatic mode).</Empty>
         : items.length === 0 ? <Empty>Nothing waiting.</Empty> : (
           <ul className="flex flex-col gap-3">
@@ -429,11 +435,11 @@ function DayTrack({ events, nowMs }) {
   );
 }
 
-function TimelineWidget({ ctx, wide }) {
+function TimelineWidget({ ctx }) {
   const all = timelineEvents({ migrations: ctx.migrations, guests: ctx.data?.guests, nowMs: ctx.nowMs });
   const ev = all.slice(0, 8);
   return (
-    <Card title="What happened, last 24 h" href="#/automation/history" linkText="History" wide={wide}>
+    <Card title="What happened, last 24 h" href="#/automation/history" linkText="History">
       {ctx.migrations == null ? <Empty>Loading…</Empty> : all.length === 0 ? <Empty>Nothing happened in the last 24 hours.</Empty> : (
         <>
           <DayTrack events={all} nowMs={ctx.nowMs} />
@@ -458,12 +464,12 @@ function TimelineWidget({ ctx, wide }) {
   );
 }
 
-function CapacityWidget({ ctx, wide }) {
+function CapacityWidget({ ctx }) {
   const r = roomLeft(ctx.data?.nodes, { memLimit: ctx.memThreshold, maintenanceNodes: ctx.maintenanceNodes });
   const rows = nodeRows(ctx.data?.nodes, { cpuLimit: ctx.cpuThreshold, memLimit: ctx.memThreshold, maintenanceNodes: ctx.maintenanceNodes });
   const fit = new Map((r?.per || []).map(p => [p.name, p.fit]));
   return (
-    <Card title="Room left" href="#/insights" wide={wide}>
+    <Card title="Room left" href="#/insights">
       {!r ? <Empty>No memory limit set.</Empty> : (
         <>
           <p className="text-pb-text dark:text-gray-100">
@@ -491,14 +497,15 @@ function CapacityWidget({ ctx, wide }) {
   );
 }
 
-function GuestsWidget({ ctx, wide }) {
+function GuestsWidget({ ctx }) {
+  const { widthPx } = useSlot();
   const rows = guestSpread(ctx.data?.nodes, ctx.data?.guests);
   const max = Math.max(1, ...rows.map(r => r.running + r.stopped));
   const running = rows.reduce((a, r) => a + r.running, 0);
   const stopped = rows.reduce((a, r) => a + r.stopped, 0);
   return (
-    <Card title="Guests" href="#/dashboard/guests" wide={wide}>
-      <div className="flex items-center gap-4">
+    <Card title="Guests" href="#/dashboard/guests">
+      <div className={`flex gap-4 ${(widthPx || 999) < 360 ? 'flex-col items-stretch' : 'items-center'}`}>
         <Donut size={80} stroke={10} center={running + stopped} sub="guests" label={`${running} running, ${stopped} stopped`}
           parts={[{ value: running, tone: 'info' }, { value: stopped, tone: 'none' }]} />
         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -519,12 +526,12 @@ function GuestsWidget({ ctx, wide }) {
   );
 }
 
-function MaintenanceWidget({ ctx, wide }) {
+function MaintenanceWidget({ ctx }) {
   const nodes = ctx.data?.nodes || {};
   const maint = toNodeSet(ctx.maintenanceNodes);
   const names = Object.keys(nodes).filter(n => maint.has(n)).sort();
   return (
-    <Card title="Maintenance" href="#/dashboard/nodes" wide={wide}>
+    <Card title="Maintenance" href="#/dashboard/nodes">
       {names.length === 0 ? <Empty>No node in maintenance.</Empty> : (
         <ul className="flex flex-col gap-1.5 text-sm">
           {names.map(n => {
@@ -595,7 +602,7 @@ function CustomizeDialog({ layout, setLayout, saved, setSaved, onClose }) {
   const iconBtn = 'w-8 h-8 rounded-md border border-pb-border dark:border-slate-600 bg-pb-surface2 dark:bg-slate-800 text-sm disabled:opacity-30';
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
-      <div className={`${MODAL_CONTAINER} max-w-lg flex flex-col !overflow-hidden`} onClick={e => e.stopPropagation()} role="dialog" aria-label="Customize the simple view">
+      <div className={`${MODAL_CONTAINER} max-w-lg flex flex-col !overflow-hidden`} onClick={e => e.stopPropagation()} role="dialog" aria-label="Customize the overview">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-pb-text dark:text-white">Customize</h3>
           <button type="button" onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={18} /></button>
@@ -638,8 +645,11 @@ function CustomizeDialog({ layout, setLayout, saved, setSaved, onClose }) {
                   <div className="flex gap-1 shrink-0">
                     <button type="button" className={iconBtn} disabled={idx === 0} onClick={() => setLayout(moveWidget(layout, id, -1))} aria-label={`Move ${w.name} up`}>↑</button>
                     <button type="button" className={iconBtn} disabled={idx === layout.length - 1} onClick={() => setLayout(moveWidget(layout, id, 1))} aria-label={`Move ${w.name} down`}>↓</button>
-                    <button type="button" className={`${iconBtn} hidden md:inline-block ${layout[idx].wide ? '!border-blue-500 text-blue-600 dark:text-blue-300' : ''}`}
-                      aria-pressed={layout[idx].wide} onClick={() => setLayout(toggleWide(layout, id))} title="Full width" aria-label={`Make ${w.name} full width`}>⇔</button>
+                    <select value={layout[idx].span} onChange={(e) => setLayout(setSpan(layout, id, Number(e.target.value)))}
+                      aria-label={`Size of ${w.name}`} title="Share of a row on wide screens"
+                      className="hidden md:block h-8 rounded-md border border-pb-border dark:border-slate-600 bg-pb-surface2 dark:bg-slate-800 text-sm px-1">
+                      {SPANS.map(x => <option key={x} value={x}>{SPAN_LABEL[x]}</option>)}
+                    </select>
                   </div>
                 )}
               </li>
@@ -684,6 +694,79 @@ export default function SimpleView({
     }
   };
   const [customizing, setCustomizing] = useState(false);
+  const [arrange, setArrange] = useState(false);
+  const [dragId, setDragId] = useState(null);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
+  // The grid's width decides the narrowest size a widget may take there.
+  const gridRef = useRef(null);
+  const [gridPx, setGridPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el) return undefined;
+    const measure = () => setGridPx(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!data, layout.length > 0]);
+  const minSpan = minSpanFor(gridPx, GRID_GAP);
+  const colPx = gridPx ? (gridPx - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS : 0;
+
+  // Drag a card by its grip: it moves before or after the card under the
+  // pointer, live; the layout is saved when the pointer is let go.
+  const startDrag = (id) => (e) => {
+    e.preventDefault();
+    setDragId(id);
+    let last = null;
+    const move = (ev) => {
+      if (ev.clientY < 70) window.scrollBy(0, -18);
+      else if (ev.clientY > window.innerHeight - 70) window.scrollBy(0, 18);
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-widget]');
+      const target = el?.dataset.widget;
+      if (!target || target === id) return;
+      const r = el.getBoundingClientRect();
+      const fullRow = gridRef.current && r.width > gridRef.current.clientWidth * 0.9;
+      const after = fullRow ? ev.clientY > r.top + r.height / 2 : ev.clientX > r.left + r.width / 2;
+      const key = `${target}:${after}`;
+      if (key === last) return;
+      last = key;
+      setLayoutState(l => moveWidgetTo(l, id, target, after));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setDragId(null);
+      writeLayout(layoutRef.current);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
+  // Drag a card's right edge: its width snaps to the nearest allowed size.
+  const startResize = (id) => (e) => {
+    e.preventDefault();
+    const card = e.currentTarget.closest('[data-widget]');
+    const left = card.getBoundingClientRect().left;
+    const move = (ev) => {
+      const span = spanForWidth(ev.clientX - left, gridRef.current?.clientWidth || gridPx, GRID_GAP, minSpan);
+      setLayoutState(l => (l.find(x => x.id === id)?.span === span ? l : setSpan(l, id, span)));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      writeLayout(layoutRef.current);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
   const [migrations, setMigrations] = useState(null);
   const [trends, setTrends] = useState(undefined);
   const [backupRuns, setBackupRuns] = useState(null);
@@ -737,7 +820,7 @@ export default function SimpleView({
   };
 
   return (
-    <main className="max-w-screen-xl mx-auto px-4 py-4 sm:py-6">
+    <main className="max-w-[2200px] mx-auto px-4 py-4 sm:py-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-lg font-semibold text-pb-text dark:text-gray-100">Overview</h1>
         <div className="flex items-center gap-2 min-w-0">
@@ -752,6 +835,12 @@ export default function SimpleView({
               </optgroup>
             )}
           </select>
+          {layout.length > 0 && (
+            <button type="button" onClick={() => setArrange(a => !a)} aria-pressed={arrange}
+              className={`${arrange ? BTN_PRIMARY : BTN_SECONDARY} text-sm shrink-0`}>
+              {arrange ? 'Done' : 'Arrange'}
+            </button>
+          )}
           <button type="button" onClick={() => setCustomizing(true)} className={`${BTN_SECONDARY} text-sm shrink-0`} aria-label="Customize">
             <Settings size={14} /> <span className="hidden sm:inline">Customize</span>
           </button>
@@ -760,12 +849,28 @@ export default function SimpleView({
       {!data ? <Empty>Loading cluster data…</Empty> : layout.length === 0 ? (
         <div className={WALL_PANEL}><Empty>No widgets picked. Use Customize to add some.</Empty></div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {layout.map(it => {
-            const W = RENDER[it.id];
-            return W ? <W key={it.id} ctx={ctx} wide={it.wide} /> : null;
-          })}
-        </div>
+        <>
+          {arrange && (
+            <p className={`text-xs mb-3 ${TEXT.muted}`}>
+              Drag <b>Move</b> to reorder{minSpan < 12 ? ', drag a card’s right edge or tap a size to resize' : ''}. Sizes too narrow for this screen are widened automatically.
+            </p>
+          )}
+          <div ref={gridRef} className="grid"
+            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`, gap: GRID_GAP, gridAutoFlow: 'row dense' }}>
+            {layout.map(it => {
+              const W = RENDER[it.id];
+              if (!W) return null;
+              const span = effectiveSpan(it.span, minSpan);
+              const slot = {
+                id: it.id, span, minSpan, arrange, dragging: dragId === it.id,
+                widthPx: colPx ? span * colPx + (span - 1) * GRID_GAP : null,
+                onGrip: startDrag(it.id), onResize: startResize(it.id),
+                onSize: (x) => setLayout(setSpan(layoutRef.current, it.id, x)),
+              };
+              return <SlotContext.Provider key={it.id} value={slot}><W ctx={ctx} /></SlotContext.Provider>;
+            })}
+          </div>
+        </>
       )}
       {customizing && <CustomizeDialog layout={layout} setLayout={setLayout} saved={saved} setSaved={setSaved} onClose={() => setCustomizing(false)} />}
     </main>

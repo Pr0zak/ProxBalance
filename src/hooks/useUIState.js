@@ -10,7 +10,9 @@ const PAGES = ['dashboard', 'simple', 'insights', 'automation', 'settings'];
 function parseHash() {
   // #/wall: the full-screen wall-monitor view (no sub-pages).
   if (isWallHash(window.location.hash)) return { page: 'wall', sub: null };
-  const [page, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+  const [raw, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
+  // #/overview is the Overview's name in the top bar; #/simple is its page id.
+  const page = raw === 'overview' ? 'simple' : raw;
   // No page in the address: open the view this browser last chose.
   const home = readViewMode() === 'simple' ? 'simple' : 'dashboard';
   return {

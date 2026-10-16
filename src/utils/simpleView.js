@@ -35,26 +35,74 @@ export const WIDGETS = [
 const WIDGET_IDS = new Set(WIDGETS.map(w => w.id));
 export const widgetById = (id) => WIDGETS.find(w => w.id === id) || null;
 
-const L = (...items) => items.map(([id, wide]) => ({ id, wide: !!wide }));
+// ---------------------------------------------------------------------------
+// Widget sizes: a 12-column grid, each widget 1/4, 1/3, 1/2, 2/3 or all of a row
+// ---------------------------------------------------------------------------
+
+export const GRID_COLS = 12;
+export const SPANS = [3, 4, 6, 8, 12];
+export const SPAN_LABEL = { 3: '¼', 4: '⅓', 6: '½', 8: '⅔', 12: 'Full' };
+// A widget is never drawn narrower than this; on less room it takes a wider span.
+export const MIN_WIDGET_PX = 300;
+
+const BIG = new Set(['status', 'map', 'nodes']);
+const MEDIUM = new Set(['load', 'memmap']);
+/** The size a widget gets when it is added. */
+export const defaultSpan = (id) => (BIG.has(id) ? 12 : MEDIUM.has(id) ? 8 : 4);
+const validSpan = (n) => SPANS.includes(n);
+
+/** Smallest allowed span at or above `n`. */
+export const snapUp = (n) => SPANS.find(x => x >= n) ?? GRID_COLS;
+
+/**
+ * The narrowest span that still gives a widget MIN_WIDGET_PX on a grid
+ * `gridPx` wide with `gapPx` between columns (12 on a phone).
+ */
+export function minSpanFor(gridPx, gapPx = 16, minPx = MIN_WIDGET_PX) {
+  if (!(gridPx > 0)) return GRID_COLS;
+  const col = (gridPx - gapPx * (GRID_COLS - 1)) / GRID_COLS;
+  for (const sp of SPANS) {
+    if (sp * col + (sp - 1) * gapPx >= minPx) return sp;
+  }
+  return GRID_COLS;
+}
+
+/** The span a widget is drawn at: its own, widened to the room's minimum. */
+export const effectiveSpan = (span, minSpan) => snapUp(Math.max(validSpan(span) ? span : 4, minSpan || 3));
+
+/** The allowed span nearest a dragged width of `px` on a grid `gridPx` wide. */
+export function spanForWidth(px, gridPx, gapPx = 16, minSpan = 3) {
+  const col = (gridPx - gapPx * (GRID_COLS - 1)) / GRID_COLS;
+  const raw = (px + gapPx) / (col + gapPx);
+  const allowed = SPANS.filter(x => x >= minSpan);
+  return allowed.reduce((best, x) => (Math.abs(x - raw) < Math.abs(best - raw) ? x : best), allowed[0] ?? GRID_COLS);
+}
+
+const L = (...items) => items.map(([id, span]) => ({ id, span: span || defaultSpan(id) }));
 
 /** Calm is the default: what a first-time viewer sees. */
 export const PRESETS = [
-  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['map', 1], ['nodes', 1], ['attention'], ['backups'], ['moves'], ['forecast'], ['automation'], ['capacity']) },
-  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention'], ['approvals'], ['automation'], ['map', 1], ['nodes', 1], ['moves'], ['backups'], ['forecast'], ['guests'], ['capacity'], ['timeline']) },
-  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['map', 1], ['load', 1], ['moves'], ['backups'], ['timeline']) },
-  { id: 'charts', label: 'Charts', layout: L(['status', 1], ['map', 1], ['load', 1], ['memmap', 1], ['rhythm'], ['topguests'], ['storage'], ['moves'], ['backups'], ['forecast']) },
+  { id: 'calm', label: 'Calm', layout: L(['status', 12], ['map', 12], ['nodes', 12], ['attention', 4], ['backups', 4], ['moves', 4], ['forecast', 4], ['automation', 4], ['capacity', 4]) },
+  { id: 'operator', label: 'Operator', layout: L(['status', 12], ['attention', 4], ['approvals', 4], ['automation', 4], ['map', 12], ['nodes', 12], ['moves', 4], ['backups', 4], ['forecast', 4], ['guests', 4], ['capacity', 4], ['timeline', 4]) },
+  { id: 'wall', label: 'Wall', layout: L(['status', 12], ['map', 8], ['moves', 4], ['load', 8], ['backups', 4], ['timeline', 12]) },
+  { id: 'charts', label: 'Charts', layout: L(['status', 12], ['map', 12], ['load', 8], ['rhythm', 4], ['memmap', 8], ['topguests', 4], ['storage', 4], ['moves', 4], ['backups', 4], ['forecast', 4], ['capacity', 4], ['guests', 4]) },
 ];
 export const DEFAULT_PRESET = 'calm';
 export const presetLayout = (id) => (PRESETS.find(p => p.id === id) || PRESETS[0]).layout.map(x => ({ ...x }));
 
 /** The preset a layout matches exactly, or null once it has been changed. */
 export function matchingPreset(layout) {
-  const key = (l) => l.map(x => `${x.id}:${x.wide ? 1 : 0}`).join(',');
-  const k = key(layout || []);
-  return PRESETS.find(p => key(p.layout) === k)?.id || null;
+  const k = layoutKey(layout);
+  return PRESETS.find(p => layoutKey(p.layout) === k)?.id || null;
 }
 
-/** Drop unknown and repeated ids; anything unusable falls back to the default. */
+const layoutKey = (l) => (l || []).map(x => `${x.id}:${x.span}`).join(',');
+
+/**
+ * Drop unknown and repeated ids; anything unusable falls back to the default.
+ * Layouts saved before sizes existed carry `wide` instead: wide is a full
+ * row, otherwise the widget's default size (never full unless it was wide).
+ */
 export function normalizeLayout(raw) {
   if (!Array.isArray(raw)) return presetLayout(DEFAULT_PRESET);
   const seen = new Set();
@@ -63,13 +111,15 @@ export function normalizeLayout(raw) {
     const id = typeof it === 'string' ? it : it?.id;
     if (!WIDGET_IDS.has(id) || seen.has(id)) continue;
     seen.add(id);
-    out.push({ id, wide: !!it?.wide });
+    let span = it?.span;
+    if (!validSpan(span)) span = it?.wide ? 12 : Math.min(defaultSpan(id), 8);
+    out.push({ id, span });
   }
   return out;
 }
 
 export function toggleWidget(layout, id) {
-  return layout.some(x => x.id === id) ? layout.filter(x => x.id !== id) : [...layout, { id, wide: false }];
+  return layout.some(x => x.id === id) ? layout.filter(x => x.id !== id) : [...layout, { id, span: defaultSpan(id) }];
 }
 
 export function moveWidget(layout, id, dir) {
@@ -81,7 +131,19 @@ export function moveWidget(layout, id, dir) {
   return next;
 }
 
-export const toggleWide = (layout, id) => layout.map(x => (x.id === id ? { ...x, wide: !x.wide } : x));
+export const setSpan = (layout, id, span) => (validSpan(span)
+  ? layout.map(x => (x.id === id ? { ...x, span } : x)) : layout);
+
+/** Move `id` to just before (or after) `targetId`. */
+export function moveWidgetTo(layout, id, targetId, after = false) {
+  if (id === targetId) return layout;
+  const item = layout.find(x => x.id === id);
+  if (!item || !layout.some(x => x.id === targetId)) return layout;
+  const rest = layout.filter(x => x.id !== id);
+  const t = rest.findIndex(x => x.id === targetId);
+  rest.splice(after ? t + 1 : t, 0, item);
+  return rest;
+}
 
 // Per-browser storage (a wall screen and a phone can differ).
 export const LAYOUT_KEY = 'pb.simpleLayout';
@@ -580,8 +642,6 @@ export const SAVED_KEY = 'pb.simpleSaved';
 export const MAX_NAME = 40;
 
 const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
-const layoutKey = (l) => (l || []).map(x => `${x.id}:${x.wide ? 1 : 0}`).join(',');
-
 /** Saved layouts [{ name, layout }]; junk entries are dropped. */
 export function readSaved(storage = globalThis.localStorage) {
   try {
@@ -612,7 +672,7 @@ export function nameProblem(name) {
 /** Save `layout` as `name`, replacing a saved layout of the same name (any case). */
 export function saveNamed(list, name, layout) {
   const n = name.trim().slice(0, MAX_NAME);
-  const entry = { name: n, layout: layout.map(x => ({ id: x.id, wide: !!x.wide })) };
+  const entry = { name: n, layout: layout.map(x => ({ id: x.id, span: x.span })) };
   const i = list.findIndex(s => sameName(s.name, n));
   if (i < 0) return [...list, entry];
   const next = [...list];

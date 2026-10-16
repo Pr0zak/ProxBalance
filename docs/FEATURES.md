@@ -74,9 +74,9 @@ Opened by clicking a node anywhere in the UI:
 
 Press **Ctrl+K** (Cmd+K on a Mac) or **/** (outside a text field), or use the search button in the top bar, to jump to any guest, node or page. Choosing a guest or node opens its side panel. It works from the keyboard alone and on phones.
 
-### Simple view
+### Overview
 
-A **Simple / Full** switch in the top bar. Simple shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, the Cluster Map, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks and orders, with Calm, Operator, Wall and Charts presets and layouts saved under a name. See "Simple View" in [USAGE.md](USAGE.md).
+An **Overview / Detailed** switch in the top bar. Overview shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, the Cluster Map, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks, drags into place and resizes (¼ to a full row, widened automatically on small screens), with Calm, Operator, Wall and Charts presets and layouts saved under a name. See "Overview" in [USAGE.md](USAGE.md).
 
 ### Wall-monitor mode
 

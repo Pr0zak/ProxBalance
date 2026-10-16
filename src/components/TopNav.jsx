@@ -44,7 +44,7 @@ export default function TopNav({
             {systemInfo?.version && (
               <button
                 onClick={onShowUpdate}
-                className="hidden sm:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/40 transition-colors"
+                className="hidden md:inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 hover:bg-pb-surface2 dark:hover:bg-slate-700/40 transition-colors"
                 title={systemInfo.on_release
                   ? `Running ${systemInfo.version} (${systemInfo.commit || ''}) on ${systemInfo.branch || 'main'}`
                   : `Running ${systemInfo.commit || systemInfo.current_version || systemInfo.version} on ${systemInfo.branch || 'main'} — ahead of tag ${systemInfo.version}`}
@@ -70,10 +70,10 @@ export default function TopNav({
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Simple / Full: which dashboard this browser opens */}
+            {/* Overview / Detailed: which dashboard this browser opens (ids stay simple / full) */}
             {onViewMode && (
               <div role="group" aria-label="Dashboard view" className="flex items-center p-0.5 rounded-lg border border-pb-border dark:border-slate-700 bg-pb-surface2 dark:bg-slate-800/60 text-xs">
-                {[['simple', 'Simple'], ['full', 'Full']].map(([id, label]) => {
+                {[['simple', 'Overview'], ['full', 'Detailed']].map(([id, label]) => {
                   const on = (currentPage === 'simple' ? 'simple' : currentPage === 'dashboard' ? 'full' : viewMode) === id;
                   return (
                     <button
@@ -81,7 +81,7 @@ export default function TopNav({
                       type="button"
                       aria-pressed={on}
                       onClick={() => onViewMode(id)}
-                      title={id === 'simple' ? 'Only what matters: status, what happened, what needs you' : 'Everything: scores, charts, map and tables'}
+                      title={id === 'simple' ? 'Widgets you pick and arrange: gauges, charts, the map, what needs you' : 'Everything: scores, charts, map and tables'}
                       className={`px-2 sm:px-2.5 py-1 rounded-md transition-colors ${on ? 'bg-blue-600 text-white' : 'text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200'}`}
                     >
                       {label}
@@ -117,7 +117,7 @@ export default function TopNav({
                 Outside window
               </span>
             ) : (
-              <span className={`hidden sm:inline-flex ${CONNECTION_BADGE_ONLINE}`}>
+              <span className={`hidden lg:inline-flex ${CONNECTION_BADGE_ONLINE}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 Connected
               </span>
@@ -157,7 +157,7 @@ export default function TopNav({
               href="https://github.com/Pr0zak/ProxBalance"
               target="_blank"
               rel="noopener noreferrer"
-              className={`${BTN_ICON} hidden sm:flex`}
+              className={`${BTN_ICON} hidden lg:flex`}
               title="GitHub"
             >
               <GitHub size={16} />
