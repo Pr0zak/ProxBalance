@@ -97,8 +97,9 @@ const L = (...items) => items.map(([id, span, rows]) => withRows({ id, span: spa
 export const PRESETS = [
   { id: 'calm', label: 'Calm', layout: L(['status', 12], ['map', 12], ['nodes', 12], ['attention', 4], ['backups', 4], ['moves', 4], ['forecast', 4], ['automation', 4], ['capacity', 4]) },
   { id: 'operator', label: 'Operator', layout: L(['status', 12], ['attention', 4], ['approvals', 4], ['automation', 4], ['map', 12], ['nodes', 12], ['moves', 4], ['backups', 4], ['forecast', 4], ['guests', 4], ['capacity', 4], ['timeline', 4]) },
-  // Like the old fixed wall view: gauges across the top, the map on the left,
-  // CPU by node and the automation checks stacked on the right.
+  // The classic wall-screen layout (full screen with the browser's F11):
+  // summary tiles across the top, the map on the left, CPU by node and the
+  // automation banner stacked on the right.
   { id: 'wall', label: 'Wall', layout: L(['kpis', 12], ['map', 8, 2], ['nodechart', 4], ['autobanner', 4]) },
   { id: 'charts', label: 'Charts', layout: L(['status', 12], ['map', 12], ['load', 8], ['rhythm', 4], ['memmap', 8], ['topguests', 4], ['storage', 4], ['moves', 4], ['backups', 4], ['forecast', 4], ['capacity', 4], ['guests', 4]) },
 ];

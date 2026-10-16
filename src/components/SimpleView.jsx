@@ -680,8 +680,6 @@ export default function SimpleView({
   automationStatus, fetchAutomationStatus, runHistory, canMigrate, API_BASE,
   recommendations, guestsMigrating, migrationProgress, completedMigrations,
   automationConfig, recommendationData, migrationHistory, chartJsLoaded, loadChartJs,
-  // Wall mode (#/wall) draws the same widgets with no header or controls.
-  wall = false,
 }) {
   const [layout, setLayoutState] = useState(readLayout);
   const setLayout = (l) => { setLayoutState(l); writeLayout(l); };
@@ -851,9 +849,8 @@ export default function SimpleView({
   };
 
   return (
-    <main className={wall ? 'px-4 py-4 flex flex-col' : 'max-w-[2200px] mx-auto px-4 py-4 sm:py-6'}
-      style={wall ? { minHeight: 'var(--wall-h, 100vh)' } : undefined}>
-      {!wall && <div className="flex items-center justify-between gap-3 mb-4">
+    <main className="max-w-[2200px] mx-auto px-4 py-4 sm:py-6">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-lg font-semibold text-pb-text dark:text-gray-100">Overview</h1>
         <div className="flex items-center gap-2 min-w-0">
           <select aria-label="Layout" value={current} onChange={(e) => pickLayout(e.target.value)} className={`${SELECT_FIELD} min-w-0 max-w-[10rem] sm:max-w-[14rem] !py-1.5`}>
@@ -877,26 +874,26 @@ export default function SimpleView({
             <Settings size={14} /> <span className="hidden sm:inline">Customize</span>
           </button>
         </div>
-      </div>}
+      </div>
       {!data ? <Empty>Loading cluster data…</Empty> : layout.length === 0 ? (
         <div className={WALL_PANEL}><Empty>No widgets picked. Use Customize to add some.</Empty></div>
       ) : (
         <>
-          {arrange && !wall && (
+          {arrange && (
             <p className={`text-xs mb-3 ${TEXT.muted}`}>
               Drag <b>Move</b> to reorder{minSpan < 12 ? ', drag a card’s right edge or tap a size to resize' : ''}. Sizes too narrow for this screen are widened automatically.
             </p>
           )}
-          <div ref={gridRef} className={`grid ${wall ? 'flex-1' : ''}`}
-            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`, gap: GRID_GAP, gridAutoFlow: 'row dense', alignContent: wall ? 'stretch' : undefined }}>
+          <div ref={gridRef} className="grid"
+            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`, gap: GRID_GAP, gridAutoFlow: 'row dense' }}>
             {layout.map(it => {
               const W = RENDER[it.id];
               if (!W) return null;
               const span = effectiveSpan(it.span, minSpan);
               const slot = {
-                wall, id: it.id, span, minSpan, rows: span < 12 ? (it.rows || 1) : 1,
+                id: it.id, span, minSpan, rows: span < 12 ? (it.rows || 1) : 1,
                 onRows: (n) => setLayout(setRows(layoutRef.current, it.id, n)),
-                onResizeRows: startResizeRows(it.id), arrange: arrange && !wall, dragging: dragId === it.id,
+                onResizeRows: startResizeRows(it.id), arrange, dragging: dragId === it.id,
                 widthPx: colPx ? span * colPx + (span - 1) * GRID_GAP : null,
                 onGrip: startDrag(it.id), onResize: startResize(it.id),
                 onSize: (x) => setLayout(setSpan(layoutRef.current, it.id, x)),
@@ -906,7 +903,7 @@ export default function SimpleView({
           </div>
         </>
       )}
-      {customizing && !wall && <CustomizeDialog layout={layout} setLayout={setLayout} saved={saved} setSaved={setSaved} onClose={() => setCustomizing(false)} />}
+      {customizing && <CustomizeDialog layout={layout} setLayout={setLayout} saved={saved} setSaved={setSaved} onClose={() => setCustomizing(false)} />}
     </main>
   );
 }

@@ -87,8 +87,8 @@ export function Card({ title, href, linkText = 'Open', tools, bare = false, chil
       {!bare && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-400">{title}</h2>
         <div className="flex items-center gap-3 ml-auto">
-          {!slot.wall && tools}
-          {href && !slot.wall && <a href={href} className={`text-xs ${LINK} inline-flex items-center`}>{linkText}<ChevronRight size={12} /></a>}
+          {tools}
+          {href && <a href={href} className={`text-xs ${LINK} inline-flex items-center`}>{linkText}<ChevronRight size={12} /></a>}
         </div>
       </div>}
       <div className={`contents ${arranging ? '[&>*]:pointer-events-none [&>*]:select-none' : ''}`}>{children}</div>

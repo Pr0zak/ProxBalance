@@ -1,4 +1,3 @@
-import { isWallHash } from '../utils/wallMode.js';
 import { readViewMode, writeViewMode } from '../utils/simpleView.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -8,11 +7,10 @@ const PAGES = ['dashboard', 'simple', 'insights', 'automation', 'settings'];
 // Hash routes: #/<page>[/<sub>], e.g. #/automation/filters, #/dashboard/map.
 // Reload keeps your place, Back/Forward work, and any view can be linked.
 function parseHash() {
-  // #/wall: the full-screen wall-monitor view (no sub-pages).
-  if (isWallHash(window.location.hash)) return { page: 'wall', sub: null };
   const [raw, sub] = window.location.hash.replace(/^#\/?/, '').split('/');
   // #/overview is the Overview's name in the top bar; #/simple is its page id.
-  const page = raw === 'overview' ? 'simple' : raw;
+  // #/wall (the old wall-monitor view, removed) opens the Overview too.
+  const page = raw === 'overview' || raw === 'wall' ? 'simple' : raw;
   // No page in the address: open the view this browser last chose.
   const home = readViewMode() === 'simple' ? 'simple' : 'dashboard';
   return {

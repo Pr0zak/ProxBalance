@@ -107,7 +107,6 @@ ProxBalance/
 │   │   ├── InsightsPage.jsx     # Insights + insights/ sub-components
 │   │   ├── AutomationPage.jsx   # Automation + automation/ sub-components
 │   │   ├── SettingsPage.jsx     # Settings + settings/ sub-components
-│   │   ├── WallMode.jsx         # Wall-monitor view (#/wall)
 │   │   └── QuickSearch.jsx      # Ctrl/Cmd+K search
 │   ├── api/client.js            # API client
 │   └── utils/                   # Design tokens, formatters, schedule and other helpers

@@ -6,7 +6,6 @@ import InsightsPage from './components/InsightsPage.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import TopNav from './components/TopNav.jsx';
 import SimpleView from './components/SimpleView.jsx';
-import WallMode from './components/WallMode.jsx';
 import QuickSearch from './components/QuickSearch.jsx';
 import useIsMobile from './utils/useIsMobile.js';
 import { formatLocalTime, getTimezoneAbbr, parseTimestamp } from './utils/formatters.js';
@@ -316,7 +315,6 @@ const ProxmoxBalanceManager = () => {
       onShowUpdate={() => updates.setShowUpdateModal(true)}
       automationStatus={automation.automationStatus}
       onOpenSearch={() => setSearchOpen(true)}
-      onOpenWall={() => ui.setCurrentPage('wall')}
     />
   );
 
@@ -367,27 +365,6 @@ const ProxmoxBalanceManager = () => {
       })()}
     </>
   );
-
-  // Wall-monitor view (#/wall): no navigation chrome, panels, modals or search.
-  if (ui.currentPage === 'wall') {
-    // The wall shows this browser's Overview, so it takes the Overview's props.
-    return (<AppStatusContext.Provider value={appStatus}><Toaster /><WallMode
-      data={cluster.data} config={configHook.config}
-      nodeScores={cluster.nodeScores} maintenanceNodes={evacuation.maintenanceNodes}
-      cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
-      automationStatus={automation.automationStatus} fetchAutomationStatus={automation.fetchAutomationStatus}
-      runHistory={automation.runHistory}
-      canMigrate={false}
-      recommendations={recs.recommendations}
-      guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
-      completedMigrations={migrations.completedMigrations}
-      API_BASE={API_BASE}
-      automationConfig={automation.automationConfig} recommendationData={recs.recommendationData}
-      migrationHistory={automation.migrationHistory}
-      chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
-      onExit={() => navigate('dashboard')}
-    /></AppStatusContext.Provider>);
-  }
 
   // Settings Page
   if (ui.currentPage === 'settings') {

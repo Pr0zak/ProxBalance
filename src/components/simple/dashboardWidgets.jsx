@@ -1,7 +1,6 @@
 // Overview widgets that reuse the Detailed dashboard's own components: the
 // KPI row, the node comparison chart and the automation banner. The Wall
-// preset uses them so wall mode keeps the look it had before it showed the
-// Overview.
+// preset uses them for the classic wall-screen layout (full screen with F11).
 
 import KpiRow from '../dashboard/KpiRow.jsx';
 import NodeCompareChart from '../dashboard/NodeCompareChart.jsx';
@@ -50,7 +49,7 @@ const CHART_METRICS = COMPARE_METRICS.map(m => ({ id: m.key, label: m.label }));
  */
 export function NodeChartWidget({ ctx }) {
   const [metric, setMetric] = usePref('nodechart.metric', 'cpu', CHART_METRICS.map(m => m.id));
-  const { widthPx, wall } = useSlot();
+  const { widthPx } = useSlot();
   const [chartPeriod] = useChartPeriod('nodes');
   useEffect(() => { if (!ctx.chartJsLoaded) ctx.loadChartJs?.(); }, [ctx.chartJsLoaded]);
   const nodes = useMemo(() => {
@@ -64,7 +63,7 @@ export function NodeChartWidget({ ctx }) {
     <Card title={`${label} by node`} href="#/dashboard/charts"
       tools={<Switch label="Metric" options={CHART_METRICS} value={metric} onChange={setMetric} />}>
       {nodes.length === 0 ? <Empty>No history yet.</Empty> : (
-        <FillBox min={fitPx(widthPx, wall ? 0.5 : 0.42, 220, 420)}>{() => (
+        <FillBox min={fitPx(widthPx, 0.45, 220, 420)}>{() => (
         <div className="h-full">
           <NodeCompareChart
             wall
