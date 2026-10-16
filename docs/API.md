@@ -128,6 +128,8 @@ Each guest has a `disks` list: its storage-backed volumes from the guest config,
 
 `GET /api/guests/<vmid>/backups?days=30` (1–90) returns the stored results oldest first: `runs` (`time`, `ok`, `duration_s`, `error`, `storage`, `node`), `days`, and `recorded_from` (epoch of the oldest stored result for any guest, or null; days before it are unknown, not missed).
 
+`GET /api/backups/runs?days=14` (1–90) returns the same stored results for every guest, oldest first, as compact rows: `runs` is a list of `[vmid, time, ok]` (`ok` is 1 or 0), plus `days` and `recorded_from`.
+
 The cluster `summary` adds `backup_failed_guests`, the number of guests whose last backup attempt failed.
 
 ### POST /api/refresh

@@ -573,6 +573,22 @@ def get_guest_backups(vmid):
         {k: r[k] for k in ("time", "ok", "duration_s", "error", "storage", "node")} for r in runs]})
 
 
+@guests_bp.route("/api/backups/runs", methods=["GET"])
+@api_route
+def get_backup_runs():
+    """Stored backup results for every guest, oldest first, as compact rows.
+
+    Each run is ``[vmid, time, ok]`` so two weeks of a large cluster stay
+    small; the Simple view charts them per day.
+    """
+    from proxbalance.backups import BACKUP_HISTORY_DAYS, backup_history_start, load_backup_runs
+
+    days = max(1, min(request.args.get("days", 14, type=int), BACKUP_HISTORY_DAYS))
+    runs = load_backup_runs(int(time.time()) - days * 86400)
+    return jsonify({"success": True, "days": days, "recorded_from": backup_history_start(),
+                    "runs": [[r["vmid"], r["time"], 1 if r["ok"] else 0] for r in runs]})
+
+
 @guests_bp.route("/api/guests/<vmid>/history", methods=["GET"])
 @api_route
 def get_guest_metrics_history(vmid):

@@ -12,16 +12,17 @@ import { BACKUP_STALE_DAYS } from './backupStatus.js';
 
 /** Every widget, in the order the picker lists unpicked ones. */
 export const WIDGETS = [
-  { id: 'status', name: 'Cluster status', desc: 'One line: all good, or how many things need a look.' },
+  { id: 'status', name: 'Cluster status', desc: 'Gauges: nodes up, guests running, CPU, memory, moves, backups.' },
   { id: 'attention', name: 'Needs you', desc: 'Only things with something to do.' },
-  { id: 'nodes', name: 'Node load', desc: 'CPU and memory per node, coloured at your limits.' },
-  { id: 'moves', name: 'Recent moves', desc: 'What moved in the last 24 hours and why.' },
-  { id: 'backups', name: 'Backups', desc: 'How the last backup of each guest went.' },
-  { id: 'forecast', name: 'Coming up', desc: 'Nodes heading for a limit, as a date.' },
-  { id: 'automation', name: 'Automation', desc: 'On or off, the last check, the next one.' },
+  { id: 'nodes', name: 'Node load', desc: 'CPU and memory gauges per node with the last 24 hours.' },
+  { id: 'moves', name: 'Moves', desc: 'Moves per day for a week, and the latest ones.' },
+  { id: 'backups', name: 'Backups', desc: 'Last backup of each guest, and results per day for two weeks.' },
+  { id: 'forecast', name: 'Coming up', desc: 'The node nearest a limit, charted, and when it gets there.' },
+  { id: 'automation', name: 'Automation', desc: 'On or off, and every check in the last 24 hours.' },
   { id: 'approvals', name: 'Waiting for approval', desc: 'Moves that need your yes (semi-automatic mode).' },
-  { id: 'timeline', name: 'What happened', desc: 'The last 24 hours in order, newest first.' },
-  { id: 'capacity', name: 'Room left', desc: 'How many more 4 GB guests fit under your memory limit.' },
+  { id: 'timeline', name: 'What happened', desc: 'The last 24 hours on a time line, newest first.' },
+  { id: 'capacity', name: 'Room left', desc: 'Memory per node up to your limit, and how many 4 GB guests fit.' },
+  { id: 'guests', name: 'Guests', desc: 'Running and stopped guests on each node.' },
   { id: 'maintenance', name: 'Maintenance', desc: 'Nodes in maintenance and the guests still on them.' },
 ];
 
@@ -32,9 +33,9 @@ const L = (...items) => items.map(([id, wide]) => ({ id, wide: !!wide }));
 
 /** Calm is the default: what a first-time viewer sees. */
 export const PRESETS = [
-  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['attention', 1], ['moves'], ['backups'], ['forecast'], ['automation'], ['nodes', 1]) },
-  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention', 1], ['approvals'], ['automation'], ['nodes'], ['moves'], ['forecast'], ['backups'], ['timeline', 1]) },
-  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['nodes', 1], ['moves'], ['timeline']) },
+  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['nodes', 1], ['attention'], ['backups'], ['moves'], ['forecast'], ['automation'], ['capacity']) },
+  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention'], ['approvals'], ['automation'], ['nodes', 1], ['moves'], ['backups'], ['forecast'], ['guests'], ['capacity'], ['timeline']) },
+  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['nodes', 1], ['moves'], ['backups'], ['timeline']) },
 ];
 export const DEFAULT_PRESET = 'calm';
 export const presetLayout = (id) => (PRESETS.find(p => p.id === id) || PRESETS[0]).layout.map(x => ({ ...x }));
@@ -282,4 +283,113 @@ export function needsYou({ attention = [], approvals = [], backups = null, cross
   }
   const rank = { bad: 0, warn: 1 };
   return rows.sort((a, b) => rank[a.tone] - rank[b.tone]);
+}
+
+// ---------------------------------------------------------------------------
+// Chart data
+// ---------------------------------------------------------------------------
+
+/**
+ * Average a [{time, <key>}] series down to `n` buckets for a sparkline.
+ * Missing samples stay null (a gap, not a zero).
+ */
+export function downsample(points, key, n = 48) {
+  const pts = (points || []).filter(p => p && typeof p.time === 'number');
+  if (pts.length < 2) return [];
+  if (pts.length <= n) return pts.map(p => (typeof p[key] === 'number' ? p[key] : null));
+  const step = pts.length / n;
+  const out = [];
+  for (let b = 0; b < n; b++) {
+    const vals = pts.slice(Math.floor(b * step), Math.floor((b + 1) * step))
+      .map(p => p[key]).filter(v => typeof v === 'number' && isFinite(v));
+    out.push(vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : null);
+  }
+  return out;
+}
+
+/** Local-day buckets, oldest first: [{ key: 'YYYY-MM-DD', label, start, end }] (ms). */
+export function dayBuckets(nowMs, days) {
+  const out = [];
+  const today = new Date(nowMs);
+  today.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const end = new Date(d);
+    end.setDate(d.getDate() + 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const label = i === 0 ? 'Today' : d.toLocaleDateString([], { weekday: 'short' });
+    out.push({ key, label, start: d.getTime(), end: end.getTime() });
+  }
+  return out;
+}
+
+const bucketOf = (buckets, ms) => buckets.find(b => ms >= b.start && ms < b.end) || null;
+
+/** Moves per local day: [{ key, label, auto, manual, failed }], oldest first. */
+export function movesByDay(migrations, nowMs = Date.now(), days = 7) {
+  const buckets = dayBuckets(nowMs, days).map(b => ({ ...b, auto: 0, manual: 0, failed: 0 }));
+  for (const m of migrations || []) {
+    if (m.dry_run || !['completed', 'failed'].includes(m.status)) continue;
+    const t = tsMs(m.timestamp);
+    const b = t == null ? null : bucketOf(buckets, t);
+    if (!b) continue;
+    if (m.status === 'failed') b.failed += 1;
+    else if (m.initiated_by === 'automated') b.auto += 1;
+    else b.manual += 1;
+  }
+  return buckets;
+}
+
+/**
+ * Backup results per local day from GET /api/backups/runs rows
+ * ([vmid, epochSec, ok]): [{ key, label, ok, failed, known }], oldest first.
+ * `known` is false for days before recording started.
+ */
+export function backupsByDay(runs, nowMs = Date.now(), days = 14, recordedFrom = null) {
+  const buckets = dayBuckets(nowMs, days).map(b => ({
+    ...b, ok: 0, failed: 0,
+    known: typeof recordedFrom === 'number' ? b.end > recordedFrom * 1000 : true,
+  }));
+  for (const [, ts, ok] of runs || []) {
+    const b = bucketOf(buckets, ts * 1000);
+    if (!b) continue;
+    if (ok) b.ok += 1; else b.failed += 1;
+  }
+  return buckets;
+}
+
+const avg = (xs) => (xs.length ? xs.reduce((a, v) => a + v, 0) / xs.length : null);
+
+/**
+ * The headline numbers: nodes up, guests running, average CPU and memory
+ * over online nodes, with tones against the limits.
+ */
+export function clusterKpis(nodes, guests, { cpuLimit, memLimit } = {}) {
+  const all = Object.values(nodes || {});
+  const online = all.filter(n => n.status === 'online');
+  const gl = Object.values(guests || {}).filter(g => !g.template);
+  const cpu = avg(online.map(n => n.cpu_percent).filter(v => typeof v === 'number'));
+  const mem = avg(online.map(n => n.mem_percent).filter(v => typeof v === 'number'));
+  return {
+    nodesUp: online.length, nodesTotal: all.length,
+    running: gl.filter(g => g.status === 'running').length, guestsTotal: gl.length,
+    cpu, mem, cpuTone: loadTone(cpu, cpuLimit), memTone: loadTone(mem, memLimit),
+  };
+}
+
+/** Guests per node, running and stopped, by name: [{ name, running, stopped }]. */
+export function guestSpread(nodes, guests) {
+  const rows = {};
+  for (const n of Object.values(nodes || {})) rows[n.name] = { name: n.name, running: 0, stopped: 0 };
+  for (const g of Object.values(guests || {})) {
+    if (g.template || !rows[g.node]) continue;
+    if (g.status === 'running') rows[g.node].running += 1; else rows[g.node].stopped += 1;
+  }
+  return Object.values(rows).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Where an epoch-ms time sits on the last `hours`, 0 (oldest) to 1 (now). */
+export function trackPos(ms, nowMs = Date.now(), hours = 24) {
+  return Math.max(0, Math.min(1, 1 - (nowMs - ms) / (hours * 3600e3)));
 }

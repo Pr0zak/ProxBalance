@@ -27,13 +27,13 @@ test('layout defaults to Calm and survives junk', () => {
 test('layout edits round-trip through storage', () => {
   const st = mem();
   let l = S.presetLayout('wall');
-  l = S.toggleWidget(l, 'backups');
-  l = S.moveWidget(l, 'backups', -1);
-  l = S.toggleWide(l, 'backups');
+  l = S.toggleWidget(l, 'guests');
+  l = S.moveWidget(l, 'guests', -1);
+  l = S.toggleWide(l, 'guests');
   assert.equal(S.matchingPreset(l), null);
   S.writeLayout(l, st);
   assert.deepEqual(S.readLayout(st), l);
-  assert.deepEqual(l.map(x => x.id), ['status', 'nodes', 'moves', 'backups', 'timeline']);
+  assert.deepEqual(l.map(x => x.id), ['status', 'nodes', 'moves', 'backups', 'guests', 'timeline']);
   assert.equal(S.moveWidget(l, 'status', -1), l);
   assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'nodes');
 });
@@ -120,4 +120,50 @@ test('needs you merges and ranks', () => {
   assert.deepEqual(rows.map(r => r.text), [
     'Backup of gpu failed', 'b in maintenance', 'Approve or skip the move of ci', 'lyra memory full in about 10 days']);
   assert.equal(rows[0].href, '#/dashboard/guests/guest/9');
+});
+
+test('downsample averages into buckets and keeps gaps', () => {
+  const pts = Array.from({ length: 10 }, (_, i) => ({ time: i, cpu: i < 5 ? 10 : (i < 8 ? null : 30) }));
+  assert.deepEqual(S.downsample(pts, 'cpu', 5), [10, 10, 10, null, 30]);
+  assert.deepEqual(S.downsample([{ time: 1, cpu: 5 }], 'cpu'), []);
+  assert.deepEqual(S.downsample(pts.slice(0, 3), 'cpu', 5), [10, 10, 10]);
+});
+
+test('moves and backups are counted per local day', () => {
+  const now = new Date(2026, 9, 15, 12, 0).getTime();
+  const at = (d, h) => new Date(2026, 9, d, h, 0).toISOString();
+  const days = S.movesByDay([
+    { timestamp: at(15, 9), status: 'completed', initiated_by: 'automated' },
+    { timestamp: at(15, 10), status: 'completed', initiated_by: 'manual' },
+    { timestamp: at(14, 23), status: 'failed', initiated_by: 'automated' },
+    { timestamp: at(14, 22), status: 'completed', dry_run: true },
+    { timestamp: at(1, 1), status: 'completed' },
+  ], now, 7);
+  assert.equal(days.length, 7);
+  assert.equal(days[6].label, 'Today');
+  assert.deepEqual([days[6].auto, days[6].manual, days[6].failed], [1, 1, 0]);
+  assert.deepEqual([days[5].auto, days[5].failed], [0, 1]);
+  const sec = (d, h) => new Date(2026, 9, d, h, 0).getTime() / 1000;
+  const b = S.backupsByDay([['1', sec(15, 1), 1], ['2', sec(15, 1), 0], ['1', sec(14, 1), 1]], now, 3, sec(14, 1));
+  assert.deepEqual(b.map(d => [d.ok, d.failed, d.known]), [[0, 0, false], [1, 0, true], [1, 1, true]]);
+});
+
+test('cluster KPIs and guest spread', () => {
+  const nodes = {
+    a: { name: 'a', status: 'online', cpu_percent: 20, mem_percent: 80 },
+    b: { name: 'b', status: 'online', cpu_percent: 40, mem_percent: 60 },
+    c: { name: 'c', status: 'offline' },
+  };
+  const guests = {
+    1: { node: 'a', status: 'running' }, 2: { node: 'a', status: 'stopped' },
+    3: { node: 'b', status: 'running' }, 4: { node: 'b', status: 'running', template: true },
+  };
+  const k = S.clusterKpis(nodes, guests, { cpuLimit: 60, memLimit: 70 });
+  assert.deepEqual([k.nodesUp, k.nodesTotal, k.running, k.guestsTotal, k.cpu, k.mem, k.cpuTone, k.memTone],
+    [2, 3, 2, 3, 30, 70, 'ok', 'warn']);
+  assert.deepEqual(S.guestSpread(nodes, guests), [
+    { name: 'a', running: 1, stopped: 1 }, { name: 'b', running: 1, stopped: 0 }, { name: 'c', running: 0, stopped: 0 }]);
+  assert.equal(S.trackPos(1000, 1000), 1);
+  assert.equal(S.trackPos(1000 - 12 * 3600e3, 1000), 0.5);
+  assert.equal(S.trackPos(0, 48 * 3600e3), 0);
 });

@@ -55,20 +55,21 @@ If a request fails, the affected area says so ("status unavailable", "Couldn't l
 
 ## Simple View
 
-The **Simple / Full** switch in the top bar picks which dashboard this browser opens. Full is the dashboard described below. Simple (`#/simple`) hides scores, penalties, charts and tables and shows widgets in plain sentences:
+The **Simple / Full** switch in the top bar picks which dashboard this browser opens. Full is the dashboard described below. Simple (`#/simple`) hides scores, penalties and tables and shows a dashboard of gauges and small charts, each with a short line of text:
 
 | Widget | Shows |
 |---|---|
-| Cluster status | One line, e.g. "All 5 nodes up · 3 things need a look", with the guest count and whether automation is on |
-| Needs you | Only items with something to do: failed backups, low headroom, maintenance, moves waiting for approval, a node reaching a limit within 14 days, stale data, a failed automation run |
-| Node load | CPU and memory bars per node, amber at your limits and red at 90% |
-| Recent moves | Moves in the last 24 hours with a few words on why |
-| Backups | How many guests were backed up in the last 3 days, and which failed, are older or have no backup |
-| Coming up | Nodes heading for a limit, as "in about N days" (the Insights forecast) |
-| Automation | On, off, dry run or semi-automatic, the last check and the next one |
+| Cluster status | One line, e.g. "All 5 nodes up · 3 things need a look", then gauges for nodes up, guests running, average CPU and memory (with a tick at your limit), moves in the last 24 hours, guests backed up in the last 3 days, and how many things need you |
+| Needs you | Only items with something to do, red edge for urgent and amber for to check: failed backups, low headroom, maintenance, moves waiting for approval, a node reaching a limit within 14 days, stale data, a failed automation run |
+| Node load | A tile per node with CPU and memory gauges (amber at your limits, red at 90%, a tick where the limit is) and a 24-hour line of both. Tap a tile for the node's panel |
+| Moves | Moves per day for 7 days (automation, by hand, failed) and the latest ones. Tap a bar for that day's counts |
+| Backups | A donut of guests backed up in the last 3 days, failed, older or never, with names, and bars of good and failed backups per day for 14 days (dashed before ProxBalance started recording) |
+| Coming up | A chart of the node metric nearest a limit: 7 days of history, the trend continued as a dashed line and the limit, plus the next few nodes with days left (the Insights forecast) |
+| Automation | On, off, dry run or semi-automatic, the last and next check, and a square per check over the last 24 hours |
 | Waiting for approval | Semi-automatic moves with Approve and Skip |
-| What happened | The last 24 hours in order: moves, failed backups and the nightly backup round |
-| Room left | How many more 4 GB guests fit before nodes pass your memory limit |
+| What happened | The last 24 hours on one track with a mark per event, then the list: moves, failed backups and the nightly backup round |
+| Room left | Memory used per node against a line at your limit, and how many more 4 GB guests fit on each |
+| Guests | Running and stopped guests per node |
 | Maintenance | Nodes in maintenance and how many running guests are still on them |
 
 Each widget links to the full page it summarizes. **Customize** picks widgets, their order and (on wide screens) full width, or applies a preset: **Calm** (the default), **Operator** or **Wall**. The layout and the Simple/Full choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Full.

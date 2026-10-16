@@ -578,6 +578,7 @@ const ProxmoxBalanceManager = () => {
         nodeScores={cluster.nodeScores} maintenanceNodes={evacuation.maintenanceNodes}
         cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
         automationStatus={automation.automationStatus} fetchAutomationStatus={automation.fetchAutomationStatus}
+        runHistory={automation.runHistory}
         canMigrate={auth.canMigrate}
         API_BASE={API_BASE}
       />

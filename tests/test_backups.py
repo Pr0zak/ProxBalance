@@ -103,3 +103,23 @@ def test_backups_endpoint(monkeypatch, tmp_path):
     assert j["success"] and j["days"] == 90 and j["recorded_from"] == now - 60
     assert j["runs"] == [{"time": now - 60, "ok": True, "duration_s": 9, "error": None, "storage": "pbs", "node": "n1"}]
     db.close_all()
+
+
+def test_cluster_backup_runs_endpoint(monkeypatch, tmp_path):
+    import time as _t
+    from flask import Flask
+    from proxbalance.backups import record_backup_runs
+    from proxbalance.routes.guests import guests_bp
+    db = _db(monkeypatch, tmp_path)
+    now = int(_t.time())
+    record_backup_runs([
+        {"vmid": "7", "ok": True, "time": now - 60, "duration_s": 9, "error": None, "storage": "pbs", "node": "n1"},
+        {"vmid": "8", "ok": False, "time": now - 30, "duration_s": None, "error": "x", "storage": "pbs", "node": "n1"},
+        {"vmid": "9", "ok": True, "time": now - 20 * 86400, "duration_s": 5, "error": None, "storage": "pbs", "node": "n2"},
+    ], now=now)
+    app = Flask(__name__)
+    app.register_blueprint(guests_bp)
+    j = app.test_client().get("/api/backups/runs").get_json()
+    assert j["success"] and j["days"] == 14 and j["recorded_from"] == now - 20 * 86400
+    assert j["runs"] == [["7", now - 60, 1], ["8", now - 30, 0]]
+    db.close_all()
