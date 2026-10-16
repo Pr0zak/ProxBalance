@@ -92,9 +92,16 @@ function useWallFit(vp, contentRef) {
     const el = contentRef.current;
     if (!el) return undefined;
     // Height of the content laid out at the width that scale `s` fills.
-    const heightAt = (s) => { el.style.width = `${vp.w / s}px`; return el.offsetHeight; };
+    // The Overview stretches to --wall-h (the screen height at that scale),
+    // so widgets fill a screen they would not otherwise reach the bottom of.
+    const heightAt = (s) => {
+      el.style.width = `${vp.w / s}px`;
+      el.style.setProperty('--wall-h', `${vp.h / s}px`);
+      return el.offsetHeight;
+    };
     const measure = () => {
       const keep = el.style.width;
+      const keepH = el.style.getPropertyValue('--wall-h');
       let s = 1;
       let h = heightAt(1);
       if (vp.w >= WALL_MIN_WIDTH && h > vp.h) {
@@ -113,6 +120,7 @@ function useWallFit(vp, contentRef) {
         if (s === WALL_MIN_SCALE) h = heightAt(s);
       }
       el.style.width = keep;
+      el.style.setProperty('--wall-h', keepH);
       setFit(f => (Math.abs(f.s - s) < 0.002 && f.h === h ? f : { s, h }));
     };
     measure();
@@ -186,7 +194,7 @@ export default function WallMode({ onExit, ...overview }) {
     <div className={`${PAGE_BG} min-h-screen overflow-x-hidden ${hint ? '' : 'cursor-none'}`} onPointerMove={poke} onPointerDown={poke}
       style={{ height: fit.h ? Math.max(vp.h, scaled) : undefined }}>
       <div ref={contentRef} className="pointer-events-none select-none origin-top-left"
-        style={{ width: `${vp.w / fit.s}px`, transform: fit.s < 1 ? `scale(${fit.s})` : undefined }}>
+        style={{ width: `${vp.w / fit.s}px`, '--wall-h': `${vp.h / fit.s}px`, transform: fit.s < 1 ? `scale(${fit.s})` : undefined }}>
         <SimpleView {...overview} wall />
       </div>
 

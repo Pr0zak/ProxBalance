@@ -828,7 +828,7 @@ export default function ClusterMap({
                         <div key={guest.vmid}
                           onMouseEnter={isTouch ? undefined : () => setHoverVmid(guest.vmid)}
                           onMouseLeave={isTouch ? undefined : () => setHoverVmid(v => (String(v) === String(guest.vmid) ? null : v))}
-                          className={`relative group flex flex-col items-center transition-opacity ${dimmed ? 'opacity-20' : linking && !partner && !isHovered ? 'opacity-40' : ''} ${isHovered || partner ? 'z-20' : ''}`}>
+                          className={`relative group flex flex-col items-center transition-opacity ${dimmed ? 'opacity-20' : linking && !partner && !isHovered ? 'opacity-40' : ''} ${isHovered ? 'z-40' : partner ? 'z-20' : ''}`}>
                           <div
                             draggable={canDrag}
                             onDragStart={(e) => {

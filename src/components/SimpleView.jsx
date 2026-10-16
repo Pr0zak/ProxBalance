@@ -851,7 +851,8 @@ export default function SimpleView({
   };
 
   return (
-    <main className={wall ? 'px-4 py-4' : 'max-w-[2200px] mx-auto px-4 py-4 sm:py-6'}>
+    <main className={wall ? 'px-4 py-4 flex flex-col' : 'max-w-[2200px] mx-auto px-4 py-4 sm:py-6'}
+      style={wall ? { minHeight: 'var(--wall-h, 100vh)' } : undefined}>
       {!wall && <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-lg font-semibold text-pb-text dark:text-gray-100">Overview</h1>
         <div className="flex items-center gap-2 min-w-0">
@@ -886,8 +887,8 @@ export default function SimpleView({
               Drag <b>Move</b> to reorder{minSpan < 12 ? ', drag a card’s right edge or tap a size to resize' : ''}. Sizes too narrow for this screen are widened automatically.
             </p>
           )}
-          <div ref={gridRef} className="grid"
-            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`, gap: GRID_GAP, gridAutoFlow: 'row dense' }}>
+          <div ref={gridRef} className={`grid ${wall ? 'flex-1' : ''}`}
+            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`, gap: GRID_GAP, gridAutoFlow: 'row dense', alignContent: wall ? 'stretch' : undefined }}>
             {layout.map(it => {
               const W = RENDER[it.id];
               if (!W) return null;
