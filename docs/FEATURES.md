@@ -82,7 +82,7 @@ An **Overview / Detailed** switch in the top bar. Overview shows a dashboard of 
 
 ![Wall mode](images/wall.png)
 
-The full-screen button in the top bar (large screens), or the address `#/wall`, opens a view for a monitor on the wall: the summary row, the Cluster Map, CPU per node and automation status with the last 24 hours of checks. It fills the screen at 1080p and 1440p without scrolling, keeps the screen awake where the browser allows, and has no menus or panels. Press Esc, leave full screen, or use the Exit button that appears when you move the mouse. On a phone it is a normal scrolling page.
+The full-screen button in the top bar (large screens), or the address `#/wall`, shows this browser's Overview full screen, for a monitor on the wall: no menus, links or panels, scaled to fit the screen, scrolling slowly by itself if the layout is still too tall. The **Wall** preset gives the classic layout (cluster gauges, the Cluster Map, CPU per node and the automation checks) and fits 1080p and 720p. It keeps the screen awake where the browser allows. Press Esc, leave full screen, or use the Exit button that appears when you move the mouse. On a phone it is a normal scrolling page.
 
 ---
 

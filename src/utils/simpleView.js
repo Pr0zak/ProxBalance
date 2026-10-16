@@ -78,13 +78,17 @@ export function spanForWidth(px, gridPx, gapPx = 16, minSpan = 3) {
   return allowed.reduce((best, x) => (Math.abs(x - raw) < Math.abs(best - raw) ? x : best), allowed[0] ?? GRID_COLS);
 }
 
-const L = (...items) => items.map(([id, span]) => ({ id, span: span || defaultSpan(id) }));
+// [id, span, rows]: rows 2 lets a widget sit beside two stacked ones.
+const L = (...items) => items.map(([id, span, rows]) => (rows > 1
+  ? { id, span: span || defaultSpan(id), rows } : { id, span: span || defaultSpan(id) }));
 
 /** Calm is the default: what a first-time viewer sees. */
 export const PRESETS = [
   { id: 'calm', label: 'Calm', layout: L(['status', 12], ['map', 12], ['nodes', 12], ['attention', 4], ['backups', 4], ['moves', 4], ['forecast', 4], ['automation', 4], ['capacity', 4]) },
   { id: 'operator', label: 'Operator', layout: L(['status', 12], ['attention', 4], ['approvals', 4], ['automation', 4], ['map', 12], ['nodes', 12], ['moves', 4], ['backups', 4], ['forecast', 4], ['guests', 4], ['capacity', 4], ['timeline', 4]) },
-  { id: 'wall', label: 'Wall', layout: L(['status', 12], ['map', 8], ['moves', 4], ['load', 8], ['backups', 4], ['timeline', 12]) },
+  // Like the old fixed wall view: gauges across the top, the map on the left,
+  // CPU by node and the automation checks stacked on the right.
+  { id: 'wall', label: 'Wall', layout: L(['status', 12], ['map', 8, 2], ['load', 4], ['automation', 4]) },
   { id: 'charts', label: 'Charts', layout: L(['status', 12], ['map', 12], ['load', 8], ['rhythm', 4], ['memmap', 8], ['topguests', 4], ['storage', 4], ['moves', 4], ['backups', 4], ['forecast', 4], ['capacity', 4], ['guests', 4]) },
 ];
 export const DEFAULT_PRESET = 'calm';
@@ -96,7 +100,7 @@ export function matchingPreset(layout) {
   return PRESETS.find(p => layoutKey(p.layout) === k)?.id || null;
 }
 
-const layoutKey = (l) => (l || []).map(x => `${x.id}:${x.span}`).join(',');
+const layoutKey = (l) => (l || []).map(x => `${x.id}:${x.span}:${x.rows || 1}`).join(',');
 
 /**
  * Drop unknown and repeated ids; anything unusable falls back to the default.
@@ -113,7 +117,7 @@ export function normalizeLayout(raw) {
     seen.add(id);
     let span = it?.span;
     if (!validSpan(span)) span = it?.wide ? 12 : Math.min(defaultSpan(id), 8);
-    out.push({ id, span });
+    out.push(it?.rows === 2 ? { id, span, rows: 2 } : { id, span });
   }
   return out;
 }
@@ -133,6 +137,13 @@ export function moveWidget(layout, id, dir) {
 
 export const setSpan = (layout, id, span) => (validSpan(span)
   ? layout.map(x => (x.id === id ? { ...x, span } : x)) : layout);
+
+/** Make a widget two rows tall (beside two stacked widgets) or back to one. */
+export const toggleRows = (layout, id) => layout.map(x => {
+  if (x.id !== id) return x;
+  if (x.rows === 2) { const { rows, ...rest } = x; return rest; }
+  return { ...x, rows: 2 };
+});
 
 /** Move `id` to just before (or after) `targetId`. */
 export function moveWidgetTo(layout, id, targetId, after = false) {
@@ -672,7 +683,7 @@ export function nameProblem(name) {
 /** Save `layout` as `name`, replacing a saved layout of the same name (any case). */
 export function saveNamed(list, name, layout) {
   const n = name.trim().slice(0, MAX_NAME);
-  const entry = { name: n, layout: layout.map(x => ({ id: x.id, span: x.span })) };
+  const entry = { name: n, layout: layout.map(x => (x.rows === 2 ? { id: x.id, span: x.span, rows: 2 } : { id: x.id, span: x.span })) };
   const i = list.findIndex(s => sameName(s.name, n));
   if (i < 0) return [...list, entry];
   const next = [...list];

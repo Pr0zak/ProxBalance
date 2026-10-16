@@ -33,13 +33,19 @@ function ArrangeBar({ slot, title }) {
         <GripIcon /> Move
       </button>
       {sizes.length > 1 && (
-        <div role="group" aria-label={`Size of ${title}`} className="flex gap-1 ml-auto">
+        <div role="group" aria-label={`Size of ${title}`} className="flex flex-wrap justify-end gap-1 ml-auto">
           {sizes.map(x => (
             <button key={x} type="button" aria-pressed={slot.span === x} onClick={() => slot.onSize(x)}
               className={`min-w-[2rem] px-1.5 py-0.5 rounded-md text-xs border ${slot.span === x ? 'border-blue-500 bg-blue-500/15 text-blue-700 dark:text-blue-300' : 'border-pb-border dark:border-slate-600 text-pb-text2 dark:text-gray-300'}`}>
               {SPAN_LABEL[x]}
             </button>
           ))}
+          {slot.span < 12 && (
+            <button type="button" aria-pressed={slot.rows === 2} onClick={slot.onRows} title="Two rows tall, beside two stacked widgets"
+              className={`px-1.5 py-0.5 rounded-md text-xs border ${slot.rows === 2 ? 'border-blue-500 bg-blue-500/15 text-blue-700 dark:text-blue-300' : 'border-pb-border dark:border-slate-600 text-pb-text2 dark:text-gray-300'}`}>
+              ↕ Tall
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -71,14 +77,15 @@ export function Card({ title, href, linkText = 'Open', tools, children }) {
   const slot = useSlot();
   const arranging = !!slot.arrange;
   return (
-    <section data-widget={slot.id} style={{ gridColumn: `span ${slot.span} / span ${slot.span}` }}
+    <section data-widget={slot.id}
+      style={{ gridColumn: `span ${slot.span} / span ${slot.span}`, ...(slot.rows === 2 ? { gridRow: 'span 2 / span 2' } : null) }}
       className={`${WALL_PANEL} relative flex flex-col gap-3 min-w-0 ${arranging ? 'ring-1 ring-blue-400/50' : ''} ${slot.dragging ? 'opacity-50 ring-2 !ring-blue-500' : ''}`}>
       {arranging && <ArrangeBar slot={slot} title={title} />}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-400">{title}</h2>
         <div className="flex items-center gap-3 ml-auto">
-          {tools}
-          {href && <a href={href} className={`text-xs ${LINK} inline-flex items-center`}>{linkText}<ChevronRight size={12} /></a>}
+          {!slot.wall && tools}
+          {href && !slot.wall && <a href={href} className={`text-xs ${LINK} inline-flex items-center`}>{linkText}<ChevronRight size={12} /></a>}
         </div>
       </div>
       <div className={`contents ${arranging ? '[&>*]:pointer-events-none [&>*]:select-none' : ''}`}>{children}</div>

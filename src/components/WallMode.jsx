@@ -1,17 +1,9 @@
-import KpiRow from './dashboard/KpiRow.jsx';
-import ClusterMap from './dashboard/ClusterMap.jsx';
-import NodeCompareChart from './dashboard/NodeCompareChart.jsx';
-import AutoStatusPill from './dashboard/AutoStatusPill.jsx';
-import { RunStrip } from './dashboard/RunHistoryDisplay.jsx';
-import { hasTrendData, useChartPeriod } from './dashboard/nodeSeries.js';
-import { nodeColors } from './dashboard/compareSeries.js';
-import { nodeRoles } from '../utils/nodeRoles.js';
-import { useNow, describeDataAge, DATA_AGE_TONE } from '../utils/dataAge.js';
-import { wallScale, fitScale } from '../utils/wallMode.js';
-import { PAGE_BG, WALL_PANEL, BTN_SECONDARY } from '../utils/designTokens.js';
+import SimpleView from './SimpleView.jsx';
+import { PAGE_BG, BTN_SECONDARY } from '../utils/designTokens.js';
+import { WALL_MIN_WIDTH } from '../utils/wallMode.js';
 import { Maximize, X } from './Icons.jsx';
 
-const { useState, useEffect, useLayoutEffect, useMemo, useRef } = React;
+const { useState, useEffect, useLayoutEffect, useRef } = React;
 
 const HINT_MS = 3000;
 
@@ -80,66 +72,100 @@ function useWakeLock() {
   }, []);
 }
 
-// Scales its content down (never up) to fit the box. `layoutWidth` lays the
-// content out wider than the box first, e.g. so every node fits in one row.
-function FitBox({ layoutWidth = 0, children }) {
-  const boxRef = useRef(null);
-  const innerRef = useRef(null);
-  const [fit, setFit] = useState({ w: null, s: 1 });
+
+// Smallest scale the Overview is shrunk to so it fits the screen; below it
+// the page is drawn at this scale and scrolls by itself.
+const WALL_MIN_SCALE = 0.6;
+// Auto-scroll: pixels per tick, tick length, and the pause at each end.
+const SCROLL_STEP = 1;
+const SCROLL_TICK_MS = 40;
+const SCROLL_PAUSE_MS = 8000;
+
+/**
+ * Lays the content out at a width that, scaled to the screen, fills it, and
+ * shrinks it (never below WALL_MIN_SCALE) until it fits the screen height.
+ * When even that is too tall, the page scrolls slowly down and back up.
+ */
+function useWallFit(vp, contentRef) {
+  const [fit, setFit] = useState({ s: 1, h: 0 });
   useLayoutEffect(() => {
-    const box = boxRef.current;
-    const inner = innerRef.current;
-    if (!box || !inner) return undefined;
+    const el = contentRef.current;
+    if (!el) return undefined;
+    // Height of the content laid out at the width that scale `s` fills.
+    const heightAt = (s) => { el.style.width = `${vp.w / s}px`; return el.offsetHeight; };
     const measure = () => {
-      const bw = box.clientWidth;
-      const bh = box.clientHeight;
-      const w = Math.max(bw, layoutWidth);
-      const s = fitScale(w, inner.offsetHeight, bw, bh, 0.35);
-      setFit(f => (f.w === w && Math.abs(f.s - s) < 0.005 ? f : { w, s }));
+      const keep = el.style.width;
+      let s = 1;
+      let h = heightAt(1);
+      if (vp.w >= WALL_MIN_WIDTH && h > vp.h) {
+        // Laid out at the screen's width the content is at its tallest, so
+        // scaling it by vp.h / h always fits; a wider layout is shorter, so
+        // try a few slightly bigger scales and keep the biggest that fits.
+        s = Math.max(WALL_MIN_SCALE, vp.h / h);
+        h = heightAt(s);
+        for (let k = 0; k < 4 && s > WALL_MIN_SCALE; k++) {
+          const next = Math.min(1, vp.h / h);
+          if (next <= s + 0.005) break;
+          const hn = heightAt(next);
+          if (hn * next > vp.h + 1) break;
+          s = next; h = hn;
+        }
+        if (s === WALL_MIN_SCALE) h = heightAt(s);
+      }
+      el.style.width = keep;
+      setFit(f => (Math.abs(f.s - s) < 0.002 && f.h === h ? f : { s, h }));
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(measure);
-    ro.observe(box);
-    ro.observe(inner);
+    // Re-fit when what is inside changes height (data arriving, a chart).
+    let last = el.offsetHeight;
+    const ro = new ResizeObserver(() => {
+      if (Math.abs(el.offsetHeight - last) < 2) return;
+      last = el.offsetHeight;
+      measure();
+      last = el.offsetHeight;
+    });
+    ro.observe(el);
     return () => ro.disconnect();
-  }, [layoutWidth]);
-  return (
-    <div ref={boxRef} className="relative w-full h-full overflow-hidden">
-      <div
-        ref={innerRef}
-        className="absolute top-0 left-1/2"
-        style={{
-          width: fit.w ? `${fit.w}px` : '100%',
-          transform: `translateX(-50%) scale(${fit.s})`,
-          transformOrigin: 'top center',
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
+  }, [vp.w, vp.h]);
+  return fit;
+}
+
+function useAutoScroll(enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    let pausedUntil = Date.now() + SCROLL_PAUSE_MS;
+    const t = setInterval(() => {
+      if (Date.now() < pausedUntil) return;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (max <= 2) return;
+      if (window.scrollY >= max - 1) {
+        pausedUntil = Date.now() + SCROLL_PAUSE_MS;
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), SCROLL_PAUSE_MS - 1000);
+        return;
+      }
+      window.scrollBy(0, SCROLL_STEP);
+    }, SCROLL_TICK_MS);
+    return () => clearInterval(t);
+  }, [enabled]);
 }
 
 /**
- * Full-screen wall-monitor view (#/wall): KPIs, the cluster map, every node's
- * CPU on one chart and the automation status, sized to fill a big screen
- * without scrolling. Read-only: clicks only bring up the exit control.
- * On screens 1024 px and wider the layout is drawn on a 1280 × 720 canvas
- * and scaled to the screen; narrower screens get a plain stacked page.
+ * Full-screen wall-monitor view (#/wall): this browser's Overview (its
+ * widgets, sizes and order, see Customize and Arrange) with no menus,
+ * scaled to fill the screen. If it is still taller than the screen at
+ * WALL_MIN_SCALE it scrolls slowly by itself. Read-only: clicks only bring
+ * up the exit control. Keeps the screen awake where the browser allows.
  */
-export default function WallMode({
-  data, error, loading, config,
-  nodeScores, recommendations, recommendationData,
-  automationStatus, automationConfig, runHistory, migrationHistory,
-  maintenanceNodes, guestsMigrating, migrationProgress, completedMigrations,
-  chartJsLoaded, loadChartJs,
-  onExit,
-}) {
+export default function WallMode({ onExit, ...overview }) {
   const vp = useViewport();
-  const view = wallScale(vp.w, vp.h);
   const fs = useFullscreen(onExit);
   useWakeLock();
+  const contentRef = useRef(null);
+  const fit = useWallFit(vp, contentRef);
+  const scaled = fit.h * fit.s;
+  useAutoScroll(scaled > vp.h + 4);
 
   // Exit control: shown on pointer movement / tap / key, hidden after a pause.
   const [hint, setHint] = useState(true);
@@ -156,141 +182,13 @@ export default function WallMode({
     return () => { window.removeEventListener('keydown', onKey); clearTimeout(hintTimer.current); };
   }, []);
 
-  useEffect(() => { if (!chartJsLoaded) loadChartJs?.(); }, [chartJsLoaded]);
-
-  const [chartPeriod] = useChartPeriod('nodes');
-  const compareNodes = useMemo(() => {
-    const all = Object.values(data?.nodes || {});
-    const colors = nodeColors(all.map(n => n.name));
-    return all.filter(hasTrendData).sort((a, b) => a.name.localeCompare(b.name))
-      .map(n => ({ name: n.name, color: colors[n.name], trendData: n.trend_data }));
-  }, [data?.nodes]);
-  const nodeRoleMap = useMemo(
-    () => nodeRoles({ nodes: data?.nodes, recommendations, maintenanceNodes }),
-    [data, recommendations, maintenanceNodes],
-  );
-  const thresholds = {
-    cpu: recommendationData?.parameters?.cpu_threshold,
-    mem: recommendationData?.parameters?.mem_threshold,
-    iowait: recommendationData?.parameters?.iowait_threshold,
-  };
-
-  const now = useNow(30000);
-  const dataAge = describeDataAge(data?.collected_at, config?.collection_interval_minutes, now);
-  const nodeCount = Object.keys(data?.nodes || {}).length;
-  // One row of node columns (196 px + 16 px gap each), then scale to fit.
-  const mapLayoutWidth = view.fixed ? nodeCount * 212 : 0;
-  const noop = () => {};
-  const runs = runHistory && runHistory.length ? runHistory
-    : (automationStatus?.state?.last_run && typeof automationStatus.state.last_run === 'object' ? [automationStatus.state.last_run] : []);
-
-  const label = 'text-xs font-semibold uppercase tracking-wider text-pb-text2 dark:text-gray-400';
-
-  const map = data ? (
-    <ClusterMap
-      embedded wall
-      data={data}
-      showPoweredOffGuests={false}
-      setShowPoweredOffGuests={noop}
-      clusterMapViewMode="cpu"
-      setClusterMapViewMode={noop}
-      maintenanceNodes={maintenanceNodes}
-      nodeRoleMap={nodeRoleMap}
-      setSelectedNode={noop}
-      setSelectedGuestDetails={noop}
-      guestsMigrating={guestsMigrating}
-      migrationProgress={migrationProgress}
-      completedMigrations={completedMigrations}
-      nodeScores={nodeScores}
-      recommendations={recommendations}
-    />
-  ) : null;
-
-  const body = !data ? (
-    <div className="h-full min-h-screen flex items-center justify-center text-lg text-pb-text2 dark:text-gray-400">
-      {error ? `Cannot reach ProxBalance: ${error}` : loading ? 'Loading cluster data…' : 'No cluster data yet'}
-    </div>
-  ) : (
-    <div className={`flex flex-col gap-3 p-3 ${view.fixed ? 'h-full' : ''}`}>
-      <div className="[&>div]:!mb-0 shrink-0">
-        <KpiRow
-          data={data}
-          nodeScores={nodeScores}
-          automationStatus={automationStatus}
-          automationConfig={automationConfig}
-          recommendations={recommendations}
-          recommendationData={recommendationData}
-          onNavigate={noop}
-          onOpenAutomation={noop}
-          maintenanceNodes={maintenanceNodes}
-          guestsMigrating={guestsMigrating}
-          migrationProgress={migrationProgress}
-        />
-      </div>
-
-      <div className={view.fixed ? 'flex-1 min-h-0 grid grid-cols-[3fr_2fr] gap-3' : 'flex flex-col gap-3'}>
-        <section className={`${WALL_PANEL} flex flex-col`} aria-label="Cluster map">
-          <div className={label}>Cluster map</div>
-          <div className={view.fixed ? 'flex-1 min-h-0' : ''}>
-            {view.fixed ? <FitBox layoutWidth={mapLayoutWidth}>{map}</FitBox> : map}
-          </div>
-        </section>
-
-        <div className="flex flex-col gap-3 min-h-0 min-w-0">
-          <section className={`${WALL_PANEL} flex flex-col ${view.fixed ? 'flex-1' : 'h-[360px]'}`} aria-label="CPU by node">
-            <div className={`${label} mb-2`}>CPU by node</div>
-            <div className="flex-1 min-h-0">
-              <NodeCompareChart
-                wall
-                fixedMetric="cpu"
-                pixelRatio={(window.devicePixelRatio || 1) * view.scale}
-                nodes={compareNodes}
-                thresholds={thresholds}
-                chartPeriod={chartPeriod}
-                chartReady={!!chartJsLoaded}
-                migrationHistory={migrationHistory}
-              />
-            </div>
-          </section>
-          <section className={`${WALL_PANEL} shrink-0 flex flex-col gap-3`} aria-label="Automation">
-            <AutoStatusPill
-              size="banner"
-              readOnly
-              automationStatus={automationStatus}
-              automationConfig={automationConfig}
-              runHistory={runHistory}
-            />
-            {automationStatus?.enabled && runs.length > 0 && (
-              <div>
-                <div className={`${label} mb-1.5`}>Recent checks · 24 h</div>
-                <RunStrip runs={runs} ctx={{ now: new Date(now) }} />
-              </div>
-            )}
-            {dataAge && (
-              <div className={`text-xs tabular-nums ${DATA_AGE_TONE[dataAge.tone]}`}>Cluster data {dataAge.label}</div>
-            )}
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div
-      className={`${PAGE_BG} ${view.fixed ? 'fixed inset-0 overflow-hidden' : ''} ${hint ? '' : 'cursor-none'}`}
-      onPointerMove={poke}
-      onPointerDown={poke}
-    >
-      {view.fixed ? (
-        <div
-          className="pointer-events-none select-none"
-          style={{ width: `${view.width}px`, height: `${view.height}px`, transform: `scale(${view.scale})`, transformOrigin: 'top left' }}
-        >
-          {body}
-        </div>
-      ) : (
-        <div className="pointer-events-none select-none">{body}</div>
-      )}
+    <div className={`${PAGE_BG} min-h-screen overflow-x-hidden ${hint ? '' : 'cursor-none'}`} onPointerMove={poke} onPointerDown={poke}
+      style={{ height: fit.h ? Math.max(vp.h, scaled) : undefined }}>
+      <div ref={contentRef} className="pointer-events-none select-none origin-top-left"
+        style={{ width: `${vp.w / fit.s}px`, transform: fit.s < 1 ? `scale(${fit.s})` : undefined }}>
+        <SimpleView {...overview} wall />
+      </div>
 
       <div
         className={`fixed top-3 right-3 z-50 flex items-center gap-2 transition-opacity duration-300 ${hint ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}

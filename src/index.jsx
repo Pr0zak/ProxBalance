@@ -370,18 +370,19 @@ const ProxmoxBalanceManager = () => {
 
   // Wall-monitor view (#/wall): no navigation chrome, panels, modals or search.
   if (ui.currentPage === 'wall') {
+    // The wall shows this browser's Overview, so it takes the Overview's props.
     return (<AppStatusContext.Provider value={appStatus}><Toaster /><WallMode
-      data={cluster.data} error={cluster.error} loading={cluster.loading}
-      config={configHook.config}
-      nodeScores={cluster.nodeScores}
-      recommendations={recs.recommendations} recommendationData={recs.recommendationData}
-      automationStatus={automation.automationStatus} automationConfig={automation.automationConfig}
-      runHistory={automation.runHistory} migrationHistory={automation.migrationHistory}
-      maintenanceNodes={evacuation.maintenanceNodes}
+      data={cluster.data} config={configHook.config}
+      nodeScores={cluster.nodeScores} maintenanceNodes={evacuation.maintenanceNodes}
+      cpuThreshold={recs.cpuThreshold} memThreshold={recs.memThreshold} iowaitThreshold={recs.iowaitThreshold}
+      automationStatus={automation.automationStatus} fetchAutomationStatus={automation.fetchAutomationStatus}
+      runHistory={automation.runHistory}
+      canMigrate={false}
+      recommendations={recs.recommendations}
       guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
       completedMigrations={migrations.completedMigrations}
-      chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
-      onExit={() => ui.setCurrentPage('dashboard')}
+      API_BASE={API_BASE}
+      onExit={() => navigate('dashboard')}
     /></AppStatusContext.Provider>);
   }
 

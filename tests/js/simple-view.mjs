@@ -35,10 +35,12 @@ test('layout edits round-trip through storage', () => {
   assert.equal(S.matchingPreset(l), null);
   S.writeLayout(l, st);
   assert.deepEqual(S.readLayout(st), l);
-  assert.deepEqual(l.map(x => x.id), ['status', 'map', 'moves', 'load', 'backups', 'guests', 'timeline']);
+  assert.deepEqual(l.map(x => x.id), ['status', 'map', 'load', 'guests', 'automation']);
   assert.equal(S.moveWidget(l, 'status', -1), l);
-  assert.deepEqual(S.moveWidgetTo(l, 'timeline', 'map').map(x => x.id), ['status', 'timeline', 'map', 'moves', 'load', 'backups', 'guests']);
-  assert.deepEqual(S.moveWidgetTo(l, 'status', 'guests', true).map(x => x.id), ['map', 'moves', 'load', 'backups', 'guests', 'status', 'timeline']);
+  assert.deepEqual(S.moveWidgetTo(l, 'automation', 'map').map(x => x.id), ['status', 'automation', 'map', 'load', 'guests']);
+  assert.deepEqual(S.moveWidgetTo(l, 'status', 'guests', true).map(x => x.id), ['map', 'load', 'guests', 'status', 'automation']);
+  assert.deepEqual(l.find(x => x.id === 'map'), { id: 'map', span: 8, rows: 2 });
+  assert.deepEqual(S.normalizeLayout([{ id: 'map', span: 8, rows: 2 }, { id: 'load', span: 4, rows: 7 }]), [{ id: 'map', span: 8, rows: 2 }, { id: 'load', span: 4 }]);
   assert.equal(S.moveWidgetTo(l, 'status', 'nope'), l);
   assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'map');
 });
