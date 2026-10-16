@@ -207,3 +207,28 @@ test('top guests, storage pools and memory columns', () => {
   assert.deepEqual([cols[0].otherGb, cols[0].freeGb], [8, 16]);
   assert.deepEqual([cols[1].otherGb, cols[1].freeGb], [0, 16]);
 });
+
+test('named layouts save, replace, match and delete', () => {
+  const st = mem();
+  assert.deepEqual(S.readSaved(st), []);
+  const a = [{ id: 'load', wide: true }, { id: 'storage', wide: false }];
+  let list = S.saveNamed([], '  Night shift ', a);
+  list = S.saveNamed(list, 'Phone', [{ id: 'status', wide: false }]);
+  assert.deepEqual(list.map(s => s.name), ['Night shift', 'Phone']);
+  list = S.saveNamed(list, 'night SHIFT', [{ id: 'nodes', wide: false }]);
+  assert.deepEqual(list.map(s => s.name), ['night SHIFT', 'Phone']);
+  assert.deepEqual(list[0].layout, [{ id: 'nodes', wide: false }]);
+  S.writeSaved(list, st);
+  assert.deepEqual(S.readSaved(st), list);
+  assert.equal(S.matchingSaved([{ id: 'status', wide: false }], list), 'Phone');
+  assert.equal(S.matchingSaved([{ id: 'status', wide: true }], list), null);
+  assert.deepEqual(S.deleteNamed(list, 'phone').map(s => s.name), ['night SHIFT']);
+  assert.equal(S.nameProblem(' '), 'Give it a name.');
+  assert.equal(S.nameProblem('calm'), '"Calm" is a preset name.');
+  assert.equal(S.nameProblem('x'.repeat(41)), 'At most 40 characters.');
+  assert.equal(S.nameProblem('Wall 2'), null);
+  st.setItem(S.SAVED_KEY, '{"not":"a list"}');
+  assert.deepEqual(S.readSaved(st), []);
+  st.setItem(S.SAVED_KEY, JSON.stringify([{ name: 'ok', layout: ['load', 'bogus'] }, { name: '', layout: [] }, null]));
+  assert.deepEqual(S.readSaved(st), [{ name: 'ok', layout: [{ id: 'load', wide: false }] }]);
+});

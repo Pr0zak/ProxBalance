@@ -570,3 +570,59 @@ export function memoryColumns(nodes, guests) {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+// ---------------------------------------------------------------------------
+// Named layouts (per browser, like the layout itself)
+// ---------------------------------------------------------------------------
+
+export const SAVED_KEY = 'pb.simpleSaved';
+export const MAX_NAME = 40;
+
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const layoutKey = (l) => (l || []).map(x => `${x.id}:${x.wide ? 1 : 0}`).join(',');
+
+/** Saved layouts [{ name, layout }]; junk entries are dropped. */
+export function readSaved(storage = globalThis.localStorage) {
+  try {
+    const raw = JSON.parse(storage?.getItem(SAVED_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter(s => s && typeof s.name === 'string' && s.name.trim() && Array.isArray(s.layout))
+      .map(s => ({ name: s.name.trim().slice(0, MAX_NAME), layout: normalizeLayout(s.layout) }));
+  } catch { return []; }
+}
+
+export function writeSaved(list, storage = globalThis.localStorage) {
+  try { storage?.setItem(SAVED_KEY, JSON.stringify(list)); } catch { /* per-browser nicety only */ }
+}
+
+/**
+ * Why a name can't be used, or null. A preset's name is taken; an existing
+ * saved name is fine (saving replaces it).
+ */
+export function nameProblem(name) {
+  const n = (name || '').trim();
+  if (!n) return 'Give it a name.';
+  if (n.length > MAX_NAME) return `At most ${MAX_NAME} characters.`;
+  if (PRESETS.some(p => sameName(p.label, n))) return `"${PRESETS.find(p => sameName(p.label, n)).label}" is a preset name.`;
+  return null;
+}
+
+/** Save `layout` as `name`, replacing a saved layout of the same name (any case). */
+export function saveNamed(list, name, layout) {
+  const n = name.trim().slice(0, MAX_NAME);
+  const entry = { name: n, layout: layout.map(x => ({ id: x.id, wide: !!x.wide })) };
+  const i = list.findIndex(s => sameName(s.name, n));
+  if (i < 0) return [...list, entry];
+  const next = [...list];
+  next[i] = entry;
+  return next;
+}
+
+export const deleteNamed = (list, name) => list.filter(s => !sameName(s.name, name));
+
+/** The saved layout `layout` matches exactly, by name, or null. */
+export function matchingSaved(layout, list) {
+  const k = layoutKey(layout);
+  return (list || []).find(s => layoutKey(s.layout) === k)?.name || null;
+}

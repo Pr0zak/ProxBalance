@@ -14,9 +14,10 @@ import {
   WIDGETS, PRESETS, widgetById, presetLayout, matchingPreset, readLayout, writeLayout,
   toggleWidget, moveWidget, toggleWide, nodeRows, clusterLine, backupTally, recentMoves,
   roomLeft, timelineEvents, eventTime, needsYou,
+  readSaved, writeSaved, saveNamed, deleteNamed, matchingSaved, nameProblem, MAX_NAME,
   downsample, movesByDay, backupsByDay, clusterKpis, guestSpread, trackPos,
 } from '../utils/simpleView.js';
-import { WALL_PANEL, BTN_PRIMARY, BTN_SECONDARY, MODAL_OVERLAY, MODAL_CONTAINER, TAP_TARGET } from '../utils/designTokens.js';
+import { WALL_PANEL, BTN_PRIMARY, BTN_SECONDARY, MODAL_OVERLAY, MODAL_CONTAINER, TAP_TARGET, INPUT_FIELD, SELECT_FIELD } from '../utils/designTokens.js';
 
 const { useState, useEffect, useMemo } = React;
 
@@ -553,28 +554,75 @@ const RENDER = {
 // Customize dialog
 // ---------------------------------------------------------------------------
 
-function CustomizeDialog({ layout, setLayout, onClose }) {
+const CHIP = 'px-3 py-1 rounded-full text-sm border';
+const CHIP_ON = 'border-blue-500 text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-500/15';
+const CHIP_OFF = 'border-pb-border dark:border-slate-600 text-pb-text dark:text-gray-200';
+
+/** Save the current layout under a name; an existing name is replaced. */
+function SaveAs({ layout, saved, setSaved, current }) {
+  const [name, setName] = useState(current || '');
+  const [msg, setMsg] = useState(null);
+  // Picking a saved layout fills its name in, so changing it and saving
+  // replaces it; editing the layout keeps whatever name is in the field.
+  useEffect(() => { if (current) setName(current); }, [current]);
+  const problem = nameProblem(name);
+  const exists = !problem && saved.some(x => x.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const submit = (e) => {
+    e.preventDefault();
+    if (problem) { setMsg({ bad: true, text: problem }); return; }
+    if (layout.length === 0) { setMsg({ bad: true, text: 'Pick at least one widget first.' }); return; }
+    setSaved(saveNamed(saved, name, layout));
+    setMsg({ text: exists ? `Replaced "${name.trim()}".` : `Saved as "${name.trim()}".` });
+  };
+  return (
+    <form onSubmit={submit} className="mb-4">
+      <label htmlFor="sv-save-name" className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-pb-text2 dark:text-gray-400">Save this layout as</label>
+      <div className="flex gap-2">
+        <input id="sv-save-name" type="text" value={name} maxLength={MAX_NAME} placeholder="e.g. Wall screen, Phone, Morning check"
+          onChange={(e) => { setName(e.target.value); setMsg(null); }} className={`${INPUT_FIELD} min-w-0 flex-1`} />
+        <button type="submit" className={`${BTN_SECONDARY} text-sm shrink-0`}>{exists ? 'Replace' : 'Save'}</button>
+      </div>
+      {msg && <p role="status" className={`text-xs mt-1.5 ${msg.bad ? TEXT.bad : TEXT.ok}`}>{msg.text}</p>}
+    </form>
+  );
+}
+
+function CustomizeDialog({ layout, setLayout, saved, setSaved, onClose }) {
   const picked = new Map(layout.map((x, i) => [x.id, i]));
   const order = [...layout.map(x => x.id), ...WIDGETS.map(w => w.id).filter(id => !picked.has(id))];
   const preset = matchingPreset(layout);
+  const savedName = matchingSaved(layout, saved);
   const iconBtn = 'w-8 h-8 rounded-md border border-pb-border dark:border-slate-600 bg-pb-surface2 dark:bg-slate-800 text-sm disabled:opacity-30';
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
-      <div className={`${MODAL_CONTAINER} max-w-lg`} onClick={e => e.stopPropagation()} role="dialog" aria-label="Customize the simple view">
+      <div className={`${MODAL_CONTAINER} max-w-lg flex flex-col !overflow-hidden`} onClick={e => e.stopPropagation()} role="dialog" aria-label="Customize the simple view">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-pb-text dark:text-white">Customize</h3>
           <button type="button" onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"><X size={18} /></button>
         </div>
         <p className={`text-sm mb-3 ${TEXT.muted}`}>Saved in this browser only, so a wall screen and a phone can differ.</p>
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label="Presets">
           {PRESETS.map(p => (
             <button key={p.id} type="button" aria-pressed={preset === p.id} onClick={() => setLayout(presetLayout(p.id))}
-              className={`px-3 py-1 rounded-full text-sm border ${preset === p.id ? 'border-blue-500 text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-500/15' : 'border-pb-border dark:border-slate-600 text-pb-text dark:text-gray-200'}`}>
+              className={`${CHIP} ${preset === p.id ? CHIP_ON : CHIP_OFF}`}>
               {p.label}
             </button>
           ))}
         </div>
-        <ul className="flex flex-col max-h-[60vh] overflow-y-auto -mx-1">
+        {saved.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label="Saved layouts">
+            {saved.map(x => (
+              <span key={x.name} className={`inline-flex items-center rounded-full border ${savedName === x.name ? CHIP_ON : CHIP_OFF}`}>
+                <button type="button" aria-pressed={savedName === x.name} onClick={() => setLayout(x.layout.map(it => ({ ...it })))}
+                  className="pl-3 pr-1.5 py-1 text-sm max-w-[12rem] truncate">{x.name}</button>
+                <button type="button" onClick={() => setSaved(deleteNamed(saved, x.name))} aria-label={`Delete saved layout ${x.name}`} title="Delete"
+                  className="pr-2 pl-0.5 py-1 opacity-60 hover:opacity-100"><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+        )}
+        <SaveAs layout={layout} saved={saved} setSaved={setSaved} current={savedName} />
+        <ul className="flex flex-col min-h-[8rem] flex-1 overflow-y-auto -mx-1 border-t border-pb-border/60 dark:border-slate-700/60">
           {order.map(id => {
             const w = widgetById(id);
             const idx = picked.get(id);
@@ -598,7 +646,7 @@ function CustomizeDialog({ layout, setLayout, onClose }) {
             );
           })}
         </ul>
-        <div className="flex justify-end mt-4">
+        <div className="flex justify-end pt-3 shrink-0">
           <button type="button" onClick={onClose} className={BTN_PRIMARY}>Done</button>
         </div>
       </div>
@@ -622,6 +670,18 @@ export default function SimpleView({
 }) {
   const [layout, setLayoutState] = useState(readLayout);
   const setLayout = (l) => { setLayoutState(l); writeLayout(l); };
+  const [saved, setSavedState] = useState(readSaved);
+  const setSaved = (list) => { setSavedState(list); writeSaved(list); };
+  const currentPreset = matchingPreset(layout);
+  const currentSaved = matchingSaved(layout, saved);
+  const current = currentSaved ? `saved:${currentSaved}` : currentPreset ? `preset:${currentPreset}` : 'custom';
+  const pickLayout = (v) => {
+    if (v.startsWith('preset:')) setLayout(presetLayout(v.slice(7)));
+    else if (v.startsWith('saved:')) {
+      const x = saved.find(it => it.name === v.slice(6));
+      if (x) setLayout(x.layout.map(it => ({ ...it })));
+    }
+  };
   const [customizing, setCustomizing] = useState(false);
   const [migrations, setMigrations] = useState(null);
   const [trends, setTrends] = useState(undefined);
@@ -678,9 +738,22 @@ export default function SimpleView({
     <main className="max-w-screen-xl mx-auto px-4 py-4 sm:py-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="text-lg font-semibold text-pb-text dark:text-gray-100">Overview</h1>
-        <button type="button" onClick={() => setCustomizing(true)} className={`${BTN_SECONDARY} text-sm`}>
-          <Settings size={14} /> Customize
-        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <select aria-label="Layout" value={current} onChange={(e) => pickLayout(e.target.value)} className={`${SELECT_FIELD} min-w-0 max-w-[10rem] sm:max-w-[14rem] !py-1.5`}>
+            {current === 'custom' && <option value="custom">Custom</option>}
+            <optgroup label="Presets">
+              {PRESETS.map(p => <option key={p.id} value={`preset:${p.id}`}>{p.label}</option>)}
+            </optgroup>
+            {saved.length > 0 && (
+              <optgroup label="Saved">
+                {saved.map(x => <option key={x.name} value={`saved:${x.name}`}>{x.name}</option>)}
+              </optgroup>
+            )}
+          </select>
+          <button type="button" onClick={() => setCustomizing(true)} className={`${BTN_SECONDARY} text-sm shrink-0`} aria-label="Customize">
+            <Settings size={14} /> <span className="hidden sm:inline">Customize</span>
+          </button>
+        </div>
       </div>
       {!data ? <Empty>Loading cluster data…</Empty> : layout.length === 0 ? (
         <div className={WALL_PANEL}><Empty>No widgets picked. Use Customize to add some.</Empty></div>
@@ -692,7 +765,7 @@ export default function SimpleView({
           })}
         </div>
       )}
-      {customizing && <CustomizeDialog layout={layout} setLayout={setLayout} onClose={() => setCustomizing(false)} />}
+      {customizing && <CustomizeDialog layout={layout} setLayout={setLayout} saved={saved} setSaved={setSaved} onClose={() => setCustomizing(false)} />}
     </main>
   );
 }
