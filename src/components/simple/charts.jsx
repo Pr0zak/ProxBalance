@@ -151,7 +151,7 @@ export function DayBars({ days, height = 64, showEvery = 1 }) {
       </div>
       <div className="flex gap-1 mt-1 text-[10px] text-pb-text3 dark:text-gray-500">
         {days.map((d, i) => (
-          <span key={d.key} className="flex-1 min-w-0 text-center truncate">
+          <span key={d.key} className={`flex-1 min-w-0 whitespace-nowrap ${i === days.length - 1 ? 'flex justify-end' : 'flex justify-center'}`}>
             {(days.length - 1 - i) % showEvery === 0 ? d.label : ''}
           </span>
         ))}
