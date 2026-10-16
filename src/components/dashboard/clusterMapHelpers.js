@@ -146,3 +146,33 @@ export const toConfirmMigration = (guest, targetNode) => ({
   mem_gb: guest.mem_max_gb || 0,
   reason: 'Manual move planned on the Cluster Map',
 });
+
+/**
+ * The placement rules (GET /api/placement-rules) a guest belongs to, for the
+ * map's hover: `partners` maps each other member's vmid to 'affinity' or
+ * 'anti-affinity' (anti wins if a guest is in both), and `rules` lists each
+ * rule with every other member and whether that pairing holds now: an
+ * affinity partner holds on the same node, an anti-affinity one on another.
+ */
+export function ruleLinks(rules, vmid, nodeOf) {
+  const id = String(vmid);
+  const partners = new Map();
+  const out = [];
+  for (const r of rules || []) {
+    const members = r.members || [];
+    if (!members.some(m => String(m.vmid) === id)) continue;
+    const anti = r.kind === 'anti-affinity';
+    const self = nodeOf(id);
+    const others = members.filter(m => String(m.vmid) !== id).map(m => {
+      const node = nodeOf(String(m.vmid)) ?? m.node;
+      return { vmid: m.vmid, name: m.name || `guest ${m.vmid}`, node, ok: anti ? node !== self : node === self };
+    });
+    if (!others.length) continue;
+    others.forEach(o => {
+      const k = String(o.vmid);
+      if (anti || !partners.has(k)) partners.set(k, anti ? 'anti-affinity' : 'affinity');
+    });
+    out.push({ id: r.id, name: r.name, kind: r.kind, hard: !!r.hard, source: r.source, others });
+  }
+  return { partners, rules: out };
+}

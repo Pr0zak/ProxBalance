@@ -10,8 +10,9 @@ import { nodeRoles } from '../../utils/nodeRoles.js';
 import { NodeRoleMarker, NodeRoleLegend } from './NodeRoleMarker.jsx';
 import { HEADROOM_HINT } from '../../utils/constants.js';
 import {
-  QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration,
+  QUICK_FILTERS, matchesQuery, guestMetric, isVmType, nodePreview, toConfirmMigration, ruleLinks,
 } from './clusterMapHelpers.js';
+import { fetchPlacementRules } from '../../api/client.js';
 import { MovePreviewPanel, MoveToSheet } from './MovePreview.jsx';
 import { GuestFlagTray, GuestFlagList, GuestFlagLegend } from './GuestFlags.jsx';
 
@@ -188,6 +189,18 @@ export default function ClusterMap({
   const [dragOver, setDragOver] = useState(null);       // node name under the pointer
   const [pendingMove, setPendingMove] = useState(null); // { vmid, to }
   const [touchGuest, setTouchGuest] = useState(null);   // vmid with the sheet open
+  // Affinity / anti-affinity: hovering a guest rings its rule partners.
+  const [placementRules, setPlacementRules] = useState(null);
+  const [hoverVmid, setHoverVmid] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    fetchPlacementRules().then(r => { if (alive && r && r.success) setPlacementRules(r.rules || []); });
+    return () => { alive = false; };
+  }, [data.collected_at]);
+  const links = hoverVmid != null && placementRules
+    ? ruleLinks(placementRules, hoverVmid, v => data.guests?.[v]?.node)
+    : null;
+  const linking = !!(links && links.rules.length);
   const previewPanelRef = useRef(null);
   const findGuest = (vmid) => (vmid == null ? null : allGuests.find(g => g.vmid === vmid) || null);
   const previewVmid = drag ? drag.vmid : pendingMove ? pendingMove.vmid : null;
@@ -802,9 +815,20 @@ export default function ClusterMap({
                       const dimmed = findActive && !matched;
                       const isPreviewed = previewVmid === guest.vmid;
                       const canDrag = !wall && !isTouch && !isMigrating && !guest.local_disks?.is_pinned;
+                      const isHovered = String(hoverVmid) === String(guest.vmid);
+                      const partner = linking ? links.partners.get(String(guest.vmid)) : null;
+                      const ruleRing = partner === 'anti-affinity'
+                        ? 'ring-[3px] ring-red-500 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark'
+                        : partner === 'affinity'
+                          ? 'ring-[3px] ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark'
+                          : '';
+                      const myRules = isHovered && linking ? links.rules : null;
 
                       return (
-                        <div key={guest.vmid} className={`relative group flex flex-col items-center ${dimmed ? 'opacity-20' : ''}`}>
+                        <div key={guest.vmid}
+                          onMouseEnter={isTouch ? undefined : () => setHoverVmid(guest.vmid)}
+                          onMouseLeave={isTouch ? undefined : () => setHoverVmid(v => (String(v) === String(guest.vmid) ? null : v))}
+                          className={`relative group flex flex-col items-center transition-opacity ${dimmed ? 'opacity-20' : linking && !partner && !isHovered ? 'opacity-40' : ''} ${isHovered || partner ? 'z-20' : ''}`}>
                           <div
                             draggable={canDrag}
                             onDragStart={(e) => {
@@ -814,7 +838,7 @@ export default function ClusterMap({
                               setDrag({ vmid: guest.vmid });
                             }}
                             onDragEnd={endDrag}
-                            className={`relative rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${matched || isPreviewed ? 'ring-[3px] ring-sky-400 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark' : ''} ${isStopped && !matched && !isPreviewed ? 'opacity-40' : ''} ${canDrag ? 'active:cursor-grabbing' : ''}`}
+                            className={`relative rounded-full ${colorMode === 'load' ? '' : getGuestColor()} flex items-center justify-center text-pb-text dark:text-white font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer hover:ring-2 hover:ring-blue-400 ${colorMode === 'load' ? (isVM ? 'ring-2 ring-purple-400/80' : 'ring-2 ring-emerald-400/80') : ''} ${hasRec ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent' : ''} ${isMigrating ? 'animate-pulse ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/50' : ''} ${isCompleted ? 'ring-2 ring-green-400' : ''} ${matched || isPreviewed ? 'ring-[3px] ring-sky-400 ring-offset-2 ring-offset-white dark:ring-offset-pb-surface-dark' : ''} ${ruleRing} ${isStopped && !matched && !isPreviewed ? 'opacity-40' : ''} ${canDrag ? 'active:cursor-grabbing' : ''}`}
                             style={{width: `${size}px`, height: `${size}px`, fontSize: `${Math.max(10, size/4)}px`, ...(colorMode === 'load' ? { background: heatHex(sizeRatio) } : {})}}
                             onClick={() => {
                               if (isMigrating) return;
@@ -920,6 +944,26 @@ export default function ClusterMap({
                               </div>
 
                               <GuestFlagList guest={guest} className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-1.5 max-w-[240px]" />
+
+                              {myRules && myRules.map(r => {
+                                const anti = r.kind === 'anti-affinity';
+                                return (
+                                  <div key={r.id} className="border-t border-gray-200 dark:border-gray-700 pt-1.5 mt-1.5">
+                                    <div className={`font-semibold ${anti ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                      {anti ? 'Keep apart from' : 'Keep with'}
+                                      <span className="ml-1.5 font-normal text-pb-text2 dark:text-gray-400">{r.name} · {r.hard ? 'required' : 'preferred'}</span>
+                                    </div>
+                                    {r.others.map(o => (
+                                      <div key={o.vmid} className="flex justify-between gap-4">
+                                        <span className="text-pb-text dark:text-gray-200">{o.name}</span>
+                                        <span className={o.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400 font-semibold'}>
+                                          {o.ok ? '✓ ' : '✗ '}{anti ? (o.ok ? `on ${o.node || '?'}` : 'same node') : (o.ok ? 'same node' : `on ${o.node || '?'}`)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>

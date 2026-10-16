@@ -53,9 +53,9 @@ If a request fails, the affected area says so ("status unavailable", "Couldn't l
 
 ---
 
-## Simple View
+## Overview
 
-The **Simple / Full** switch in the top bar picks which dashboard this browser opens. Full is the dashboard described below. Simple (`#/simple`) hides scores, penalties and tables and shows a dashboard of gauges and small charts, each with a short line of text:
+The **Overview / Detailed** switch in the top bar picks which dashboard this browser opens. Detailed is the dashboard described below. Overview (`#/overview`, also `#/simple`) hides scores, penalties and tables and shows a dashboard of widgets you pick and arrange: gauges, small charts and the Cluster Map, each with a short line of text:
 
 | Widget | Shows |
 |---|---|
@@ -78,7 +78,9 @@ The **Simple / Full** switch in the top bar picks which dashboard this browser o
 | Storage | Every storage pool by how full it is (shared pools once, local pools per node), amber from 80% and red from 90% |
 | Memory map | A column per node, as tall as its memory, split into its running guests (largest at the bottom), the host and anything else, and free, with the limit as a line. Tap a block to name it |
 
-Each widget links to the full page it summarizes. **Customize** picks widgets, their order and (on wide screens) full width, or applies a preset: **Calm** (the default), **Operator**, **Wall** or **Charts** (the cluster map, load chart, memory map, busy hours, busiest guests and storage first). Each widget's metric switch (CPU, Memory and so on) is remembered in this browser. To keep a layout, type a name under **Save this layout as** in Customize and press Save (a name you already used is replaced; preset names are taken). The **Layout** menu next to Customize switches between the presets and your saved layouts, and the × on a saved layout in Customize deletes it. Saved layouts live in this browser only. The layout and the Simple/Full choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Full.
+Each widget links to the full page it summarizes. **Customize** picks widgets, their order and size, or applies a preset: **Calm** (the default), **Operator**, **Wall** or **Charts** (the cluster map, load chart, memory map, busy hours, busiest guests and storage first). Each widget's metric switch (CPU, Memory and so on) is remembered in this browser. To keep a layout, type a name under **Save this layout as** in Customize and press Save (a name you already used is replaced; preset names are taken). The **Layout** menu next to Customize switches between the presets and your saved layouts, and the × on a saved layout in Customize deletes it. Saved layouts live in this browser only. The layout and the Overview/Detailed choice are saved in this browser only, so a phone and a wall screen can differ. A new browser starts in Detailed.
+
+**Arrange** (next to Customize) lets you lay the page out by hand. Drag a widget's **Move** grip to put it before or after another widget. Drag a widget's right edge, or tap one of its size chips, to make it ¼, ⅓, ½, ⅔ or a full row wide. Press Done when finished; changes are saved as you make them. Widgets never get narrower than about 300 px: on a smaller screen a widget takes the next size up (on a phone every widget is a full row), and the chips only offer the sizes that fit. The page uses the whole width of large screens, gaps are filled by later widgets that fit, and charts grow taller in wider widgets. The Cluster Map widget scales down to keep every node in one row when there is room for that at 60% or more, and wraps otherwise.
 
 ## Dashboard
 
@@ -144,6 +146,7 @@ A visual view of each node and its guests as bubbles.
 - **Node cards** print their values: CPU % with allocated vCPU over physical cores, memory % with used/total GB, IOWait %, and committed RAM (orange above 100%). Node role markers appear here as on the Nodes tab.
 - **Planned moves**: current suggestions are drawn as dashed arrows from source to target node, one per node pair, with the number of guests in the middle. Hover or tap the number for the guest names. Moves waiting for approval (semi-automatic mode) are dotted blue. Arrows disappear once their moves run. The **Plan (N)** button hides the arrows; **Show plan (N)** brings them back. The choice is remembered per browser.
 - **Find bar**: type a guest name, VMID or tag. Matches are ringed and labelled, everything else dims, each node shows how many matches it holds, and Enter opens the guest when exactly one matches. Quick-filter chips pick out guests that can't migrate, are ignored, carry affinity rules, are HA-managed or have mount points.
+- **Affinity on hover**: point at a guest that is in an affinity or anti-affinity rule (tag or pool rule) and its partners get a ring, green for keep-with and red for keep-apart, while the other guests dim. Its tooltip names each rule, whether it is required or preferred, and for each partner whether the rule holds now (✓ same node / ✗ on another node for affinity; ✓ on another node / ✗ same node for anti-affinity). This also works in the Overview's Cluster Map widget.
 - **Guest indicators**: a small square on a container means it has mount points (cyan when shared and safe to migrate, orange for unshared bind mounts that need manual work); a red square on a VM means it is pinned (passthrough disks, or PCI/USB passthrough) and cannot migrate.
 
 **Previewing a move.** Drag a guest bubble over another node to see ghost bars and an "If here (est.)" readout; the source shows what it would free. Offline, maintenance and pinned cases refuse the drop. Dropping opens a before/after panel that flags anti-affinity or split-affinity conflicts, overcommit, CPU over 80% or memory over 85%, unshared bind mounts, the ignore tag and HA management. "Review migration..." hands off to the normal Confirm Migration dialog, so nothing starts from the map itself. On touch screens, tap a bubble to get a "Move to..." sheet with each node's estimate instead of dragging. All projections are estimates from current usage.
