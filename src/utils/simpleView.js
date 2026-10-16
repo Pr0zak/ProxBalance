@@ -23,6 +23,7 @@ export const WIDGETS = [
   { id: 'timeline', name: 'What happened', desc: 'The last 24 hours on a time line, newest first.' },
   { id: 'capacity', name: 'Room left', desc: 'Memory per node up to your limit, and how many 4 GB guests fit.' },
   { id: 'guests', name: 'Guests', desc: 'Running and stopped guests on each node.' },
+  { id: 'map', name: 'Cluster map', desc: 'The Dashboard map: every node with its guests as bubbles.' },
   { id: 'load', name: 'Load, 24 h', desc: 'A line per node for CPU, memory or IO wait; touch the chart to read a time.' },
   { id: 'rhythm', name: 'Busy hours', desc: 'Cluster CPU by hour of day for the last 7 days, as a heat map.' },
   { id: 'topguests', name: 'Busiest guests', desc: 'The guests using the most CPU, memory, network or disk right now.' },
@@ -38,10 +39,10 @@ const L = (...items) => items.map(([id, wide]) => ({ id, wide: !!wide }));
 
 /** Calm is the default: what a first-time viewer sees. */
 export const PRESETS = [
-  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['nodes', 1], ['attention'], ['backups'], ['moves'], ['forecast'], ['automation'], ['capacity']) },
-  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention'], ['approvals'], ['automation'], ['nodes', 1], ['moves'], ['backups'], ['forecast'], ['guests'], ['capacity'], ['timeline']) },
-  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['load', 1], ['nodes', 1], ['moves'], ['backups'], ['timeline']) },
-  { id: 'charts', label: 'Charts', layout: L(['status', 1], ['load', 1], ['memmap', 1], ['rhythm'], ['topguests'], ['storage'], ['moves'], ['backups'], ['forecast']) },
+  { id: 'calm', label: 'Calm', layout: L(['status', 1], ['map', 1], ['nodes', 1], ['attention'], ['backups'], ['moves'], ['forecast'], ['automation'], ['capacity']) },
+  { id: 'operator', label: 'Operator', layout: L(['status', 1], ['attention'], ['approvals'], ['automation'], ['map', 1], ['nodes', 1], ['moves'], ['backups'], ['forecast'], ['guests'], ['capacity'], ['timeline']) },
+  { id: 'wall', label: 'Wall', layout: L(['status', 1], ['map', 1], ['load', 1], ['moves'], ['backups'], ['timeline']) },
+  { id: 'charts', label: 'Charts', layout: L(['status', 1], ['map', 1], ['load', 1], ['memmap', 1], ['rhythm'], ['topguests'], ['storage'], ['moves'], ['backups'], ['forecast']) },
 ];
 export const DEFAULT_PRESET = 'calm';
 export const presetLayout = (id) => (PRESETS.find(p => p.id === id) || PRESETS[0]).layout.map(x => ({ ...x }));

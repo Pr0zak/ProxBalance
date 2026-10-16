@@ -33,9 +33,9 @@ test('layout edits round-trip through storage', () => {
   assert.equal(S.matchingPreset(l), null);
   S.writeLayout(l, st);
   assert.deepEqual(S.readLayout(st), l);
-  assert.deepEqual(l.map(x => x.id), ['status', 'load', 'nodes', 'moves', 'backups', 'guests', 'timeline']);
+  assert.deepEqual(l.map(x => x.id), ['status', 'map', 'load', 'moves', 'backups', 'guests', 'timeline']);
   assert.equal(S.moveWidget(l, 'status', -1), l);
-  assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'load');
+  assert.deepEqual(S.toggleWidget(l, 'status').map(x => x.id)[0], 'map');
 });
 
 test('view mode defaults to full', () => {

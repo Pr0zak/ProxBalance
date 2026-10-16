@@ -1,6 +1,6 @@
 import { X, ChevronRight, Settings } from './Icons.jsx';
 import { DOT, TEXT, listNames, Dot, Card, Empty } from './simple/parts.jsx';
-import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget } from './simple/chartWidgets.jsx';
+import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget, MapWidget } from './simple/chartWidgets.jsx';
 import { attentionItems } from './dashboard/NeedsAttentionStrip.jsx';
 import { getStatus, getNextCheck } from './dashboard/AutoStatusPill.jsx';
 import { projectedCrossings, checkedHorizon, spanPhrase } from './insights/forecastModel.js';
@@ -547,7 +547,7 @@ const RENDER = {
   backups: BackupsWidget, forecast: ForecastWidget, automation: AutomationWidget,
   approvals: ApprovalsWidget, timeline: TimelineWidget, capacity: CapacityWidget,
   maintenance: MaintenanceWidget, guests: GuestsWidget,
-  load: LoadWidget, rhythm: RhythmWidget, topguests: TopGuestsWidget, storage: StorageWidget, memmap: MemoryMapWidget,
+  load: LoadWidget, map: MapWidget, rhythm: RhythmWidget, topguests: TopGuestsWidget, storage: StorageWidget, memmap: MemoryMapWidget,
 };
 
 // ---------------------------------------------------------------------------
@@ -667,6 +667,7 @@ export default function SimpleView({
   data, config, nodeScores, maintenanceNodes,
   cpuThreshold, memThreshold, iowaitThreshold,
   automationStatus, fetchAutomationStatus, runHistory, canMigrate, API_BASE,
+  recommendations, guestsMigrating, migrationProgress, completedMigrations,
 }) {
   const [layout, setLayoutState] = useState(readLayout);
   const setLayout = (l) => { setLayoutState(l); writeLayout(l); };
@@ -732,6 +733,7 @@ export default function SimpleView({
   const ctx = {
     data, nowMs, migrations, trends, backups, backupRuns, needs, maintenanceNodes,
     cpuThreshold, memThreshold, iowaitThreshold, automationStatus, fetchAutomationStatus, runHistory, canMigrate,
+    nodeScores, recommendations, guestsMigrating, migrationProgress, completedMigrations,
   };
 
   return (

@@ -5,6 +5,8 @@
 import { TEXT, Card, Empty, Switch, usePref } from './parts.jsx';
 import { FILL } from './charts.jsx';
 import { nodeColors } from '../dashboard/compareSeries.js';
+import ClusterMap from '../dashboard/ClusterMap.jsx';
+import { nodeRoles } from '../../utils/nodeRoles.js';
 import {
   alignedSeries, hourGrid, topGuests, GUEST_METRICS, storagePools, fmtGb, memoryColumns,
 } from '../../utils/simpleView.js';
@@ -384,3 +386,55 @@ export function MemoryMapWidget({ ctx, wide }) {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Cluster map
+// ---------------------------------------------------------------------------
+
+const MAP_MODES = [
+  { id: 'cpu', label: 'CPU' },
+  { id: 'memory', label: 'Memory' },
+  { id: 'allocated', label: 'Allocated' },
+  { id: 'disk_io', label: 'Disk IO' },
+  { id: 'network', label: 'Network' },
+];
+const noop = () => {};
+
+/**
+ * The Dashboard's Cluster Map, map only (no toolbar, find bar or dragging).
+ * Tapping a node or guest opens it on the full Dashboard's Map tab.
+ */
+export function MapWidget({ ctx, wide }) {
+  const [mode, setMode] = usePref('map.mode', 'cpu', MAP_MODES.map(m => m.id));
+  const roles = useMemo(
+    () => nodeRoles({ nodes: ctx.data?.nodes, recommendations: ctx.recommendations, maintenanceNodes: ctx.maintenanceNodes }),
+    [ctx.data, ctx.recommendations, ctx.maintenanceNodes],
+  );
+  const openNode = (node) => { if (node?.name) window.location.hash = `#/dashboard/map/node/${encodeURIComponent(node.name)}`; };
+  const openGuest = (g) => { if (g?.vmid != null) window.location.hash = `#/dashboard/map/guest/${g.vmid}`; };
+  return (
+    <Card title="Cluster map" href="#/dashboard/map" wide={wide}
+      tools={<Switch label="Bubble size" options={MAP_MODES} value={mode} onChange={setMode} />}>
+      <div className="-mx-1 overflow-x-auto">
+        <ClusterMap
+          embedded wall
+          data={ctx.data}
+          showPoweredOffGuests={false}
+          setShowPoweredOffGuests={noop}
+          clusterMapViewMode={mode}
+          setClusterMapViewMode={setMode}
+          maintenanceNodes={ctx.maintenanceNodes}
+          nodeRoleMap={roles}
+          setSelectedNode={openNode}
+          setSelectedGuestDetails={openGuest}
+          guestsMigrating={ctx.guestsMigrating || {}}
+          migrationProgress={ctx.migrationProgress || {}}
+          completedMigrations={ctx.completedMigrations || {}}
+          nodeScores={ctx.nodeScores}
+          recommendations={ctx.recommendations || []}
+        />
+      </div>
+      <p className={`text-[11px] ${TEXT.muted}`}>Bubble size = the guest's {MAP_MODES.find(m => m.id === mode)?.label.toLowerCase()}. Tap a node or guest to open it.</p>
+    </Card>
+  );
+}

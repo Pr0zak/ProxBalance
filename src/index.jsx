@@ -580,6 +580,9 @@ const ProxmoxBalanceManager = () => {
         automationStatus={automation.automationStatus} fetchAutomationStatus={automation.fetchAutomationStatus}
         runHistory={automation.runHistory}
         canMigrate={auth.canMigrate}
+        recommendations={recs.recommendations}
+        guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
+        completedMigrations={migrations.completedMigrations}
         API_BASE={API_BASE}
       />
       {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}
