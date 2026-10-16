@@ -2,7 +2,33 @@
 // donut, sparklines and per-day bars. Real data only; a missing value draws
 // nothing (or "—"), never zero.
 
-const { useState } = React;
+const { useState, useRef, useLayoutEffect } = React;
+
+/**
+ * Takes the height its card has left (flex-1) but at least `min` px, and
+ * hands that height to `children(h)`, so a chart grows when its widget is
+ * made taller (for example beside a tall widget). The content is absolutely
+ * positioned, so it never pushes the card taller itself.
+ */
+export function FillBox({ min, children }) {
+  const ref = useRef(null);
+  const [h, setH] = useState(min);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const measure = () => setH(Math.max(min, Math.floor(el.clientHeight)));
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [min]);
+  return (
+    <div ref={ref} className="relative flex-1 min-h-0" style={{ minHeight: min }}>
+      <div className="absolute inset-0">{children(h)}</div>
+    </div>
+  );
+}
 
 export const STROKE = {
   ok: 'stroke-green-500', info: 'stroke-blue-500', warn: 'stroke-amber-500', bad: 'stroke-red-500',
@@ -121,13 +147,13 @@ export function Spark({ series, max = 100, limit, height = 40, label }) {
  * Tap (or hover) a bar for its `text`. Days with `known: false` are drawn
  * as a dashed outline (not recorded), not as zero.
  */
-export function DayBars({ days, height = 64, showEvery = 1 }) {
+export function DayBars({ days, height = 64, showEvery = 1, fill = false }) {
   const [picked, setPicked] = useState(null);
   const max = Math.max(1, ...days.map(d => d.parts.reduce((a, p) => a + p.value, 0)));
   const sel = days.find(d => d.key === picked) || null;
   return (
-    <div>
-      <div className="flex items-end gap-1" style={{ height }}>
+    <div className={fill ? 'h-full flex flex-col' : ''}>
+      <div className={`flex items-end gap-1 ${fill ? 'flex-1 min-h-0' : ''}`} style={fill ? undefined : { height }}>
         {days.map(d => {
           const total = d.parts.reduce((a, p) => a + p.value, 0);
           return (

@@ -1,5 +1,6 @@
 import { X, ChevronRight, Settings } from './Icons.jsx';
 import { DOT, TEXT, listNames, Dot, Card, Empty, SlotContext, useSlot } from './simple/parts.jsx';
+import { KpisWidget, NodeChartWidget, AutoBannerWidget } from './simple/dashboardWidgets.jsx';
 import { LoadWidget, RhythmWidget, TopGuestsWidget, StorageWidget, MemoryMapWidget, MapWidget, fitPx } from './simple/chartWidgets.jsx';
 import { attentionItems } from './dashboard/NeedsAttentionStrip.jsx';
 import { getStatus, getNextCheck } from './dashboard/AutoStatusPill.jsx';
@@ -7,12 +8,12 @@ import { projectedCrossings, checkedHorizon, spanPhrase } from './insights/forec
 import { fetchNodeTrends, approveQueuedMove, dismissQueuedMove } from '../api/client.js';
 import { runStatusLabel } from '../utils/formatters.js';
 import { RunStrip } from './dashboard/RunHistoryDisplay.jsx';
-import { Ring, Donut, Spark, DayBars, Legend, STROKE, FILL } from './simple/charts.jsx';
+import { Ring, Donut, Spark, DayBars, Legend, STROKE, FILL, FillBox } from './simple/charts.jsx';
 import { toNodeSet } from '../utils/nodeCondition.js';
 import { agoText, approvalRow, pendingApprovals } from '../utils/automationStory.js';
 import {
   WIDGETS, PRESETS, widgetById, presetLayout, matchingPreset, readLayout, writeLayout,
-  toggleWidget, moveWidget, setSpan, toggleRows, moveWidgetTo, minSpanFor, effectiveSpan, spanForWidth, SPANS, SPAN_LABEL, GRID_COLS, nodeRows, clusterLine, backupTally, recentMoves,
+  toggleWidget, moveWidget, setSpan, setRows, moveWidgetTo, minSpanFor, effectiveSpan, spanForWidth, SPANS, SPAN_LABEL, GRID_COLS, nodeRows, clusterLine, backupTally, recentMoves,
   roomLeft, timelineEvents, eventTime, needsYou,
   readSaved, writeSaved, saveNamed, deleteNamed, matchingSaved, nameProblem, MAX_NAME,
   downsample, movesByDay, backupsByDay, clusterKpis, guestSpread, trackPos,
@@ -212,7 +213,7 @@ function MovesWidget({ ctx }) {
         <span className="text-2xl font-bold tabular-nums">{week}</span>
         <span className={`text-sm ${TEXT.muted}`}> in 7 days</span>
       </p>
-      <DayBars days={days} height={fitPx(widthPx, 0.16, 56, 140)} />
+      <FillBox min={fitPx(widthPx, 0.16, 56, 140) + 16}>{() => <DayBars days={days} fill />}</FillBox>
       <Legend items={[{ tone: 'info', text: 'Automation' }, { tone: 'mem', text: 'By hand' }, { tone: 'bad', text: 'Failed' }]} />
       {moves.length > 0 && (
         <ul className="flex flex-col gap-1.5 pt-1 border-t border-pb-border/60 dark:border-slate-700/60">
@@ -257,9 +258,9 @@ function BackupsWidget({ ctx }) {
         </ul>
       </div>
       {days && (
-        <div>
+        <div className="flex-1 min-h-0 flex flex-col">
           <div className={`text-[11px] mb-1 ${TEXT.muted}`}>Backups per day, 14 days</div>
-          <DayBars days={days} height={fitPx(narrow ? 0 : widthPx, 0.12, 44, 110)} showEvery={2} />
+          <FillBox min={fitPx(narrow ? 0 : widthPx, 0.12, 44, 110) + 16}>{() => <DayBars days={days} showEvery={2} fill />}</FillBox>
         </div>
       )}
     </Card>
@@ -327,7 +328,7 @@ function ForecastWidget({ ctx: pageCtx }) {
             {first.rough && <span className={`font-normal ${TEXT.muted}`}> (rough)</span>}
           </span>
         </div>
-        <ForecastLine forecast={first.forecast} metric={first.metric} height={fitPx(ctx.widthPx, 0.2, 72, 180)} />
+        <FillBox min={fitPx(ctx.widthPx, 0.2, 72, 180) + 14}>{(h) => <ForecastLine forecast={first.forecast} metric={first.metric} height={h - 14} />}</FillBox>
         <Legend items={[{ tone: METRIC_TONE[first.metric] || 'cpu', text: 'History, then trend (dashed)' }, { tone: 'bad', text: `${first.limit}% limit` }]} />
         {items.length > 1 && (
           <ul className="flex flex-col gap-1 text-sm pt-1 border-t border-pb-border/60 dark:border-slate-700/60">
@@ -554,7 +555,7 @@ const RENDER = {
   backups: BackupsWidget, forecast: ForecastWidget, automation: AutomationWidget,
   approvals: ApprovalsWidget, timeline: TimelineWidget, capacity: CapacityWidget,
   maintenance: MaintenanceWidget, guests: GuestsWidget,
-  load: LoadWidget, map: MapWidget, rhythm: RhythmWidget, topguests: TopGuestsWidget, storage: StorageWidget, memmap: MemoryMapWidget,
+  load: LoadWidget, map: MapWidget, kpis: KpisWidget, nodechart: NodeChartWidget, autobanner: AutoBannerWidget, rhythm: RhythmWidget, topguests: TopGuestsWidget, storage: StorageWidget, memmap: MemoryMapWidget,
 };
 
 // ---------------------------------------------------------------------------
@@ -678,6 +679,7 @@ export default function SimpleView({
   cpuThreshold, memThreshold, iowaitThreshold,
   automationStatus, fetchAutomationStatus, runHistory, canMigrate, API_BASE,
   recommendations, guestsMigrating, migrationProgress, completedMigrations,
+  automationConfig, recommendationData, migrationHistory, chartJsLoaded, loadChartJs,
   // Wall mode (#/wall) draws the same widgets with no header or controls.
   wall = false,
 }) {
@@ -769,6 +771,32 @@ export default function SimpleView({
     window.addEventListener('pointercancel', up);
   };
 
+  // Drag a card's bottom edge: it takes as many rows as the pointer reaches,
+  // measured in the card's own current row height.
+  const startResizeRows = (id) => (e) => {
+    e.preventDefault();
+    const card = e.currentTarget.closest('[data-widget]');
+    const r = card.getBoundingClientRect();
+    const rows = layoutRef.current.find(x => x.id === id)?.rows || 1;
+    const unit = (r.height + GRID_GAP) / rows;
+    const move = (ev) => {
+      const n = Math.round((ev.clientY - r.top + GRID_GAP) / unit);
+      setLayoutState(l => {
+        const next = setRows(l, id, n);
+        return (next.find(x => x.id === id)?.rows || 1) === (l.find(x => x.id === id)?.rows || 1) ? l : next;
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      writeLayout(layoutRef.current);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
   const [migrations, setMigrations] = useState(null);
   const [trends, setTrends] = useState(undefined);
   const [backupRuns, setBackupRuns] = useState(null);
@@ -819,6 +847,7 @@ export default function SimpleView({
     data, nowMs, migrations, trends, backups, backupRuns, needs, maintenanceNodes,
     cpuThreshold, memThreshold, iowaitThreshold, automationStatus, fetchAutomationStatus, runHistory, canMigrate,
     nodeScores, recommendations, guestsMigrating, migrationProgress, completedMigrations,
+    config, automationConfig, recommendationData, migrationHistory, chartJsLoaded, loadChartJs,
   };
 
   return (
@@ -864,8 +893,9 @@ export default function SimpleView({
               if (!W) return null;
               const span = effectiveSpan(it.span, minSpan);
               const slot = {
-                wall, id: it.id, span, minSpan, rows: span < 12 && it.rows === 2 ? 2 : 1,
-                onRows: () => setLayout(toggleRows(layoutRef.current, it.id)), arrange: arrange && !wall, dragging: dragId === it.id,
+                wall, id: it.id, span, minSpan, rows: span < 12 ? (it.rows || 1) : 1,
+                onRows: (n) => setLayout(setRows(layoutRef.current, it.id, n)),
+                onResizeRows: startResizeRows(it.id), arrange: arrange && !wall, dragging: dragId === it.id,
                 widthPx: colPx ? span * colPx + (span - 1) * GRID_GAP : null,
                 onGrip: startDrag(it.id), onResize: startResize(it.id),
                 onSize: (x) => setLayout(setSpan(layoutRef.current, it.id, x)),

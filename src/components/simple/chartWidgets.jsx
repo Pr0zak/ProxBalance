@@ -3,7 +3,7 @@
 // collector snapshot already on the page (trend_data, guests, storage).
 
 import { TEXT, Card, Empty, Switch, usePref, useSlot } from './parts.jsx';
-import { FILL } from './charts.jsx';
+import { FILL, FillBox } from './charts.jsx';
 import { nodeColors } from '../dashboard/compareSeries.js';
 import ClusterMap from '../dashboard/ClusterMap.jsx';
 import { nodeRoles } from '../../utils/nodeRoles.js';
@@ -93,8 +93,9 @@ export function LoadWidget({ ctx }) {
   return (
     <Card title="Load, 24 h" href="#/dashboard/charts"
       tools={<Switch label="Metric" options={LOAD_METRICS} value={metric} onChange={(v) => { setMetric(v); setHover(null); }} />}>
+      <FillBox min={chartH + 20}>{(boxH) => { const ch = boxH - 20; return (
       <div className="relative">
-        <div className="relative ml-8 touch-none select-none cursor-crosshair" style={{ height: chartH }}
+        <div className="relative ml-8 touch-none select-none cursor-crosshair" style={{ height: ch }}
           onPointerMove={pick} onPointerDown={pick} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setHover(null); }}>
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible"
             role="img" aria-label={`${m.label} per node over the last 24 hours`}>
@@ -127,7 +128,7 @@ export function LoadWidget({ ctx }) {
             </div>
           )}
         </div>
-        <div style={{ height: chartH }} className="absolute left-0 top-0 w-7 text-[10px] tabular-nums text-right text-pb-text3 dark:text-gray-500 pointer-events-none">
+        <div style={{ height: ch }} className="absolute left-0 top-0 w-7 text-[10px] tabular-nums text-right text-pb-text3 dark:text-gray-500 pointer-events-none">
           {[top, ...grid.slice().reverse()].map(g => (
             <span key={g} className="absolute right-0 -translate-y-1/2" style={{ top: `${(1 - g / top) * 100}%` }}>{Math.round(g)}%</span>
           ))}
@@ -140,6 +141,7 @@ export function LoadWidget({ ctx }) {
           ))}
         </div>
       </div>
+      ); }}</FillBox>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
         {nodes.map(nd => (
           <span key={nd.name} className="inline-flex items-center gap-1.5">
@@ -341,9 +343,10 @@ export function MemoryMapWidget({ ctx }) {
   const limit = ctx.memThreshold;
   return (
     <Card title="Memory map" href="#/dashboard/map">
-      <div className="flex items-end gap-2 sm:gap-4" style={{ height: MAP_H + 36 }}>
+      <FillBox min={MAP_H + 36}>{(boxH) => (
+      <div className="flex items-end gap-2 sm:gap-4 h-full">
         {cols.map(c => {
-          const h = (c.totalGb / biggest) * MAP_H;
+          const h = (c.totalGb / biggest) * (boxH - 36);
           const px = (gb) => (gb / c.totalGb) * h;
           const usedPct = ((c.totalGb - c.freeGb) / c.totalGb) * 100;
           return (
@@ -378,6 +381,7 @@ export function MemoryMapWidget({ ctx }) {
           );
         })}
       </div>
+      )}</FillBox>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-pb-text2 dark:text-gray-400">
         <span className="inline-flex items-center gap-1"><span className={`inline-block w-2.5 h-2.5 rounded-sm ${TYPE_FILL.VM}`} />VM</span>
         <span className="inline-flex items-center gap-1"><span className={`inline-block w-2.5 h-2.5 rounded-sm ${TYPE_FILL.CT}`} />CT</span>

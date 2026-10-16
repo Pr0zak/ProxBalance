@@ -382,6 +382,9 @@ const ProxmoxBalanceManager = () => {
       guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
       completedMigrations={migrations.completedMigrations}
       API_BASE={API_BASE}
+      automationConfig={automation.automationConfig} recommendationData={recs.recommendationData}
+      migrationHistory={automation.migrationHistory}
+      chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
       onExit={() => navigate('dashboard')}
     /></AppStatusContext.Provider>);
   }
@@ -584,6 +587,9 @@ const ProxmoxBalanceManager = () => {
         recommendations={recs.recommendations}
         guestsMigrating={migrations.guestsMigrating} migrationProgress={migrations.migrationProgress}
         completedMigrations={migrations.completedMigrations}
+        automationConfig={automation.automationConfig} recommendationData={recs.recommendationData}
+        migrationHistory={automation.migrationHistory}
+        chartJsLoaded={cluster.chartJsLoaded} loadChartJs={cluster.loadChartJs}
         API_BASE={API_BASE}
       />
       {isMobile && <MobileTabBar activePage={navActive} onNavigate={navigate} collectedAt={cluster.backendCollected} collectionIntervalMin={configHook.config?.collection_interval_minutes} />}

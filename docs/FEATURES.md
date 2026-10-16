@@ -76,13 +76,13 @@ Press **Ctrl+K** (Cmd+K on a Mac) or **/** (outside a text field), or use the se
 
 ### Overview
 
-An **Overview / Detailed** switch in the top bar. Overview shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, the Cluster Map, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks, drags into place and resizes (¼ to a full row, widened automatically on small screens), with Calm, Operator, Wall and Charts presets and layouts saved under a name. See "Overview" in [USAGE.md](USAGE.md).
+An **Overview / Detailed** switch in the top bar. Overview shows a dashboard of gauges and small charts with short captions (cluster gauges, what needs you, node load with 24-hour lines, moves per day, backups per day, the nearest forecast, automation checks, approvals, a 24-hour timeline, room left, guests per node, maintenance, the Cluster Map, a 24-hour load chart per node, a busy-hours heat map, the busiest guests, storage pools and a memory map of each node's guests) that each viewer picks, drags into place and resizes (¼ to a full row wide and 1 to 4 rows tall with smaller widgets stacked beside, widened automatically on small screens; charts grow both ways), with Calm, Operator, Wall and Charts presets and layouts saved under a name. See "Overview" in [USAGE.md](USAGE.md).
 
 ### Wall-monitor mode
 
 ![Wall mode](images/wall.png)
 
-The full-screen button in the top bar (large screens), or the address `#/wall`, shows this browser's Overview full screen, for a monitor on the wall: no menus, links or panels, scaled to fit the screen, scrolling slowly by itself if the layout is still too tall. The **Wall** preset gives the classic layout (cluster gauges, the Cluster Map, CPU per node and the automation checks) and fits 1080p and 720p. It keeps the screen awake where the browser allows. Press Esc, leave full screen, or use the Exit button that appears when you move the mouse. On a phone it is a normal scrolling page.
+The full-screen button in the top bar (large screens), or the address `#/wall`, shows this browser's Overview full screen, for a monitor on the wall: no menus, links or panels, scaled to fit the screen, scrolling slowly by itself if the layout is still too tall. The **Wall** preset gives the classic layout (the summary tiles, the Cluster Map, CPU per node and the automation banner) and fits 1080p and 720p. It keeps the screen awake where the browser allows. Press Esc, leave full screen, or use the Exit button that appears when you move the mouse. On a phone it is a normal scrolling page.
 
 ---
 

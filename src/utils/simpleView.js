@@ -29,6 +29,9 @@ export const WIDGETS = [
   { id: 'topguests', name: 'Busiest guests', desc: 'The guests using the most CPU, memory, network or disk right now.' },
   { id: 'storage', name: 'Storage', desc: 'How full each storage pool is, fullest first.' },
   { id: 'memmap', name: 'Memory map', desc: 'Each node’s memory split into its guests, the host, and free.' },
+  { id: 'kpis', name: 'Summary tiles', desc: 'The Detailed dashboard’s KPI row: health, nodes, automation, suggestions.' },
+  { id: 'nodechart', name: 'Node chart', desc: 'The Detailed dashboard’s chart of every node for CPU, memory or IO wait.' },
+  { id: 'autobanner', name: 'Automation status', desc: 'The Detailed dashboard’s automation banner, recent checks and data age.' },
   { id: 'maintenance', name: 'Maintenance', desc: 'Nodes in maintenance and the guests still on them.' },
 ];
 
@@ -39,13 +42,22 @@ export const widgetById = (id) => WIDGETS.find(w => w.id === id) || null;
 // Widget sizes: a 12-column grid, each widget 1/4, 1/3, 1/2, 2/3 or all of a row
 // ---------------------------------------------------------------------------
 
+// How many grid rows a widget may take (it then sits beside that many
+// stacked widgets, which stretch to its height).
+export const MAX_ROWS = 4;
+/** `item` with `rows` set when it is 2..MAX_ROWS, and left off for 1. */
+export function withRows(item, rows) {
+  const { rows: _old, ...rest } = item;
+  return Number.isInteger(rows) && rows > 1 && rows <= MAX_ROWS ? { ...rest, rows } : rest;
+}
+
 export const GRID_COLS = 12;
 export const SPANS = [3, 4, 6, 8, 12];
 export const SPAN_LABEL = { 3: '¼', 4: '⅓', 6: '½', 8: '⅔', 12: 'Full' };
 // A widget is never drawn narrower than this; on less room it takes a wider span.
 export const MIN_WIDGET_PX = 300;
 
-const BIG = new Set(['status', 'map', 'nodes']);
+const BIG = new Set(['status', 'map', 'nodes', 'kpis']);
 const MEDIUM = new Set(['load', 'memmap']);
 /** The size a widget gets when it is added. */
 export const defaultSpan = (id) => (BIG.has(id) ? 12 : MEDIUM.has(id) ? 8 : 4);
@@ -78,9 +90,8 @@ export function spanForWidth(px, gridPx, gapPx = 16, minSpan = 3) {
   return allowed.reduce((best, x) => (Math.abs(x - raw) < Math.abs(best - raw) ? x : best), allowed[0] ?? GRID_COLS);
 }
 
-// [id, span, rows]: rows 2 lets a widget sit beside two stacked ones.
-const L = (...items) => items.map(([id, span, rows]) => (rows > 1
-  ? { id, span: span || defaultSpan(id), rows } : { id, span: span || defaultSpan(id) }));
+// [id, span, rows]: rows 2–4 let a widget sit beside that many stacked ones.
+const L = (...items) => items.map(([id, span, rows]) => withRows({ id, span: span || defaultSpan(id) }, rows));
 
 /** Calm is the default: what a first-time viewer sees. */
 export const PRESETS = [
@@ -88,7 +99,7 @@ export const PRESETS = [
   { id: 'operator', label: 'Operator', layout: L(['status', 12], ['attention', 4], ['approvals', 4], ['automation', 4], ['map', 12], ['nodes', 12], ['moves', 4], ['backups', 4], ['forecast', 4], ['guests', 4], ['capacity', 4], ['timeline', 4]) },
   // Like the old fixed wall view: gauges across the top, the map on the left,
   // CPU by node and the automation checks stacked on the right.
-  { id: 'wall', label: 'Wall', layout: L(['status', 12], ['map', 8, 2], ['load', 4], ['automation', 4]) },
+  { id: 'wall', label: 'Wall', layout: L(['kpis', 12], ['map', 8, 2], ['nodechart', 4], ['autobanner', 4]) },
   { id: 'charts', label: 'Charts', layout: L(['status', 12], ['map', 12], ['load', 8], ['rhythm', 4], ['memmap', 8], ['topguests', 4], ['storage', 4], ['moves', 4], ['backups', 4], ['forecast', 4], ['capacity', 4], ['guests', 4]) },
 ];
 export const DEFAULT_PRESET = 'calm';
@@ -117,7 +128,7 @@ export function normalizeLayout(raw) {
     seen.add(id);
     let span = it?.span;
     if (!validSpan(span)) span = it?.wide ? 12 : Math.min(defaultSpan(id), 8);
-    out.push(it?.rows === 2 ? { id, span, rows: 2 } : { id, span });
+    out.push(withRows({ id, span }, it?.rows));
   }
   return out;
 }
@@ -138,12 +149,9 @@ export function moveWidget(layout, id, dir) {
 export const setSpan = (layout, id, span) => (validSpan(span)
   ? layout.map(x => (x.id === id ? { ...x, span } : x)) : layout);
 
-/** Make a widget two rows tall (beside two stacked widgets) or back to one. */
-export const toggleRows = (layout, id) => layout.map(x => {
-  if (x.id !== id) return x;
-  if (x.rows === 2) { const { rows, ...rest } = x; return rest; }
-  return { ...x, rows: 2 };
-});
+/** Set how many rows tall a widget is (1..MAX_ROWS). */
+export const setRows = (layout, id, rows) => layout.map(x => (x.id === id
+  ? withRows(x, Math.max(1, Math.min(MAX_ROWS, Math.round(rows)))) : x));
 
 /** Move `id` to just before (or after) `targetId`. */
 export function moveWidgetTo(layout, id, targetId, after = false) {
@@ -683,7 +691,7 @@ export function nameProblem(name) {
 /** Save `layout` as `name`, replacing a saved layout of the same name (any case). */
 export function saveNamed(list, name, layout) {
   const n = name.trim().slice(0, MAX_NAME);
-  const entry = { name: n, layout: layout.map(x => (x.rows === 2 ? { id: x.id, span: x.span, rows: 2 } : { id: x.id, span: x.span })) };
+  const entry = { name: n, layout: layout.map(x => withRows({ id: x.id, span: x.span }, x.rows)) };
   const i = list.findIndex(s => sameName(s.name, n));
   if (i < 0) return [...list, entry];
   const next = [...list];
