@@ -2,7 +2,7 @@
 // busiest guests, storage pools and the memory map. Data comes from the
 // collector snapshot already on the page (trend_data, guests, storage).
 
-import { TEXT, Card, Empty, Switch, usePref } from './parts.jsx';
+import { TEXT, Card, Empty, Switch, usePref, useSlot } from './parts.jsx';
 import { FILL } from './charts.jsx';
 import { nodeColors } from '../dashboard/compareSeries.js';
 import ClusterMap from '../dashboard/ClusterMap.jsx';
@@ -11,10 +11,13 @@ import {
   alignedSeries, hourGrid, topGuests, GUEST_METRICS, storagePools, fmtGb, memoryColumns,
 } from '../../utils/simpleView.js';
 
-const { useState, useMemo } = React;
+const { useState, useMemo, useRef, useLayoutEffect } = React;
 
 const hm = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const fmtPct = (v) => (typeof v === 'number' ? `${v < 10 ? v.toFixed(1) : Math.round(v)}%` : '—');
+
+/** A size from the card's width, kept between `min` and `max` px. */
+export const fitPx = (widthPx, ratio, min, max) => (widthPx ? Math.round(Math.max(min, Math.min(max, widthPx * ratio))) : min);
 
 const onlineNodes = (data) => Object.values(data?.nodes || {}).filter(n => n.status === 'online')
   .sort((a, b) => a.name.localeCompare(b.name));
@@ -33,9 +36,11 @@ const LOAD_METRICS = [
  * One line per node over the last 24 hours on a shared axis, the limit as a
  * dashed line. Touch or hover the chart to read every node at that time.
  */
-export function LoadWidget({ ctx, wide }) {
+export function LoadWidget({ ctx }) {
   const [metric, setMetric] = usePref('load.metric', 'cpu', LOAD_METRICS.map(m => m.id));
   const [hover, setHover] = useState(null);
+  const { widthPx } = useSlot();
+  const chartH = fitPx(widthPx, 0.26, 160, 360);
   const nodes = onlineNodes(ctx.data);
   const colors = nodeColors(Object.keys(ctx.data?.nodes || {}));
   const m = LOAD_METRICS.find(x => x.id === metric) || LOAD_METRICS[0];
@@ -56,7 +61,7 @@ export function LoadWidget({ ctx, wide }) {
 
   const all = Object.values(lines).flat().filter(v => typeof v === 'number');
   if (all.length === 0) {
-    return <Card title="Load, 24 h" href="#/dashboard/charts" wide={wide}><Empty>No history yet.</Empty></Card>;
+    return <Card title="Load, 24 h" href="#/dashboard/charts"><Empty>No history yet.</Empty></Card>;
   }
   const peak = Math.max(...all, typeof limit === 'number' ? limit : 0);
   const top = metric === 'iowait' ? Math.max(5, Math.ceil((peak * 1.15) / 5) * 5) : 100;
@@ -86,10 +91,10 @@ export function LoadWidget({ ctx, wide }) {
   const grid = [0.25, 0.5, 0.75].map(f => f * top);
 
   return (
-    <Card title="Load, 24 h" href="#/dashboard/charts" wide={wide}
+    <Card title="Load, 24 h" href="#/dashboard/charts"
       tools={<Switch label="Metric" options={LOAD_METRICS} value={metric} onChange={(v) => { setMetric(v); setHover(null); }} />}>
       <div className="relative">
-        <div className="relative h-44 sm:h-52 ml-8 touch-none select-none cursor-crosshair"
+        <div className="relative ml-8 touch-none select-none cursor-crosshair" style={{ height: chartH }}
           onPointerMove={pick} onPointerDown={pick} onPointerLeave={(e) => { if (e.pointerType === 'mouse') setHover(null); }}>
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible"
             role="img" aria-label={`${m.label} per node over the last 24 hours`}>
@@ -122,7 +127,7 @@ export function LoadWidget({ ctx, wide }) {
             </div>
           )}
         </div>
-        <div className="absolute left-0 top-0 h-44 sm:h-52 w-7 text-[10px] tabular-nums text-right text-pb-text3 dark:text-gray-500 pointer-events-none">
+        <div style={{ height: chartH }} className="absolute left-0 top-0 w-7 text-[10px] tabular-nums text-right text-pb-text3 dark:text-gray-500 pointer-events-none">
           {[top, ...grid.slice().reverse()].map(g => (
             <span key={g} className="absolute right-0 -translate-y-1/2" style={{ top: `${(1 - g / top) * 100}%` }}>{Math.round(g)}%</span>
           ))}
@@ -159,7 +164,7 @@ const RHYTHM_METRICS = [{ id: 'cpu', label: 'CPU' }, { id: 'iowait', label: 'IO 
  * Cluster average by local day (rows) and hour (columns) for 7 days. Darker
  * is busier; amber cells are at or over the limit. Tap a cell to read it.
  */
-export function RhythmWidget({ ctx, wide }) {
+export function RhythmWidget({ ctx }) {
   const [metric, setMetric] = usePref('rhythm.metric', 'cpu', RHYTHM_METRICS.map(m => m.id));
   const [picked, setPicked] = useState(null);
   const limit = metric === 'cpu' ? ctx.cpuThreshold : ctx.iowaitThreshold;
@@ -170,7 +175,7 @@ export function RhythmWidget({ ctx, wide }) {
   }, [ctx.data, metric, Math.floor(ctx.nowMs / 3600e3)]);
   const label = metric === 'cpu' ? 'CPU' : 'IO wait';
   if (!grid.peak) {
-    return <Card title="Busy hours" href="#/insights" wide={wide}><Empty>No week of history yet.</Empty></Card>;
+    return <Card title="Busy hours" href="#/insights"><Empty>No week of history yet.</Empty></Card>;
   }
   // Shade from the week's quietest hour to its busiest so the pattern shows
   // even when the whole week sits in a narrow band; the limit ring and the
@@ -184,7 +189,7 @@ export function RhythmWidget({ ctx, wide }) {
   const sel = picked ? grid.rows.find(r => r.key === picked.day) : null;
   const selV = sel ? sel.cells[picked.hour] : null;
   return (
-    <Card title="Busy hours" href="#/insights" wide={wide}
+    <Card title="Busy hours" href="#/insights"
       tools={<Switch label="Metric" options={RHYTHM_METRICS} value={metric} onChange={(v) => { setMetric(v); setPicked(null); }} />}>
       <p className="text-sm text-pb-text dark:text-gray-200">
         Busiest: <b className="font-semibold">{grid.peak.label} {String(grid.peak.hour).padStart(2, '0')}:00</b>
@@ -234,12 +239,12 @@ export function RhythmWidget({ ctx, wide }) {
 
 const TYPE_FILL = { VM: 'bg-indigo-500', CT: 'bg-teal-500' };
 
-export function TopGuestsWidget({ ctx, wide }) {
+export function TopGuestsWidget({ ctx }) {
   const [metric, setMetric] = usePref('topguests.metric', 'cpu', GUEST_METRICS.map(m => m.id));
   const rows = topGuests(ctx.data?.guests, metric, 6);
   const scale = metric === 'cpu' ? 100 : Math.max(...rows.map(r => r.value), 1);
   return (
-    <Card title="Busiest guests" href="#/dashboard/guests" wide={wide}
+    <Card title="Busiest guests" href="#/dashboard/guests"
       tools={<Switch label="Metric" options={GUEST_METRICS} value={metric} onChange={setMetric} />}>
       {rows.length === 0 ? <Empty>No running guest reports this yet.</Empty> : (
         <>
@@ -276,13 +281,13 @@ export function TopGuestsWidget({ ctx, wide }) {
 
 const STORAGE_SHOWN = 6;
 
-export function StorageWidget({ ctx, wide }) {
+export function StorageWidget({ ctx }) {
   const [all, setAll] = useState(false);
   const pools = storagePools(ctx.data?.nodes);
   const shown = all ? pools : pools.slice(0, STORAGE_SHOWN);
   const full = pools.filter(p => p.tone !== 'ok').length;
   return (
-    <Card title="Storage" href="#/dashboard/nodes" wide={wide}>
+    <Card title="Storage" href="#/dashboard/nodes">
       {pools.length === 0 ? <Empty>No storage reported.</Empty> : (
         <>
           <p className="text-sm text-pb-text dark:text-gray-200">
@@ -320,21 +325,22 @@ export function StorageWidget({ ctx, wide }) {
 // Memory map
 // ---------------------------------------------------------------------------
 
-const MAP_H = 200;
 
 /**
  * A column per node, as tall as its memory: running guests stacked from the
  * bottom (largest first, VM indigo, CT teal), then the host and anything
  * else, then free. A line marks the memory limit. Tap a block to name it.
  */
-export function MemoryMapWidget({ ctx, wide }) {
+export function MemoryMapWidget({ ctx }) {
   const [picked, setPicked] = useState(null);
+  const { widthPx } = useSlot();
+  const MAP_H = fitPx(widthPx, 0.2, 170, 340);
   const cols = memoryColumns(ctx.data?.nodes, ctx.data?.guests);
-  if (cols.length === 0) return <Card title="Memory map" href="#/dashboard/map" wide={wide}><Empty>No node data yet.</Empty></Card>;
+  if (cols.length === 0) return <Card title="Memory map" href="#/dashboard/map"><Empty>No node data yet.</Empty></Card>;
   const biggest = Math.max(...cols.map(c => c.totalGb));
   const limit = ctx.memThreshold;
   return (
-    <Card title="Memory map" href="#/dashboard/map" wide={wide}>
+    <Card title="Memory map" href="#/dashboard/map">
       <div className="flex items-end gap-2 sm:gap-4" style={{ height: MAP_H + 36 }}>
         {cols.map(c => {
           const h = (c.totalGb / biggest) * MAP_H;
@@ -400,11 +406,61 @@ const MAP_MODES = [
 ];
 const noop = () => {};
 
+// Width one node column takes in the map (its 196 px minimum plus the gap).
+const MAP_COL_PX = 212;
+// Smallest scale before the map wraps to more rows instead.
+const MAP_MIN_SCALE = 0.6;
+// Below this card width (phones) the map is not scaled: it stacks as on the Dashboard.
+const MAP_NO_SCALE_BELOW = 500;
+
+/**
+ * Lays the map out wide enough for one row of nodes and scales it down (never
+ * up) to the card's width; when that would go under MAP_MIN_SCALE it lays
+ * out at the widest width that scale allows, so the nodes wrap. The box
+ * takes the scaled height, so nothing scrolls.
+ */
+function FitWidth({ columns, children }) {
+  const boxRef = useRef(null);
+  const innerRef = useRef(null);
+  const [fit, setFit] = useState({ w: null, s: 1, h: null });
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return undefined;
+    const measure = () => {
+      const bw = box.clientWidth;
+      if (!bw) return;
+      let w = bw;
+      let sc = 1;
+      if (bw >= MAP_NO_SCALE_BELOW) {
+        w = Math.max(bw, Math.min(columns * MAP_COL_PX, bw / MAP_MIN_SCALE));
+        sc = bw / w;
+      }
+      const h = Math.ceil(inner.offsetHeight * sc);
+      setFit(f => (f.w === w && Math.abs(f.s - sc) < 0.005 && f.h === h ? f : { w, s: sc, h }));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(box);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [columns]);
+  return (
+    <div ref={boxRef} className="relative w-full overflow-x-clip" style={{ height: fit.h ?? undefined }}>
+      <div ref={innerRef} className="absolute top-0 left-0"
+        style={{ width: fit.w ? `${fit.w}px` : '100%', transform: fit.s < 1 ? `scale(${fit.s})` : undefined, transformOrigin: 'top left' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /**
  * The Dashboard's Cluster Map, map only (no toolbar, find bar or dragging).
  * Tapping a node or guest opens it on the full Dashboard's Map tab.
  */
-export function MapWidget({ ctx, wide }) {
+export function MapWidget({ ctx }) {
   const [mode, setMode] = usePref('map.mode', 'cpu', MAP_MODES.map(m => m.id));
   const roles = useMemo(
     () => nodeRoles({ nodes: ctx.data?.nodes, recommendations: ctx.recommendations, maintenanceNodes: ctx.maintenanceNodes }),
@@ -413,9 +469,9 @@ export function MapWidget({ ctx, wide }) {
   const openNode = (node) => { if (node?.name) window.location.hash = `#/dashboard/map/node/${encodeURIComponent(node.name)}`; };
   const openGuest = (g) => { if (g?.vmid != null) window.location.hash = `#/dashboard/map/guest/${g.vmid}`; };
   return (
-    <Card title="Cluster map" href="#/dashboard/map" wide={wide}
+    <Card title="Cluster map" href="#/dashboard/map"
       tools={<Switch label="Bubble size" options={MAP_MODES} value={mode} onChange={setMode} />}>
-      <div className="-mx-1 overflow-x-auto">
+      <FitWidth columns={Object.keys(ctx.data?.nodes || {}).length}>
         <ClusterMap
           embedded wall
           data={ctx.data}
@@ -433,7 +489,7 @@ export function MapWidget({ ctx, wide }) {
           nodeScores={ctx.nodeScores}
           recommendations={ctx.recommendations || []}
         />
-      </div>
+      </FitWidth>
       <p className={`text-[11px] ${TEXT.muted}`}>Bubble size = the guest's {MAP_MODES.find(m => m.id === mode)?.label.toLowerCase()}. Tap a node or guest to open it.</p>
     </Card>
   );
