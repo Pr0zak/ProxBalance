@@ -13,7 +13,7 @@ Every feature, with where to find it in the UI. For step-by-step use, see the [U
 - CPU, memory, IOWait and load for every node, and CPU, memory, disk I/O and network I/O for every guest
 - **Headroom** score per node (0 to 100, higher = more room to take guests) with one colour scale everywhere: 50 and above is fine, 30 to 49 amber, under 30 red
 - **Needs attention** strip that appears only when there is something to act on: stale collector data, a failed automation run, nodes in maintenance, or a node under 30 headroom
-- KPI row with the tightest node's headroom and its largest penalty, nodes online, guests, migrations in flight, suggestions and tagged guests; each card opens the matching view
+- KPI row with cluster health as two numbers, Capacity (the busiest node's headroom) and Balance (how close the nodes' CPU and memory are; click for a bar per node showing the most loaded, the most free and any node too full), nodes online, guests, migrations in flight, suggestions and tagged guests; each card opens the matching view
 - Automation status: when automation can act next, what the last check did, the last real move, which guests it is watching, and a strip of the last 24 hours of checks labelled by day (Yesterday, Today). In semi-automatic mode it links to the moves waiting for approval
 - Data age in the header, amber or red when collection falls behind
 

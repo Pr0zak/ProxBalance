@@ -114,6 +114,8 @@ With no collected data it returns the same `503` no-data body as `GET /api/analy
 
 Includes `cluster_spread` (also added to `GET /api/analyze` data and the `POST /api/node-scores` response): for `memory` and `cpu`, the `min`/`max` (with `min_node`/`max_node`), `spread` (max − min, percentage points), `mean`, `cv` (population std-dev ÷ mean) and `nodes` counted, over online nodes only. CPU is the ~15-minute `recent_cpu` that scoring uses. A metric with fewer than two readings is `null`.
 
+`GET /api/analyze` and `GET /api/cluster-summary` also include `cluster_balance`, the dashboard's Balance figure. It judges the cluster the way the recommendation engine's balance check does: CPU is the time-weighted CPU with anchored guests left out, memory is the current reading, online nodes only. Fields: `score` (100 − the larger of the CPU and memory gaps), `balanced` (both gaps under `threshold` and no node over its limit), `threshold` (`cluster_convergence_threshold`), `limits` (`cpu`, `memory`: the recommendation thresholds), `cpu` and `memory` (`spread`, `max`/`max_node`, `min`/`min_node`, `values` per node) and `over` (`node`, `metric`, `value`, `limit` for each reading over its limit). `score`, `cpu` and `memory` are `null` with fewer than two online nodes; the whole field is `null` if it couldn't be worked out.
+
 ### GET /api/nodes-only
 
 Returns node data without guest details.
