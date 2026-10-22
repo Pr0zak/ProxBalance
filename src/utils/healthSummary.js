@@ -83,8 +83,8 @@ export function healthSummary({ node = null, headroom = null, score = null } = {
   if (level === 'ok') {
     return {
       level,
-      headline: 'All nodes have room',
-      sub: node ? `Least room: ${node} · headroom ${n}/100` : `headroom ${n}/100`,
+      headline: 'All nodes have capacity',
+      sub: node ? `Busiest: ${node} · capacity ${n}/100` : `headroom ${n}/100`,
       phrase: null,
     };
   }
