@@ -72,7 +72,7 @@ function GapHeading({ label, side, threshold, over }) {
     <div className="flex items-center gap-1.5 text-[11px] text-pb-text2 dark:text-gray-400 min-w-0">
       <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(level)}`} aria-hidden="true" />
       <span>{label}</span>
-      <span className={`ml-auto pr-8 tabular-nums font-semibold ${levelTextColor(level)}`} title="Busiest minus quietest node, in points">
+      <span className={`ml-auto sm:pr-8 whitespace-nowrap tabular-nums font-semibold ${levelTextColor(level)}`} title="Busiest minus quietest node, in points">
         {side ? `gap ${Math.round(side.spread)}` : '—'}
       </span>
     </div>
