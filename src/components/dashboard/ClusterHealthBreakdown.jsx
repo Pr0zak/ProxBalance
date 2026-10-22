@@ -83,12 +83,12 @@ function Legend({ threshold }) {
   const swatch = (cls) => <span className={`inline-block w-2.5 h-2.5 rounded-sm ${cls}`} />;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-pb-text2 dark:text-gray-500">
-      <span className="flex items-center gap-1">{swatch(FILL.heavy)}heaviest</span>
-      <span className="flex items-center gap-1">{swatch(FILL.spare)}most spare</span>
-      <span className="flex items-center gap-1">{swatch(FILL.over)}over limit</span>
-      <span className="flex items-center gap-1"><span className="inline-block w-0.5 h-3 bg-pb-text dark:bg-gray-200" />average</span>
-      <span className="flex items-center gap-1"><span className="inline-block h-3 border-l border-dashed border-red-500" />limit</span>
-      <span>even = gap under {Math.round(threshold)}</span>
+      <span className="flex items-center gap-1">{swatch(FILL.heavy)}most loaded</span>
+      <span className="flex items-center gap-1">{swatch(FILL.spare)}most free</span>
+      <span className="flex items-center gap-1">{swatch(FILL.over)}too full</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-0.5 h-3 bg-pb-text dark:bg-gray-200" />cluster average</span>
+      <span className="flex items-center gap-1"><span className="inline-block h-3 border-l border-dashed border-red-500" />max allowed</span>
+      <span>even = nodes within {Math.round(threshold)}% of each other</span>
     </div>
   );
 }
