@@ -96,3 +96,40 @@ export function healthSummary({ node = null, headroom = null, score = null } = {
     phrase,
   };
 }
+
+/**
+ * Balance figure for the dashboard tile, from /api/analyze `cluster_balance`
+ * (the engine's own balance check: CPU and memory gap between the busiest and
+ * quietest node, and whether any node is over its limit).
+ *
+ * Level: 'crit' when a node is over a limit or moves are suggested, 'ok' when
+ * the engine calls the cluster balanced, 'warn' otherwise (uneven, but no
+ * move worth making).
+ *
+ * @param {object|null} balance  cluster_balance from /api/analyze
+ * @param {number|null} moves    number of suggested moves (null when unknown)
+ * @returns {{ level: 'ok'|'warn'|'crit'|null, value: number|null, sub: string|null }}
+ */
+export function balanceSummary(balance, moves = null) {
+  if (!balance || typeof balance.score !== 'number') return { level: null, value: null, sub: null };
+  const over = Array.isArray(balance.over) ? balance.over : [];
+  const cpuGap = balance.cpu?.spread ?? 0;
+  const memGap = balance.memory?.spread ?? 0;
+  const worst = cpuGap >= memGap
+    ? { label: 'CPU', gap: cpuGap, node: balance.cpu?.max_node }
+    : { label: 'mem', gap: memGap, node: balance.memory?.max_node };
+  let level = 'warn';
+  let sub = `${worst.label} gap ${Math.round(worst.gap)}${worst.node ? ` · ${worst.node}` : ''}`;
+  if (over.length > 0) {
+    level = 'crit';
+    const o = over[0];
+    sub = `${o.node} over ${o.metric === 'cpu' ? 'CPU' : 'mem'} limit`;
+  } else if (moves > 0) {
+    level = 'crit';
+    sub = `${moves} move${moves !== 1 ? 's' : ''} suggested`;
+  } else if (balance.balanced) {
+    level = 'ok';
+    sub = 'even';
+  }
+  return { level, value: balance.score, sub };
+}

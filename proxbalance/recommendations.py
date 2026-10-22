@@ -22,6 +22,7 @@ from proxbalance.scoring import (
     calculate_migration_risk,
     DEFAULT_PENALTY_CONFIG,
     annotate_anchored_load,
+    balance_readings,
     guest_node_cpu_share,
     movable_cpu_share,
     recent_cpu,
@@ -240,19 +241,10 @@ def _check_cluster_convergence(nodes: Dict[str, Any], penalty_cfg: Dict[str, Any
     if len(online_nodes) < 2:
         return None
 
-    cpus = []
-    mems = []
-    for node in online_nodes.values():
-        metrics = node.get('metrics', {})
-        # Movable CPU only: a node whose load is mostly an anchored guest (a NAS)
-        # isn't imbalanced in any way a migration could fix.
-        cpu = movable_cpu_share(weighted_cpu(metrics, penalty_cfg), node.get('anchored_cpu', 0))
-        # Memory uses current value directly — it's a step-function resource
-        # that only changes with migrations, so blending with historical
-        # averages would misrepresent the actual spread.
-        mem = metrics.get('current_mem', 0)
-        cpus.append(cpu)
-        mems.append(mem)
+    # Same readings the dashboard's Balance figure uses (scoring.cluster_balance).
+    cpu_pairs, mem_pairs = balance_readings(online_nodes, penalty_cfg)
+    cpus = [v for _, v in cpu_pairs]
+    mems = [v for _, v in mem_pairs]
 
     cpu_spread = max(cpus) - min(cpus)
     mem_spread = max(mems) - min(mems)

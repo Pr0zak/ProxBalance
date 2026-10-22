@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime
-import json, os
+import json, os, sys
+import copy
 from proxbalance.config_manager import (
-    load_config, CONFIG_FILE, trigger_collection, get_proxmox_client,
+    load_config, load_penalty_config, CONFIG_FILE, trigger_collection, get_proxmox_client,
 )
 from proxbalance.error_handlers import api_route
-from proxbalance.scoring import cluster_spread
+from proxbalance.scoring import annotate_anchored_load, cluster_balance, cluster_spread
 
 analysis_bp = Blueprint("analysis", __name__)
 
@@ -13,6 +14,24 @@ analysis_bp = Blueprint("analysis", __name__)
 def read_cache():
     """Read cluster data using the app's cache manager"""
     return current_app.config['cache_manager'].get()
+
+
+def _cluster_balance(data, config):
+    """Balance figure for the dashboard, judged with the engine's own thresholds.
+
+    Works on a copy of the nodes: the cached snapshot is shared and must not be mutated.
+    Returns None if it can't be worked out (the tile then shows a dash).
+    """
+    try:
+        nodes = copy.deepcopy(data.get("nodes", {}))
+        annotate_anchored_load(nodes, data.get("guests", {}))
+        thresholds = config.get("recommendation_thresholds", {}) or {}
+        return cluster_balance(nodes, load_penalty_config(),
+                               float(thresholds.get("cpu_threshold", 60)),
+                               float(thresholds.get("mem_threshold", 70)))
+    except Exception as e:
+        print(f"cluster_balance failed: {e}", file=sys.stderr)
+        return None
 
 
 def get_version_info():
@@ -84,7 +103,9 @@ def analyze_cluster():
         return _no_data_response()
 
     # Shallow copy: the cached snapshot itself is shared and must not be mutated.
-    data = {**data, "cluster_spread": cluster_spread(data.get("nodes", {}))}
+    data = {**data,
+            "cluster_spread": cluster_spread(data.get("nodes", {})),
+            "cluster_balance": _cluster_balance(data, config)}
     return jsonify({"success": True, "data": data})
 
 
@@ -112,6 +133,7 @@ def get_cluster_summary():
         "cluster_health": data.get("cluster_health", {}),
         "pve_crs": data.get("pve_crs", {}),
         "cluster_spread": cluster_spread(data.get("nodes", {})),
+        "cluster_balance": _cluster_balance(data, config),
         "node_count": len(data.get("nodes", {})),
         "guest_count": len(data.get("guests", {}))
     }

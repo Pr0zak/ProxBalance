@@ -287,6 +287,20 @@ export const headroomBadge = (r) => ({ crit: 'red', warn: 'yellow', ok: 'gray' }
 /** Hex colour for SVG/canvas (map borders, chart lines). */
 export const headroomHex = (r) => ({ crit: '#dc4c3f', warn: '#d9962b', ok: '#7c8aa0' }[headroomLevel(r)] || '#7c8aa0');
 
+/** Tailwind text classes for a level ('ok' | 'warn' | 'crit' | null). */
+export const levelTextColor = (level) => ({
+  crit: 'text-red-600 dark:text-red-400',
+  warn: 'text-amber-600 dark:text-amber-400',
+  ok: 'text-pb-text dark:text-pb-text-dark',
+}[level] || 'text-pb-text2 dark:text-gray-500');
+
+/** Tailwind background classes for a level's status dot. */
+export const levelDotColor = (level) => ({
+  crit: 'bg-red-500',
+  warn: 'bg-amber-500',
+  ok: 'bg-green-500',
+}[level] || 'bg-slate-400 dark:bg-gray-600');
+
 /** Kept for existing callers: node headroom / cluster health text colour. */
 export const scoreColor = headroomTextColor;
 

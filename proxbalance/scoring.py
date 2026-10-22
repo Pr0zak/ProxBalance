@@ -1029,6 +1029,80 @@ def cluster_spread(nodes: Dict[str, Any]) -> Dict[str, Any]:
         "online_nodes": online,
     }
 
+def balance_readings(nodes: Dict[str, Any], penalty_config: Optional[Dict[str, Any]] = None
+                     ) -> Tuple[List[Tuple[str, float]], List[Tuple[str, float]]]:
+    """Per-node (name, CPU) and (name, memory) readings the balance check compares.
+
+    CPU is the time-weighted CPU re-expressed as a share of what anchored guests
+    leave free (a node busy mostly with an anchored NAS is not imbalanced in any
+    way a migration could fix). Memory is the current reading: it only changes
+    when guests start, stop or move, so averaging it would misstate the gap.
+    Only online nodes count. ``nodes`` should already carry ``anchored_cpu``
+    (see :func:`annotate_anchored_load`); a missing value counts as 0.
+    """
+    cpus: List[Tuple[str, float]] = []
+    mems: List[Tuple[str, float]] = []
+    for name, node in (nodes or {}).items():
+        if not isinstance(node, dict) or node.get("status") != "online":
+            continue
+        label = node.get("name", name)
+        metrics = node.get("metrics", {}) or {}
+        cpus.append((label, movable_cpu_share(weighted_cpu(metrics, penalty_config), node.get("anchored_cpu", 0))))
+        mems.append((label, metrics.get("current_mem", 0)))
+    return cpus, mems
+
+
+def cluster_balance(nodes: Dict[str, Any], penalty_config: Optional[Dict[str, Any]],
+                    cpu_threshold: float, mem_threshold: float) -> Dict[str, Any]:
+    """How even the cluster is, judged the way the recommendation engine judges it.
+
+    The engine calls the cluster balanced when the CPU gap and the memory gap
+    (busiest minus quietest node) are both under ``cluster_convergence_threshold``
+    and no node is over the CPU or memory threshold. ``score`` is 100 minus the
+    larger gap, so a score at or above ``100 - threshold`` is balanced unless a
+    node is over a limit.
+
+    Args:
+        nodes: node mapping with ``anchored_cpu`` set (see :func:`annotate_anchored_load`).
+        penalty_config: saved penalty settings (time weights, convergence threshold).
+        cpu_threshold / mem_threshold: the recommendation thresholds, in percent.
+
+    Returns:
+        ``{"score", "balanced", "threshold", "cpu", "memory", "over"}``. ``cpu`` and
+        ``memory`` hold ``spread``, the node and value at each end and ``values``
+        (node -> reading). ``score``, ``cpu`` and ``memory`` are ``None`` with fewer
+        than two online nodes. ``over`` lists ``{"node", "metric", "value", "limit"}``.
+    """
+    cfg = _with_defaults(penalty_config)
+    threshold = float(cfg.get("cluster_convergence_threshold", 8.0))
+    cpus, mems = balance_readings(nodes, penalty_config)
+
+    def side(values: List[Tuple[str, float]]) -> Optional[Dict[str, Any]]:
+        stats = _spread_stats(values)
+        if stats is None:
+            return None
+        return {"spread": stats["spread"], "max": stats["max"], "max_node": stats["max_node"],
+                "min": stats["min"], "min_node": stats["min_node"],
+                "values": {n: round(v, 1) for n, v in values}}
+
+    cpu, mem = side(cpus), side(mems)
+    over = ([{"node": n, "metric": "cpu", "value": round(v, 1), "limit": cpu_threshold}
+             for n, v in cpus if v > cpu_threshold]
+            + [{"node": n, "metric": "memory", "value": round(v, 1), "limit": mem_threshold}
+               for n, v in mems if v > mem_threshold])
+    if cpu is None or mem is None:
+        return {"score": None, "balanced": None, "threshold": threshold,
+                "cpu": cpu, "memory": mem, "over": over}
+    gap = max(cpu["spread"], mem["spread"])
+    return {
+        "score": round(max(0.0, 100.0 - gap)),
+        "balanced": not over and cpu["spread"] < threshold and mem["spread"] < threshold,
+        "threshold": threshold,
+        "cpu": cpu,
+        "memory": mem,
+        "over": over,
+    }
+
 # ---------------------------------------------------------------------------
 # Migration risk scoring
 # ---------------------------------------------------------------------------

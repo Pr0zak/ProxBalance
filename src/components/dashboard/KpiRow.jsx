@@ -1,13 +1,12 @@
-import { KPI_CARD, scoreColor } from '../../utils/designTokens.js';
-import { Server, Activity, Clock, MoveRight } from '../Icons.jsx';
+import { KPI_CARD, headroomLevel, levelTextColor, levelDotColor } from '../../utils/designTokens.js';
+import { Server, Clock, MoveRight } from '../Icons.jsx';
 import ClusterHealthBreakdown from './ClusterHealthBreakdown.jsx';
-import { spreadText } from './ScoreBreakdown.jsx';
 import InFlightModal, { inFlightMigrations } from './InFlightModal.jsx';
 import { getStatus, getNextCheck } from './AutoStatusPill.jsx';
 import { tightestNode, toNodeSet } from '../../utils/nodeCondition.js';
 import { parseTimestamp } from '../../utils/formatters.js';
 import { nextActionWindow, formatInZone, formatIn } from '../../utils/schedule.js';
-import { healthSummary } from '../../utils/healthSummary.js';
+import { balanceSummary } from '../../utils/healthSummary.js';
 
 const { useState, useMemo } = React;
 
@@ -20,9 +19,37 @@ const STATUS_TEXT = {
 
 const CLICKABLE = 'hover:bg-white dark:hover:bg-slate-800/60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500';
 
+/** One of the health tile's two numbers: status dot + label, the number, a short line. */
+function Figure({ label, fig }) {
+  return (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex items-center gap-1.5 text-xs text-pb-text2 dark:text-gray-400">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(fig.level)}`} aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </div>
+      <div className={`text-2xl font-bold tabular-nums leading-tight ${levelTextColor(fig.level)}`}>
+        {fig.value ?? '—'}
+        {fig.value !== null && <span className="text-xs font-medium text-pb-text2 dark:text-gray-500">/100</span>}
+      </div>
+      {fig.sub && <div className="text-[11px] text-pb-text2 dark:text-gray-500 truncate">{fig.sub}</div>}
+    </div>
+  );
+}
+
+/** Phone status line version: dot, label, number. */
+function PhoneFigure({ label, fig }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(fig.level)}`} aria-hidden="true" />
+      <span className="text-pb-text2 dark:text-gray-400">{label}</span>
+      <span className={`font-semibold tabular-nums ${levelTextColor(fig.level)}`}>{fig.value ?? '—'}</span>
+    </span>
+  );
+}
+
 /**
- * Dashboard summary. Desktop/tablet: four tiles — cluster health (with the
- * node pulling it down), nodes online, automation (next action and when, or
+ * Dashboard summary. Desktop/tablet: four tiles — cluster health (Capacity:
+ * the busiest node's headroom; Balance: how even the load is), nodes online, automation (next action and when, or
  * the migrations running right now) and suggestions. Phones: one compact
  * status line so the node table is on the first screen.
  */
@@ -59,8 +86,10 @@ export default function KpiRow({
   const offline = nodes.filter(n => n.status !== 'online').map(n => n.name);
   const maint = [...toNodeSet(maintenanceNodes)];
 
-  // ── Cluster health: the busiest node's headroom (same /api/node-scores
-  // value as the Nodes table). Fall back to the backend summary value.
+  // ── Cluster health, as two numbers.
+  // Capacity: the busiest node's headroom (same /api/node-scores value as the
+  // Nodes table), falling back to the backend summary value.
+  // Balance: the engine's own balance check (/api/analyze cluster_balance).
   const busiest = tightestNode(nodeScores, { nodes: nodesObj, maintenanceNodes });
   let healthVal = null;
   let meanScore = null;
@@ -74,18 +103,18 @@ export default function KpiRow({
     meanScore = healthVal;
     healthSource = 'backend';
   }
-  // Plain facts instead of a vague word: every node has room, or which node
-  // is short and its biggest problem (largest penalty item).
-  const health = healthSummary({
-    node: busiest?.name || null,
-    headroom: healthVal,
-    score: busiest ? nodeScores?.[busiest.name] : null,
-  });
-  const healthColor = healthVal !== null ? scoreColor(healthVal) : 'text-pb-text2 dark:text-gray-500';
-  const healthTitle = busiest
-    ? `Busiest node: ${busiest.name}, headroom ${healthVal}/100${busiest.top ? ` (mostly: ${busiest.top.description})` : ''}.\n`
-      + `Average across ${busiest.count} node${busiest.count !== 1 ? 's' : ''}: ${meanScore}. Click for the per-node breakdown.`
-    : 'Click for the per-node breakdown';
+  const capacity = { level: headroomLevel(healthVal), value: healthVal, sub: busiest ? `busiest: ${busiest.name}` : null };
+  const recCount = Array.isArray(recommendations) ? recommendations.length : null;
+  const balance = balanceSummary(data.cluster_balance, recCount);
+  const healthTitle = [
+    busiest
+      ? `Capacity ${healthVal}/100: headroom on the busiest node, ${busiest.name}${busiest.top ? ` (mostly: ${busiest.top.description})` : ''}.`
+      : null,
+    balance.value !== null
+      ? `Balance ${balance.value}/100: 100 minus the larger CPU or memory gap between nodes.`
+      : null,
+    'Click for the per-node breakdown.',
+  ].filter(Boolean).join('\n');
 
   // ── Migrations running now (Proxmox's list + ones this browser started).
   const inFlight = inFlightMigrations({ automationStatus, guestsMigrating, migrationProgress, guests: data.guests });
@@ -115,8 +144,7 @@ export default function KpiRow({
     ? `watching ${watching} guest${watching !== 1 ? 's' : ''} before moving`
     : null;
 
-  // ── Suggestions
-  const recCount = Array.isArray(recommendations) ? recommendations.length : null;
+  // ── Suggestions (recCount is worked out above, for Balance)
 
   const go = (tab) => {
     onNavigate?.(tab);
@@ -155,8 +183,9 @@ export default function KpiRow({
   const sep = <span className="text-pb-text2 dark:text-gray-600" aria-hidden="true">·</span>;
   const phone = (
     <div className="sm:hidden mb-3 flex flex-wrap items-center gap-x-2 px-3 py-0.5 rounded-xl border bg-white dark:bg-pb-surface-dark border-slate-200 dark:border-pb-border-dark text-xs">
-      <button type="button" onClick={() => setShowHealthDetail(true)} title={healthTitle} className="inline-flex items-center gap-1 min-w-0 min-h-[40px]">
-        <span className={`font-semibold truncate ${healthColor}`}>{health.headline}</span>
+      <button type="button" onClick={() => setShowHealthDetail(true)} title={healthTitle} className="inline-flex items-center gap-2 min-w-0 min-h-[40px]">
+        <PhoneFigure label="Capacity" fig={capacity} />
+        <PhoneFigure label="Balance" fig={balance} />
       </button>
       {sep}
       <button type="button" onClick={() => go('nodes')} title={nodesSub || 'All nodes online'} className="inline-flex items-center gap-1 min-h-[40px]">
@@ -196,15 +225,11 @@ export default function KpiRow({
 
   const tiles = (
     <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-      {/* Cluster health */}
-      <Tile onClick={() => setShowHealthDetail(true)} title={healthTitle}>
-        <Activity size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
-        <div className="min-w-0">
-          <div className={`text-lg font-bold leading-snug text-balance ${healthColor}`}>{health.headline}</div>
-          <Label>Cluster health</Label>
-          {health.sub && <Sub>{health.sub}</Sub>}
-          {data.cluster_spread && <Sub title="Max − min across online nodes">{spreadText(data.cluster_spread)}</Sub>}
-        </div>
+      {/* Cluster health: Capacity | Balance */}
+      <Tile onClick={() => setShowHealthDetail(true)} title={healthTitle} className="!items-stretch">
+        <Figure label="Capacity" fig={capacity} />
+        <span className="w-px self-stretch bg-slate-200 dark:bg-pb-border-dark" aria-hidden="true" />
+        <Figure label="Balance" fig={balance} />
       </Tile>
 
       {/* Nodes online */}
