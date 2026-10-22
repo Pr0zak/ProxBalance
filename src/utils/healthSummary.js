@@ -84,13 +84,13 @@ export function balanceSummary(balance, moves = null) {
   const memGap = balance.memory?.spread ?? 0;
   const worst = cpuGap >= memGap
     ? { label: 'CPU', gap: cpuGap, node: balance.cpu?.max_node }
-    : { label: 'mem', gap: memGap, node: balance.memory?.max_node };
+    : { label: 'memory', gap: memGap, node: balance.memory?.max_node };
   let level = 'warn';
   let sub = `${worst.label} gap ${Math.round(worst.gap)}${worst.node ? ` · ${worst.node}` : ''}`;
   if (over.length > 0) {
     level = 'crit';
     const o = over[0];
-    sub = `${o.node} over ${o.metric === 'cpu' ? 'CPU' : 'mem'} limit`;
+    sub = `${o.node} ${o.metric === 'cpu' ? 'CPU' : 'memory'} too full`;
   } else if (moves > 0) {
     level = 'crit';
     sub = `${moves} move${moves !== 1 ? 's' : ''} suggested`;

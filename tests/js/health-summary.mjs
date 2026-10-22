@@ -54,7 +54,7 @@ const balance = (over = {}) => ({
 
 test('balance: uneven with no moves is amber and names the larger gap', () => {
   const r = M.balanceSummary(balance(), 0);
-  assert.deepEqual(r, { level: 'warn', value: 69, sub: 'mem gap 31 · pve4' });
+  assert.deepEqual(r, { level: 'warn', value: 69, sub: 'memory gap 31 · pve4' });
 });
 
 test('balance: balanced cluster is green', () => {
@@ -72,7 +72,7 @@ test('balance: suggested moves are red', () => {
 test('balance: a node over its limit is red and named, before moves', () => {
   const r = M.balanceSummary(balance({ over: [{ node: 'lyra', metric: 'memory', value: 84, limit: 80 }] }), 2);
   assert.equal(r.level, 'crit');
-  assert.equal(r.sub, 'lyra over mem limit');
+  assert.equal(r.sub, 'lyra memory too full');
 });
 
 test('balance: missing figure is a dash, never 0', () => {
