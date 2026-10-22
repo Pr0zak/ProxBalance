@@ -44,28 +44,38 @@ test('biggest problem: largest penalty_items entry, else penalty_breakdown', () 
   assert.equal(M.biggestProblem({ penalty_items: [] }), null);
 });
 
-test('summary: room on every node', () => {
-  const r = M.healthSummary({ node: 'orion', headroom: 57.4, score: {} });
+const balance = (over = {}) => ({
+  score: 69, balanced: false, threshold: 8, limits: { cpu: 80, memory: 80 },
+  cpu: { spread: 14.4, max_node: 'pve3', min_node: 'pve4', values: {} },
+  memory: { spread: 31.3, max_node: 'pve4', min_node: 'pve5', values: {} },
+  over: [],
+  ...over,
+});
+
+test('balance: uneven with no moves is amber and names the larger gap', () => {
+  const r = M.balanceSummary(balance(), 0);
+  assert.deepEqual(r, { level: 'warn', value: 69, sub: 'mem gap 31 · pve4' });
+});
+
+test('balance: balanced cluster is green', () => {
+  const r = M.balanceSummary(balance({ score: 95, balanced: true }), 0);
   assert.equal(r.level, 'ok');
-  assert.equal(r.headline, 'All nodes have room');
-  assert.equal(r.sub, 'Least room: orion · headroom 57/100');
+  assert.equal(r.sub, 'even');
 });
 
-test('summary: busy node names its biggest problem', () => {
-  const score = { penalty_items: [{ key: 'iowait_sustained', label: 'IOWait 7-day avg', points: 20 }] };
-  const warn = M.healthSummary({ node: 'orion', headroom: 33, score });
-  assert.equal(warn.level, 'warn');
-  assert.equal(warn.headline, 'orion: disk wait high this week');
-  assert.equal(warn.sub, 'Busiest node · headroom 33/100');
-  assert.equal(M.healthSummary({ node: 'orion', headroom: 12, score }).level, 'crit');
+test('balance: suggested moves are red', () => {
+  const r = M.balanceSummary(balance(), 3);
+  assert.equal(r.level, 'crit');
+  assert.equal(r.sub, '3 moves suggested');
 });
 
-test('summary: no penalties but low headroom reads as high base load', () => {
-  assert.equal(M.healthSummary({ node: 'rigel', headroom: 40, score: { penalty_items: [] } }).headline, 'rigel: high base load');
+test('balance: a node over its limit is red and named, before moves', () => {
+  const r = M.balanceSummary(balance({ over: [{ node: 'lyra', metric: 'memory', value: 84, limit: 80 }] }), 2);
+  assert.equal(r.level, 'crit');
+  assert.equal(r.sub, 'lyra over mem limit');
 });
 
-test('summary: missing headroom is a dash', () => {
-  const r = M.healthSummary({ node: null, headroom: null });
-  assert.equal(r.headline, '—');
-  assert.equal(r.level, null);
+test('balance: missing figure is a dash, never 0', () => {
+  assert.deepEqual(M.balanceSummary(null, 0), { level: null, value: null, sub: null });
+  assert.equal(M.balanceSummary({ score: null }, 0).value, null);
 });

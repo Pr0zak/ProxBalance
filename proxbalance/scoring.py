@@ -1068,7 +1068,7 @@ def cluster_balance(nodes: Dict[str, Any], penalty_config: Optional[Dict[str, An
         cpu_threshold / mem_threshold: the recommendation thresholds, in percent.
 
     Returns:
-        ``{"score", "balanced", "threshold", "cpu", "memory", "over"}``. ``cpu`` and
+        ``{"score", "balanced", "threshold", "limits", "cpu", "memory", "over"}``. ``cpu`` and
         ``memory`` hold ``spread``, the node and value at each end and ``values``
         (node -> reading). ``score``, ``cpu`` and ``memory`` are ``None`` with fewer
         than two online nodes. ``over`` lists ``{"node", "metric", "value", "limit"}``.
@@ -1086,18 +1086,20 @@ def cluster_balance(nodes: Dict[str, Any], penalty_config: Optional[Dict[str, An
                 "values": {n: round(v, 1) for n, v in values}}
 
     cpu, mem = side(cpus), side(mems)
+    limits = {"cpu": cpu_threshold, "memory": mem_threshold}
     over = ([{"node": n, "metric": "cpu", "value": round(v, 1), "limit": cpu_threshold}
              for n, v in cpus if v > cpu_threshold]
             + [{"node": n, "metric": "memory", "value": round(v, 1), "limit": mem_threshold}
                for n, v in mems if v > mem_threshold])
     if cpu is None or mem is None:
-        return {"score": None, "balanced": None, "threshold": threshold,
+        return {"score": None, "balanced": None, "threshold": threshold, "limits": limits,
                 "cpu": cpu, "memory": mem, "over": over}
     gap = max(cpu["spread"], mem["spread"])
     return {
         "score": round(max(0.0, 100.0 - gap)),
         "balanced": not over and cpu["spread"] < threshold and mem["spread"] < threshold,
         "threshold": threshold,
+        "limits": limits,
         "cpu": cpu,
         "memory": mem,
         "over": over,

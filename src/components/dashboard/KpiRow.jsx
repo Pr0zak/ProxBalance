@@ -92,16 +92,10 @@ export default function KpiRow({
   // Balance: the engine's own balance check (/api/analyze cluster_balance).
   const busiest = tightestNode(nodeScores, { nodes: nodesObj, maintenanceNodes });
   let healthVal = null;
-  let meanScore = null;
-  let healthSource = 'unknown';
   if (busiest) {
     healthVal = Math.round(busiest.rating);
-    meanScore = Math.round(busiest.mean);
-    healthSource = 'tightest';
   } else if (typeof recommendationData?.summary?.cluster_health === 'number') {
     healthVal = Math.round(recommendationData.summary.cluster_health);
-    meanScore = healthVal;
-    healthSource = 'backend';
   }
   const capacity = { level: headroomLevel(healthVal), value: healthVal, sub: busiest ? `busiest: ${busiest.name}` : null };
   const recCount = Array.isArray(recommendations) ? recommendations.length : null;
@@ -163,11 +157,13 @@ export default function KpiRow({
       <ClusterHealthBreakdown
         open={showHealthDetail}
         onClose={() => setShowHealthDetail(false)}
-        avgScore={meanScore}
-        tightest={busiest}
+        capacity={capacity}
+        balanceFig={balance}
+        balance={data.cluster_balance}
         nodeScores={nodeScores}
-        healthSource={healthSource}
-        spread={data.cluster_spread}
+        nodes={nodesObj}
+        maintenanceNodes={maint}
+        busiestName={busiest?.name || null}
       />
       <InFlightModal
         open={showInFlight}

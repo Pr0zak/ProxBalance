@@ -1,117 +1,136 @@
-import { MODAL_OVERLAY, MODAL_CONTAINER, scoreColor } from '../../utils/designTokens.js';
-import { X, ChevronDown } from '../Icons.jsx';
-import { ScoreBreakdown, SpreadFigure } from './ScoreBreakdown.jsx';
-import { healthSummary } from '../../utils/healthSummary.js';
+import { MODAL_OVERLAY, MODAL_CONTAINER, headroomLevel, levelTextColor, levelDotColor } from '../../utils/designTokens.js';
+import { X } from '../Icons.jsx';
+import { ScoreBreakdown } from './ScoreBreakdown.jsx';
 
 const { useState } = React;
 
-const PENALTY_SEGMENTS = [
-  { key: 'cpu',     label: 'CPU',     color: 'bg-red-500',    text: 'text-red-700 dark:text-red-300' },
-  { key: 'memory',  label: 'Memory',  color: 'bg-blue-500',   text: 'text-blue-700 dark:text-blue-300' },
-  { key: 'iowait',  label: 'IOWait',  color: 'bg-orange-500', text: 'text-orange-700 dark:text-orange-300' },
-  { key: 'trends',  label: 'Trends',  color: 'bg-yellow-500', text: 'text-yellow-700 dark:text-yellow-300' },
-  { key: 'spikes',  label: 'Spikes',  color: 'bg-purple-500', text: 'text-purple-700 dark:text-purple-300' },
-];
+// Shared columns for the heading and every node row: name + capacity, CPU, memory.
+const ROW = 'grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 sm:gap-x-4 items-center';
 
-function StabilityLabel(score) {
-  if (score == null) return null;
-  if (score >= 80) return { label: 'Stable',   cls: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' };
-  if (score >= 60) return { label: 'Moderate', cls: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' };
-  if (score >= 40) return { label: 'Variable', cls: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' };
-  return { label: 'Volatile', cls: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' };
+// Bar fill per role: over its limit, the heavy end of an uneven gap, the
+// spare end of an uneven gap, or nothing to note.
+const FILL = {
+  over: 'bg-red-500',
+  heavy: 'bg-amber-500',
+  spare: 'bg-sky-500',
+  plain: 'bg-slate-400 dark:bg-slate-500',
+};
+
+/** Role of one node's reading within a metric of cluster_balance. */
+function roleOf(name, value, side, limit, threshold) {
+  if (value > limit) return 'over';
+  if (side && side.spread >= threshold) {
+    if (name === side.max_node) return 'heavy';
+    if (name === side.min_node) return 'spare';
+  }
+  return 'plain';
 }
 
-function PenaltyBar({ cats }) {
-  if (!cats) return null;
-  const total = PENALTY_SEGMENTS.reduce((s, p) => s + (cats[p.key] || 0), 0);
-  if (total === 0) return <div className="text-xs text-green-600 dark:text-green-400">no penalties</div>;
-  const segs = PENALTY_SEGMENTS.filter(p => (cats[p.key] || 0) > 0);
+/** Header figure: dot, label, big number, short line. Matches the dashboard tile. */
+function Figure({ label, fig }) {
   return (
-    <div>
-      <div className="flex items-center justify-between text-[10px] text-pb-text2 dark:text-gray-500 mb-1">
-        <span>Penalty sources</span>
-        <span className="tabular-nums">{total} pts</span>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1.5 text-xs text-pb-text2 dark:text-gray-400">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(fig.level)}`} aria-hidden="true" />
+        {label}
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-pb-surface2 dark:bg-slate-700/60 mb-1.5">
-        {segs.map(s => (
-          <div key={s.key} className={s.color} style={{ width: `${(cats[s.key] / total * 100)}%` }} title={`${s.label}: ${cats[s.key]}`} />
-        ))}
+      <div className={`text-3xl font-bold tabular-nums leading-tight ${levelTextColor(fig.level)}`}>
+        {fig.value ?? '—'}
+        {fig.value !== null && <span className="text-sm font-medium text-pb-text2 dark:text-gray-500">/100</span>}
       </div>
-      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px]">
-        {segs.map(s => (
-          <span key={s.key} className={`${s.text} flex items-center gap-1`}>
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.color}`} />
-            {s.label}<span className="text-pb-text2 dark:text-gray-500 tabular-nums">{cats[s.key]}</span>
-          </span>
-        ))}
-      </div>
+      {fig.sub && <div className="text-[11px] text-pb-text2 dark:text-gray-500 truncate">{fig.sub}</div>}
     </div>
   );
 }
 
-function NodeCard({ name, rating, score, isWorst }) {
-  const [open, setOpen] = useState(false);
-  const stab = StabilityLabel(score?.trend_analysis?.stability_score);
-  const oc = score?.overcommit_ratio;
-  const ocColor = oc > 1.2 ? 'text-red-600 dark:text-red-400' : oc > 1.0 ? 'text-orange-600 dark:text-orange-400' : oc > 0.85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-pb-text2 dark:text-gray-400';
+/** One reading as a 0-100 bar, with the cluster average and the limit marked. */
+function Bar({ value, role, mean, limit, title }) {
+  if (typeof value !== 'number') {
+    return <div className="text-xs text-pb-text2 dark:text-gray-500 text-right">—</div>;
+  }
+  const pct = (v) => `${Math.min(100, Math.max(0, v))}%`;
   return (
-    <div className={`p-3 rounded-lg border ${isWorst ? 'border-red-300 dark:border-red-700/50 bg-red-50 dark:bg-red-900/10' : 'border-pb-border dark:border-slate-700/50 bg-pb-surface2 dark:bg-slate-800/40'}`}>
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-pb-text dark:text-white text-sm">{name}</span>
-          {isWorst && <span className="text-[9px] uppercase tracking-wider text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/50 px-1.5 py-0.5 rounded">drag</span>}
-        </div>
-        <span className={`text-lg font-bold tabular-nums ${scoreColor(rating)}`}>{rating.toFixed(0)}<span className="text-xs text-pb-text2 dark:text-gray-500">/100</span></span>
-      </div>
-      <PenaltyBar cats={score?.penalty_categories} />
-      <div className="flex items-center gap-3 mt-2 text-[11px]">
-        {stab && (
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${stab.cls}`} title={`Stability: ${score.trend_analysis.stability_score}/100`}>
-            {stab.label}
-          </span>
+    <div className="flex items-center gap-1.5 min-w-0" title={title}>
+      <div className="relative flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-700/60">
+        <div className={`absolute inset-y-0 left-0 rounded-full ${FILL[role]}`} style={{ width: pct(value) }} />
+        {typeof mean === 'number' && (
+          <div className="absolute -top-0.5 -bottom-0.5 w-0.5 bg-pb-text dark:bg-gray-200" style={{ left: pct(mean) }} />
         )}
-        {typeof oc === 'number' && oc > 0 && (
-          <span className={`tabular-nums ${ocColor}`} title="Memory overcommit ratio">
-            OC {(oc * 100).toFixed(0)}%
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => setOpen(o => !o)}
-          aria-expanded={open}
-          className="ml-auto flex items-center gap-1 py-1 text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200"
-        >
-          Why {rating.toFixed(0)}?
-          <ChevronDown size={12} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        </button>
+        <div className="absolute -top-1 -bottom-1 border-l border-dashed border-red-500" style={{ left: pct(limit) }} />
       </div>
-      {open && (
-        <div className="mt-2 pt-2 border-t border-pb-border dark:border-slate-700/60">
-          <ScoreBreakdown score={score} compact />
-        </div>
-      )}
+      <span className={`w-7 text-right text-xs tabular-nums ${role === 'over' ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-pb-text dark:text-gray-200'}`}>
+        {Math.round(value)}
+      </span>
     </div>
   );
 }
 
-export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeScores, healthSource, tightest = null, spread = null }) {
+/** Column heading: metric name, dot coloured by its gap, and the gap. */
+function GapHeading({ label, side, threshold, over }) {
+  const level = !side ? null : over ? 'crit' : side.spread >= threshold ? 'warn' : 'ok';
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] text-pb-text2 dark:text-gray-400 min-w-0">
+      <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(level)}`} aria-hidden="true" />
+      <span>{label}</span>
+      <span className={`ml-auto pr-8 tabular-nums font-semibold ${levelTextColor(level)}`} title="Busiest minus quietest node, in points">
+        {side ? `gap ${Math.round(side.spread)}` : '—'}
+      </span>
+    </div>
+  );
+}
+
+function Legend({ threshold }) {
+  const swatch = (cls) => <span className={`inline-block w-2.5 h-2.5 rounded-sm ${cls}`} />;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-pb-text2 dark:text-gray-500">
+      <span className="flex items-center gap-1">{swatch(FILL.heavy)}heaviest</span>
+      <span className="flex items-center gap-1">{swatch(FILL.spare)}most spare</span>
+      <span className="flex items-center gap-1">{swatch(FILL.over)}over limit</span>
+      <span className="flex items-center gap-1"><span className="inline-block w-0.5 h-3 bg-pb-text dark:bg-gray-200" />average</span>
+      <span className="flex items-center gap-1"><span className="inline-block h-3 border-l border-dashed border-red-500" />limit</span>
+      <span>even = gap under {Math.round(threshold)}</span>
+    </div>
+  );
+}
+
+/**
+ * Click-in panel for the dashboard's cluster health tile.
+ *
+ * Header: the tile's two numbers (Capacity, Balance). Body: one row per node
+ * with its capacity and a CPU and memory bar. The heaviest and most spare
+ * node of an uneven metric are coloured, so where the gap comes from shows
+ * at a glance; a row opens that node's capacity breakdown.
+ */
+export default function ClusterHealthBreakdown({
+  open, onClose,
+  capacity, balanceFig,    // { level, value, sub } for the header, as on the tile
+  balance,                 // /api/analyze cluster_balance
+  nodeScores, nodes, maintenanceNodes, busiestName,
+}) {
+  const [expanded, setExpanded] = useState(null);
   if (!open) return null;
-  const entries = Object.entries(nodeScores || {})
-    .filter(([_, v]) => typeof v?.suitability_rating === 'number')
-    .map(([name, v]) => ({ name, rating: v.suitability_rating, score: v }))
-    .sort((a, b) => a.rating - b.rating); // worst first
 
-  const worst = entries[0];
-  // Headline: the tightest node when the caller provides it (KPI card), else the mean.
-  const headline = tightest ? Math.round(tightest.rating) : avgScore;
-  const drag = entries.filter(e => e.rating < (avgScore ?? 0));
-  const summary = healthSummary({
-    node: tightest?.name || null,
-    headroom: tightest ? tightest.rating : null,
-    score: tightest ? nodeScores?.[tightest.name] : null,
+  const maint = new Set(maintenanceNodes ? [...maintenanceNodes] : []);
+  const threshold = balance?.threshold ?? 8;
+  const cpuLimit = balance?.limits?.cpu ?? 80;
+  const memLimit = balance?.limits?.memory ?? 80;
+  const cpuVals = balance?.cpu?.values || {};
+  const memVals = balance?.memory?.values || {};
+  const mean = (vals) => {
+    const v = Object.values(vals);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const cpuMean = mean(cpuVals);
+  const memMean = mean(memVals);
+  const overCpu = (balance?.over || []).some(o => o.metric === 'cpu');
+  const overMem = (balance?.over || []).some(o => o.metric === 'memory');
+
+  const names = [...new Set([...Object.keys(nodes || {}), ...Object.keys(nodeScores || {})])].sort();
+  const rows = names.map(name => {
+    const online = !nodes?.[name] || nodes[name].status === 'online';
+    const rating = nodeScores?.[name]?.suitability_rating;
+    return { name, online, maint: maint.has(name), rating: typeof rating === 'number' ? rating : null };
   });
-
-  const subShort = (summary.sub || '').replace(/(^| · )headroom \d+\/100$/, '').replace(/^./, c => c.toLowerCase());
 
   return (
     <div className={MODAL_OVERLAY} onClick={onClose}>
@@ -119,70 +138,72 @@ export default function ClusterHealthBreakdown({ open, onClose, avgScore, nodeSc
         className={`${MODAL_CONTAINER} w-full sm:max-w-2xl max-h-[90vh] flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
-        {/* Sticky header */}
-        <div className="flex items-start justify-between gap-3 mb-3 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="text-3xl font-bold tabular-nums shrink-0" style={{ lineHeight: 1 }}>
-              <span className={scoreColor(headline ?? 0)}>{headline ?? '—'}</span>
-              <span className="text-base text-pb-text2 dark:text-gray-500">/100</span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-base font-bold text-pb-text dark:text-white">Cluster Health</h3>
-              <p className="text-[11px] text-pb-text2 dark:text-gray-500 mt-0.5" title={tightest && summary.sub ? summary.sub : undefined}>
-                {/* The big number is the headroom, so the sub line leaves it out. */}
-                {tightest
-                  ? <>{summary.headline}{subShort ? ` · ${subShort}` : ''}</>
-                  : <>{healthSource === 'backend' ? 'Backend-computed value' : 'Average of per-node headroom'} · higher = healthier</>}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-start gap-3 mb-4 shrink-0">
+          <Figure label="Capacity" fig={capacity} />
+          <span className="w-px self-stretch bg-slate-200 dark:bg-pb-border-dark" aria-hidden="true" />
+          <Figure label="Balance" fig={balanceFig} />
           <button onClick={onClose} aria-label="Close" className="text-pb-text2 dark:text-gray-400 hover:text-pb-text dark:hover:text-gray-200 shrink-0 p-1">
             <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-3">
-          {/* Why */}
-          {entries.length > 0 && (
-            <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50 text-xs text-pb-text dark:text-gray-300 space-y-1">
-              <div className="font-semibold text-pb-text dark:text-gray-200">Node mean {avgScore ?? '—'}</div>
-              {worst && (
-                <div>
-                  Lowest: <span className={`font-semibold ${scoreColor(worst.rating)}`}>{worst.name}</span> at {worst.rating.toFixed(0)}
-                </div>
-              )}
-              {drag.length > 0 && drag.length !== entries.length && (
-                <div className="text-pb-text2 dark:text-gray-400">
-                  Below the average: {drag.map(d => d.name).join(', ')}
-                </div>
-              )}
-              {drag.length === 0 && (
-                <div className="text-pb-text2 dark:text-gray-400">All nodes at or above the average</div>
-              )}
-            </div>
-          )}
-
-          {/* How evenly load sits across the online nodes */}
-          <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-pb-border dark:border-slate-700/50">
-            <SpreadFigure spread={spread} />
+        <div className="flex-1 overflow-y-auto -mx-2 px-2">
+          <div className={`${ROW} pb-2`}>
+            <div className="text-[11px] text-pb-text2 dark:text-gray-400 " title="Headroom left on each node, 0-100">capacity</div>
+            <GapHeading label="CPU" side={balance?.cpu} threshold={threshold} over={overCpu} />
+            <GapHeading label="Mem" side={balance?.memory} threshold={threshold} over={overMem} />
           </div>
 
-          {entries.length === 0 && (
-            <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4 text-center">No node ratings available yet.</div>
+            {rows.map(r => {
+              const cpu = cpuVals[r.name];
+              const mem = memVals[r.name];
+              const isOpen = expanded === r.name;
+              const capLevel = r.maint ? null : headroomLevel(r.rating);
+              return (
+                <div key={r.name} className="border-t border-slate-100 dark:border-slate-700/50">
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(isOpen ? null : r.name)}
+                    disabled={!nodeScores?.[r.name]?.score_breakdown}
+                    aria-expanded={isOpen}
+                    className={`${ROW} w-full py-2 text-left rounded ${r.name === busiestName ? 'bg-slate-50 dark:bg-slate-800/50' : ''} ${r.online ? '' : 'opacity-50'} hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:cursor-default`}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0 pl-1">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${levelDotColor(capLevel)}`} aria-hidden="true" />
+                      <span className="text-sm font-medium text-pb-text dark:text-gray-100 truncate">{r.name}</span>
+                      <span className={`ml-auto text-xs tabular-nums ${levelTextColor(capLevel)}`}>
+                        {!r.online ? 'off' : r.maint ? 'maint' : r.rating !== null ? Math.round(r.rating) : '—'}
+                      </span>
+                    </div>
+                    <Bar
+                      value={cpu}
+                      role={roleOf(r.name, cpu, balance?.cpu, cpuLimit, threshold)}
+                      mean={cpuMean} limit={cpuLimit}
+                      title={typeof cpu === 'number' ? `${r.name} CPU ${cpu}% (movable load: anchored guests left out) · limit ${cpuLimit}%` : undefined}
+                    />
+                    <Bar
+                      value={mem}
+                      role={roleOf(r.name, mem, balance?.memory, memLimit, threshold)}
+                      mean={memMean} limit={memLimit}
+                      title={typeof mem === 'number' ? `${r.name} memory ${mem}% · limit ${memLimit}%` : undefined}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="pb-3 pl-1">
+                      <ScoreBreakdown score={nodeScores?.[r.name]} compact />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+          {rows.length === 0 && (
+            <div className="text-sm text-pb-text2 dark:text-gray-500 italic p-4 text-center">No node readings yet.</div>
           )}
 
-          {/* Per-node cards */}
-          {entries.map((e, i) => (
-            <NodeCard
-              key={e.name}
-              name={e.name}
-              rating={e.rating}
-              score={e.score}
-              isWorst={i === 0 && entries.length > 1 && e.rating < (avgScore ?? 0)}
-            />
-          ))}
-
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+            <Legend threshold={threshold} />
+          </div>
         </div>
       </div>
     </div>

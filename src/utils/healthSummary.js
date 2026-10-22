@@ -1,11 +1,8 @@
 /**
- * Plain-words cluster health for the dashboard KPI tile, the phone status
- * line and the health breakdown modal. Instead of a vague word ("Tight")
- * it states the fact: either every node has room, or which node is short
- * and why (its largest penalty from /api/node-scores `penalty_items`).
+ * Cluster health helpers: the Balance figure for the dashboard tile, and
+ * plain phrases for a node's largest penalty (from /api/node-scores
+ * `penalty_items`).
  */
-import { headroomLevel } from './designTokens.js';
-
 // penalty key → short plain phrase. Keys match proxbalance/scoring.py.
 const PHRASE_BY_KEY = {
   iowait_current: 'disk wait high now',
@@ -65,36 +62,6 @@ export function biggestProblem(score) {
     if (top) return { key: top[0], label: top[0], points: top[1] };
   }
   return null;
-}
-
-/**
- * Headline + sub line for the cluster health tile.
- *
- * @param {object} p
- * @param {string|null} p.node    busiest node name (null when unknown)
- * @param {number|null} p.headroom busiest node headroom, 0-100
- * @param {object|null} p.score   that node's /api/node-scores entry
- * @returns {{ level: 'ok'|'warn'|'crit'|null, headline: string, sub: string|null, phrase: string|null }}
- */
-export function healthSummary({ node = null, headroom = null, score = null } = {}) {
-  const level = headroomLevel(headroom);
-  if (level === null) return { level: null, headline: '—', sub: null, phrase: null };
-  const n = Math.round(headroom);
-  if (level === 'ok') {
-    return {
-      level,
-      headline: 'All nodes have capacity',
-      sub: node ? `Busiest: ${node} · capacity ${n}/100` : `headroom ${n}/100`,
-      phrase: null,
-    };
-  }
-  const phrase = problemPhrase(biggestProblem(score)) || 'high base load';
-  return {
-    level,
-    headline: node ? `${node}: ${phrase}` : `Low headroom: ${phrase}`,
-    sub: node ? `Busiest node · headroom ${n}/100` : `headroom ${n}/100`,
-    phrase,
-  };
 }
 
 /**
